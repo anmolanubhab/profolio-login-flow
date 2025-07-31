@@ -31,7 +31,7 @@ const Login = () => {
         <Card className="shadow-card">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-semibold">
-              🔑 Welcome Back to Profolio
+              🔐 Sign in to Profolio
             </CardTitle>
             <CardDescription className="text-muted-foreground">
               Enter your credentials to access your account
