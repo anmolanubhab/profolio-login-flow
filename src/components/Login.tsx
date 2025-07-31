@@ -75,7 +75,7 @@ const Login = () => {
 
               {/* Login Button */}
               <Button type="submit" className="w-full" size="lg">
-                🔵 Login
+                Login
               </Button>
 
               {/* Forgot Password */}
