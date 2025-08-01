@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -122,9 +123,12 @@ const Login = () => {
             {/* Sign Up Link */}
             <div className="text-center text-sm text-muted-foreground">
               Don't have an account?{' '}
-              <button className="text-primary hover:text-primary/80 underline-offset-4 hover:underline font-medium transition-smooth">
+              <Link 
+                to="/register" 
+                className="text-primary hover:text-primary/80 underline-offset-4 hover:underline font-medium transition-smooth"
+              >
                 Create one
-              </button>
+              </Link>
             </div>
           </CardContent>
         </Card>
