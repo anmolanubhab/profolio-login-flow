@@ -1,10 +1,53 @@
 import { useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { LogOut, User as UserIcon, Settings, BarChart3 } from 'lucide-react';
+import NavBar from '@/components/NavBar';
+import PostInput from '@/components/PostInput';
+import QuickActions from '@/components/QuickActions';
+import PostCard from '@/components/PostCard';
+
+// Sample posts data - replace with real data from your backend
+const samplePosts = [
+  {
+    id: '1',
+    user: {
+      name: 'John Doe',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
+    },
+    content: 'Attending the Future Innovators Conference! Excited to participate in the conference and connect with professionals in the field.',
+    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=400&fit=crop',
+    timeAgo: '2h',
+    likes: 12,
+    comments: 3,
+    isLiked: false
+  },
+  {
+    id: '2',
+    user: {
+      name: 'Sarah Wilson',
+      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face'
+    },
+    content: 'Just completed my project management certification! Ready to take on new challenges and lead amazing teams.',
+    timeAgo: '4h',
+    likes: 28,
+    comments: 8,
+    isLiked: true
+  },
+  {
+    id: '3',
+    user: {
+      name: 'Mike Chen',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
+    },
+    content: 'Networking event was incredible! Met so many talented professionals and learned about exciting opportunities in tech.',
+    image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=600&h=400&fit=crop',
+    timeAgo: '6h',
+    likes: 15,
+    comments: 5,
+    isLiked: false
+  }
+];
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -50,7 +93,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
@@ -58,7 +101,7 @@ const Dashboard = () => {
 
   if (!user || !session) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <p>Please log in to access the dashboard.</p>
       </div>
     );
@@ -66,105 +109,33 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Welcome, {user.email}
-            </span>
-            <Button onClick={handleSignOut} variant="outline" size="sm">
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
+      {/* Navigation Bar */}
+      <NavBar 
+        user={{
+          email: user.email,
+          avatar: user.user_metadata?.avatar_url
+        }} 
+        onSignOut={handleSignOut} 
+      />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Welcome Card */}
-          <Card className="md:col-span-2 lg:col-span-3">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserIcon className="w-5 h-5" />
-                Welcome to Your Dashboard
-              </CardTitle>
-              <CardDescription>
-                Here's an overview of your account and recent activity.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Email</p>
-                  <p className="text-foreground">{user.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">User ID</p>
-                  <p className="text-foreground font-mono text-xs">{user.id}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <main className="container mx-auto px-4 py-6 max-w-2xl">
+        {/* Post Input Section */}
+        <PostInput 
+          user={{
+            email: user.email,
+            avatar: user.user_metadata?.avatar_url
+          }} 
+        />
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
-                <UserIcon className="w-4 h-4 mr-2" />
-                Edit Profile
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </Button>
-            </CardContent>
-          </Card>
+        {/* Quick Actions */}
+        <QuickActions />
 
-          {/* Analytics */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
-                Analytics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Total Projects</span>
-                  <span className="text-sm font-medium">0</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Active Tasks</span>
-                  <span className="text-sm font-medium">0</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Completed</span>
-                  <span className="text-sm font-medium">0</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No recent activity to display.</p>
-            </CardContent>
-          </Card>
+        {/* Feed Section */}
+        <div className="space-y-4">
+          {samplePosts.map((post) => (
+            <PostCard key={post.id} post={post} />
+          ))}
         </div>
       </main>
     </div>
