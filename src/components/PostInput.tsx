@@ -1,25 +1,115 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Camera, FileText, User } from 'lucide-react';
+import { Camera, FileText, User, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface PostInputProps {
   user?: {
     email?: string;
     avatar?: string;
   };
+  onPostCreated?: () => void;
 }
 
-const PostInput = ({ user }: PostInputProps) => {
+const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   const [postContent, setPostContent] = useState('');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isPosting, setIsPosting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
-  const handlePost = () => {
-    if (postContent.trim()) {
-      // Handle post submission
-      console.log('Posting:', postContent);
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePost = async () => {
+    if (!postContent.trim() && !selectedImage) return;
+    
+    setIsPosting(true);
+    try {
+      let imageUrl = null;
+      
+      // Upload image if selected
+      if (selectedImage && user?.email) {
+        const fileName = `${Date.now()}-${selectedImage.name}`;
+        const filePath = `${user.email}/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('post-images')
+          .upload(filePath, selectedImage);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('post-images')
+          .getPublicUrl(filePath);
+          
+        imageUrl = publicUrl;
+      }
+      
+      // Get current user
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) throw new Error('User not authenticated');
+      
+      // Create post
+      const { error } = await supabase
+        .from('posts')
+        .insert({
+          content: postContent.trim(),
+          image_url: imageUrl,
+          user_id: currentUser.id,
+        });
+        
+      if (error) throw error;
+      
+      toast({
+        title: "Post created!",
+        description: "Your post has been shared successfully.",
+      });
+      
       setPostContent('');
+      removeImage();
+      onPostCreated?.();
+      
+    } catch (error) {
+      console.error('Error creating post:', error);
+      toast({
+        title: "Error creating post",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPosting(false);
     }
   };
 
@@ -45,9 +135,42 @@ const PostInput = ({ user }: PostInputProps) => {
           </div>
         </div>
 
+        {/* Image Preview */}
+        {imagePreview && (
+          <div className="mb-4 relative">
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="max-h-64 w-full object-cover rounded-lg"
+            />
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute top-2 right-2 h-8 w-8"
+              onClick={removeImage}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageSelect}
+          className="hidden"
+        />
+
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button 
+            variant="outline" 
+            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isPosting}
+          >
             <Camera className="h-4 w-4 mr-2" />
             Photo
           </Button>
@@ -58,9 +181,13 @@ const PostInput = ({ user }: PostInputProps) => {
           </Button>
         </div>
 
-        {postContent.trim() && (
-          <Button onClick={handlePost} className="w-full mt-3">
-            Post
+        {(postContent.trim() || selectedImage) && (
+          <Button 
+            onClick={handlePost} 
+            className="w-full mt-3"
+            disabled={isPosting}
+          >
+            {isPosting ? "Posting..." : "Post"}
           </Button>
         )}
       </CardContent>
