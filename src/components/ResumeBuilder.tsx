@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { FileText, Download, Eye, Edit, Trash2 } from 'lucide-react';
+import { FileText, Download, Eye, Edit, Trash2, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 
 const ResumeBuilder = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     title: '',
     personalInfo: {
@@ -219,7 +221,17 @@ const ResumeBuilder = () => {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Resume Builder</h2>
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <h2 className="text-2xl font-bold">Resume Builder</h2>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleNewResume}>
             New Resume
