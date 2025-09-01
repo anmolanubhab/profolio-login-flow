@@ -24,7 +24,10 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
               <Search className="h-5 w-5" />
             </Button>
             
-            <Avatar className="h-8 w-8 cursor-pointer" onClick={onSignOut}>
+            <Avatar 
+              className="h-8 w-8 cursor-pointer" 
+              onClick={() => window.location.href = '/profile'}
+            >
               <AvatarImage src={user?.avatar} />
               <AvatarFallback className="bg-primary-foreground text-primary text-sm">
                 {user?.email?.charAt(0).toUpperCase() || <User className="h-4 w-4" />}
