@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,6 +22,7 @@ interface PostCardProps {
 const PostCard = ({ id, user, content, image, timestamp, likes, onLike }: PostCardProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkUser = async () => {
@@ -50,66 +52,82 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike }: PostCa
     onLike?.(!isLiked);
   };
 
+  const handleProfileClick = () => {
+    navigate('/profile');
+  };
+
   return (
-    <Card className="mb-4">
-      <CardContent className="p-4">
+    <Card className="mb-6 shadow-sm hover:shadow-md transition-all duration-300 border-0 bg-card/50 backdrop-blur-sm">
+      <CardContent className="p-6">
         {/* Post Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={user.avatar} />
-              <AvatarFallback className="bg-muted">
-                {user.name.charAt(0).toUpperCase() || <User className="h-4 w-4" />}
-              </AvatarFallback>
-            </Avatar>
+        <div className="flex items-center justify-between mb-4">
+          <div 
+            className="flex items-center gap-4 cursor-pointer group"
+            onClick={handleProfileClick}
+          >
+            <div className="relative">
+              <Avatar className="h-12 w-12 ring-2 ring-primary/10 group-hover:ring-primary/30 transition-all duration-300 group-hover:scale-105">
+                <AvatarImage src={user.avatar} className="object-cover" />
+                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
+                  {user.name.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
+                </AvatarFallback>
+              </Avatar>
+            </div>
             
-            <div>
-              <div className="font-semibold text-sm">{user.name}</div>
-              <div className="text-xs text-muted-foreground">{formatTimeAgo(timestamp)}</div>
+            <div className="flex-1">
+              <div className="font-semibold text-foreground group-hover:text-primary transition-colors duration-200">
+                {user.name}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">{formatTimeAgo(timestamp)}</div>
             </div>
           </div>
           
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted/50">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Post Content */}
-        <div className="mb-3">
-          <p className="text-sm leading-relaxed">{content}</p>
+        <div className="mb-4">
+          <p className="text-sm leading-relaxed text-foreground/90">{content}</p>
         </div>
 
         {/* Post Image */}
         {image && (
-          <div className="mb-3 rounded-lg overflow-hidden">
+          <div className="mb-4 rounded-xl overflow-hidden border border-border/50">
             <img 
               src={image} 
               alt="Post content" 
-              className="w-full h-auto object-cover"
+              className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
             />
           </div>
         )}
 
+        {/* Divider */}
+        <div className="border-t border-border/50 mb-4"></div>
+
         {/* Post Actions */}
-        <div className="flex items-center gap-4 pt-2 border-t">
+        <div className="flex items-center gap-1">
           <Button 
             variant="ghost" 
             size="sm" 
-            className={`flex items-center gap-2 ${isLiked ? 'text-red-500' : 'text-muted-foreground'}`}
+            className={`flex items-center gap-2 hover:bg-red-50 hover:text-red-600 transition-all duration-200 ${
+              isLiked ? 'text-red-500 bg-red-50' : 'text-muted-foreground'
+            }`}
             onClick={handleLike}
           >
-            <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
-            <span className="text-xs">Like ({likes})</span>
+            <Heart className={`h-4 w-4 transition-transform duration-200 hover:scale-110 ${isLiked ? 'fill-current' : ''}`} />
+            <span className="text-xs font-medium">Like ({likes})</span>
           </Button>
           
-          <Button variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground">
-            <MessageCircle className="h-4 w-4" />
-            <span className="text-xs">Comment</span>
+          <Button variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground hover:bg-blue-50 hover:text-blue-600 transition-all duration-200">
+            <MessageCircle className="h-4 w-4 transition-transform duration-200 hover:scale-110" />
+            <span className="text-xs font-medium">Comment</span>
           </Button>
           
-          <Button variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground">
-            <Share className="h-4 w-4" />
-            <span className="text-xs">Share</span>
+          <Button variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground hover:bg-green-50 hover:text-green-600 transition-all duration-200">
+            <Share className="h-4 w-4 transition-transform duration-200 hover:scale-110" />
+            <span className="text-xs font-medium">Share</span>
           </Button>
         </div>
       </CardContent>
