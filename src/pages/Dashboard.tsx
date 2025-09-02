@@ -6,6 +6,7 @@ import NavBar from '@/components/NavBar';
 import PostInput from '@/components/PostInput';
 import QuickActions from '@/components/QuickActions';
 import Feed from '@/components/Feed';
+import BottomNavigation from '@/components/BottomNavigation';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -67,7 +68,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       {/* Navigation Bar */}
       <NavBar 
         user={{
@@ -94,6 +95,8 @@ const Dashboard = () => {
         {/* Feed Section */}
         <Feed refresh={feedRefresh} />
       </main>
+
+      <BottomNavigation />
     </div>
   );
 };

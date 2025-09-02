@@ -10,6 +10,9 @@ import Certificates from "./pages/Certificates";
 import Resume from "./pages/Resume";
 import Connect from "./pages/Connect";
 import Profile from "./pages/Profile";
+import AddPost from "./pages/AddPost";
+import Notifications from "./pages/Notifications";
+import Jobs from "./pages/Jobs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +31,9 @@ const App = () => (
           <Route path="/resume" element={<Resume />} />
           <Route path="/connect" element={<Connect />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/add-post" element={<AddPost />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/jobs" element={<Jobs />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -9,6 +9,7 @@ import InterviewInterface from '@/components/connect/InterviewInterface';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import BottomNavigation from '@/components/BottomNavigation';
 
 const Connect = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -70,7 +71,7 @@ const Connect = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       {/* Navigation Bar */}
       <NavBar 
         user={{
@@ -109,6 +110,8 @@ const Connect = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      <BottomNavigation />
     </div>
   );
 };

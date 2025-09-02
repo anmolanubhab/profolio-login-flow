@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import NavBar from '@/components/NavBar';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileTabs from '@/components/profile/ProfileTabs';
+import BottomNavigation from '@/components/BottomNavigation';
 
 const Profile = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -53,7 +54,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20">
       <NavBar 
         user={{
           email: user.email,
@@ -66,6 +67,8 @@ const Profile = () => {
         <ProfileHeader userId={user.id} />
         <ProfileTabs userId={user.id} />
       </main>
+
+      <BottomNavigation />
     </div>
   );
 };
