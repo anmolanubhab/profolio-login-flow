@@ -9,6 +9,11 @@ interface Post {
   image_url: string | null;
   created_at: string;
   user_id: string;
+  profiles: {
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
+  post_likes: { id: string }[];
 }
 
 interface FeedProps {
@@ -22,13 +27,41 @@ const Feed = ({ refresh }: FeedProps) => {
 
   const fetchPosts = async () => {
     try {
-      const { data, error } = await supabase
+      // First get posts, then get profile info for each post
+      const { data: postsData, error: postsError } = await supabase
         .from('posts')
-        .select('*')
+        .select(`
+          *,
+          post_likes (id)
+        `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setPosts(data || []);
+      if (postsError) throw postsError;
+
+      // Get unique user IDs
+      const userIds = [...new Set(postsData?.map(post => post.user_id) || [])];
+      
+      // Get profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user_id to profile
+      const profilesMap = new Map();
+      profilesData?.forEach(profile => {
+        profilesMap.set(profile.user_id, profile);
+      });
+
+      // Combine posts with profiles
+      const postsWithProfiles = postsData?.map(post => ({
+        ...post,
+        profiles: profilesMap.get(post.user_id) || null
+      })) || [];
+
+      setPosts(postsWithProfiles);
     } catch (error) {
       console.error('Error fetching posts:', error);
       toast({
@@ -114,13 +147,13 @@ const Feed = ({ refresh }: FeedProps) => {
           key={post.id}
           id={post.id}
           user={{
-            name: 'User', // We'll get this from profiles later
-            avatar: undefined,
+            name: post.profiles?.display_name || 'Unknown User',
+            avatar: post.profiles?.avatar_url,
           }}
           content={post.content}
           image={post.image_url || undefined}
           timestamp={post.created_at}
-          likes={0} // We'll calculate this from post_likes later
+          likes={post.post_likes.length}
           onLike={(isLiked) => handleLike(post.id, isLiked)}
         />
       ))}
