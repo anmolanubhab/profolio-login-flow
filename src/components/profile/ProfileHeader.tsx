@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Camera, Edit3, Save, X } from 'lucide-react';
+import { Camera, Edit3, Save, X, User, MapPin, Phone, Globe, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 interface Profile {
   id: string;
@@ -174,145 +176,250 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
   }
 
   return (
-    <Card className="p-6 mb-6 bg-gradient-card shadow-card">
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Profile Photo */}
-        <div className="flex flex-col items-center">
-          <div className="relative">
-            <Avatar className="h-24 w-24 md:h-32 md:w-32">
-              <AvatarImage src={profile?.avatar_url} />
-              <AvatarFallback className="text-lg font-semibold bg-primary text-primary-foreground">
-                {profile?.display_name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <label htmlFor="photo-upload" className="absolute bottom-0 right-0 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-2 cursor-pointer transition-smooth">
-              <Camera className="h-4 w-4" />
-              <input
-                id="photo-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handlePhotoUpload}
-                disabled={uploadingPhoto}
-              />
-            </label>
-          </div>
-          {uploadingPhoto && (
-            <p className="text-sm text-muted-foreground mt-2">Uploading...</p>
-          )}
-        </div>
-
-        {/* Profile Information */}
-        <div className="flex-1">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              {isEditing ? (
-                <div className="space-y-4">
-                  <Input
-                    placeholder="Full Name"
-                    value={editData.display_name}
-                    onChange={(e) => setEditData(prev => ({ ...prev, display_name: e.target.value }))}
-                  />
-                  <Input
-                    placeholder="Profession"
-                    value={editData.profession}
-                    onChange={(e) => setEditData(prev => ({ ...prev, profession: e.target.value }))}
-                  />
-                  <Input
-                    placeholder="Location"
-                    value={editData.location}
-                    onChange={(e) => setEditData(prev => ({ ...prev, location: e.target.value }))}
-                  />
-                  <Input
-                    placeholder="Phone Number"
-                    value={editData.phone}
-                    onChange={(e) => setEditData(prev => ({ ...prev, phone: e.target.value }))}
-                  />
-                  <Input
-                    placeholder="Website"
-                    value={editData.website}
-                    onChange={(e) => setEditData(prev => ({ ...prev, website: e.target.value }))}
-                  />
-                  <Textarea
-                    placeholder="About me..."
-                    value={editData.bio}
-                    onChange={(e) => setEditData(prev => ({ ...prev, bio: e.target.value }))}
-                    rows={3}
-                  />
-                </div>
-              ) : (
-                <div>
-                  <h1 className="text-2xl font-bold text-foreground mb-2">
-                    {profile?.display_name || 'Your Name'}
-                  </h1>
-                  {profile?.profession && (
-                    <p className="text-lg text-primary font-medium mb-1">
-                      {profile.profession}
-                    </p>
-                  )}
-                  {profile?.location && (
-                    <p className="text-muted-foreground mb-2">
-                      📍 {profile.location}
-                    </p>
-                  )}
-                  {profile?.phone && (
-                    <p className="text-muted-foreground mb-2">
-                      📞 {profile.phone}
-                    </p>
-                  )}
-                  {profile?.website && (
-                    <p className="text-muted-foreground mb-2">
-                      🌐 <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                        {profile.website}
-                      </a>
-                    </p>
-                  )}
-                  {profile?.bio && (
-                    <p className="text-foreground mt-4 leading-relaxed">
-                      {profile.bio}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-2 ml-4">
-              {isEditing ? (
-                <>
-                  <Button
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="bg-success hover:bg-success/90"
-                  >
-                    <Save className="h-4 w-4 mr-1" />
-                    {saving ? 'Saving...' : 'Save'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleCancel}
-                    disabled={saving}
-                  >
-                    <X className="h-4 w-4 mr-1" />
-                    Cancel
-                  </Button>
-                </>
-              ) : (
+    <Card className="mb-6 bg-gradient-card shadow-card border-0">
+      <CardHeader className="pb-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-foreground">Profile Information</h2>
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="bg-success hover:bg-success/90 text-success-foreground shadow-elegant"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setIsEditing(true)}
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="border-muted-foreground/20 hover:bg-muted/50"
                 >
-                  <Edit3 className="h-4 w-4 mr-1" />
-                  Edit
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
                 </Button>
-              )}
-            </div>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsEditing(true)}
+                className="border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/40"
+              >
+                <Edit3 className="h-4 w-4 mr-2" />
+                Edit Profile
+              </Button>
+            )}
           </div>
         </div>
-      </div>
+      </CardHeader>
+
+      <CardContent className="space-y-6">
+        {/* Profile Photo Section */}
+        <div className="flex flex-col md:flex-row gap-6">
+          <div className="flex flex-col items-center space-y-2">
+            <div className="relative">
+              <Avatar className="h-28 w-28 md:h-32 md:w-32 border-4 border-background shadow-elegant">
+                <AvatarImage src={profile?.avatar_url} />
+                <AvatarFallback className="text-xl font-bold bg-primary text-primary-foreground">
+                  {profile?.display_name?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <label htmlFor="photo-upload" className="absolute -bottom-1 -right-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-2.5 cursor-pointer transition-smooth shadow-elegant">
+                <Camera className="h-4 w-4" />
+                <input
+                  id="photo-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                  disabled={uploadingPhoto}
+                />
+              </label>
+            </div>
+            {uploadingPhoto && (
+              <p className="text-sm text-muted-foreground">Uploading photo...</p>
+            )}
+          </div>
+
+          <div className="flex-1 space-y-6">
+            {isEditing ? (
+              <div className="space-y-6">
+                {/* Basic Information */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="display_name" className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <User className="h-4 w-4 text-primary" />
+                      Full Name
+                    </Label>
+                    <Input
+                      id="display_name"
+                      placeholder="Enter your full name"
+                      value={editData.display_name}
+                      onChange={(e) => setEditData(prev => ({ ...prev, display_name: e.target.value }))}
+                      className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profession" className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-primary" />
+                      Profession
+                    </Label>
+                    <Input
+                      id="profession"
+                      placeholder="e.g., Senior Software Engineer"
+                      value={editData.profession}
+                      onChange={(e) => setEditData(prev => ({ ...prev, profession: e.target.value }))}
+                      className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth"
+                    />
+                  </div>
+                </div>
+
+                <Separator className="bg-muted/30" />
+
+                {/* Contact Information */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground/80 uppercase tracking-wide">Contact Information</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="location" className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-primary" />
+                        Location
+                      </Label>
+                      <Input
+                        id="location"
+                        placeholder="City, Country"
+                        value={editData.location}
+                        onChange={(e) => setEditData(prev => ({ ...prev, location: e.target.value }))}
+                        className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="text-sm font-medium text-foreground flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-primary" />
+                        Phone Number
+                      </Label>
+                      <Input
+                        id="phone"
+                        placeholder="+1 (555) 123-4567"
+                        value={editData.phone}
+                        onChange={(e) => setEditData(prev => ({ ...prev, phone: e.target.value }))}
+                        className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="website" className="text-sm font-medium text-foreground flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-primary" />
+                      Website
+                    </Label>
+                    <Input
+                      id="website"
+                      placeholder="https://yourwebsite.com"
+                      value={editData.website}
+                      onChange={(e) => setEditData(prev => ({ ...prev, website: e.target.value }))}
+                      className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth"
+                    />
+                  </div>
+                </div>
+
+                <Separator className="bg-muted/30" />
+
+                {/* About Section */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground/80 uppercase tracking-wide">About Me</h4>
+                  <div className="space-y-2">
+                    <Label htmlFor="bio" className="text-sm font-medium text-foreground">
+                      Professional Summary
+                    </Label>
+                    <Textarea
+                      id="bio"
+                      placeholder="Write a brief description about yourself, your experience, and your professional goals..."
+                      value={editData.bio}
+                      onChange={(e) => setEditData(prev => ({ ...prev, bio: e.target.value }))}
+                      rows={4}
+                      className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth resize-none"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {editData.bio.length}/500 characters
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Display Mode */
+              <div className="space-y-6">
+                {/* Basic Information Display */}
+                <div className="space-y-3">
+                  <h1 className="text-3xl font-bold text-foreground">
+                    {profile?.display_name || 'Your Name'}
+                  </h1>
+                  {profile?.profession && (
+                    <p className="text-lg text-primary font-semibold">
+                      {profile.profession}
+                    </p>
+                  )}
+                </div>
+
+                {/* Contact Information Display */}
+                {(profile?.location || profile?.phone || profile?.website) && (
+                  <>
+                    <Separator className="bg-muted/30" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {profile?.location && (
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                          <span className="text-sm">{profile.location}</span>
+                        </div>
+                      )}
+                      {profile?.phone && (
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <Phone className="h-4 w-4 text-primary flex-shrink-0" />
+                          <span className="text-sm">{profile.phone}</span>
+                        </div>
+                      )}
+                      {profile?.website && (
+                        <div className="flex items-center gap-3 text-muted-foreground md:col-span-2">
+                          <Globe className="h-4 w-4 text-primary flex-shrink-0" />
+                          <a 
+                            href={profile.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-sm text-primary hover:underline transition-smooth"
+                          >
+                            {profile.website}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* Bio Display */}
+                {profile?.bio && (
+                  <>
+                    <Separator className="bg-muted/30" />
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold text-foreground/80 uppercase tracking-wide">About</h4>
+                      <p className="text-foreground leading-relaxed text-sm">
+                        {profile.bio}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
     </Card>
   );
 };
