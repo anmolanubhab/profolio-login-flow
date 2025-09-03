@@ -86,7 +86,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
     setUploadingPhoto(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}_${Date.now()}.${fileExt}`;
+      const fileName = `${userId}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
