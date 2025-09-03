@@ -2,11 +2,10 @@ import { useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import NavBar from '@/components/NavBar';
+import { Layout } from '@/components/Layout';
 import PostInput from '@/components/PostInput';
 import QuickActions from '@/components/QuickActions';
 import Feed from '@/components/Feed';
-import BottomNavigation from '@/components/BottomNavigation';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -68,18 +67,8 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Navigation Bar */}
-      <NavBar 
-        user={{
-          email: user.email,
-          avatar: user.user_metadata?.avatar_url
-        }} 
-        onSignOut={handleSignOut} 
-      />
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 max-w-2xl">
+    <Layout user={user} onSignOut={handleSignOut}>
+      <div className="container mx-auto max-w-2xl">
         {/* Post Input Section */}
         <PostInput 
           user={{
@@ -94,10 +83,8 @@ const Dashboard = () => {
 
         {/* Feed Section */}
         <Feed refresh={feedRefresh} />
-      </main>
-
-      <BottomNavigation />
-    </div>
+      </div>
+    </Layout>
   );
 };
 

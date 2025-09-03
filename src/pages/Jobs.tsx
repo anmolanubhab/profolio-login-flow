@@ -2,7 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, Building } from 'lucide-react';
-import BottomNavigation from '@/components/BottomNavigation';
+import { Layout } from '@/components/Layout';
 
 const Jobs = () => {
   const jobs = [
@@ -39,14 +39,10 @@ const Jobs = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="bg-primary text-primary-foreground sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
-          <h1 className="text-xl font-bold">Jobs</h1>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-6 max-w-2xl">
+    <Layout>
+      <div className="container mx-auto max-w-2xl">
+        <h1 className="text-3xl font-bold mb-6">Jobs</h1>
+        
         <div className="space-y-4">
           {jobs.map((job) => (
             <Card key={job.id} className="cursor-pointer hover:shadow-md transition-shadow">
@@ -89,10 +85,8 @@ const Jobs = () => {
             </Card>
           ))}
         </div>
-      </main>
-
-      <BottomNavigation />
-    </div>
+      </div>
+    </Layout>
   );
 };
 

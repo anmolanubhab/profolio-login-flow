@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import NavBar from '@/components/NavBar';
+import { Layout } from '@/components/Layout';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileTabs from '@/components/profile/ProfileTabs';
-import BottomNavigation from '@/components/BottomNavigation';
 
 const Profile = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -54,22 +53,12 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <NavBar 
-        user={{
-          email: user.email,
-          avatar: user.user_metadata?.avatar_url
-        }} 
-        onSignOut={handleSignOut} 
-      />
-      
-      <main className="container mx-auto px-4 py-6 max-w-4xl">
+    <Layout user={user} onSignOut={handleSignOut}>
+      <div className="container mx-auto max-w-4xl">
         <ProfileHeader userId={user.id} />
         <ProfileTabs userId={user.id} />
-      </main>
-
-      <BottomNavigation />
-    </div>
+      </div>
+    </Layout>
   );
 };
 

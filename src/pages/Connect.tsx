@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import NavBar from '@/components/NavBar';
+import { Layout } from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ChatInterface from '@/components/connect/ChatInterface';
 import InterviewInterface from '@/components/connect/InterviewInterface';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import BottomNavigation from '@/components/BottomNavigation';
 
 const Connect = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -71,18 +70,8 @@ const Connect = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Navigation Bar */}
-      <NavBar 
-        user={{
-          email: user.email,
-          avatar: user.user_metadata?.avatar_url
-        }} 
-        onSignOut={handleSignOut} 
-      />
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 max-w-6xl">
+    <Layout user={user} onSignOut={handleSignOut}>
+      <div className="container mx-auto max-w-6xl">
         <div className="flex items-center gap-4 mb-6">
           <Button 
             variant="outline" 
@@ -109,10 +98,8 @@ const Connect = () => {
             <InterviewInterface user={user} />
           </TabsContent>
         </Tabs>
-      </main>
-
-      <BottomNavigation />
-    </div>
+      </div>
+    </Layout>
   );
 };
 
