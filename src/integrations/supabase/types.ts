@@ -7,13 +7,65 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
   }
   public: {
     Tables: {
+      applications: {
+        Row: {
+          applied_at: string
+          cover_letter: string | null
+          id: string
+          job_id: string
+          resume_id: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          user_id: string
+        }
+        Insert: {
+          applied_at?: string
+          cover_letter?: string | null
+          id?: string
+          job_id: string
+          resume_id?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          user_id: string
+        }
+        Update: {
+          applied_at?: string
+          cover_letter?: string | null
+          id?: string
+          job_id?: string
+          resume_id?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_resume_id_fkey"
+            columns: ["resume_id"]
+            isOneToOne: false
+            referencedRelation: "resumes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificates: {
         Row: {
           created_at: string
@@ -50,6 +102,83 @@ export type Database = {
         }
         Relationships: []
       }
+      companies: {
+        Row: {
+          created_at: string
+          id: string
+          location: string | null
+          logo_url: string | null
+          name: string
+          owner_id: string | null
+          website: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location?: string | null
+          logo_url?: string | null
+          name: string
+          owner_id?: string | null
+          website?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location?: string | null
+          logo_url?: string | null
+          name?: string
+          owner_id?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companies_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      connections: {
+        Row: {
+          connection_id: string
+          created_at: string
+          id: string
+          status: Database["public"]["Enums"]["connection_status"]
+          user_id: string
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["connection_status"]
+          user_id: string
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["connection_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "connections_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string | null
@@ -76,6 +205,103 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      education: {
+        Row: {
+          created_at: string
+          degree: string | null
+          description: string | null
+          end_date: string | null
+          field_of_study: string | null
+          grade: string | null
+          id: string
+          institution: string
+          start_date: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          degree?: string | null
+          description?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          grade?: string | null
+          id?: string
+          institution: string
+          start_date?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          degree?: string | null
+          description?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          grade?: string | null
+          id?: string
+          institution?: string
+          start_date?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "education_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      experience: {
+        Row: {
+          company: string
+          created_at: string
+          description: string | null
+          employment_type: string | null
+          end_date: string | null
+          id: string
+          is_current: boolean | null
+          location: string | null
+          role: string
+          start_date: string
+          user_id: string
+        }
+        Insert: {
+          company: string
+          created_at?: string
+          description?: string | null
+          employment_type?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          location?: string | null
+          role: string
+          start_date: string
+          user_id: string
+        }
+        Update: {
+          company?: string
+          created_at?: string
+          description?: string | null
+          employment_type?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          location?: string | null
+          role?: string
+          start_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       interviews: {
         Row: {
@@ -122,6 +348,75 @@ export type Database = {
         }
         Relationships: []
       }
+      jobs: {
+        Row: {
+          company_id: string
+          currency: string | null
+          description: string | null
+          employment_type: string | null
+          expires_at: string | null
+          id: string
+          location: string | null
+          posted_at: string
+          posted_by: string | null
+          remote_option: string | null
+          requirements: string | null
+          salary_max: number | null
+          salary_min: number | null
+          status: string
+          title: string
+        }
+        Insert: {
+          company_id: string
+          currency?: string | null
+          description?: string | null
+          employment_type?: string | null
+          expires_at?: string | null
+          id?: string
+          location?: string | null
+          posted_at?: string
+          posted_by?: string | null
+          remote_option?: string | null
+          requirements?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          status?: string
+          title: string
+        }
+        Update: {
+          company_id?: string
+          currency?: string | null
+          description?: string | null
+          employment_type?: string | null
+          expires_at?: string | null
+          id?: string
+          location?: string | null
+          posted_at?: string
+          posted_by?: string | null
+          remote_option?: string | null
+          requirements?: string | null
+          salary_max?: number | null
+          salary_min?: number | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_posted_by_fkey"
+            columns: ["posted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -162,6 +457,41 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          payload: Json | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          payload?: Json | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          payload?: Json | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -224,31 +554,70 @@ export type Database = {
       }
       profiles: {
         Row: {
+          achievements: Json | null
           avatar_url: string | null
           bio: string | null
           created_at: string
           display_name: string | null
+          education: Json | null
+          experience: Json | null
+          github_url: string | null
           id: string
+          linkedin_url: string | null
+          location: string | null
+          phone: string | null
+          preferences: Json | null
+          profession: string | null
+          projects: Json | null
+          skills: string[] | null
+          twitter_url: string | null
           updated_at: string
           user_id: string
+          website: string | null
         }
         Insert: {
+          achievements?: Json | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          education?: Json | null
+          experience?: Json | null
+          github_url?: string | null
           id?: string
+          linkedin_url?: string | null
+          location?: string | null
+          phone?: string | null
+          preferences?: Json | null
+          profession?: string | null
+          projects?: Json | null
+          skills?: string[] | null
+          twitter_url?: string | null
           updated_at?: string
           user_id: string
+          website?: string | null
         }
         Update: {
+          achievements?: Json | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
+          education?: Json | null
+          experience?: Json | null
+          github_url?: string | null
           id?: string
+          linkedin_url?: string | null
+          location?: string | null
+          phone?: string | null
+          preferences?: Json | null
+          profession?: string | null
+          projects?: Json | null
+          skills?: string[] | null
+          twitter_url?: string | null
           updated_at?: string
           user_id?: string
+          website?: string | null
         }
         Relationships: []
       }
@@ -282,6 +651,138 @@ export type Database = {
         }
         Relationships: []
       }
+      skills: {
+        Row: {
+          created_at: string
+          id: string
+          proficiency: Database["public"]["Enums"]["proficiency_level"] | null
+          skill_name: string
+          user_id: string
+          years_of_experience: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          proficiency?: Database["public"]["Enums"]["proficiency_level"] | null
+          skill_name: string
+          user_id: string
+          years_of_experience?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          proficiency?: Database["public"]["Enums"]["proficiency_level"] | null
+          skill_name?: string
+          user_id?: string
+          years_of_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skills_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stories: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          media_type: string | null
+          media_url: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          media_type?: string | null
+          media_url: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          media_type?: string | null
+          media_url?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      story_views: {
+        Row: {
+          id: string
+          story_id: string | null
+          viewed_at: string | null
+          viewer_id: string | null
+        }
+        Insert: {
+          id?: string
+          story_id?: string | null
+          viewed_at?: string | null
+          viewer_id?: string | null
+        }
+        Update: {
+          id?: string
+          story_id?: string | null
+          viewed_at?: string | null
+          viewer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_views_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          ends_at: string | null
+          id: string
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          started_at: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          user_id: string
+        }
+        Insert: {
+          ends_at?: string | null
+          id?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          started_at?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          user_id: string
+        }
+        Update: {
+          ends_at?: string | null
+          id?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          started_at?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -290,7 +791,17 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      application_status:
+        | "applied"
+        | "shortlisted"
+        | "interview"
+        | "offered"
+        | "rejected"
+        | "withdrawn"
+      connection_status: "pending" | "accepted" | "blocked"
+      proficiency_level: "beginner" | "intermediate" | "advanced" | "expert"
+      subscription_plan: "free" | "pro" | "team"
+      subscription_status: "active" | "past_due" | "canceled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -417,6 +928,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      application_status: [
+        "applied",
+        "shortlisted",
+        "interview",
+        "offered",
+        "rejected",
+        "withdrawn",
+      ],
+      connection_status: ["pending", "accepted", "blocked"],
+      proficiency_level: ["beginner", "intermediate", "advanced", "expert"],
+      subscription_plan: ["free", "pro", "team"],
+      subscription_status: ["active", "past_due", "canceled"],
+    },
   },
 } as const
