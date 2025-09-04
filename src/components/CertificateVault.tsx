@@ -85,20 +85,21 @@ const CertificateVault = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Upload file to storage
-      const fileName = `${Date.now()}-${selectedFile.name}`;
-      const filePath = `${user.id}/${fileName}`;
+      // Upload file using secure upload
+      const { secureUpload } = await import('@/lib/secure-upload');
+      const result = await secureUpload({
+        bucket: 'certificates',
+        file: selectedFile,
+        userId: user.id
+      });
 
-      const { error: uploadError } = await supabase.storage
-        .from('certificates')
-        .upload(filePath, selectedFile);
-
-      if (uploadError) throw uploadError;
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
 
       // Get file URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('certificates')
-        .getPublicUrl(filePath);
+      const publicUrl = result.url;
+      const filePath = result.filePath;
 
       // Save certificate record
       const { error: dbError } = await supabase

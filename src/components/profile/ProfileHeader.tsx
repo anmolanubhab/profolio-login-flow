@@ -85,18 +85,18 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
 
     setUploadingPhoto(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}/${Date.now()}.${fileExt}`;
+      const { secureUpload } = await import('@/lib/secure-upload');
+      const result = await secureUpload({
+        bucket: 'avatars',
+        file: file,
+        userId: userId
+      });
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file);
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
 
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
+      const publicUrl = result.url;
 
       const { error: updateError } = await supabase
         .from('profiles')

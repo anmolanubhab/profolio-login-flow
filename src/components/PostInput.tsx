@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Camera, FileText, User, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 
 interface PostInputProps {
   user?: {
@@ -55,37 +56,56 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   const handlePost = async () => {
     if (!postContent.trim() && !selectedImage) return;
     
+    // Rate limiting check
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to create a post.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (rateLimiter.isRateLimited(`post_create_${currentUser.id}`, RATE_LIMITS.POST_CREATE)) {
+      const resetTime = rateLimiter.getTimeUntilReset(`post_create_${currentUser.id}`);
+      toast({
+        title: "Rate limit exceeded",
+        description: `Please wait ${Math.ceil(resetTime / 1000)} seconds before posting again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsPosting(true);
     try {
       let imageUrl = null;
       
-      // Upload image if selected
-      if (selectedImage && user?.email) {
-        const fileName = `${Date.now()}-${selectedImage.name}`;
-        const filePath = `${user.email}/${fileName}`;
+      // Upload image if selected using secure upload
+      if (selectedImage) {
+        const { secureUpload } = await import('@/lib/secure-upload');
+        const result = await secureUpload({
+          bucket: 'post-images',
+          file: selectedImage,
+          userId: currentUser.id
+        });
+
+        if (!result.success) {
+          throw new Error(result.error || 'Upload failed');
+        }
         
-        const { error: uploadError } = await supabase.storage
-          .from('post-images')
-          .upload(filePath, selectedImage);
-          
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('post-images')
-          .getPublicUrl(filePath);
-          
-        imageUrl = publicUrl;
+        imageUrl = result.url;
       }
       
-      // Get current user
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) throw new Error('User not authenticated');
+      // Sanitize content before storing
+      const { sanitizeTextContent } = await import('@/lib/input-sanitizer');
+      const sanitizedContent = sanitizeTextContent(postContent);
       
       // Create post
       const { error } = await supabase
         .from('posts')
         .insert({
-          content: postContent.trim(),
+          content: sanitizedContent,
           image_url: imageUrl,
           user_id: currentUser.id,
         });
