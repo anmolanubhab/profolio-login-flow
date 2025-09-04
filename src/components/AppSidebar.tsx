@@ -44,7 +44,7 @@ const profileItems = [
 ]
 
 export function AppSidebar() {
-  const { state } = useSidebar()
+  const { state, isMobile } = useSidebar()
   const location = useLocation()
   const { toast } = useToast()
   const currentPath = location.pathname
@@ -71,7 +71,11 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
+    <Sidebar 
+      className={isCollapsed ? "w-14" : "w-64"} 
+      collapsible="icon"
+      variant={isMobile ? "inset" : "sidebar"}
+    >
       <SidebarHeader className="p-4">
         {!isCollapsed && (
           <div className="flex items-center gap-2">

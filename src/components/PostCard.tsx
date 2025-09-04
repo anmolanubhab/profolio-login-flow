@@ -107,27 +107,36 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike }: PostCa
         <div className="border-t border-border/50 mb-4"></div>
 
         {/* Post Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
           <Button 
             variant="ghost" 
             size="sm" 
-            className={`flex items-center gap-2 hover:bg-red-50 hover:text-red-600 transition-all duration-200 ${
+            className={`flex items-center gap-1 sm:gap-2 min-w-0 flex-1 sm:flex-none justify-center hover:bg-red-50 hover:text-red-600 transition-all duration-200 ${
               isLiked ? 'text-red-500 bg-red-50' : 'text-muted-foreground'
             }`}
             onClick={handleLike}
           >
             <Heart className={`h-4 w-4 transition-transform duration-200 hover:scale-110 ${isLiked ? 'fill-current' : ''}`} />
-            <span className="text-xs font-medium">Like ({likes})</span>
+            <span className="text-xs font-medium hidden xs:inline">Like</span>
+            <span className="text-xs font-medium">({likes})</span>
           </Button>
           
-          <Button variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground hover:bg-blue-50 hover:text-blue-600 transition-all duration-200">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 sm:flex-none justify-center text-muted-foreground hover:bg-blue-50 hover:text-blue-600 transition-all duration-200"
+          >
             <MessageCircle className="h-4 w-4 transition-transform duration-200 hover:scale-110" />
-            <span className="text-xs font-medium">Comment</span>
+            <span className="text-xs font-medium hidden xs:inline">Comment</span>
           </Button>
           
-          <Button variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground hover:bg-green-50 hover:text-green-600 transition-all duration-200">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1 sm:flex-none justify-center text-muted-foreground hover:bg-green-50 hover:text-green-600 transition-all duration-200"
+          >
             <Share className="h-4 w-4 transition-transform duration-200 hover:scale-110" />
-            <span className="text-xs font-medium">Share</span>
+            <span className="text-xs font-medium hidden xs:inline">Share</span>
           </Button>
         </div>
       </CardContent>

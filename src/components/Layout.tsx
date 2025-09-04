@@ -15,7 +15,7 @@ export function Layout({ children, user, onSignOut }: LayoutProps) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        {/* Sidebar - hidden on mobile */}
+        {/* Desktop Sidebar */}
         <div className="hidden md:block">
           <AppSidebar />
         </div>
@@ -25,7 +25,12 @@ export function Layout({ children, user, onSignOut }: LayoutProps) {
           {/* Top navigation bar */}
           <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
             <div className="flex items-center gap-2 px-4 py-3">
-              {/* Sidebar trigger - only visible on desktop when sidebar is present */}
+              {/* Mobile sidebar trigger */}
+              <div className="md:hidden">
+                <SidebarTrigger className="text-sidebar-foreground" />
+              </div>
+              
+              {/* Desktop sidebar trigger */}
               <div className="hidden md:block">
                 <SidebarTrigger className="text-sidebar-foreground" />
               </div>
@@ -41,6 +46,11 @@ export function Layout({ children, user, onSignOut }: LayoutProps) {
               </div>
             </div>
           </header>
+
+          {/* Mobile Sidebar Sheet */}
+          <div className="md:hidden">
+            <AppSidebar />
+          </div>
 
           {/* Page content */}
           <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">
