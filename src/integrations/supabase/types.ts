@@ -102,6 +102,48 @@ export type Database = {
         }
         Relationships: []
       }
+      comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           created_at: string
@@ -297,6 +339,84 @@ export type Database = {
           {
             foreignKeyName: "experience_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      followers: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "followers_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followers_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friend_requests: {
+        Row: {
+          created_at: string
+          id: string
+          receiver_id: string
+          sender_id: string
+          status: Database["public"]["Enums"]["friend_request_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          receiver_id: string
+          sender_id: string
+          status?: Database["public"]["Enums"]["friend_request_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          receiver_id?: string
+          sender_id?: string
+          status?: Database["public"]["Enums"]["friend_request_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friend_requests_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "friend_requests_sender_id_fkey"
+            columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -555,17 +675,21 @@ export type Database = {
       profiles: {
         Row: {
           achievements: Json | null
+          address: string | null
           avatar_url: string | null
           bio: string | null
           created_at: string
           display_name: string | null
           education: Json | null
+          email: string | null
           experience: Json | null
+          full_name: string | null
           github_url: string | null
           id: string
           linkedin_url: string | null
           location: string | null
           phone: string | null
+          photo_url: string | null
           preferences: Json | null
           profession: string | null
           projects: Json | null
@@ -577,17 +701,21 @@ export type Database = {
         }
         Insert: {
           achievements?: Json | null
+          address?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
           education?: Json | null
+          email?: string | null
           experience?: Json | null
+          full_name?: string | null
           github_url?: string | null
           id?: string
           linkedin_url?: string | null
           location?: string | null
           phone?: string | null
+          photo_url?: string | null
           preferences?: Json | null
           profession?: string | null
           projects?: Json | null
@@ -599,17 +727,21 @@ export type Database = {
         }
         Update: {
           achievements?: Json | null
+          address?: string | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string | null
           education?: Json | null
+          email?: string | null
           experience?: Json | null
+          full_name?: string | null
           github_url?: string | null
           id?: string
           linkedin_url?: string | null
           location?: string | null
           phone?: string | null
+          photo_url?: string | null
           preferences?: Json | null
           profession?: string | null
           projects?: Json | null
@@ -799,6 +931,7 @@ export type Database = {
         | "rejected"
         | "withdrawn"
       connection_status: "pending" | "accepted" | "blocked"
+      friend_request_status: "pending" | "accepted" | "rejected"
       proficiency_level: "beginner" | "intermediate" | "advanced" | "expert"
       subscription_plan: "free" | "pro" | "team"
       subscription_status: "active" | "past_due" | "canceled"
@@ -938,6 +1071,7 @@ export const Constants = {
         "withdrawn",
       ],
       connection_status: ["pending", "accepted", "blocked"],
+      friend_request_status: ["pending", "accepted", "rejected"],
       proficiency_level: ["beginner", "intermediate", "advanced", "expert"],
       subscription_plan: ["free", "pro", "team"],
       subscription_status: ["active", "past_due", "canceled"],
