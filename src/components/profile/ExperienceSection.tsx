@@ -122,7 +122,7 @@ const ExperienceSection = ({ userId }: ExperienceSectionProps) => {
         .from('profiles')
         .select('experience' as any)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (!profile) throw new Error('Profile not found');
 
@@ -175,7 +175,7 @@ const ExperienceSection = ({ userId }: ExperienceSectionProps) => {
         .from('profiles')
         .select('experience' as any)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (!profile) throw new Error('Profile not found');
 

@@ -135,7 +135,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
             .from('profiles')
             .select('display_name, avatar_url')
             .eq('user_id', otherParticipantId!)
-            .single();
+            .maybeSingle();
 
           return {
             ...conv,
@@ -173,7 +173,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
             .from('profiles')
             .select('display_name, avatar_url')
             .eq('user_id', message.sender_id!)
-            .single();
+            .maybeSingle();
 
           return {
             ...message,
@@ -261,7 +261,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
         .from('conversations')
         .select('id')
         .or(`and(participant_1.eq.${user.id},participant_2.eq.${otherUserId}),and(participant_1.eq.${otherUserId},participant_2.eq.${user.id})`)
-        .single();
+        .maybeSingle();
 
       if (existingConv) {
         setSelectedConversation(existingConv.id);

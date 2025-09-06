@@ -116,7 +116,7 @@ const EducationSection = ({ userId }: EducationSectionProps) => {
         .from('profiles')
         .select('education' as any)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (!profile) throw new Error('Profile not found');
 
@@ -170,7 +170,7 @@ const EducationSection = ({ userId }: EducationSectionProps) => {
         .from('profiles')
         .select('education' as any)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (!profile) throw new Error('Profile not found');
 

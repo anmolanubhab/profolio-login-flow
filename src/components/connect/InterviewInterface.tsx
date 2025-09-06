@@ -108,7 +108,7 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
             .from('profiles')
             .select('display_name, avatar_url')
             .eq('user_id', otherParticipantId!)
-            .single();
+            .maybeSingle();
 
           return {
             ...interview,
