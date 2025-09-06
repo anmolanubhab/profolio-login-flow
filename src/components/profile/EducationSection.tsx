@@ -46,13 +46,11 @@ const EducationSection = ({ userId }: EducationSectionProps) => {
   const fetchEducations = async () => {
     try {
       // Get education data from profile
-
-      // Use the education data from the profile's jsonb field for now
       const { data: profileData, error } = await supabase
         .from('profiles')
         .select('education' as any)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       const educationArray = (profileData as any)?.education || [];

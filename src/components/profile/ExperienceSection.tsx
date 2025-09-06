@@ -49,18 +49,15 @@ const ExperienceSection = ({ userId }: ExperienceSectionProps) => {
   const fetchExperiences = async () => {
     try {
       // Get profile data directly
-
-      // Use the experience data from the profile's jsonb field for now
       const { data: profileData, error } = await supabase
         .from('profiles')
         .select('experience' as any)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       const experienceArray = (profileData as any)?.experience || [];
 
-      
       // Convert to proper format with IDs
       const formattedExperiences = experienceArray.map((exp: any, index: number) => ({
         id: exp.id || `exp_${index}`,

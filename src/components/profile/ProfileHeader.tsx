@@ -67,6 +67,25 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
           phone: (data as any).phone || '',
           website: (data as any).website || ''
         });
+      } else {
+        // Create a new profile if it doesn't exist
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({ user_id: userId })
+          .select()
+          .single();
+
+        if (createError) throw createError;
+
+        setProfile(newProfile as any);
+        setEditData({
+          display_name: '',
+          bio: '',
+          profession: '',
+          location: '',
+          phone: '',
+          website: ''
+        });
       }
     } catch (error: any) {
       toast({
