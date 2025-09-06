@@ -33,7 +33,7 @@ const SocialLinksSection = ({ userId }: SocialLinksSectionProps) => {
         .from('profiles')
         .select('linkedin_url, github_url, twitter_url, website' as any)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       

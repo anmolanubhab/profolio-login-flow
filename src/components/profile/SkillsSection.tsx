@@ -28,7 +28,7 @@ const SkillsSection = ({ userId }: SkillsSectionProps) => {
         .from('profiles')
         .select('skills' as any)
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       setSkills((data as any)?.skills || []);
