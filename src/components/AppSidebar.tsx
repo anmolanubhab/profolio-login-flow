@@ -31,7 +31,6 @@ import { Separator } from "@/components/ui/separator"
 
 const mainItems = [
   { title: "Home", url: "/dashboard", icon: Home },
-  { title: "Network", url: "/connect", icon: Users },
   { title: "Add Post", url: "/add-post", icon: Plus },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Jobs", url: "/jobs", icon: Briefcase },
@@ -39,6 +38,7 @@ const mainItems = [
 
 const profileItems = [
   { title: "Profile", url: "/profile", icon: User },
+  { title: "Connect", url: "/connect", icon: Users },
   { title: "Certificates", url: "/certificates", icon: Award },
   { title: "Resume", url: "/resume", icon: FileText },
 ]
