@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Layout } from '@/components/Layout';
 import PostInput from '@/components/PostInput';
-import QuickActions from '@/components/QuickActions';
 import Feed from '@/components/Feed';
 
 const Dashboard = () => {
@@ -77,9 +76,6 @@ const Dashboard = () => {
           }}
           onPostCreated={() => setFeedRefresh(prev => prev + 1)}
         />
-
-        {/* Quick Actions */}
-        <QuickActions />
 
         {/* Feed Section */}
         <Feed refresh={feedRefresh} />
