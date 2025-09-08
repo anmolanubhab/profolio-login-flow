@@ -35,8 +35,10 @@ All colors MUST be HSL.
     --success: 174 100% 37%;
     --success-foreground: 0 0% 100%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(214 100% 50%), hsl(174 100% 37%));
+    --gradient-primary: linear-gradient(135deg, hsl(164 73% 50%), hsl(152 76% 40%));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 14% 98%));
+    --bg-gradient: radial-gradient(1200px 800px at 90% -200px, hsl(164 73% 96%), transparent), radial-gradient(1000px 600px at -200px 20%, hsl(152 76% 96%), transparent), linear-gradient(180deg, hsl(0 0% 100%), hsl(150 30% 98%));
+    --nav-height: 4rem;
     
     --shadow-elegant: 0 10px 30px -10px hsl(214 100% 50% / 0.15);
     --shadow-card: 0 4px 20px -2px hsl(220 20% 20% / 0.08);
@@ -112,5 +114,181 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    background-image: var(--bg-gradient);
+    background-attachment: fixed;
+    background-size: cover;
+    padding-top: var(--nav-height);
   }
+}
+
+@layer components {
+  /* Layout */
+  .layout {
+    @apply max-w-3xl md:max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .content {
+    @apply pt-4;
+  }
+  @media (min-width: 1024px) {
+    .content {
+      margin-left: 16rem; /* space for sidebar */
+    }
+  }
+
+  /* Top Navigation Bar */
+  .navbar {
+    position: fixed;
+    top: 0;
+    inset-inline: 0;
+    z-index: 50;
+    height: var(--nav-height);
+    border-bottom: 1px solid hsl(var(--border));
+    background-color: hsl(var(--card) / 0.8);
+    -webkit-backdrop-filter: saturate(180%) blur(10px);
+    backdrop-filter: saturate(180%) blur(10px);
+    box-shadow: var(--shadow-card);
+  }
+  .navbar-inner {
+    @apply h-full max-w-5xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6;
+  }
+  .nav-brand {
+    @apply flex items-center gap-2 font-semibold text-lg sm:text-xl;
+  }
+  .nav-search {
+    @apply flex-1 max-w-xl;
+  }
+  .nav-search-input {
+    @apply w-full rounded-full border px-4 py-2 text-sm sm:text-base;
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--sidebar-border));
+    transition: var(--transition-smooth);
+  }
+  .nav-search-input::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+  .nav-search-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.25);
+    background-color: hsl(var(--card));
+  }
+  .nav-actions {
+    @apply flex items-center gap-2;
+  }
+  .avatar {
+    @apply h-9 w-9 rounded-full overflow-hidden;
+    box-shadow: var(--shadow-card);
+    border: 2px solid hsl(var(--card));
+  }
+  .menu-button {
+    @apply rounded-full p-2;
+    transition: var(--transition-smooth);
+  }
+  .menu-button:hover {
+    background-color: hsl(var(--secondary));
+  }
+  .dropdown { @apply relative; }
+  .dropdown-menu {
+    @apply absolute right-0 mt-2 w-56 rounded-xl border shadow-lg p-1;
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
+  }
+
+  /* Sidebar */
+  .sidebar {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    height: calc(100vh - var(--nav-height));
+    width: 16rem; /* 64 */
+    padding: 1rem 0.75rem;
+    background-color: hsl(var(--card) / 0.7);
+    -webkit-backdrop-filter: saturate(180%) blur(8px);
+    backdrop-filter: saturate(180%) blur(8px);
+    border-right: 1px solid hsl(var(--sidebar-border));
+    display: none;
+  }
+  @media (min-width: 1024px) {
+    .sidebar { display: block; }
+  }
+  .sidebar-nav { @apply flex flex-col gap-1; }
+  .sidebar-item {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm;
+    color: hsl(var(--sidebar-foreground));
+    transition: var(--transition-smooth);
+  }
+  .sidebar-item:hover { background-color: hsl(var(--sidebar-accent)); }
+  .sidebar-item.active {
+    @apply font-medium;
+    background-color: hsl(var(--primary) / 0.08);
+    color: hsl(var(--primary));
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.15);
+  }
+
+  /* Feed spacing */
+  .feed { @apply space-y-5 md:space-y-7; }
+
+  /* Card / Post */
+  .post-card {
+    @apply rounded-2xl border;
+    background: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    box-shadow: var(--shadow-card);
+    transition: var(--transition-smooth);
+  }
+  .post-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -10px hsl(220 20% 20% / 0.18);
+  }
+  .post-header { @apply flex items-center gap-3 p-4 sm:p-5; }
+  .post-title { @apply text-base sm:text-lg font-semibold leading-tight; }
+  .post-meta { @apply text-xs sm:text-sm; color: hsl(var(--muted-foreground)); }
+  .post-body { @apply px-4 sm:px-5 pb-4 sm:pb-5 text-[15px] leading-7; }
+  .post-divider { @apply border-t; }
+  .post-actions { @apply flex items-center justify-between px-2 sm:px-3 py-2; border-top: 1px solid hsl(var(--border)); }
+
+  /* Action buttons */
+  .action-btn {
+    @apply inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm;
+    color: hsl(var(--muted-foreground));
+    transition: var(--transition-smooth);
+  }
+  .action-btn:hover {
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--secondary));
+    transform: translateY(-1px);
+  }
+  .action-btn .icon { @apply h-4 w-4; }
+
+  /* Generic buttons */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-full px-4 py-2 font-medium text-white shadow-md;
+    background: var(--gradient-primary);
+    transition: var(--transition-smooth);
+  }
+  .btn-primary:hover { box-shadow: 0 12px 25px -10px hsl(152 76% 40% / 0.5); transform: translateY(-1px); }
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 rounded-full border px-4 py-2;
+    transition: var(--transition-smooth);
+  }
+  .btn-ghost:hover { background-color: hsl(var(--secondary)); }
+
+  /* Floating Action Button */
+  .fab {
+    @apply fixed bottom-6 right-6 z-50 inline-flex items-center justify-center text-white;
+    width: 3.5rem; height: 3.5rem; /* 56px */
+    border-radius: 9999px;
+    background: var(--gradient-primary);
+    box-shadow: 0 12px 25px -10px hsl(152 76% 40% / 0.5);
+    transition: var(--transition-smooth);
+  }
+  .fab:hover { transform: translateY(-3px) scale(1.03); }
+
+  /* Typography hierarchy */
+  .heading-lg { @apply text-2xl sm:text-3xl font-semibold tracking-tight; }
+  .heading-md { @apply text-xl sm:text-2xl font-semibold; }
+  .subtle { color: hsl(var(--muted-foreground)); }
+
+  /* Center alignment helpers */
+  .centered { @apply grid place-items-center text-center; }
 }

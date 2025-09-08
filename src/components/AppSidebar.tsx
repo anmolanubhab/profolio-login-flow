@@ -1,7 +1,6 @@
 import { 
   Home, 
   Users, 
-  Plus, 
   Bell, 
   Briefcase, 
   Award, 
@@ -9,7 +8,7 @@ import {
   User,
   LogOut
 } from "lucide-react"
-import { NavLink, useLocation } from "react-router-dom"
+import { NavLink } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 
@@ -31,7 +30,6 @@ import { Separator } from "@/components/ui/separator"
 
 const mainItems = [
   { title: "Home", url: "/dashboard", icon: Home },
-  { title: "Add Post", url: "/add-post", icon: Plus },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Jobs", url: "/jobs", icon: Briefcase },
 ]
@@ -45,14 +43,13 @@ const profileItems = [
 
 export function AppSidebar() {
   const { state, isMobile } = useSidebar()
-  const location = useLocation()
   const { toast } = useToast()
-  const currentPath = location.pathname
   const isCollapsed = state === "collapsed"
 
-  const isActive = (path: string) => currentPath === path
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : "hover:bg-sidebar-accent/50"
+    isActive
+      ? "sidebar-item active"
+      : "sidebar-item"
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()
@@ -102,7 +99,7 @@ export function AppSidebar() {
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavCls}>
+                    <NavLink to={item.url} className={({ isActive }) => getNavCls({ isActive })}>
                       <item.icon className="h-4 w-4" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
@@ -124,7 +121,7 @@ export function AppSidebar() {
               {profileItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavCls}>
+                    <NavLink to={item.url} className={({ isActive }) => getNavCls({ isActive })}>
                       <item.icon className="h-4 w-4" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>

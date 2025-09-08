@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Layout } from '@/components/Layout';
 import PostInput from '@/components/PostInput';
 import Feed from '@/components/Feed';
+import FloatingCreatePost from '@/components/FloatingCreatePost';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -67,7 +68,7 @@ const Dashboard = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="container mx-auto max-w-2xl">
+      <div className="max-w-2xl mx-auto w-full">
         {/* Post Input Section */}
         <PostInput 
           user={{
@@ -80,6 +81,7 @@ const Dashboard = () => {
         {/* Feed Section */}
         <Feed refresh={feedRefresh} />
       </div>
+      <FloatingCreatePost />
     </Layout>
   );
 };

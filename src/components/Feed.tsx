@@ -114,9 +114,9 @@ const Feed = ({ refresh }: FeedProps) => {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="feed">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="bg-card rounded-lg p-4 animate-pulse">
+          <div key={i} className="post-card p-4 animate-pulse">
             <div className="flex gap-3 mb-3">
               <div className="w-10 h-10 bg-muted rounded-full" />
               <div className="flex-1">
@@ -134,14 +134,14 @@ const Feed = ({ refresh }: FeedProps) => {
 
   if (posts.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
+      <div className="centered py-12 subtle">
         <p>No posts yet. Be the first to share something!</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="feed">
       {posts.map((post) => (
         <PostCard
           key={post.id}

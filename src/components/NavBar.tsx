@@ -1,6 +1,7 @@
-import { Search, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search, Bell, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 interface NavBarProps {
   user?: {
@@ -12,31 +13,72 @@ interface NavBarProps {
 
 const NavBar = ({ user, onSignOut }: NavBarProps) => {
   return (
-    <header className="bg-primary text-primary-foreground sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
-          <h1 className="text-xl font-bold">Profolio</h1>
-          
-          {/* Right side icons */}
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-primary-foreground/10">
-              <Search className="h-5 w-5" />
-            </Button>
-            
-            <Avatar 
-              className="h-8 w-8 cursor-pointer" 
-              onClick={() => window.location.href = '/profile'}
-            >
-              <AvatarImage src={user?.avatar} />
-              <AvatarFallback className="bg-primary-foreground text-primary text-sm">
-                {user?.email?.charAt(0).toUpperCase() || <User className="h-4 w-4" />}
-              </AvatarFallback>
-            </Avatar>
+    <nav className="navbar">
+      <div className="navbar-inner">
+        {/* Left: Brand + Sidebar trigger */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <SidebarTrigger className="hidden md:inline-flex" />
+          <div className="nav-brand cursor-pointer" onClick={() => (window.location.href = '/dashboard')}>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent text-primary-foreground grid place-items-center">
+              <span className="text-[13px] font-bold">P</span>
+            </div>
+            <span>Profolio</span>
           </div>
         </div>
+
+        {/* Middle: Search */}
+        <div className="nav-search hidden sm:block">
+          <div className="relative">
+            <input
+              className="nav-search-input"
+              placeholder="Search posts, people, jobs..."
+              aria-label="Search"
+            />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          </div>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="nav-actions">
+          <button
+            className="menu-button hidden sm:inline-flex"
+            title="Notifications"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5 text-muted-foreground" />
+          </button>
+
+          {/* Profile dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="avatar" aria-label="Open profile menu">
+                <Avatar className="h-full w-full">
+                  <AvatarImage src={user?.avatar} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                    {user?.email?.charAt(0).toUpperCase() || <User className="h-4 w-4" />}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="dropdown-menu">
+              <div className="px-3 py-2">
+                <div className="text-sm font-medium">{user?.email || 'Guest'}</div>
+                <div className="text-xs text-muted-foreground">Signed in</div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => (window.location.href = '/profile')}>
+                Profile & Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => (window.location.href = '/dashboard')}>
+                Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onSignOut}>Logout</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-    </header>
+    </nav>
   );
 };
 
