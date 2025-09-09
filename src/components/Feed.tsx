@@ -13,7 +13,7 @@ interface Post {
     display_name: string | null;
     avatar_url: string | null;
   } | null;
-  post_likes: { id: string }[];
+  post_likes: { id: string; user_id: string }[];
 }
 
 interface FeedProps {
@@ -23,6 +23,7 @@ interface FeedProps {
 const Feed = ({ refresh }: FeedProps) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchPosts = async () => {
@@ -32,7 +33,7 @@ const Feed = ({ refresh }: FeedProps) => {
         .from('posts')
         .select(`
           *,
-          post_likes (id)
+          post_likes (id, user_id)
         `)
         .order('created_at', { ascending: false });
 
@@ -78,19 +79,16 @@ const Feed = ({ refresh }: FeedProps) => {
     fetchPosts();
   }, [refresh]);
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id ?? null));
+  }, []);
+
   const handleLike = async (postId: string, isLiked: boolean) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       if (isLiked) {
-        // Unlike
-        await supabase
-          .from('post_likes')
-          .delete()
-          .eq('post_id', postId)
-          .eq('user_id', user.id);
-      } else {
         // Like
         await supabase
           .from('post_likes')
@@ -98,6 +96,13 @@ const Feed = ({ refresh }: FeedProps) => {
             post_id: postId,
             user_id: user.id,
           });
+      } else {
+        // Unlike
+        await supabase
+          .from('post_likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.id);
       }
 
       // Refresh posts to update like counts
@@ -154,6 +159,7 @@ const Feed = ({ refresh }: FeedProps) => {
           image={post.image_url || undefined}
           timestamp={post.created_at}
           likes={post.post_likes.length}
+          initialIsLiked={currentUserId ? post.post_likes.some((l) => l.user_id === currentUserId) : false}
           onLike={(isLiked) => handleLike(post.id, isLiked)}
         />
       ))}
