@@ -672,6 +672,27 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_views: {
+        Row: {
+          id: string
+          viewed_at: string | null
+          viewed_profile_id: string
+          viewer_id: string
+        }
+        Insert: {
+          id?: string
+          viewed_at?: string | null
+          viewed_profile_id: string
+          viewer_id: string
+        }
+        Update: {
+          id?: string
+          viewed_at?: string | null
+          viewed_profile_id?: string
+          viewer_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           achievements: Json | null
@@ -692,6 +713,7 @@ export type Database = {
           photo_url: string | null
           preferences: Json | null
           profession: string | null
+          profile_visibility: string | null
           projects: Json | null
           skills: string[] | null
           twitter_url: string | null
@@ -718,6 +740,7 @@ export type Database = {
           photo_url?: string | null
           preferences?: Json | null
           profession?: string | null
+          profile_visibility?: string | null
           projects?: Json | null
           skills?: string[] | null
           twitter_url?: string | null
@@ -744,6 +767,7 @@ export type Database = {
           photo_url?: string | null
           preferences?: Json | null
           profession?: string | null
+          profile_visibility?: string | null
           projects?: Json | null
           skills?: string[] | null
           twitter_url?: string | null

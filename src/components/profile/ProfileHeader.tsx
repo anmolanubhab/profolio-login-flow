@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Camera, Edit3, Save, X, User, MapPin, Phone, Globe, Briefcase } from 'lucide-react';
+import { Camera, Edit3, Save, X, User, MapPin, Phone, Globe, Briefcase, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Profile {
   id: string;
@@ -19,7 +20,8 @@ interface Profile {
   avatar_url?: string;
   phone?: string;
   website?: string;
-  [key: string]: any; // Allow additional properties
+  profile_visibility?: string;
+  [key: string]: any;
 }
 
 interface ProfileHeaderProps {
@@ -40,7 +42,8 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
     profession: '',
     location: '',
     phone: '',
-    website: ''
+    website: '',
+    profile_visibility: 'public'
   });
 
   useEffect(() => {
@@ -65,7 +68,8 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
           profession: (data as any).profession || '',
           location: (data as any).location || '',
           phone: (data as any).phone || '',
-          website: (data as any).website || ''
+          website: (data as any).website || '',
+          profile_visibility: (data as any).profile_visibility || 'public'
         });
       } else {
         // Create a new profile if it doesn't exist
@@ -84,7 +88,8 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
           profession: '',
           location: '',
           phone: '',
-          website: ''
+          website: '',
+          profile_visibility: 'public'
         });
       }
     } catch (error: any) {
@@ -174,7 +179,8 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
       profession: profile?.profession || '',
       location: profile?.location || '',
       phone: profile?.phone || '',
-      website: profile?.website || ''
+      website: profile?.website || '',
+      profile_visibility: profile?.profile_visibility || 'public'
     });
     setIsEditing(false);
   };
@@ -268,6 +274,37 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
           <div className="flex-1 space-y-6">
             {isEditing ? (
               <div className="space-y-6">
+                {/* Privacy Settings */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold text-foreground/80 uppercase tracking-wide flex items-center gap-2">
+                    <Lock className="h-4 w-4" />
+                    Privacy Settings
+                  </h4>
+                  <div className="space-y-2">
+                    <Label htmlFor="profile_visibility" className="text-sm font-medium text-foreground">
+                      Profile Visibility
+                    </Label>
+                    <Select
+                      value={editData.profile_visibility}
+                      onValueChange={(value) => setEditData(prev => ({ ...prev, profile_visibility: value }))}
+                    >
+                      <SelectTrigger className="bg-background/50 border-muted focus:border-primary/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="public">Public - Everyone can view</SelectItem>
+                        <SelectItem value="connections_only">Connections Only - Only connected users</SelectItem>
+                        <SelectItem value="private">Private - Only you can view</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Control who can see your full profile information
+                    </p>
+                  </div>
+                </div>
+
+                <Separator className="bg-muted/30" />
+
                 {/* Basic Information */}
                 <div className="space-y-4">
                   <div className="space-y-2">

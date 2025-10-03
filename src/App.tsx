@@ -10,6 +10,8 @@ import Certificates from "./pages/Certificates";
 import Resume from "./pages/Resume";
 import Connect from "./pages/Connect";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
+import Network from "./pages/Network";
 import AddPost from "./pages/AddPost";
 import Notifications from "./pages/Notifications";
 import Jobs from "./pages/Jobs";
@@ -31,6 +33,8 @@ const App = () => (
           <Route path="/resume" element={<Resume />} />
           <Route path="/connect" element={<Connect />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:userId" element={<PublicProfile />} />
+          <Route path="/network" element={<Network />} />
           <Route path="/add-post" element={<AddPost />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/jobs" element={<Jobs />} />

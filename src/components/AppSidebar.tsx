@@ -6,7 +6,8 @@ import {
   Award, 
   FileText, 
   User,
-  LogOut
+  LogOut,
+  MessageCircle
 } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
@@ -30,13 +31,14 @@ import { Separator } from "@/components/ui/separator"
 
 const mainItems = [
   { title: "Home", url: "/dashboard", icon: Home },
+  { title: "Network", url: "/network", icon: Users },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Jobs", url: "/jobs", icon: Briefcase },
 ]
 
 const profileItems = [
   { title: "Profile", url: "/profile", icon: User },
-  { title: "Connect", url: "/connect", icon: Users },
+  { title: "Connect", url: "/connect", icon: MessageCircle },
   { title: "Certificates", url: "/certificates", icon: Award },
   { title: "Resume", url: "/resume", icon: FileText },
 ]
