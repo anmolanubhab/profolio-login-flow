@@ -6,6 +6,7 @@ import { Layout } from '@/components/Layout';
 import PostInput from '@/components/PostInput';
 import Feed from '@/components/Feed';
 import FloatingCreatePost from '@/components/FloatingCreatePost';
+import Stories from '@/components/Stories';
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -69,8 +70,11 @@ const Dashboard = () => {
   return (
     <Layout user={user} onSignOut={handleSignOut}>
       <div className="max-w-2xl mx-auto w-full">
+        {/* Stories Section */}
+        <Stories />
+        
         {/* Post Input Section */}
-        <PostInput 
+        <PostInput
           user={{
             email: user.email,
             avatar: user.user_metadata?.avatar_url
