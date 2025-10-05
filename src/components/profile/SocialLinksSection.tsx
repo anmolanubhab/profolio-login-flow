@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface SocialLinksSectionProps {
   userId: string;
+  isOwnProfile?: boolean;
 }
 
-const SocialLinksSection = ({ userId }: SocialLinksSectionProps) => {
+const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSectionProps) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -119,7 +120,7 @@ const SocialLinksSection = ({ userId }: SocialLinksSectionProps) => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Social Links</h2>
-        {!isEditing && (
+        {!isEditing && isOwnProfile && (
           <Button onClick={() => setIsEditing(true)}>
             Edit Links
           </Button>
@@ -131,7 +132,7 @@ const SocialLinksSection = ({ userId }: SocialLinksSectionProps) => {
           <CardTitle className="text-lg">Professional Links</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isEditing ? (
+          {isEditing && isOwnProfile ? (
             <>
               <div className="space-y-4">
                 <div>

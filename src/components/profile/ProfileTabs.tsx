@@ -6,9 +6,10 @@ import SocialLinksSection from './SocialLinksSection';
 
 interface ProfileTabsProps {
   userId: string;
+  isOwnProfile?: boolean;
 }
 
-const ProfileTabs = ({ userId }: ProfileTabsProps) => {
+const ProfileTabs = ({ userId, isOwnProfile = false }: ProfileTabsProps) => {
   return (
     <Tabs defaultValue="experience" className="w-full">
       <TabsList className="grid w-full grid-cols-4 mb-6">
@@ -19,19 +20,19 @@ const ProfileTabs = ({ userId }: ProfileTabsProps) => {
       </TabsList>
 
       <TabsContent value="experience">
-        <ExperienceSection userId={userId} />
+        <ExperienceSection userId={userId} isOwnProfile={isOwnProfile} />
       </TabsContent>
 
       <TabsContent value="education">
-        <EducationSection userId={userId} />
+        <EducationSection userId={userId} isOwnProfile={isOwnProfile} />
       </TabsContent>
 
       <TabsContent value="skills">
-        <SkillsSection userId={userId} />
+        <SkillsSection userId={userId} isOwnProfile={isOwnProfile} />
       </TabsContent>
 
       <TabsContent value="social">
-        <SocialLinksSection userId={userId} />
+        <SocialLinksSection userId={userId} isOwnProfile={isOwnProfile} />
       </TabsContent>
     </Tabs>
   );

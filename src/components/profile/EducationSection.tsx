@@ -20,9 +20,10 @@ interface Education {
 
 interface EducationSectionProps {
   userId: string;
+  isOwnProfile?: boolean;
 }
 
-const EducationSection = ({ userId }: EducationSectionProps) => {
+const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProps) => {
   const [educations, setEducations] = useState<Education[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -227,14 +228,16 @@ const EducationSection = ({ userId }: EducationSectionProps) => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Education</h2>
-        <Button onClick={handleAdd} disabled={isAdding || editingId !== null}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Education
-        </Button>
+        {isOwnProfile && (
+          <Button onClick={handleAdd} disabled={isAdding || editingId !== null}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Education
+          </Button>
+        )}
       </div>
 
       {/* Add/Edit Form */}
-      {(isAdding || editingId) && (
+      {isOwnProfile && (isAdding || editingId) && (
         <Card className="border-primary/20">
           <CardContent className="p-6">
             <div className="grid gap-4">
@@ -338,25 +341,27 @@ const EducationSection = ({ userId }: EducationSectionProps) => {
                   )}
                 </div>
                 
-                <div className="flex gap-2 ml-4">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(education)}
-                    disabled={editingId !== null || isAdding}
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(education.id)}
-                    disabled={editingId !== null || isAdding}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {isOwnProfile && (
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(education)}
+                      disabled={editingId !== null || isAdding}
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(education.id)}
+                      disabled={editingId !== null || isAdding}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

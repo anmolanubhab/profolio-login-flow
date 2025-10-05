@@ -8,11 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { 
   MapPin, Phone, Globe, Briefcase, UserPlus, UserCheck, 
-  UserMinus, Eye, ArrowLeft, Lock 
+  UserMinus, Eye, ArrowLeft, Lock, Clock, X 
 } from 'lucide-react';
 import ProfileTabs from '@/components/profile/ProfileTabs';
+import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 
 interface Profile {
   id: string;
@@ -35,9 +37,10 @@ const PublicProfile = () => {
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState<'none' | 'pending' | 'accepted' | 'blocked'>('none');
+  const [connectionStatus, setConnectionStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'blocked'>('none');
   const [isFollowing, setIsFollowing] = useState(false);
   const [viewRecorded, setViewRecorded] = useState(false);
+  const [requestId, setRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     const getUser = async () => {
@@ -53,6 +56,11 @@ const PublicProfile = () => {
 
   useEffect(() => {
     if (currentUser && userId) {
+      // Redirect if viewing own profile
+      if (currentUser.id === userId) {
+        navigate('/profile');
+        return;
+      }
       fetchProfile();
       checkConnectionStatus();
       checkFollowStatus();
@@ -164,20 +172,42 @@ const PublicProfile = () => {
         .maybeSingle();
 
       if (connection) {
-        setConnectionStatus(connection.status);
+        // Connections table only has 'accepted' or 'blocked' status
+        if (connection.status === 'accepted' || connection.status === 'blocked') {
+          setConnectionStatus(connection.status);
+        }
+        return;
       }
 
-      // Check for pending friend request
-      const { data: request } = await supabase
+      // Check for sent friend request
+      const { data: sentRequest } = await supabase
         .from('friend_requests')
-        .select('*')
+        .select('id, status')
         .eq('sender_id', myProfile.id)
         .eq('receiver_id', theirProfile.id)
-        .eq('status', 'pending')
         .maybeSingle();
 
-      if (request) {
-        setConnectionStatus('pending');
+      if (sentRequest) {
+        setRequestId(sentRequest.id);
+        if (sentRequest.status === 'pending') {
+          setConnectionStatus('pending_sent');
+        }
+        return;
+      }
+
+      // Check for received friend request
+      const { data: receivedRequest } = await supabase
+        .from('friend_requests')
+        .select('id, status')
+        .eq('sender_id', theirProfile.id)
+        .eq('receiver_id', myProfile.id)
+        .maybeSingle();
+
+      if (receivedRequest) {
+        setRequestId(receivedRequest.id);
+        if (receivedRequest.status === 'pending') {
+          setConnectionStatus('pending_received');
+        }
       }
     } catch (error) {
       console.error('Error checking connection status:', error);
@@ -214,6 +244,102 @@ const PublicProfile = () => {
   };
 
   const handleSendRequest = async () => {
+    // Rate limiting check
+    if (rateLimiter.isRateLimited(`friend_request_${currentUser?.id}`, RATE_LIMITS.MESSAGE_SEND)) {
+      const timeRemaining = Math.ceil(rateLimiter.getTimeUntilReset(`friend_request_${currentUser?.id}`) / 1000);
+      toast({
+        title: "Too many requests",
+        description: `Please wait ${timeRemaining} seconds before sending another request.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data: myProfile } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .eq('user_id', currentUser?.id)
+        .single();
+
+      const { data: theirProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      if (!myProfile || !theirProfile) {
+        throw new Error('Profile not found');
+      }
+
+      const { data: newRequest, error } = await supabase
+        .from('friend_requests')
+        .insert({
+          sender_id: myProfile.id,
+          receiver_id: theirProfile.id,
+          status: 'pending'
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+
+      // Create notification
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: theirProfile.id,
+          type: 'friend_request',
+          payload: {
+            sender_name: myProfile.display_name || currentUser?.email,
+            sender_id: myProfile.id
+          }
+        });
+
+      setRequestId(newRequest.id);
+      setConnectionStatus('pending_sent');
+      toast({
+        title: "Request sent",
+        description: "Your connection request has been sent.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    if (!requestId) return;
+
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .delete()
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      setRequestId(null);
+      setConnectionStatus('none');
+      toast({
+        title: "Request cancelled",
+        description: "Your connection request has been cancelled.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAcceptRequest = async () => {
+    if (!requestId) return;
+
     try {
       const { data: myProfile } = await supabase
         .from('profiles')
@@ -229,32 +355,29 @@ const PublicProfile = () => {
 
       if (!myProfile || !theirProfile) return;
 
-      const { error } = await supabase
+      // Update request status
+      const { error: updateError } = await supabase
         .from('friend_requests')
+        .update({ status: 'accepted' })
+        .eq('id', requestId);
+
+      if (updateError) throw updateError;
+
+      // Create connection
+      const { error: connectionError } = await supabase
+        .from('connections')
         .insert({
-          sender_id: myProfile.id,
-          receiver_id: theirProfile.id,
-          status: 'pending'
+          user_id: myProfile.id,
+          connection_id: theirProfile.id,
+          status: 'accepted'
         });
 
-      if (error) throw error;
+      if (connectionError) throw connectionError;
 
-      // Create notification
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: theirProfile.id,
-          type: 'friend_request',
-          payload: {
-            sender_name: profile?.display_name || currentUser?.email,
-            sender_id: myProfile.id
-          }
-        });
-
-      setConnectionStatus('pending');
+      setConnectionStatus('accepted');
       toast({
-        title: "Request sent",
-        description: "Your connection request has been sent.",
+        title: "Request accepted",
+        description: "You are now connected!",
       });
     } catch (error: any) {
       toast({
@@ -364,9 +487,9 @@ const PublicProfile = () => {
 
         <Card className="mb-6 bg-gradient-card shadow-card border-0">
           <CardHeader className="pb-4">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-xl font-semibold text-foreground">Profile</h2>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {connectionStatus === 'none' && (
                   <Button
                     size="sm"
@@ -377,11 +500,37 @@ const PublicProfile = () => {
                     Connect
                   </Button>
                 )}
-                {connectionStatus === 'pending' && (
-                  <Button size="sm" variant="outline" disabled>
-                    <UserCheck className="h-4 w-4 mr-2" />
-                    Request Sent
-                  </Button>
+                {connectionStatus === 'pending_sent' && (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" disabled>
+                      <Clock className="h-4 w-4 mr-2" />
+                      Request Sent
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={handleCancelRequest}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+                {connectionStatus === 'pending_received' && (
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm"
+                      onClick={handleAcceptRequest}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Accept Request
+                    </Button>
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Pending
+                    </Badge>
+                  </div>
                 )}
                 {connectionStatus === 'accepted' && (
                   <Button size="sm" variant="outline" disabled>
@@ -495,7 +644,7 @@ const PublicProfile = () => {
         </Card>
 
         {!isPrivate && profile && (
-          <ProfileTabs userId={profile.user_id} />
+          <ProfileTabs userId={profile.user_id} isOwnProfile={false} />
         )}
       </div>
     </Layout>

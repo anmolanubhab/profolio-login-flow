@@ -9,9 +9,10 @@ import { Badge } from '@/components/ui/badge';
 
 interface SkillsSectionProps {
   userId: string;
+  isOwnProfile?: boolean;
 }
 
-const SkillsSection = ({ userId }: SkillsSectionProps) => {
+const SkillsSection = ({ userId, isOwnProfile = false }: SkillsSectionProps) => {
   const [skills, setSkills] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [newSkill, setNewSkill] = useState('');
@@ -121,26 +122,28 @@ const SkillsSection = ({ userId }: SkillsSectionProps) => {
       <h2 className="text-xl font-semibold">Skills</h2>
 
       {/* Add Skill Input */}
-      <Card className="border-primary/20">
-        <CardContent className="p-6">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Add a skill (e.g., JavaScript, Project Management)"
-              value={newSkill}
-              onChange={(e) => setNewSkill(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={saving}
-            />
-            <Button 
-              onClick={handleAddSkill}
-              disabled={!newSkill.trim() || saving}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {isOwnProfile && (
+        <Card className="border-primary/20">
+          <CardContent className="p-6">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add a skill (e.g., JavaScript, Project Management)"
+                value={newSkill}
+                onChange={(e) => setNewSkill(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={saving}
+              />
+              <Button 
+                onClick={handleAddSkill}
+                disabled={!newSkill.trim() || saving}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Skills Display */}
       <Card className="shadow-card">
@@ -154,13 +157,15 @@ const SkillsSection = ({ userId }: SkillsSectionProps) => {
                   className="text-sm py-1 px-3 bg-primary/10 text-primary hover:bg-primary/20 transition-smooth"
                 >
                   {skill}
-                  <button
-                    onClick={() => handleRemoveSkill(skill)}
-                    className="ml-2 text-primary/70 hover:text-primary"
-                    disabled={saving}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  {isOwnProfile && (
+                    <button
+                      onClick={() => handleRemoveSkill(skill)}
+                      className="ml-2 text-primary/70 hover:text-primary"
+                      disabled={saving}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
                 </Badge>
               ))}
             </div>
@@ -175,31 +180,33 @@ const SkillsSection = ({ userId }: SkillsSectionProps) => {
       </Card>
 
       {/* Skill Suggestions */}
-      <Card>
-        <CardContent className="p-6">
-          <h3 className="text-lg font-medium mb-3">Suggested Skills</h3>
-          <div className="flex flex-wrap gap-2">
-            {[
-              'JavaScript', 'Python', 'React', 'Node.js', 'SQL', 'Git',
-              'Project Management', 'Communication', 'Leadership', 'Problem Solving',
-              'Data Analysis', 'Design Thinking', 'Agile', 'Teamwork'
-            ].filter(suggestion => !skills.includes(suggestion)).slice(0, 8).map((suggestion) => (
-              <Button
-                key={suggestion}
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setNewSkill(suggestion);
-                }}
-                disabled={saving}
-                className="text-xs"
-              >
-                + {suggestion}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {isOwnProfile && (
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-lg font-medium mb-3">Suggested Skills</h3>
+            <div className="flex flex-wrap gap-2">
+              {[
+                'JavaScript', 'Python', 'React', 'Node.js', 'SQL', 'Git',
+                'Project Management', 'Communication', 'Leadership', 'Problem Solving',
+                'Data Analysis', 'Design Thinking', 'Agile', 'Teamwork'
+              ].filter(suggestion => !skills.includes(suggestion)).slice(0, 8).map((suggestion) => (
+                <Button
+                  key={suggestion}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setNewSkill(suggestion);
+                  }}
+                  disabled={saving}
+                  className="text-xs"
+                >
+                  + {suggestion}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

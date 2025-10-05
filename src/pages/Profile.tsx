@@ -56,7 +56,7 @@ const Profile = () => {
     <Layout user={user} onSignOut={handleSignOut}>
       <div className="container mx-auto max-w-4xl">
         <ProfileHeader userId={user.id} />
-        <ProfileTabs userId={user.id} />
+        <ProfileTabs userId={user.id} isOwnProfile={true} />
       </div>
     </Layout>
   );
