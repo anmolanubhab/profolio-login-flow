@@ -56,14 +56,7 @@ const PublicProfile = () => {
 
   useEffect(() => {
     if (currentUser && userId) {
-      // Redirect if viewing own profile
-      if (currentUser.id === userId) {
-        navigate('/profile');
-        return;
-      }
       fetchProfile();
-      checkConnectionStatus();
-      checkFollowStatus();
     }
   }, [currentUser, userId]);
 
@@ -72,7 +65,7 @@ const PublicProfile = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', userId)
         .maybeSingle();
 
       if (error) throw error;
@@ -87,6 +80,12 @@ const PublicProfile = () => {
         return;
       }
 
+      // Redirect if viewing own profile
+      if (data.user_id === currentUser?.id) {
+        navigate('/profile');
+        return;
+      }
+
       // Check if profile is accessible
       if (data.profile_visibility === 'private' && data.user_id !== currentUser?.id) {
         setProfile({ ...data, bio: undefined, phone: undefined, website: undefined });
@@ -97,6 +96,11 @@ const PublicProfile = () => {
       // Record profile view
       if (!viewRecorded && currentUser && data.user_id !== currentUser.id) {
         recordProfileView(data.id);
+        checkConnectionStatus(data);
+        checkFollowStatus(data);
+      } else {
+        checkConnectionStatus(data);
+        checkFollowStatus(data);
       }
     } catch (error: any) {
       toast({
@@ -148,7 +152,7 @@ const PublicProfile = () => {
     }
   };
 
-  const checkConnectionStatus = async () => {
+  const checkConnectionStatus = async (profileData: Profile) => {
     try {
       const { data: myProfile } = await supabase
         .from('profiles')
@@ -156,19 +160,13 @@ const PublicProfile = () => {
         .eq('user_id', currentUser?.id)
         .single();
 
-      const { data: theirProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (!myProfile || !theirProfile) return;
+      if (!myProfile || !profileData) return;
 
       // Check for existing connection
       const { data: connection } = await supabase
         .from('connections')
         .select('*')
-        .or(`and(user_id.eq.${myProfile.id},connection_id.eq.${theirProfile.id}),and(user_id.eq.${theirProfile.id},connection_id.eq.${myProfile.id})`)
+        .or(`and(user_id.eq.${myProfile.id},connection_id.eq.${profileData.id}),and(user_id.eq.${profileData.id},connection_id.eq.${myProfile.id})`)
         .maybeSingle();
 
       if (connection) {
@@ -184,7 +182,7 @@ const PublicProfile = () => {
         .from('friend_requests')
         .select('id, status')
         .eq('sender_id', myProfile.id)
-        .eq('receiver_id', theirProfile.id)
+        .eq('receiver_id', profileData.id)
         .maybeSingle();
 
       if (sentRequest) {
@@ -199,7 +197,7 @@ const PublicProfile = () => {
       const { data: receivedRequest } = await supabase
         .from('friend_requests')
         .select('id, status')
-        .eq('sender_id', theirProfile.id)
+        .eq('sender_id', profileData.id)
         .eq('receiver_id', myProfile.id)
         .maybeSingle();
 
@@ -214,7 +212,7 @@ const PublicProfile = () => {
     }
   };
 
-  const checkFollowStatus = async () => {
+  const checkFollowStatus = async (profileData: Profile) => {
     try {
       const { data: myProfile } = await supabase
         .from('profiles')
@@ -222,19 +220,13 @@ const PublicProfile = () => {
         .eq('user_id', currentUser?.id)
         .single();
 
-      const { data: theirProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (!myProfile || !theirProfile) return;
+      if (!myProfile || !profileData) return;
 
       const { data } = await supabase
         .from('followers')
         .select('id')
         .eq('follower_id', myProfile.id)
-        .eq('following_id', theirProfile.id)
+        .eq('following_id', profileData.id)
         .maybeSingle();
 
       setIsFollowing(!!data);
@@ -262,13 +254,7 @@ const PublicProfile = () => {
         .eq('user_id', currentUser?.id)
         .single();
 
-      const { data: theirProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (!myProfile || !theirProfile) {
+      if (!myProfile || !profile) {
         throw new Error('Profile not found');
       }
 
@@ -276,7 +262,7 @@ const PublicProfile = () => {
         .from('friend_requests')
         .insert({
           sender_id: myProfile.id,
-          receiver_id: theirProfile.id,
+          receiver_id: profile.id,
           status: 'pending'
         })
         .select('id')
@@ -288,7 +274,7 @@ const PublicProfile = () => {
       await supabase
         .from('notifications')
         .insert({
-          user_id: theirProfile.id,
+          user_id: profile.id,
           type: 'friend_request',
           payload: {
             sender_name: myProfile.display_name || currentUser?.email,
@@ -347,13 +333,7 @@ const PublicProfile = () => {
         .eq('user_id', currentUser?.id)
         .single();
 
-      const { data: theirProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (!myProfile || !theirProfile) return;
+      if (!myProfile || !profile) return;
 
       // Update request status
       const { error: updateError } = await supabase
@@ -368,7 +348,7 @@ const PublicProfile = () => {
         .from('connections')
         .insert({
           user_id: myProfile.id,
-          connection_id: theirProfile.id,
+          connection_id: profile.id,
           status: 'accepted'
         });
 
@@ -396,13 +376,7 @@ const PublicProfile = () => {
         .eq('user_id', currentUser?.id)
         .single();
 
-      const { data: theirProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (!myProfile || !theirProfile) return;
+      if (!myProfile || !profile) return;
 
       if (isFollowing) {
         // Unfollow
@@ -410,7 +384,7 @@ const PublicProfile = () => {
           .from('followers')
           .delete()
           .eq('follower_id', myProfile.id)
-          .eq('following_id', theirProfile.id);
+          .eq('following_id', profile.id);
 
         if (error) throw error;
         setIsFollowing(false);
@@ -424,7 +398,7 @@ const PublicProfile = () => {
           .from('followers')
           .insert({
             follower_id: myProfile.id,
-            following_id: theirProfile.id
+            following_id: profile.id
           });
 
         if (error) throw error;
@@ -433,7 +407,7 @@ const PublicProfile = () => {
         await supabase
           .from('notifications')
           .insert({
-            user_id: theirProfile.id,
+            user_id: profile.id,
             type: 'new_follower',
             payload: {
               follower_name: profile?.display_name || currentUser?.email,
