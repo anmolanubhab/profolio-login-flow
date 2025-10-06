@@ -18,6 +18,7 @@ import {
 interface PostCardProps {
   id: string;
   user: {
+    id?: string;
     name: string;
     avatar?: string;
   };
@@ -90,7 +91,9 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
   };
 
   const handleProfileClick = () => {
-    navigate('/profile');
+    if (user.id) {
+      navigate(`/profile/${user.id}`);
+    }
   };
 
   const fetchComments = async () => {

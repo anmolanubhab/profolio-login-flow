@@ -10,6 +10,7 @@ interface Post {
   created_at: string;
   user_id: string;
   profiles: {
+    id: string;
     display_name: string | null;
     avatar_url: string | null;
   } | null;
@@ -45,7 +46,7 @@ const Feed = ({ refresh }: FeedProps) => {
       // Get profiles for these users
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, display_name, avatar_url')
+        .select('id, user_id, display_name, avatar_url')
         .in('user_id', userIds);
 
       if (profilesError) throw profilesError;
@@ -152,6 +153,7 @@ const Feed = ({ refresh }: FeedProps) => {
           key={post.id}
           id={post.id}
           user={{
+            id: post.profiles?.id,
             name: post.profiles?.display_name || 'Unknown User',
             avatar: post.profiles?.avatar_url,
           }}
