@@ -179,7 +179,7 @@ const Network = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleViewProfile(profile.user_id)}
+                        onClick={() => handleViewProfile(profile.id)}
                         className="flex-1"
                       >
                         <Eye className="h-4 w-4 mr-2" />
