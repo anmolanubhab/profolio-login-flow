@@ -14,6 +14,7 @@ import { MyApplications } from '@/components/jobs/MyApplications';
 import { PostJobDialog } from '@/components/jobs/PostJobDialog';
 import { ApplyJobDialog } from '@/components/jobs/ApplyJobDialog';
 import { JobDetailsDialog } from '@/components/jobs/JobDetailsDialog';
+import { MyDrafts } from '@/components/jobs/MyDrafts';
 import { Plus } from 'lucide-react';
 
 const Dashboard = () => {
@@ -174,10 +175,11 @@ const Dashboard = () => {
     <Layout user={user} onSignOut={handleSignOut}>
       <div className="max-w-4xl mx-auto w-full">
         <Tabs defaultValue="feed" className="w-full">
-          <TabsList className="w-full grid grid-cols-3">
+          <TabsList className={`w-full grid ${companyId ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <TabsTrigger value="feed">Social Feed</TabsTrigger>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="applications">My Applications</TabsTrigger>
+            {companyId && <TabsTrigger value="drafts">My Drafts</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="feed" className="space-y-4">
@@ -206,6 +208,7 @@ const Dashboard = () => {
               onApply={handleApply}
               onViewDetails={handleViewDetails}
               appliedJobIds={appliedJobIds}
+              refresh={feedRefresh}
             />
           </TabsContent>
 
@@ -216,6 +219,16 @@ const Dashboard = () => {
             </div>
             <MyApplications />
           </TabsContent>
+
+          {companyId && (
+            <TabsContent value="drafts">
+              <div className="mb-4">
+                <h2 className="text-2xl font-bold">My Drafts</h2>
+                <p className="text-sm text-muted-foreground">Manage your draft job postings</p>
+              </div>
+              <MyDrafts companyId={companyId} onPublish={() => setFeedRefresh(prev => prev + 1)} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 

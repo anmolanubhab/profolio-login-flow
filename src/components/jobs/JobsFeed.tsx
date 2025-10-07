@@ -24,15 +24,16 @@ interface JobsFeedProps {
   onApply: (jobId: string) => void;
   onViewDetails: (jobId: string) => void;
   appliedJobIds: Set<string>;
+  refresh?: number;
 }
 
-export const JobsFeed = ({ onApply, onViewDetails, appliedJobIds }: JobsFeedProps) => {
+export const JobsFeed = ({ onApply, onViewDetails, appliedJobIds, refresh }: JobsFeedProps) => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchJobs();
-  }, []);
+  }, [refresh]);
 
   const fetchJobs = async () => {
     try {

@@ -31,8 +31,49 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
     currency: 'USD',
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validateForm = () => {
+    if (!formData.title.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a job title',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    if (!formData.description.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a job description',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    if (!formData.location.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a location',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    if (formData.salary_min && formData.salary_max) {
+      if (parseFloat(formData.salary_min) > parseFloat(formData.salary_max)) {
+        toast({
+          title: 'Validation Error',
+          description: 'Minimum salary cannot be greater than maximum salary',
+          variant: 'destructive',
+        });
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent, isDraft = false) => {
     e.preventDefault();
+    
+    if (!isDraft && !validateForm()) return;
+    
     setLoading(true);
 
     try {
@@ -48,14 +89,14 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
         salary_min: formData.salary_min ? parseFloat(formData.salary_min) : null,
         salary_max: formData.salary_max ? parseFloat(formData.salary_max) : null,
         currency: formData.currency,
-        status: 'open',
+        status: isDraft ? 'draft' : 'open',
       });
 
       if (error) throw error;
 
       toast({
         title: 'Success',
-        description: 'Job posted successfully!',
+        description: isDraft ? 'Job saved as draft!' : 'Job posted successfully!',
       });
 
       onOpenChange(false);
@@ -193,8 +234,16 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancel
+            </Button>
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={(e) => handleSubmit(e, true)}
+              disabled={loading || !formData.title.trim()}
+            >
+              {loading ? 'Saving...' : 'Save Draft'}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading ? 'Posting...' : 'Post Job'}
