@@ -130,7 +130,7 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
           <DialogTitle>Post a New Job</DialogTitle>
           <DialogDescription>Fill in the details to post a job opening</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4"> {/* FIXED: Properly wrap form submit handler */}
           <div>
             <Label htmlFor="title">Job Title</Label>
             <Input
