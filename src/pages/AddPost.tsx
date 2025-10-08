@@ -1,10 +1,63 @@
+import { useState } from 'react'; // FIXED: Added state management
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Image, Video, FileText, MapPin } from 'lucide-react';
 import BottomNavigation from '@/components/BottomNavigation';
+import { supabase } from '@/integrations/supabase/client'; // FIXED: Added Supabase client
+import { useToast } from '@/hooks/use-toast'; // FIXED: Added toast notifications
+import { useNavigate } from 'react-router-dom'; // FIXED: Added navigation
 
 const AddPost = () => {
+  // FIXED: Added state management
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // FIXED: Handle post submission
+  const handlePost = async (isDraft = false) => {
+    if (!content.trim() && !isDraft) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter some content for your post',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { error } = await supabase.from('posts').insert({
+        user_id: user.id,
+        content: content,
+        status: isDraft ? 'draft' : 'published',
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: isDraft ? 'Draft saved successfully!' : 'Post published successfully!',
+      });
+
+      setContent('');
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <header className="bg-primary text-primary-foreground sticky top-0 z-40">
@@ -22,6 +75,9 @@ const AddPost = () => {
             <Textarea 
               placeholder="What do you want to talk about?" 
               className="min-h-32 resize-none"
+              value={content} // FIXED: Bind state to textarea
+              onChange={(e) => setContent(e.target.value)} // FIXED: Update state on change
+              disabled={loading} // FIXED: Disable during loading
             />
             
             <div className="flex items-center gap-2">
@@ -44,8 +100,19 @@ const AddPost = () => {
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline">Save Draft</Button>
-              <Button>Post</Button>
+              <Button 
+                variant="outline" 
+                onClick={() => handlePost(true)} // FIXED: Added save draft handler
+                disabled={loading || !content.trim()} // FIXED: Disable when loading or empty
+              >
+                {loading ? 'Saving...' : 'Save Draft'}
+              </Button>
+              <Button 
+                onClick={() => handlePost(false)} // FIXED: Added post handler
+                disabled={loading || !content.trim()} // FIXED: Disable when loading or empty
+              >
+                {loading ? 'Posting...' : 'Post'}
+              </Button>
             </div>
           </CardContent>
         </Card>
