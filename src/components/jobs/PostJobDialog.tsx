@@ -11,21 +11,22 @@ import { useToast } from '@/hooks/use-toast';
 interface PostJobDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  companyId: string;
   profileId: string;
   onJobPosted: () => void;
 }
 
-export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobPosted }: PostJobDialogProps) => {
+export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted }: PostJobDialogProps) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     title: '',
+    company_name: '',
     description: '',
     requirements: '',
     location: '',
     employment_type: 'full-time',
     remote_option: 'on-site',
+    apply_link: '',
     salary_min: '',
     salary_max: '',
     currency: 'USD',
@@ -36,6 +37,14 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
       toast({
         title: 'Validation Error',
         description: 'Please enter a job title',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    if (!formData.company_name.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a company name',
         variant: 'destructive',
       });
       return false;
@@ -77,15 +86,17 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
     setLoading(true);
 
     try {
+      // FIXED: Insert with new schema including company_name and apply_link
       const { error } = await supabase.from('jobs').insert({
-        company_id: companyId,
         posted_by: profileId,
         title: formData.title,
+        company_name: formData.company_name,
         description: formData.description,
-        requirements: formData.requirements,
+        requirements: formData.requirements || null,
         location: formData.location,
         employment_type: formData.employment_type,
         remote_option: formData.remote_option,
+        apply_link: formData.apply_link || null,
         salary_min: formData.salary_min ? parseFloat(formData.salary_min) : null,
         salary_max: formData.salary_max ? parseFloat(formData.salary_max) : null,
         currency: formData.currency,
@@ -101,13 +112,16 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
 
       onOpenChange(false);
       onJobPosted();
+      // FIXED: Reset form with new fields
       setFormData({
         title: '',
+        company_name: '',
         description: '',
         requirements: '',
         location: '',
         employment_type: 'full-time',
         remote_option: 'on-site',
+        apply_link: '',
         salary_min: '',
         salary_max: '',
         currency: 'USD',
@@ -130,13 +144,25 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
           <DialogTitle>Post a New Job</DialogTitle>
           <DialogDescription>Fill in the details to post a job opening</DialogDescription>
         </DialogHeader>
-        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4"> {/* FIXED: Properly wrap form submit handler */}
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">
           <div>
             <Label htmlFor="title">Job Title</Label>
             <Input
               id="title"
+              placeholder="e.g. Senior React Developer"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
+            />
+          </div>
+          {/* FIXED: Added company name field */}
+          <div>
+            <Label htmlFor="company_name">Company Name</Label>
+            <Input
+              id="company_name"
+              placeholder="e.g. TechCorp Inc."
+              value={formData.company_name}
+              onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
               required
             />
           </div>
@@ -144,6 +170,7 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
+              placeholder="Describe the role, responsibilities, and what you're looking for..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
@@ -154,9 +181,20 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
             <Label htmlFor="requirements">Requirements</Label>
             <Textarea
               id="requirements"
+              placeholder="List the qualifications and skills needed..."
               value={formData.requirements}
               onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
               rows={3}
+            />
+          </div>
+          {/* FIXED: Added apply link field */}
+          <div>
+            <Label htmlFor="apply_link">Application Link or Email</Label>
+            <Input
+              id="apply_link"
+              placeholder="e.g. https://company.com/apply or jobs@company.com"
+              value={formData.apply_link}
+              onChange={(e) => setFormData({ ...formData, apply_link: e.target.value })}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -241,7 +279,7 @@ export const PostJobDialog = ({ open, onOpenChange, companyId, profileId, onJobP
               type="button" 
               variant="secondary" 
               onClick={(e) => handleSubmit(e, true)}
-              disabled={loading || !formData.title.trim()}
+              disabled={loading || !formData.title.trim() || !formData.company_name.trim()}
             >
               {loading ? 'Saving...' : 'Save Draft'}
             </Button>

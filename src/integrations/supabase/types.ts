@@ -470,7 +470,9 @@ export type Database = {
       }
       jobs: {
         Row: {
-          company_id: string
+          apply_link: string | null
+          company_id: string | null
+          company_name: string | null
           currency: string | null
           description: string | null
           employment_type: string | null
@@ -487,7 +489,9 @@ export type Database = {
           title: string
         }
         Insert: {
-          company_id: string
+          apply_link?: string | null
+          company_id?: string | null
+          company_name?: string | null
           currency?: string | null
           description?: string | null
           employment_type?: string | null
@@ -504,7 +508,9 @@ export type Database = {
           title: string
         }
         Update: {
-          company_id?: string
+          apply_link?: string | null
+          company_id?: string | null
+          company_name?: string | null
           currency?: string | null
           description?: string | null
           employment_type?: string | null

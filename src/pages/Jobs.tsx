@@ -9,23 +9,26 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { MapPin, Clock, Building, DollarSign, Search, Briefcase } from 'lucide-react';
+import { MapPin, Clock, Building, DollarSign, Search, Briefcase, Plus } from 'lucide-react';
 import { Layout } from '@/components/Layout';
+import { PostJobDialog } from '@/components/jobs/PostJobDialog';
 
 interface Job {
   id: string;
   title: string;
+  company_name: string;
   description: string;
   requirements: string;
   location: string;
   employment_type: string;
   remote_option: string;
+  apply_link: string;
   salary_min: number;
   salary_max: number;
   currency: string;
   posted_at: string;
   status: string;
-  company: {
+  company?: {
     name: string;
     logo_url: string;
   };
@@ -33,12 +36,14 @@ interface Job {
 
 const Jobs = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [profileId, setProfileId] = useState<string>('');
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
+  const [showPostJobDialog, setShowPostJobDialog] = useState(false);
   const [coverLetter, setCoverLetter] = useState('');
   const [applying, setApplying] = useState(false);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
@@ -53,6 +58,17 @@ const Jobs = () => {
         return;
       }
       setUser(user);
+      
+      // FIXED: Get profile ID for job posting
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (profile) {
+        setProfileId(profile.id);
+      }
     };
     getUser();
   }, [navigate]);
@@ -69,18 +85,22 @@ const Jobs = () => {
       setFilteredJobs(jobs);
     } else {
       const query = searchQuery.toLowerCase();
-      const filtered = jobs.filter(job =>
-        job.title.toLowerCase().includes(query) ||
-        job.company.name.toLowerCase().includes(query) ||
-        job.location.toLowerCase().includes(query) ||
-        job.description.toLowerCase().includes(query)
-      );
+      const filtered = jobs.filter(job => {
+        const companyName = job.company_name || job.company?.name || '';
+        return (
+          job.title.toLowerCase().includes(query) ||
+          companyName.toLowerCase().includes(query) ||
+          job.location.toLowerCase().includes(query) ||
+          job.description.toLowerCase().includes(query)
+        );
+      });
       setFilteredJobs(filtered);
     }
   }, [searchQuery, jobs]);
 
   const fetchJobs = async () => {
     try {
+      // FIXED: Fetch jobs with optional company relation
       const { data, error } = await supabase
         .from('jobs')
         .select(`
@@ -207,9 +227,19 @@ const Jobs = () => {
   return (
     <Layout user={user!} onSignOut={handleSignOut}>
       <div className="container mx-auto max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Next Opportunity</h1>
-          <p className="text-muted-foreground">Discover jobs that match your skills and interests</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Next Opportunity</h1>
+            <p className="text-muted-foreground">Discover jobs that match your skills and interests</p>
+          </div>
+          {/* FIXED: Added Post Job button */}
+          <Button 
+            onClick={() => setShowPostJobDialog(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Post a Job
+          </Button>
         </div>
 
         <Card className="mb-6 bg-gradient-card shadow-card border-0">
@@ -241,22 +271,23 @@ const Jobs = () => {
               return (
                 <Card key={job.id} className="bg-gradient-card shadow-card border-0 hover:shadow-elegant transition-smooth">
                   <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-4">
-                        {job.company.logo_url && (
-                          <img 
-                            src={job.company.logo_url} 
-                            alt={job.company.name}
-                            className="h-12 w-12 rounded object-cover"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg text-foreground">{job.title}</h3>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                            <Building className="h-4 w-4" />
-                            <span>{job.company.name}</span>
-                          </div>
-                        </div>
+                     <div className="space-y-4">
+                       <div className="flex items-start gap-4">
+                         {job.company?.logo_url && (
+                           <img 
+                             src={job.company.logo_url} 
+                             alt={job.company?.name || job.company_name}
+                             className="h-12 w-12 rounded object-cover"
+                           />
+                         )}
+                         <div className="flex-1">
+                           <h3 className="font-semibold text-lg text-foreground">{job.title}</h3>
+                           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                             <Building className="h-4 w-4" />
+                             {/* FIXED: Show company_name or fallback to company relation */}
+                             <span>{job.company_name || job.company?.name}</span>
+                           </div>
+                         </div>
                         <div className="text-right">
                           <Badge variant={hasApplied ? "secondary" : "outline"}>
                             {hasApplied ? 'Applied' : job.employment_type}
@@ -353,20 +384,21 @@ const Jobs = () => {
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
             {selectedJob && (
               <div className="space-y-6">
-                <div>
-                  <div className="flex items-start gap-4 mb-4">
-                    {selectedJob.company.logo_url && (
-                      <img 
-                        src={selectedJob.company.logo_url} 
-                        alt={selectedJob.company.name}
-                        className="h-16 w-16 rounded object-cover"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <h2 className="text-2xl font-bold">{selectedJob.title}</h2>
-                      <p className="text-lg text-muted-foreground">{selectedJob.company.name}</p>
-                    </div>
-                  </div>
+                 <div>
+                   <div className="flex items-start gap-4 mb-4">
+                     {selectedJob.company?.logo_url && (
+                       <img 
+                         src={selectedJob.company.logo_url} 
+                         alt={selectedJob.company?.name || selectedJob.company_name}
+                         className="h-16 w-16 rounded object-cover"
+                       />
+                     )}
+                     <div className="flex-1">
+                       <h2 className="text-2xl font-bold">{selectedJob.title}</h2>
+                       {/* FIXED: Show company_name or fallback */}
+                       <p className="text-lg text-muted-foreground">{selectedJob.company_name || selectedJob.company?.name}</p>
+                     </div>
+                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-4">
                     <Badge>{selectedJob.employment_type}</Badge>
@@ -394,22 +426,53 @@ const Jobs = () => {
                   </div>
                 )}
 
-                <div className="flex gap-2 pt-4 border-t">
-                  <Button 
-                    className="flex-1"
-                    onClick={() => setShowApplyDialog(true)}
-                    disabled={appliedJobs.has(selectedJob.id)}
-                  >
-                    {appliedJobs.has(selectedJob.id) ? 'Already Applied' : 'Apply for this Job'}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
-    </Layout>
-  );
-};
+                 <div className="flex gap-2 pt-4 border-t">
+                   {selectedJob.apply_link ? (
+                     <Button 
+                       className="flex-1"
+                       onClick={() => {
+                         if (selectedJob.apply_link.includes('@')) {
+                           window.location.href = `mailto:${selectedJob.apply_link}`;
+                         } else {
+                           window.open(selectedJob.apply_link, '_blank');
+                         }
+                       }}
+                     >
+                       Apply Now
+                     </Button>
+                   ) : (
+                     <Button 
+                       className="flex-1"
+                       onClick={() => setShowApplyDialog(true)}
+                       disabled={appliedJobs.has(selectedJob.id)}
+                     >
+                       {appliedJobs.has(selectedJob.id) ? 'Already Applied' : 'Apply for this Job'}
+                     </Button>
+                   )}
+                 </div>
+               </div>
+             )}
+           </DialogContent>
+         </Dialog>
 
-export default Jobs;
+         {/* FIXED: Post Job Dialog */}
+         {profileId && (
+           <PostJobDialog
+             open={showPostJobDialog}
+             onOpenChange={setShowPostJobDialog}
+             profileId={profileId}
+             onJobPosted={() => {
+               fetchJobs();
+               toast({
+                 title: 'Success',
+                 description: 'Job posted successfully!',
+               });
+             }}
+           />
+         )}
+       </div>
+     </Layout>
+   );
+ };
+ 
+ export default Jobs;

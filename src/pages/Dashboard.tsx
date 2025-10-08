@@ -234,11 +234,10 @@ const Dashboard = () => {
 
       <FloatingCreatePost />
 
-      {companyId && profileId && (
+      {profileId && (
         <PostJobDialog
           open={postJobOpen}
           onOpenChange={setPostJobOpen}
-          companyId={companyId}
           profileId={profileId}
           onJobPosted={() => {
             setFeedRefresh(prev => prev + 1);
