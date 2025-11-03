@@ -1,7 +1,8 @@
-import { Search, Bell, User } from 'lucide-react';
+import { Bell, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { SearchBar } from './SearchBar';
 
 interface NavBarProps {
   user?: {
@@ -28,14 +29,7 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
 
         {/* Middle: Search */}
         <div className="nav-search hidden sm:block">
-          <div className="relative">
-            <input
-              className="nav-search-input"
-              placeholder="Search posts, people, jobs..."
-              aria-label="Search"
-            />
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          </div>
+          <SearchBar />
         </div>
 
         {/* Right: Actions */}
