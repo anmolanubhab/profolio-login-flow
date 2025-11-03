@@ -7,17 +7,24 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
+interface NotificationPayload {
+  sender_name?: string;
+  sender_avatar?: string;
+  message?: string;
+  job_title?: string;
+  post_id?: string;
+  profile_id?: string;
+  company_name?: string;
+  location?: string;
+  conversation_id?: string;
+  connection_id?: string;
+}
+
 interface Notification {
   id: string;
+  user_id: string;
   type: string;
-  payload: {
-    sender_name?: string;
-    sender_avatar?: string;
-    message?: string;
-    job_title?: string;
-    post_id?: string;
-    profile_id?: string;
-  };
+  payload: NotificationPayload;
   is_read: boolean;
   created_at: string;
 }
@@ -78,7 +85,7 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
 
       if (error) throw error;
 
-      setNotifications(data || []);
+      setNotifications((data || []) as Notification[]);
       setUnreadCount(data?.filter(n => !n.is_read).length || 0);
       setHasMore((data?.length || 0) === ITEMS_PER_PAGE);
     } catch (error) {
@@ -105,7 +112,7 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
 
       if (error) throw error;
 
-      setNotifications(prev => [...prev, ...(data || [])]);
+      setNotifications(prev => [...prev, ...((data || []) as Notification[])]);
       setHasMore((data?.length || 0) === ITEMS_PER_PAGE);
     } catch (error) {
       console.error('Error loading more notifications:', error);
@@ -123,7 +130,7 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
           table: 'notifications'
         },
         async (payload) => {
-          const newNotification = payload.new as Notification;
+          const newNotification = payload.new as unknown as Notification;
           
           // Check if notification is for current user
           const { data: profile } = await supabase

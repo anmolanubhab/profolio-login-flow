@@ -291,4 +291,20 @@ All colors MUST be HSL.
 
   /* Center alignment helpers */
   .centered { @apply grid place-items-center text-center; }
+
+  /* Notification animations */
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+
+  @keyframes scale-in {
+    from {
+      transform: scale(0);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
 }

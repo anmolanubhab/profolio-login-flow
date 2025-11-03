@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, MessageCircle, UserPlus, Award, Check, X } from 'lucide-react';
+import { Bell, MessageCircle, UserPlus, Award, Check, X, ThumbsUp, MessageSquare, Share2, Eye, Briefcase } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { formatDistanceToNow } from 'date-fns';
 
 interface FriendRequest {
   id: string;
@@ -55,6 +56,26 @@ const Notifications = () => {
     if (user) {
       fetchFriendRequests();
       fetchNotifications();
+
+      // Set up real-time subscription for notifications
+      const channel = supabase
+        .channel('notifications-page')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'notifications'
+          },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
@@ -189,8 +210,20 @@ const Notifications = () => {
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'friend_request':
+      case 'like':
+        return ThumbsUp;
+      case 'comment':
+        return MessageSquare;
+      case 'share':
+        return Share2;
+      case 'connection_request':
+      case 'connection_accepted':
         return UserPlus;
+      case 'profile_view':
+      case 'profile_save':
+        return Eye;
+      case 'new_job':
+        return Briefcase;
       case 'message':
         return MessageCircle;
       case 'certificate':
@@ -200,17 +233,72 @@ const Notifications = () => {
     }
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInMins = Math.floor(diffInMs / 60000);
-    const diffInHours = Math.floor(diffInMins / 60);
-    const diffInDays = Math.floor(diffInHours / 24);
+  const getNotificationMessage = (notification: Notification) => {
+    const { type, payload } = notification;
+    const senderName = payload?.sender_name || 'Someone';
 
-    if (diffInMins < 60) return `${diffInMins} minutes ago`;
-    if (diffInHours < 24) return `${diffInHours} hours ago`;
-    return `${diffInDays} days ago`;
+    switch (type) {
+      case 'like':
+        return `${senderName} liked your post`;
+      case 'comment':
+        return `${senderName} commented: "${payload?.message}"`;
+      case 'share':
+        return `${senderName} shared your post`;
+      case 'connection_request':
+        return `${senderName} sent you a connection request`;
+      case 'connection_accepted':
+        return `${senderName} accepted your connection request`;
+      case 'profile_view':
+        return `${senderName} viewed your profile`;
+      case 'profile_save':
+        return `${senderName} saved your profile`;
+      case 'new_job':
+        return `New job posted: ${payload?.job_title}`;
+      case 'message':
+        return `${senderName}: ${payload?.message}`;
+      default:
+        return payload?.message || 'New notification';
+    }
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read
+    if (!notification.is_read) {
+      await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', notification.id);
+    }
+
+    // Navigate based on type
+    const { type, payload } = notification;
+    switch (type) {
+      case 'like':
+      case 'comment':
+      case 'share':
+        navigate(`/dashboard?post=${payload?.post_id}`);
+        break;
+      case 'connection_request':
+      case 'connection_accepted':
+        navigate('/network');
+        break;
+      case 'profile_view':
+      case 'profile_save':
+        navigate('/profile');
+        break;
+      case 'new_job':
+        navigate('/jobs');
+        break;
+      case 'message':
+        navigate('/connect');
+        break;
+      default:
+        break;
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
   if (loading) {
@@ -299,25 +387,26 @@ const Notifications = () => {
                   <Card 
                     key={notification.id} 
                     className={`cursor-pointer hover:shadow-md transition-shadow ${!notification.is_read ? 'bg-primary/5' : ''}`}
+                    onClick={() => handleNotificationClick(notification)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <div className="bg-primary/10 p-2 rounded-full">
-                          <Icon className="h-5 w-5 text-primary" />
-                        </div>
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={notification.payload?.sender_avatar} />
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            <Icon className="h-5 w-5" />
+                          </AvatarFallback>
+                        </Avatar>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-sm">
-                            {notification.payload?.title || 'Notification'}
-                          </h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {notification.payload?.message || ''}
+                          <p className="text-sm">
+                            {getNotificationMessage(notification)}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-2">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {formatTime(notification.created_at)}
                           </p>
                         </div>
                         {!notification.is_read && (
-                          <div className="w-2 h-2 bg-primary rounded-full mt-2" />
+                          <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
                         )}
                       </div>
                     </CardContent>
