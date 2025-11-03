@@ -15,10 +15,11 @@ interface JobCardProps {
     salary_min?: number;
     salary_max?: number;
     currency?: string;
-    company: {
+    company_name?: string;
+    company?: {
       name: string;
       logo_url?: string;
-    };
+    } | null;
   };
   onApply: (jobId: string) => void;
   onViewDetails: (jobId: string) => void;
@@ -30,10 +31,10 @@ export const JobCard = ({ job, onApply, onViewDetails, isApplied }: JobCardProps
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader>
         <div className="flex items-start gap-4">
-          {job.company.logo_url ? (
+          {job.company?.logo_url ? (
             <img 
               src={job.company.logo_url} 
-              alt={job.company.name}
+              alt={job.company?.name || job.company_name || 'Company'}
               className="w-12 h-12 rounded-lg object-cover"
             />
           ) : (
@@ -43,7 +44,7 @@ export const JobCard = ({ job, onApply, onViewDetails, isApplied }: JobCardProps
           )}
           <div className="flex-1">
             <CardTitle className="text-xl mb-1">{job.title}</CardTitle>
-            <CardDescription className="text-base">{job.company.name}</CardDescription>
+            <CardDescription className="text-base">{job.company?.name || job.company_name || 'Company'}</CardDescription>
           </div>
         </div>
       </CardHeader>
