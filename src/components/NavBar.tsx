@@ -1,8 +1,11 @@
-import { Bell, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { SearchBar } from './SearchBar';
+import { NotificationBell } from './NotificationBell';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NavBarProps {
   user?: {
@@ -13,6 +16,18 @@ interface NavBarProps {
 }
 
 const NavBar = ({ user, onSignOut }: NavBarProps) => {
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        setUserId(authUser.id);
+      }
+    };
+    fetchUserId();
+  }, []);
+
   return (
     <nav className="navbar">
       <div className="navbar-inner">
@@ -34,13 +49,7 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
 
         {/* Right: Actions */}
         <div className="nav-actions">
-          <button
-            className="menu-button hidden sm:inline-flex"
-            title="Notifications"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5 text-muted-foreground" />
-          </button>
+          {userId && <NotificationBell userId={userId} />}
 
           {/* Profile dropdown */}
           <DropdownMenu>
