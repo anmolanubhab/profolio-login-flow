@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, MessageCircle, Share, MoreHorizontal, User, Facebook, Twitter, Copy } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, User, Facebook, Twitter, Copy, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -28,17 +28,21 @@ interface PostCardProps {
   likes: number;
   initialIsLiked?: boolean;
   onLike?: (isLiked: boolean) => void;
+  onDelete?: () => void;
 }
 
-const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialIsLiked = false }: PostCardProps) => {
+const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialIsLiked = false, onDelete }: PostCardProps) => {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [localLikes, setLocalLikes] = useState(likes);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<Array<{ id: string; user_id: string; content: string; created_at: string; user?: { name: string | null; avatar?: string | null } }>>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -47,6 +51,18 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
     const checkUser = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       setCurrentUser(authUser);
+      
+      if (authUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', authUser.id)
+          .single();
+        
+        if (profile) {
+          setCurrentUserProfileId(profile.id);
+        }
+      }
     };
     checkUser();
   }, []);
@@ -254,6 +270,59 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
     }
   };
 
+  const handleDeletePost = async () => {
+    if (!currentUser || !currentUserProfileId) {
+      toast({
+        title: 'Error',
+        description: 'You must be signed in to delete posts.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (user.id !== currentUserProfileId) {
+      toast({
+        title: 'Unauthorized',
+        description: 'You can only delete your own posts.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', currentUserProfileId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Post deleted successfully.',
+      });
+
+      setDeleteDialogOpen(false);
+      
+      // Trigger onDelete callback to remove from parent feed
+      onDelete?.();
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete post. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const isOwnPost = currentUserProfileId && user.id === currentUserProfileId;
+
   return (
     <div className="post-card" id={`post-${id}`}>
       <div className="post-header">
@@ -274,12 +343,27 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
             <div className="post-title group-hover:text-primary transition-colors duration-200">
               {user.name}
             </div>
-            <div className="post-meta mt-0.5">{formatTimeAgo(timestamp)}</div>
+          <div className="post-meta mt-0.5">{formatTimeAgo(timestamp)}</div>
           </div>
 
-          <button className="menu-button">
-            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-          </button>
+          {isOwnPost && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="menu-button hover:bg-muted/50 transition-colors">
+                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem 
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete Post</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
@@ -379,6 +463,35 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
             />
             <Button disabled={submittingComment || newComment.trim().length === 0} onClick={addComment}>
               Post
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Post</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-muted-foreground">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeletePost}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
             </Button>
           </div>
         </DialogContent>

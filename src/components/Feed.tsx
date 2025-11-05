@@ -118,6 +118,11 @@ const Feed = ({ refresh }: FeedProps) => {
     }
   };
 
+  const handleDeletePost = (postId: string) => {
+    // Remove post from local state with animation
+    setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+  };
+
   if (loading) {
     return (
       <div className="feed">
@@ -163,6 +168,7 @@ const Feed = ({ refresh }: FeedProps) => {
           likes={post.post_likes.length}
           initialIsLiked={currentUserId ? post.post_likes.some((l) => l.user_id === currentUserId) : false}
           onLike={(isLiked) => handleLike(post.id, isLiked)}
+          onDelete={() => handleDeletePost(post.id)}
         />
       ))}
     </div>
