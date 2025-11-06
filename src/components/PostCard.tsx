@@ -350,7 +350,10 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
 
           <button 
             className="menu-button hover:bg-muted/50 transition-colors"
-            onClick={() => setOptionsSheetOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOptionsSheetOpen(true);
+            }}
           >
             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
           </button>
