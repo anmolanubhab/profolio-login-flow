@@ -29,6 +29,64 @@ const Feed = ({ refresh }: FeedProps) => {
 
   const fetchPosts = async () => {
     try {
+      // Get current user and their filters
+      const { data: { user } } = await supabase.auth.getUser();
+      let currentUserProfileId: string | null = null;
+      let hiddenPostIds: string[] = [];
+      let blockedUserIds: string[] = [];
+      let snoozedUserIds: string[] = [];
+      
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+        currentUserProfileId = profile?.id || null;
+        
+        if (currentUserProfileId) {
+          // Fetch hidden posts
+          const { data: hiddenData } = await supabase
+            .from('hidden_posts')
+            .select('post_id')
+            .eq('user_id', currentUserProfileId);
+          hiddenPostIds = hiddenData?.map((h) => h.post_id) || [];
+
+          // Fetch blocked users
+          const { data: blockedData } = await supabase
+            .from('blocked_users')
+            .select('blocked_user_id')
+            .eq('user_id', currentUserProfileId);
+          
+          // Convert blocked profile IDs to user IDs for filtering
+          if (blockedData && blockedData.length > 0) {
+            const blockedProfileIds = blockedData.map((b) => b.blocked_user_id);
+            const { data: blockedProfiles } = await supabase
+              .from('profiles')
+              .select('id, user_id')
+              .in('id', blockedProfileIds);
+            blockedUserIds = blockedProfiles?.map((p) => p.user_id) || [];
+          }
+
+          // Fetch snoozed users (not expired)
+          const { data: snoozedData } = await supabase
+            .from('snoozed_users')
+            .select('snoozed_user_id')
+            .eq('user_id', currentUserProfileId)
+            .gt('snoozed_until', new Date().toISOString());
+          
+          // Convert snoozed profile IDs to user IDs
+          if (snoozedData && snoozedData.length > 0) {
+            const snoozedProfileIds = snoozedData.map((s) => s.snoozed_user_id);
+            const { data: snoozedProfiles } = await supabase
+              .from('profiles')
+              .select('id, user_id')
+              .in('id', snoozedProfileIds);
+            snoozedUserIds = snoozedProfiles?.map((p) => p.user_id) || [];
+          }
+        }
+      }
+
       // First get posts, then get profile info for each post
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
@@ -57,11 +115,21 @@ const Feed = ({ refresh }: FeedProps) => {
         profilesMap.set(profile.user_id, profile);
       });
 
-      // Combine posts with profiles
-      const postsWithProfiles = postsData?.map(post => ({
-        ...post,
-        profiles: profilesMap.get(post.user_id) || null
-      })) || [];
+      // Combine posts with profiles and filter
+      const postsWithProfiles = postsData
+        ?.filter(post => {
+          // Filter out hidden posts
+          if (hiddenPostIds.includes(post.id)) return false;
+          // Filter out posts from blocked users
+          if (blockedUserIds.includes(post.user_id)) return false;
+          // Filter out posts from snoozed users
+          if (snoozedUserIds.includes(post.user_id)) return false;
+          return true;
+        })
+        .map(post => ({
+          ...post,
+          profiles: profilesMap.get(post.user_id) || null
+        })) || [];
 
       setPosts(postsWithProfiles);
     } catch (error) {

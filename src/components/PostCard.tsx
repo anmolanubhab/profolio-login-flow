@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, MessageCircle, Share, MoreHorizontal, User, Facebook, Twitter, Copy, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share, MoreHorizontal, User, Facebook, Twitter, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { PostOptionsSheet } from './PostOptionsSheet';
 
 interface PostCardProps {
   id: string;
@@ -43,6 +44,7 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
   const [submittingComment, setSubmittingComment] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [optionsSheetOpen, setOptionsSheetOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -346,24 +348,12 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
           <div className="post-meta mt-0.5">{formatTimeAgo(timestamp)}</div>
           </div>
 
-          {isOwnPost && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="menu-button hover:bg-muted/50 transition-colors">
-                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem 
-                  onClick={() => setDeleteDialogOpen(true)}
-                  className="flex items-center gap-2 text-destructive focus:text-destructive focus:bg-destructive/10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span>Delete Post</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <button 
+            className="menu-button hover:bg-muted/50 transition-colors"
+            onClick={() => setOptionsSheetOpen(true)}
+          >
+            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+          </button>
         </div>
       </div>
 
@@ -496,6 +486,17 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
           </div>
         </DialogContent>
       </Dialog>
+
+      <PostOptionsSheet
+        open={optionsSheetOpen}
+        onOpenChange={setOptionsSheetOpen}
+        postId={id}
+        postUserId={user.id || ''}
+        postUserName={user.name}
+        currentUserProfileId={currentUserProfileId}
+        isOwnPost={isOwnPost}
+        onDelete={() => setDeleteDialogOpen(true)}
+      />
     </div>
   );
 };
