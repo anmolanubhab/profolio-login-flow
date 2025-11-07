@@ -134,11 +134,11 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   };
 
   return (
-    <Card className="post-card">
+    <Card className="bg-white shadow-[0_4px_10px_rgba(0,0,0,0.05)] rounded-xl border-border">
       <CardContent className="p-4 sm:p-5">
         {/* Post Input Area */}
-        <div className="flex gap-3">
-          <Avatar className="h-12 w-12">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Avatar className="h-12 w-12 shrink-0">
             <AvatarImage src={user?.avatar} />
             <AvatarFallback className="bg-primary/10 text-primary font-medium">
               {user?.email?.charAt(0).toUpperCase() || <User className="h-4 w-4" />}
@@ -147,10 +147,10 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
           
           <div className="flex-1">
             <Textarea
-              placeholder="Share your achievement, upload a certificate, or add resume update..."
+              placeholder="Share your achievement, upload a certificate, or update your resume…"
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
-              className="min-h-[60px] resize-none border-0 bg-secondary/50 placeholder:text-muted-foreground focus-visible:ring-1 rounded-full px-4 py-3"
+              className="min-h-[60px] resize-none border-0 bg-background text-sm placeholder:text-[#5E6B7E] focus-visible:ring-1 focus-visible:ring-[#0A66C2] rounded-lg px-4 py-3 transition-all duration-200"
             />
           </div>
         </div>
@@ -184,39 +184,37 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
         />
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between mt-4 pt-3 border-t">
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
           <div className="flex gap-2">
             <Button 
               variant="ghost" 
               size="sm"
-              className="text-muted-foreground hover:text-primary hover:bg-primary/5"
+              className="text-[#5E6B7E] hover:text-foreground hover:bg-[#F3F6F9] rounded-lg transition-all duration-200 ease-in-out text-sm font-medium"
               onClick={() => fileInputRef.current?.click()}
               disabled={isPosting}
             >
-              <Camera className="h-5 w-5 mr-2" />
-              <span className="hidden sm:inline">Photo</span>
+              <Camera className="h-5 w-5 mr-1.5" />
+              <span className="hidden sm:inline">Upload Photo</span>
             </Button>
             
             <Button 
               variant="ghost" 
               size="sm"
-              className="text-muted-foreground hover:text-primary hover:bg-primary/5"
+              className="text-[#5E6B7E] hover:text-foreground hover:bg-[#F3F6F9] rounded-lg transition-all duration-200 ease-in-out text-sm font-medium"
             >
-              <FileText className="h-5 w-5 mr-2" />
-              <span className="hidden sm:inline">Document</span>
+              <FileText className="h-5 w-5 mr-1.5" />
+              <span className="hidden sm:inline">Add Certificate</span>
             </Button>
           </div>
 
-          {(postContent.trim() || selectedImage) && (
-            <Button 
-              onClick={handlePost} 
-              size="sm"
-              className="rounded-full px-6"
-              disabled={isPosting}
-            >
-              {isPosting ? "Posting..." : "Post"}
-            </Button>
-          )}
+          <Button 
+            onClick={handlePost} 
+            size="sm"
+            className="bg-[#0A66C2] hover:bg-[#084c97] text-white rounded-full px-6 text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isPosting || (!postContent.trim() && !selectedImage)}
+          >
+            {isPosting ? "Posting..." : "Post"}
+          </Button>
         </div>
       </CardContent>
     </Card>
