@@ -8,64 +8,65 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 20% 98%;
-    --foreground: 220 20% 20%;
+    /* LinkedIn-inspired Professional Design System */
+    --background: 225 15% 96%;
+    --foreground: 214 15% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 20%;
+    --card-foreground: 214 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 20%;
+    --popover-foreground: 214 15% 15%;
 
-    --primary: 164 73% 50%;
+    --primary: 211 100% 40%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 20% 20%;
+    --secondary: 210 15% 95%;
+    --secondary-foreground: 214 15% 15%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 210 15% 95%;
+    --muted-foreground: 217 10% 45%;
 
-    --accent: 174 100% 37%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 206 100% 92%;
+    --accent-foreground: 211 100% 40%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 174 100% 37%;
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(164 73% 50%), hsl(152 76% 40%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 14% 98%));
-    --bg-gradient: radial-gradient(1200px 800px at 90% -200px, hsl(164 73% 96%), transparent), radial-gradient(1000px 600px at -200px 20%, hsl(152 76% 96%), transparent), linear-gradient(180deg, hsl(0 0% 100%), hsl(150 30% 98%));
-    --nav-height: 4rem;
+    --gradient-primary: linear-gradient(135deg, hsl(211 100% 40%), hsl(211 100% 35%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 15% 98%));
+    --bg-gradient: linear-gradient(180deg, hsl(225 15% 96%), hsl(210 15% 98%));
+    --nav-height: 3.5rem;
     
-    --shadow-elegant: 0 10px 30px -10px hsl(214 100% 50% / 0.15);
-    --shadow-card: 0 4px 20px -2px hsl(220 20% 20% / 0.08);
+    --shadow-elegant: 0 6px 18px rgba(16, 24, 40, 0.08);
+    --shadow-card: 0 6px 18px rgba(16, 24, 40, 0.08);
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 217 16% 90%;
+    --input: 217 16% 90%;
+    --ring: 211 100% 40%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 100%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-foreground: 214 15% 15%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 211 100% 40%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary-foreground: 0 0% 100%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent: 210 15% 95%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent-foreground: 214 15% 15%;
 
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 217 16% 90%;
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 211 100% 40%;
   }
 
   .dark {
@@ -230,15 +231,14 @@ All colors MUST be HSL.
 
   /* Card / Post */
   .post-card {
-    @apply rounded-2xl border;
+    @apply rounded-xl border;
     background: hsl(var(--card));
     color: hsl(var(--card-foreground));
     box-shadow: var(--shadow-card);
     transition: var(--transition-smooth);
   }
   .post-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 30px -10px hsl(220 20% 20% / 0.18);
+    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
   }
   .post-header { @apply flex items-center gap-3 p-4 sm:p-5; }
   .post-title { @apply text-base sm:text-lg font-semibold leading-tight; }
@@ -249,16 +249,18 @@ All colors MUST be HSL.
 
   /* Action buttons */
   .action-btn {
-    @apply inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm;
+    @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium;
     color: hsl(var(--muted-foreground));
     transition: var(--transition-smooth);
   }
   .action-btn:hover {
     color: hsl(var(--foreground));
     background-color: hsl(var(--secondary));
-    transform: translateY(-1px);
   }
-  .action-btn .icon { @apply h-4 w-4; }
+  .action-btn.active {
+    color: hsl(var(--primary));
+  }
+  .action-btn .icon { @apply h-5 w-5; }
 
   /* Generic buttons */
   .btn-primary {

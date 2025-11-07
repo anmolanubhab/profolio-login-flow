@@ -35,10 +35,10 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
         <div className="flex items-center gap-2 sm:gap-3">
           <SidebarTrigger className="hidden md:inline-flex" />
           <div className="nav-brand cursor-pointer" onClick={() => (window.location.href = '/dashboard')}>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent text-primary-foreground grid place-items-center">
-              <span className="text-[13px] font-bold">P</span>
+            <div className="w-9 h-9 rounded bg-primary text-primary-foreground grid place-items-center font-bold text-base">
+              P
             </div>
-            <span>Profolio</span>
+            <span className="hidden sm:inline">Profolio</span>
           </div>
         </div>
 

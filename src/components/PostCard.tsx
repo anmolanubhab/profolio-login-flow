@@ -329,35 +329,34 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
     <div className="post-card" id={`post-${id}`}>
       <div className="post-header">
         <div 
-          className="flex items-center gap-4 cursor-pointer group"
+          className="flex items-center gap-3 cursor-pointer group flex-1"
           onClick={handleProfileClick}
         >
-          <div className="relative">
-            <Avatar className="h-12 w-12 ring-2 ring-primary/10 group-hover:ring-primary/30 transition-all duration-300 group-hover:scale-105">
-              <AvatarImage src={user.avatar} className="object-cover" />
-              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
-                {user.name.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
-              </AvatarFallback>
-            </Avatar>
-          </div>
+          <Avatar className="h-12 w-12 ring-1 ring-border group-hover:ring-primary/40 transition-all">
+            <AvatarImage src={user.avatar} className="object-cover" />
+            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+              {user.name.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
+            </AvatarFallback>
+          </Avatar>
           
-          <div className="flex-1">
-            <div className="post-title group-hover:text-primary transition-colors duration-200">
+          <div className="flex-1 min-w-0">
+            <div className="post-title group-hover:text-primary transition-colors">
               {user.name}
             </div>
-          <div className="post-meta mt-0.5">{formatTimeAgo(timestamp)}</div>
+            <div className="post-meta">{formatTimeAgo(timestamp)}</div>
           </div>
-
-          <button 
-            className="menu-button hover:bg-muted/50 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOptionsSheetOpen(true);
-            }}
-          >
-            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-          </button>
         </div>
+
+        <button 
+          className="menu-button hover:bg-secondary transition-colors rounded-full p-2"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOptionsSheetOpen(true);
+          }}
+          aria-label="Post options"
+        >
+          <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
+        </button>
       </div>
 
       <div className="post-body">
@@ -365,55 +364,69 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
       </div>
 
       {image && (
-        <div className="px-4 sm:px-5">
-          <div className="rounded-xl overflow-hidden border border-border/50 mb-4">
-            <img 
-              src={image} 
-              alt="Post content" 
-              className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
-            />
-          </div>
+        <div className="px-0 mb-3">
+          <img 
+            src={image} 
+            alt="Post content" 
+            className="w-full h-auto object-cover"
+          />
         </div>
       )}
 
-      <div className="post-divider" />
+      <div className="px-4 sm:px-5 pb-2">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {localLikes > 0 && (
+            <span className="flex items-center gap-1">
+              <Heart className="h-3 w-3 fill-current text-red-500" />
+              {localLikes}
+            </span>
+          )}
+        </div>
+      </div>
 
-      <div className="post-actions">
-        <button type="button" className={`action-btn ${isLiked ? 'text-red-500 bg-red-50' : ''}`} onClick={handleLike}>
-          <Heart className={`icon ${isLiked ? 'fill-current' : ''}`} />
-          <span>Like</span>
-          <span>({localLikes})</span>
-        </button>
-        <button type="button" className="action-btn" onClick={openComments}>
-          <MessageCircle className="icon" />
-          <span>Comment</span>
-        </button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button type="button" className="action-btn">
-              <Share className="icon" />
-              <span>Share</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={shareOnWhatsApp} className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              <span>Share on WhatsApp</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={shareOnFacebook} className="flex items-center gap-2">
-              <Facebook className="h-4 w-4" />
-              <span>Share on Facebook</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={shareOnTwitter} className="flex items-center gap-2">
-              <Twitter className="h-4 w-4" />
-              <span>Share on Twitter</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={copyLink} className="flex items-center gap-2">
-              <Copy className="h-4 w-4" />
-              <span>Copy Link</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="border-t border-border mx-4 sm:mx-5" />
+
+      <div className="px-2 sm:px-3 py-1">
+        <div className="flex items-center justify-around">
+          <button 
+            type="button" 
+            className={`action-btn ${isLiked ? 'active text-primary' : ''}`} 
+            onClick={handleLike}
+          >
+            <Heart className={`icon ${isLiked ? 'fill-current' : ''}`} />
+            <span>Like</span>
+          </button>
+          <button type="button" className="action-btn" onClick={openComments}>
+            <MessageCircle className="icon" />
+            <span>Comment</span>
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="action-btn">
+                <Share className="icon" />
+                <span>Share</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={shareOnWhatsApp} className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4" />
+                <span>Share on WhatsApp</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={shareOnFacebook} className="flex items-center gap-2">
+                <Facebook className="h-4 w-4" />
+                <span>Share on Facebook</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={shareOnTwitter} className="flex items-center gap-2">
+                <Twitter className="h-4 w-4" />
+                <span>Share on Twitter</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={copyLink} className="flex items-center gap-2">
+                <Copy className="h-4 w-4" />
+                <span>Copy Link</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <Dialog open={commentsOpen} onOpenChange={setCommentsOpen}>

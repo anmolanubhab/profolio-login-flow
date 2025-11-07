@@ -134,30 +134,30 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   };
 
   return (
-    <Card className="mb-6">
-      <CardContent className="p-4">
+    <Card className="post-card">
+      <CardContent className="p-4 sm:p-5">
         {/* Post Input Area */}
-        <div className="flex gap-3 mb-4">
-          <Avatar className="h-10 w-10">
+        <div className="flex gap-3">
+          <Avatar className="h-12 w-12">
             <AvatarImage src={user?.avatar} />
-            <AvatarFallback className="bg-muted">
+            <AvatarFallback className="bg-primary/10 text-primary font-medium">
               {user?.email?.charAt(0).toUpperCase() || <User className="h-4 w-4" />}
             </AvatarFallback>
           </Avatar>
           
           <div className="flex-1">
             <Textarea
-              placeholder="What's on your mind?"
+              placeholder="Share your achievement, upload a certificate, or add resume update..."
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
-              className="min-h-[60px] resize-none border-0 bg-muted/50 placeholder:text-muted-foreground focus-visible:ring-1"
+              className="min-h-[60px] resize-none border-0 bg-secondary/50 placeholder:text-muted-foreground focus-visible:ring-1 rounded-full px-4 py-3"
             />
           </div>
         </div>
 
         {/* Image Preview */}
         {imagePreview && (
-          <div className="mb-4 relative">
+          <div className="mt-4 relative">
             <img
               src={imagePreview}
               alt="Preview"
@@ -166,7 +166,7 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
             <Button
               variant="destructive"
               size="icon"
-              className="absolute top-2 right-2 h-8 w-8"
+              className="absolute top-2 right-2 h-8 w-8 rounded-full"
               onClick={removeImage}
             >
               <X className="h-4 w-4" />
@@ -184,32 +184,40 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
         />
 
         {/* Action Buttons */}
-        <div className="flex gap-3">
-          <Button 
-            variant="outline" 
-            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isPosting}
-          >
-            <Camera className="h-4 w-4 mr-2" />
-            Photo
-          </Button>
-          
-          <Button variant="outline" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
-            <FileText className="h-4 w-4 mr-2" />
-            Document
-          </Button>
-        </div>
+        <div className="flex items-center justify-between mt-4 pt-3 border-t">
+          <div className="flex gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-muted-foreground hover:text-primary hover:bg-primary/5"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isPosting}
+            >
+              <Camera className="h-5 w-5 mr-2" />
+              <span className="hidden sm:inline">Photo</span>
+            </Button>
+            
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="text-muted-foreground hover:text-primary hover:bg-primary/5"
+            >
+              <FileText className="h-5 w-5 mr-2" />
+              <span className="hidden sm:inline">Document</span>
+            </Button>
+          </div>
 
-        {(postContent.trim() || selectedImage) && (
-          <Button 
-            onClick={handlePost} 
-            className="w-full mt-3"
-            disabled={isPosting}
-          >
-            {isPosting ? "Posting..." : "Post"}
-          </Button>
-        )}
+          {(postContent.trim() || selectedImage) && (
+            <Button 
+              onClick={handlePost} 
+              size="sm"
+              className="rounded-full px-6"
+              disabled={isPosting}
+            >
+              {isPosting ? "Posting..." : "Post"}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
