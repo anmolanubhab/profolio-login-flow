@@ -9,7 +9,23 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { MapPin, Clock, Building, DollarSign, Search, Briefcase, Plus } from 'lucide-react';
+import { MapPin, Clock, Building, DollarSign, Search, Briefcase, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Layout } from '@/components/Layout';
 import { PostJobDialog } from '@/components/jobs/PostJobDialog';
 
@@ -27,6 +43,7 @@ interface Job {
   salary_max: number;
   currency: string;
   posted_at: string;
+  posted_by: string;
   status: string;
   company?: {
     name: string;
@@ -47,6 +64,8 @@ const Jobs = () => {
   const [coverLetter, setCoverLetter] = useState('');
   const [applying, setApplying] = useState(false);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -214,6 +233,36 @@ const Jobs = () => {
     return `${currency} ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
   };
 
+  const handleDeleteJob = async (jobId: string) => {
+    try {
+      const { error } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', jobId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Job deleted successfully!',
+      });
+
+      fetchJobs();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingJobId(null);
+    }
+  };
+
+  const isJobOwner = (job: Job) => {
+    return job.posted_by === profileId;
+  };
+
   if (loading) {
     return (
       <Layout user={user!} onSignOut={handleSignOut}>
@@ -279,20 +328,44 @@ const Jobs = () => {
                              alt={job.company?.name || job.company_name}
                              className="h-12 w-12 rounded object-cover"
                            />
-                         )}
-                         <div className="flex-1">
-                           <h3 className="font-semibold text-lg text-foreground">{job.title}</h3>
-                           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                             <Building className="h-4 w-4" />
-                             {/* FIXED: Show company_name or fallback to company relation */}
-                             <span>{job.company_name || job.company?.name}</span>
-                           </div>
+                          )}
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg text-foreground">{job.title}</h3>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                              <Building className="h-4 w-4" />
+                              <span>{job.company_name || job.company?.name}</span>
+                            </div>
+                          </div>
+                         <div className="flex items-center gap-2">
+                           <Badge variant={hasApplied ? "secondary" : "outline"}>
+                             {hasApplied ? 'Applied' : job.employment_type}
+                           </Badge>
+                           {isJobOwner(job) && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                   <DropdownMenuItem onClick={() => {
+                                     setEditingJob(job);
+                                     setShowPostJobDialog(true);
+                                   }}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Job
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => setDeletingJobId(job.id)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete Job
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                          </div>
-                        <div className="text-right">
-                          <Badge variant={hasApplied ? "secondary" : "outline"}>
-                            {hasApplied ? 'Applied' : job.employment_type}
-                          </Badge>
-                        </div>
                       </div>
                       
                       <p className="text-sm text-muted-foreground line-clamp-2">{job.description}</p>
@@ -455,21 +528,43 @@ const Jobs = () => {
            </DialogContent>
          </Dialog>
 
-         {/* FIXED: Post Job Dialog */}
-         {profileId && (
-           <PostJobDialog
-             open={showPostJobDialog}
-             onOpenChange={setShowPostJobDialog}
-             profileId={profileId}
-             onJobPosted={() => {
-               fetchJobs();
-               toast({
-                 title: 'Success',
-                 description: 'Job posted successfully!',
-               });
-             }}
-           />
-         )}
+          {/* Post/Edit Job Dialog */}
+          {profileId && (
+            <PostJobDialog
+              open={showPostJobDialog}
+              onOpenChange={(open) => {
+                setShowPostJobDialog(open);
+                if (!open) setEditingJob(null);
+              }}
+              profileId={profileId}
+              editJob={editingJob}
+              onJobPosted={() => {
+                fetchJobs();
+                setEditingJob(null);
+              }}
+            />
+          )}
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={!!deletingJobId} onOpenChange={() => setDeletingJobId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Job Post</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this job posting? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={() => deletingJobId && handleDeleteJob(deletingJobId)}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
        </div>
      </Layout>
    );

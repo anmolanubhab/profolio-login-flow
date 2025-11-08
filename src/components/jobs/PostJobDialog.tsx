@@ -1,22 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { MapPin, Briefcase, Building2, DollarSign, Eye } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+interface Job {
+  id?: string;
+  title: string;
+  company_name: string;
+  description: string;
+  requirements: string;
+  location: string;
+  employment_type: string;
+  remote_option: string;
+  apply_link: string;
+  salary_min: string | number;
+  salary_max: string | number;
+  currency: string;
+}
 
 interface PostJobDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   profileId: string;
   onJobPosted: () => void;
+  editJob?: Job | null;
 }
 
-export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted }: PostJobDialogProps) => {
+export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, editJob }: PostJobDialogProps) => {
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('form');
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     title: '',
@@ -31,6 +52,24 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted }: Po
     salary_max: '',
     currency: 'USD',
   });
+
+  useEffect(() => {
+    if (editJob) {
+      setFormData({
+        title: editJob.title,
+        company_name: editJob.company_name,
+        description: editJob.description,
+        requirements: editJob.requirements || '',
+        location: editJob.location,
+        employment_type: editJob.employment_type,
+        remote_option: editJob.remote_option,
+        apply_link: editJob.apply_link || '',
+        salary_min: editJob.salary_min?.toString() || '',
+        salary_max: editJob.salary_max?.toString() || '',
+        currency: editJob.currency || 'USD',
+      });
+    }
+  }, [editJob]);
 
   const validateForm = () => {
     if (!formData.title.trim()) {
@@ -86,8 +125,7 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted }: Po
     setLoading(true);
 
     try {
-      // FIXED: Insert with new schema including company_name and apply_link
-      const { error } = await supabase.from('jobs').insert({
+      const jobData = {
         posted_by: profileId,
         title: formData.title,
         company_name: formData.company_name,
@@ -101,18 +139,29 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted }: Po
         salary_max: formData.salary_max ? parseFloat(formData.salary_max) : null,
         currency: formData.currency,
         status: isDraft ? 'draft' : 'open',
-      });
+      };
+
+      let error;
+      if (editJob?.id) {
+        const result = await supabase
+          .from('jobs')
+          .update(jobData)
+          .eq('id', editJob.id);
+        error = result.error;
+      } else {
+        const result = await supabase.from('jobs').insert(jobData);
+        error = result.error;
+      }
 
       if (error) throw error;
 
       toast({
         title: 'Success',
-        description: isDraft ? 'Job saved as draft!' : 'Job posted successfully!',
+        description: editJob ? 'Job updated successfully!' : isDraft ? 'Job saved as draft!' : 'Job posted successfully!',
       });
 
       onOpenChange(false);
       onJobPosted();
-      // FIXED: Reset form with new fields
       setFormData({
         title: '',
         company_name: '',
@@ -137,157 +186,302 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted }: Po
     }
   };
 
+  const formatSalary = () => {
+    if (!formData.salary_min || !formData.salary_max) return null;
+    return `${formData.currency} ${parseFloat(formData.salary_min).toLocaleString()} - ${parseFloat(formData.salary_max).toLocaleString()}`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Post a New Job</DialogTitle>
-          <DialogDescription>Fill in the details to post a job opening</DialogDescription>
+          <DialogTitle className="text-2xl">{editJob ? 'Edit Job Post' : 'Post a New Job'}</DialogTitle>
+          <DialogDescription>Fill in the details to {editJob ? 'update' : 'post'} a job opening</DialogDescription>
         </DialogHeader>
-        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">
-          <div>
-            <Label htmlFor="title">Job Title</Label>
-            <Input
-              id="title"
-              placeholder="e.g. Senior React Developer"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-            />
-          </div>
-          {/* FIXED: Added company name field */}
-          <div>
-            <Label htmlFor="company_name">Company Name</Label>
-            <Input
-              id="company_name"
-              placeholder="e.g. TechCorp Inc."
-              value={formData.company_name}
-              onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Describe the role, responsibilities, and what you're looking for..."
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="requirements">Requirements</Label>
-            <Textarea
-              id="requirements"
-              placeholder="List the qualifications and skills needed..."
-              value={formData.requirements}
-              onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
-              rows={3}
-            />
-          </div>
-          {/* FIXED: Added apply link field */}
-          <div>
-            <Label htmlFor="apply_link">Application Link or Email</Label>
-            <Input
-              id="apply_link"
-              placeholder="e.g. https://company.com/apply or jobs@company.com"
-              value={formData.apply_link}
-              onChange={(e) => setFormData({ ...formData, apply_link: e.target.value })}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                required
-              />
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="form" className="text-sm font-medium">Job Details</TabsTrigger>
+            <TabsTrigger value="preview" className="text-sm font-medium flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              Preview
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="form">
+            <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-[#0A66C2]" />
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <Label htmlFor="title" className="text-sm font-medium text-[#1D2226]">Job Title *</Label>
+                      <Input
+                        id="title"
+                        placeholder="e.g. Senior React Developer"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all"
+                        required
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="company_name" className="text-sm font-medium text-[#1D2226]">Company Name *</Label>
+                      <Input
+                        id="company_name"
+                        placeholder="e.g. TechCorp Inc."
+                        value={formData.company_name}
+                        onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                        className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Job Description *</h3>
+                  <Textarea
+                    id="description"
+                    placeholder="Describe the role, key responsibilities, and what makes this opportunity exciting..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={5}
+                    className="border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all resize-none"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Requirements & Qualifications</h3>
+                  <Textarea
+                    id="requirements"
+                    placeholder="List required skills, experience level, education, certifications..."
+                    value={formData.requirements}
+                    onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
+                    rows={4}
+                    className="border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all resize-none"
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Application Method</h3>
+                  <div>
+                    <Label htmlFor="apply_link" className="text-sm font-medium text-[#1D2226]">Application Link or Email</Label>
+                    <Input
+                      id="apply_link"
+                      placeholder="e.g. https://company.com/apply or jobs@company.com"
+                      value={formData.apply_link}
+                      onChange={(e) => setFormData({ ...formData, apply_link: e.target.value })}
+                      className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-[#0A66C2]" />
+                    Location & Work Type
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="location" className="text-sm font-medium text-[#1D2226]">Location *</Label>
+                      <Input
+                        id="location"
+                        placeholder="e.g. New York, NY"
+                        value={formData.location}
+                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                        className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="employment_type" className="text-sm font-medium text-[#1D2226]">Employment Type *</Label>
+                      <Select value={formData.employment_type} onValueChange={(value) => setFormData({ ...formData, employment_type: value })}>
+                        <SelectTrigger className="mt-1.5 border-[#E5E7EB]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="full-time">Full-time</SelectItem>
+                          <SelectItem value="part-time">Part-time</SelectItem>
+                          <SelectItem value="contract">Contract</SelectItem>
+                          <SelectItem value="internship">Internship</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="remote_option" className="text-sm font-medium text-[#1D2226]">Remote Option *</Label>
+                      <Select value={formData.remote_option} onValueChange={(value) => setFormData({ ...formData, remote_option: value })}>
+                        <SelectTrigger className="mt-1.5 border-[#E5E7EB]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="on-site">On-site</SelectItem>
+                          <SelectItem value="remote">Remote</SelectItem>
+                          <SelectItem value="hybrid">Hybrid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-[#0A66C2]" />
+                    Compensation
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="currency" className="text-sm font-medium text-[#1D2226]">Currency</Label>
+                      <Select value={formData.currency} onValueChange={(value) => setFormData({ ...formData, currency: value })}>
+                        <SelectTrigger className="mt-1.5 border-[#E5E7EB]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                          <SelectItem value="GBP">GBP</SelectItem>
+                          <SelectItem value="INR">INR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="salary_min" className="text-sm font-medium text-[#1D2226]">Minimum Salary</Label>
+                      <Input
+                        id="salary_min"
+                        type="number"
+                        placeholder="50000"
+                        value={formData.salary_min}
+                        onChange={(e) => setFormData({ ...formData, salary_min: e.target.value })}
+                        className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="salary_max" className="text-sm font-medium text-[#1D2226]">Maximum Salary</Label>
+                      <Input
+                        id="salary_max"
+                        type="number"
+                        placeholder="100000"
+                        value={formData.salary_max}
+                        onChange={(e) => setFormData({ ...formData, salary_max: e.target.value })}
+                        className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => onOpenChange(false)} 
+                  disabled={loading}
+                  className="border-[#E5E7EB] hover:bg-[#F3F6F9] transition-all"
+                >
+                  Cancel
+                </Button>
+                {!editJob && (
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    onClick={(e) => handleSubmit(e, true)}
+                    disabled={loading || !formData.title.trim() || !formData.company_name.trim()}
+                    className="bg-[#F3F6F9] hover:bg-[#E5E7EB] text-[#1D2226] transition-all"
+                  >
+                    {loading ? 'Saving...' : 'Save Draft'}
+                  </Button>
+                )}
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="bg-[#0A66C2] hover:bg-[#084c97] text-white transition-all"
+                >
+                  {loading ? 'Posting...' : editJob ? 'Update Job' : 'Post Job'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </TabsContent>
+
+          <TabsContent value="preview" className="space-y-4">
+            <Card className="bg-white shadow-[0_4px_10px_rgba(0,0,0,0.05)] border-[#E5E7EB] hover:shadow-lg transition-all">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-[#F3F6F9] flex items-center justify-center shrink-0">
+                      <Building2 className="w-6 h-6 text-[#0A66C2]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg text-[#1D2226] truncate">
+                        {formData.title || 'Job Title'}
+                      </h3>
+                      <p className="text-sm text-[#5E6B7E] truncate">
+                        {formData.company_name || 'Company Name'}
+                      </p>
+                    </div>
+                    <Badge className="bg-[#D6EFFF] text-[#0A66C2] border-0 shrink-0">
+                      {formData.employment_type}
+                    </Badge>
+                  </div>
+                  
+                  {formData.description && (
+                    <p className="text-sm text-[#5E6B7E] line-clamp-3 whitespace-pre-wrap">
+                      {formData.description}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex items-center gap-1.5 text-sm text-[#5E6B7E]">
+                      <MapPin className="h-4 w-4" />
+                      <span>{formData.location || 'Location'}</span>
+                    </div>
+                    {formData.remote_option && (
+                      <Badge variant="secondary" className="text-xs bg-[#F3F6F9] text-[#5E6B7E] border-0">
+                        {formData.remote_option}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {formatSalary() && (
+                    <div className="flex items-center gap-2 text-[#0A66C2] font-semibold pt-2 border-t border-[#E5E7EB]">
+                      <DollarSign className="h-5 w-5" />
+                      <span>{formatSalary()}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {formData.requirements && (
+              <Card className="bg-white shadow-[0_4px_10px_rgba(0,0,0,0.05)] border-[#E5E7EB]">
+                <CardContent className="p-6">
+                  <h4 className="font-semibold text-[#1D2226] mb-3">Requirements</h4>
+                  <p className="text-sm text-[#5E6B7E] whitespace-pre-wrap">
+                    {formData.requirements}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button 
+                variant="outline"
+                onClick={() => setActiveTab('form')}
+                className="border-[#E5E7EB] hover:bg-[#F3F6F9]"
+              >
+                Back to Edit
+              </Button>
+              <Button 
+                onClick={(e) => handleSubmit(e as any, false)}
+                disabled={loading || !formData.title.trim() || !formData.company_name.trim() || !formData.description.trim() || !formData.location.trim()}
+                className="bg-[#0A66C2] hover:bg-[#084c97] text-white"
+              >
+                {loading ? 'Posting...' : editJob ? 'Update Job' : 'Post Job'}
+              </Button>
             </div>
-            <div>
-              <Label htmlFor="employment_type">Employment Type</Label>
-              <Select value={formData.employment_type} onValueChange={(value) => setFormData({ ...formData, employment_type: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="full-time">Full-time</SelectItem>
-                  <SelectItem value="part-time">Part-time</SelectItem>
-                  <SelectItem value="contract">Contract</SelectItem>
-                  <SelectItem value="internship">Internship</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="remote_option">Remote Option</Label>
-              <Select value={formData.remote_option} onValueChange={(value) => setFormData({ ...formData, remote_option: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="on-site">On-site</SelectItem>
-                  <SelectItem value="remote">Remote</SelectItem>
-                  <SelectItem value="hybrid">Hybrid</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="currency">Currency</Label>
-              <Select value={formData.currency} onValueChange={(value) => setFormData({ ...formData, currency: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="GBP">GBP</SelectItem>
-                  <SelectItem value="INR">INR</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="salary_min">Minimum Salary</Label>
-              <Input
-                id="salary_min"
-                type="number"
-                value={formData.salary_min}
-                onChange={(e) => setFormData({ ...formData, salary_min: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="salary_max">Maximum Salary</Label>
-              <Input
-                id="salary_max"
-                type="number"
-                value={formData.salary_max}
-                onChange={(e) => setFormData({ ...formData, salary_max: e.target.value })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              Cancel
-            </Button>
-            <Button 
-              type="button" 
-              variant="secondary" 
-              onClick={(e) => handleSubmit(e, true)}
-              disabled={loading || !formData.title.trim() || !formData.company_name.trim()}
-            >
-              {loading ? 'Saving...' : 'Save Draft'}
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Posting...' : 'Post Job'}
-            </Button>
-          </DialogFooter>
-        </form>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
