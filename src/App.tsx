@@ -17,6 +17,7 @@ import Network from "./pages/Network";
 import AddPost from "./pages/AddPost";
 import Notifications from "./pages/Notifications";
 import Jobs from "./pages/Jobs";
+import Companies from "./pages/Companies";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
           <Route path="/add-post" element={<AddPost />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/jobs" element={<Jobs />} />
+          <Route path="/companies" element={<Companies />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

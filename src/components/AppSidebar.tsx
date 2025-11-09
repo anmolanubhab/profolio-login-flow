@@ -7,7 +7,8 @@ import {
   FileText, 
   User,
   LogOut,
-  MessageCircle
+  MessageCircle,
+  Building2
 } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
@@ -34,6 +35,7 @@ const mainItems = [
   { title: "Network", url: "/network", icon: Users },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Jobs", url: "/jobs", icon: Briefcase },
+  { title: "Companies", url: "/companies", icon: Building2 },
 ]
 
 const profileItems = [

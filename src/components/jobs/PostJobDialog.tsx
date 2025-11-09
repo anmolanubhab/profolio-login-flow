@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { MapPin, Briefcase, Building2, DollarSign, Eye } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CompanySelector } from './CompanySelector';
 
 interface Job {
   id?: string;
@@ -41,6 +42,7 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     title: '',
+    company_id: '',
     company_name: '',
     description: '',
     requirements: '',
@@ -57,6 +59,7 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
     if (editJob) {
       setFormData({
         title: editJob.title,
+        company_id: (editJob as any).company_id || '',
         company_name: editJob.company_name,
         description: editJob.description,
         requirements: editJob.requirements || '',
@@ -80,10 +83,10 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
       });
       return false;
     }
-    if (!formData.company_name.trim()) {
+    if (!formData.company_id && !formData.company_name.trim()) {
       toast({
         title: 'Validation Error',
-        description: 'Please enter a company name',
+        description: 'Please select a company',
         variant: 'destructive',
       });
       return false;
@@ -128,6 +131,7 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
       const jobData = {
         posted_by: profileId,
         title: formData.title,
+        company_id: formData.company_id || null,
         company_name: formData.company_name,
         description: formData.description,
         requirements: formData.requirements || null,
@@ -164,6 +168,7 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
       onJobPosted();
       setFormData({
         title: '',
+        company_id: '',
         company_name: '',
         description: '',
         requirements: '',
@@ -216,8 +221,8 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
                     <Briefcase className="h-4 w-4 text-[#0A66C2]" />
                     Basic Information
                   </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
+                  <div className="space-y-4">
+                    <div>
                       <Label htmlFor="title" className="text-sm font-medium text-[#1D2226]">Job Title *</Label>
                       <Input
                         id="title"
@@ -228,17 +233,13 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
                         required
                       />
                     </div>
-                    <div className="col-span-2">
-                      <Label htmlFor="company_name" className="text-sm font-medium text-[#1D2226]">Company Name *</Label>
-                      <Input
-                        id="company_name"
-                        placeholder="e.g. TechCorp Inc."
-                        value={formData.company_name}
-                        onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                        className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all"
-                        required
-                      />
-                    </div>
+                    <CompanySelector
+                      profileId={profileId}
+                      value={formData.company_id}
+                      onChange={(companyId, companyName) => 
+                        setFormData({ ...formData, company_id: companyId, company_name: companyName })
+                      }
+                    />
                   </div>
                 </div>
 
@@ -387,7 +388,7 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
                     type="button" 
                     variant="secondary" 
                     onClick={(e) => handleSubmit(e, true)}
-                    disabled={loading || !formData.title.trim() || !formData.company_name.trim()}
+                    disabled={loading || !formData.title.trim() || (!formData.company_id && !formData.company_name.trim())}
                     className="bg-[#F3F6F9] hover:bg-[#E5E7EB] text-[#1D2226] transition-all"
                   >
                     {loading ? 'Saving...' : 'Save Draft'}
@@ -413,73 +414,65 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
                       <Building2 className="w-6 h-6 text-[#0A66C2]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-lg text-[#1D2226] truncate">
+                      <h3 className="font-semibold text-xl text-[#1D2226] mb-1">
                         {formData.title || 'Job Title'}
                       </h3>
-                      <p className="text-sm text-[#5E6B7E] truncate">
+                      <p className="text-base text-[#5E6B7E]">
                         {formData.company_name || 'Company Name'}
                       </p>
                     </div>
-                    <Badge className="bg-[#D6EFFF] text-[#0A66C2] border-0 shrink-0">
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="flex items-center gap-1 bg-[#F3F6F9] text-[#1D2226]">
+                      <MapPin className="w-3 h-3" />
+                      {formData.location || 'Location'}
+                    </Badge>
+                    <Badge variant="secondary" className="flex items-center gap-1 bg-[#F3F6F9] text-[#1D2226]">
+                      <Briefcase className="w-3 h-3" />
                       {formData.employment_type}
                     </Badge>
-                  </div>
-                  
-                  {formData.description && (
-                    <p className="text-sm text-[#5E6B7E] line-clamp-3 whitespace-pre-wrap">
-                      {formData.description}
-                    </p>
-                  )}
-
-                  <div className="flex flex-wrap gap-3">
-                    <div className="flex items-center gap-1.5 text-sm text-[#5E6B7E]">
-                      <MapPin className="h-4 w-4" />
-                      <span>{formData.location || 'Location'}</span>
-                    </div>
-                    {formData.remote_option && (
-                      <Badge variant="secondary" className="text-xs bg-[#F3F6F9] text-[#5E6B7E] border-0">
-                        {formData.remote_option}
+                    <Badge variant="outline" className="border-[#E5E7EB]">
+                      {formData.remote_option}
+                    </Badge>
+                    {formatSalary() && (
+                      <Badge variant="secondary" className="flex items-center gap-1 bg-[#F3F6F9] text-[#0A66C2] font-semibold">
+                        <DollarSign className="w-3 h-3" />
+                        {formatSalary()}
                       </Badge>
                     )}
                   </div>
 
-                  {formatSalary() && (
-                    <div className="flex items-center gap-2 text-[#0A66C2] font-semibold pt-2 border-t border-[#E5E7EB]">
-                      <DollarSign className="h-5 w-5" />
-                      <span>{formatSalary()}</span>
+                  <div>
+                    <h4 className="font-semibold text-base text-[#1D2226] mb-2">Job Description</h4>
+                    <p className="text-sm text-[#5E6B7E] whitespace-pre-wrap">
+                      {formData.description || 'No description provided yet...'}
+                    </p>
+                  </div>
+
+                  {formData.requirements && (
+                    <div>
+                      <h4 className="font-semibold text-base text-[#1D2226] mb-2">Requirements</h4>
+                      <p className="text-sm text-[#5E6B7E] whitespace-pre-wrap">
+                        {formData.requirements}
+                      </p>
+                    </div>
+                  )}
+
+                  {formData.apply_link && (
+                    <div>
+                      <h4 className="font-semibold text-base text-[#1D2226] mb-2">How to Apply</h4>
+                      <p className="text-sm text-[#0A66C2] break-all">
+                        {formData.apply_link}
+                      </p>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
-
-            {formData.requirements && (
-              <Card className="bg-white shadow-[0_4px_10px_rgba(0,0,0,0.05)] border-[#E5E7EB]">
-                <CardContent className="p-6">
-                  <h4 className="font-semibold text-[#1D2226] mb-3">Requirements</h4>
-                  <p className="text-sm text-[#5E6B7E] whitespace-pre-wrap">
-                    {formData.requirements}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button 
-                variant="outline"
-                onClick={() => setActiveTab('form')}
-                className="border-[#E5E7EB] hover:bg-[#F3F6F9]"
-              >
-                Back to Edit
-              </Button>
-              <Button 
-                onClick={(e) => handleSubmit(e as any, false)}
-                disabled={loading || !formData.title.trim() || !formData.company_name.trim() || !formData.description.trim() || !formData.location.trim()}
-                className="bg-[#0A66C2] hover:bg-[#084c97] text-white"
-              >
-                {loading ? 'Posting...' : editJob ? 'Update Job' : 'Post Job'}
-              </Button>
-            </div>
+            <p className="text-xs text-[#5E6B7E] text-center">
+              This is how your job post will appear to candidates
+            </p>
           </TabsContent>
         </Tabs>
       </DialogContent>

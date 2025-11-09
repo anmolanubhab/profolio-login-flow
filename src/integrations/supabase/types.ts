@@ -183,7 +183,11 @@ export type Database = {
       companies: {
         Row: {
           created_at: string
+          description: string | null
+          employee_count: string | null
+          founded_year: number | null
           id: string
+          industry: string | null
           location: string | null
           logo_url: string | null
           name: string
@@ -192,7 +196,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
+          employee_count?: string | null
+          founded_year?: number | null
           id?: string
+          industry?: string | null
           location?: string | null
           logo_url?: string | null
           name: string
@@ -201,7 +209,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
+          employee_count?: string | null
+          founded_year?: number | null
           id?: string
+          industry?: string | null
           location?: string | null
           logo_url?: string | null
           name?: string
