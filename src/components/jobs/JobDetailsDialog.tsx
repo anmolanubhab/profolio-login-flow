@@ -60,10 +60,10 @@ export const JobDetailsDialog = ({ open, onOpenChange, jobId }: JobDetailsDialog
           <>
             <DialogHeader>
               <div className="flex items-start gap-4">
-                {job.companies.logo_url ? (
+                {job.companies?.logo_url ? (
                   <img 
                     src={job.companies.logo_url} 
-                    alt={job.companies.name}
+                    alt={job.companies?.name || job.company_name}
                     className="w-16 h-16 rounded-lg object-cover"
                   />
                 ) : (
@@ -74,7 +74,7 @@ export const JobDetailsDialog = ({ open, onOpenChange, jobId }: JobDetailsDialog
                 <div>
                   <DialogTitle className="text-2xl">{job.title}</DialogTitle>
                   <DialogDescription className="text-base mt-1">
-                    {job.companies.name}
+                    {job.companies?.name || job.company_name}
                   </DialogDescription>
                 </div>
               </div>
@@ -121,10 +121,10 @@ export const JobDetailsDialog = ({ open, onOpenChange, jobId }: JobDetailsDialog
               <div>
                 <h3 className="font-semibold text-lg mb-2">About the Company</h3>
                 <p className="text-sm text-muted-foreground">
-                  {job.companies.name}
-                  {job.companies.location && ` • ${job.companies.location}`}
+                  {job.companies?.name || job.company_name}
+                  {job.companies?.location && ` • ${job.companies.location}`}
                 </p>
-                {job.companies.website && (
+                {job.companies?.website && (
                   <a 
                     href={job.companies.website}
                     target="_blank"
