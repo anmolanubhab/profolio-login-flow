@@ -14,10 +14,11 @@ interface Job {
   salary_min?: number;
   salary_max?: number;
   currency?: string;
+  company_id?: string;
   companies: {
     name: string;
     logo_url?: string;
-  };
+  } | null;
 }
 
 interface JobsFeedProps {
@@ -87,6 +88,7 @@ export const JobsFeed = ({ onApply, onViewDetails, appliedJobIds, refresh }: Job
           key={job.id}
           job={{
             ...job,
+            company_id: job.company_id,
             company: job.companies
           }}
           onApply={onApply}

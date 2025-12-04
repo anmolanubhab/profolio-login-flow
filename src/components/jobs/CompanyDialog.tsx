@@ -19,6 +19,8 @@ interface Company {
   industry: string;
   employee_count: string;
   founded_year: string;
+  culture: string;
+  values: string[];
 }
 
 interface CompanyDialogProps {
@@ -43,6 +45,8 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
     industry: '',
     employee_count: '',
     founded_year: '',
+    culture: '',
+    values: '',
   });
 
   useEffect(() => {
@@ -55,6 +59,8 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
         industry: editCompany.industry || '',
         employee_count: editCompany.employee_count || '',
         founded_year: editCompany.founded_year || '',
+        culture: editCompany.culture || '',
+        values: editCompany.values?.join(', ') || '',
       });
       setLogoPreview(editCompany.logo_url || '');
     } else {
@@ -66,6 +72,8 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
         industry: '',
         employee_count: '',
         founded_year: '',
+        culture: '',
+        values: '',
       });
       setLogoPreview('');
       setLogoFile(null);
@@ -125,6 +133,11 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
     try {
       const logoUrl = await uploadLogo();
 
+      const valuesArray = formData.values
+        .split(',')
+        .map(v => v.trim())
+        .filter(v => v.length > 0);
+
       const companyData = {
         owner_id: profileId,
         name: formData.name,
@@ -135,6 +148,8 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
         industry: formData.industry || null,
         employee_count: formData.employee_count || null,
         founded_year: formData.founded_year ? parseInt(formData.founded_year) : null,
+        culture: formData.culture || null,
+        values: valuesArray.length > 0 ? valuesArray : null,
       };
 
       let result;
@@ -321,12 +336,36 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
                 <Label htmlFor="description" className="text-sm font-medium text-[#1D2226]">Company Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="Tell us about your company, mission, and culture..."
+                  placeholder="Tell us about your company and mission..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={4}
+                  rows={3}
                   className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] resize-none"
                 />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="culture" className="text-sm font-medium text-[#1D2226]">Company Culture</Label>
+                <Textarea
+                  id="culture"
+                  placeholder="Describe your company culture, work environment, and what makes it unique..."
+                  value={formData.culture}
+                  onChange={(e) => setFormData({ ...formData, culture: e.target.value })}
+                  rows={3}
+                  className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] resize-none"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="values" className="text-sm font-medium text-[#1D2226]">Company Values</Label>
+                <Input
+                  id="values"
+                  placeholder="e.g. Innovation, Integrity, Teamwork, Excellence"
+                  value={formData.values}
+                  onChange={(e) => setFormData({ ...formData, values: e.target.value })}
+                  className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2]"
+                />
+                <p className="text-xs text-[#5E6B7E] mt-1">Separate values with commas</p>
               </div>
             </div>
           </div>

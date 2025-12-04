@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ interface JobCardProps {
     salary_max?: number;
     currency?: string;
     company_name?: string;
+    company_id?: string;
     company?: {
       name: string;
       logo_url?: string;
@@ -27,24 +29,51 @@ interface JobCardProps {
 }
 
 export const JobCard = ({ job, onApply, onViewDetails, isApplied }: JobCardProps) => {
+  const companyName = job.company?.name || job.company_name || 'Company';
+  
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader>
         <div className="flex items-start gap-4">
-          {job.company?.logo_url ? (
-            <img 
-              src={job.company.logo_url} 
-              alt={job.company?.name || job.company_name || 'Company'}
-              className="w-12 h-12 rounded-lg object-cover"
-            />
+          {job.company_id ? (
+            <Link to={`/company/${job.company_id}`} className="shrink-0">
+              {job.company?.logo_url ? (
+                <img 
+                  src={job.company.logo_url} 
+                  alt={companyName}
+                  className="w-12 h-12 rounded-lg object-cover hover:ring-2 hover:ring-primary/50 transition-all"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center hover:ring-2 hover:ring-primary/50 transition-all">
+                  <Building2 className="w-6 h-6 text-muted-foreground" />
+                </div>
+              )}
+            </Link>
           ) : (
-            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-              <Building2 className="w-6 h-6 text-muted-foreground" />
-            </div>
+            job.company?.logo_url ? (
+              <img 
+                src={job.company.logo_url} 
+                alt={companyName}
+                className="w-12 h-12 rounded-lg object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-muted-foreground" />
+              </div>
+            )
           )}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <CardTitle className="text-xl mb-1">{job.title}</CardTitle>
-            <CardDescription className="text-base">{job.company?.name || job.company_name || 'Company'}</CardDescription>
+            {job.company_id ? (
+              <Link 
+                to={`/company/${job.company_id}`}
+                className="text-base text-muted-foreground hover:text-primary hover:underline transition-colors"
+              >
+                {companyName}
+              </Link>
+            ) : (
+              <CardDescription className="text-base">{companyName}</CardDescription>
+            )}
           </div>
         </div>
       </CardHeader>
