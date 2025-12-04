@@ -6,10 +6,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { MapPin, Clock, Building, DollarSign, Search, Briefcase, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { MapPin, Clock, Building, DollarSign, Briefcase, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,11 +27,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Layout } from '@/components/Layout';
 import { PostJobDialog } from '@/components/jobs/PostJobDialog';
+import { JobFilters, JobFiltersState } from '@/components/jobs/JobFilters';
 
 interface Job {
   id: string;
   title: string;
   company_name: string;
+  company_id?: string;
   description: string;
   requirements: string;
   location: string;
@@ -56,7 +57,12 @@ const Jobs = () => {
   const [profileId, setProfileId] = useState<string>('');
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<JobFiltersState>({
+    search: '',
+    companyId: '',
+    location: '',
+    employmentType: '',
+  });
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
@@ -100,22 +106,41 @@ const Jobs = () => {
   }, [user]);
 
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredJobs(jobs);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = jobs.filter(job => {
+    let filtered = [...jobs];
+
+    // Search filter
+    if (filters.search.trim()) {
+      const query = filters.search.toLowerCase();
+      filtered = filtered.filter(job => {
         const companyName = job.company_name || job.company?.name || '';
         return (
           job.title.toLowerCase().includes(query) ||
           companyName.toLowerCase().includes(query) ||
-          job.location.toLowerCase().includes(query) ||
-          job.description.toLowerCase().includes(query)
+          job.location?.toLowerCase().includes(query) ||
+          job.description?.toLowerCase().includes(query)
         );
       });
-      setFilteredJobs(filtered);
     }
-  }, [searchQuery, jobs]);
+
+    // Company filter
+    if (filters.companyId) {
+      filtered = filtered.filter(job => job.company_id === filters.companyId);
+    }
+
+    // Location filter
+    if (filters.location) {
+      filtered = filtered.filter(job => job.location === filters.location);
+    }
+
+    // Employment type filter
+    if (filters.employmentType) {
+      filtered = filtered.filter(job => 
+        job.employment_type?.toLowerCase() === filters.employmentType.toLowerCase()
+      );
+    }
+
+    setFilteredJobs(filtered);
+  }, [filters, jobs]);
 
   const fetchJobs = async () => {
     try {
@@ -293,16 +318,11 @@ const Jobs = () => {
 
         <Card className="mb-6 bg-gradient-card shadow-card border-0">
           <CardContent className="pt-6">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by job title, company, or location..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-background/50 border-muted focus:border-primary/50"
-              />
-            </div>
+            <JobFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              locations={jobs.map(job => job.location).filter(Boolean)}
+            />
           </CardContent>
         </Card>
 
@@ -310,7 +330,9 @@ const Jobs = () => {
           <Card className="p-12 text-center bg-gradient-card shadow-card border-0">
             <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              {searchQuery ? 'No jobs found matching your search.' : 'No job openings available at the moment.'}
+              {filters.search || filters.companyId || filters.location || filters.employmentType 
+                ? 'No jobs found matching your filters.' 
+                : 'No job openings available at the moment.'}
             </p>
           </Card>
         ) : (
