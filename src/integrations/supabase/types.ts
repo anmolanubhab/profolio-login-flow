@@ -183,6 +183,7 @@ export type Database = {
       companies: {
         Row: {
           created_at: string
+          culture: string | null
           description: string | null
           employee_count: string | null
           founded_year: number | null
@@ -192,10 +193,12 @@ export type Database = {
           logo_url: string | null
           name: string
           owner_id: string | null
+          values: string[] | null
           website: string | null
         }
         Insert: {
           created_at?: string
+          culture?: string | null
           description?: string | null
           employee_count?: string | null
           founded_year?: number | null
@@ -205,10 +208,12 @@ export type Database = {
           logo_url?: string | null
           name: string
           owner_id?: string | null
+          values?: string[] | null
           website?: string | null
         }
         Update: {
           created_at?: string
+          culture?: string | null
           description?: string | null
           employee_count?: string | null
           founded_year?: number | null
@@ -218,6 +223,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           owner_id?: string | null
+          values?: string[] | null
           website?: string | null
         }
         Relationships: [

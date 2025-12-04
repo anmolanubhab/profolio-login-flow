@@ -261,11 +261,19 @@ export default function Companies() {
                     )}
                   </div>
 
-                  <div className="mt-4 pt-4 border-t border-[#E5E7EB]">
+                  <div className="mt-4 pt-4 border-t border-[#E5E7EB] flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full border-[#E5E7EB] hover:bg-[#F3F6F9]"
+                      className="flex-1 border-[#E5E7EB] hover:bg-[#F3F6F9]"
+                      onClick={() => navigate(`/company/${company.id}`)}
+                    >
+                      View Profile
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 border-[#E5E7EB] hover:bg-[#F3F6F9]"
                       onClick={() => navigate(`/jobs?company=${company.id}`)}
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
