@@ -618,7 +618,7 @@ const PublicProfile = () => {
         </Card>
 
         {!isPrivate && profile && (
-          <ProfileTabs userId={profile.user_id} isOwnProfile={false} />
+          <ProfileTabs userId={profile.user_id} profileId={profile.id} isOwnProfile={false} />
         )}
       </div>
     </Layout>

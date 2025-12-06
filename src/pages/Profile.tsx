@@ -9,6 +9,7 @@ import ProfileTabs from '@/components/profile/ProfileTabs';
 
 const Profile = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -21,6 +22,18 @@ const Profile = () => {
         return;
       }
       setUser(user);
+      
+      // Fetch profile ID
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (profile) {
+        setProfileId(profile.id);
+      }
+      
       setLoading(false);
     };
 
@@ -48,7 +61,7 @@ const Profile = () => {
     );
   }
 
-  if (!user) {
+  if (!user || !profileId) {
     return null;
   }
 
@@ -56,7 +69,7 @@ const Profile = () => {
     <Layout user={user} onSignOut={handleSignOut}>
       <div className="container mx-auto max-w-4xl">
         <ProfileHeader userId={user.id} />
-        <ProfileTabs userId={user.id} isOwnProfile={true} />
+        <ProfileTabs userId={user.id} profileId={profileId} isOwnProfile={true} />
       </div>
     </Layout>
   );
