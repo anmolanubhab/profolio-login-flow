@@ -18,6 +18,8 @@ interface NotificationPayload {
   location?: string;
   conversation_id?: string;
   connection_id?: string;
+  skill_name?: string;
+  endorser_id?: string;
 }
 
 interface Notification {
@@ -221,6 +223,8 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
         return `New job posted: ${payload.job_title || 'Check it out'}`;
       case 'message':
         return `${senderName} sent you a message`;
+      case 'skill_endorsement':
+        return `${senderName} endorsed your ${payload.skill_name || 'skill'}`;
       default:
         return payload.message || 'New notification';
     }
@@ -239,6 +243,7 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
         return '/network';
       case 'profile_view':
       case 'profile_save':
+      case 'skill_endorsement':
         return '/profile';
       case 'new_job':
         return '/jobs';
