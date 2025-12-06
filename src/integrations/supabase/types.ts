@@ -1017,6 +1017,52 @@ export type Database = {
           },
         ]
       }
+      skill_endorsements: {
+        Row: {
+          created_at: string
+          endorsed_user_id: string
+          endorser_id: string
+          id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          endorsed_user_id: string
+          endorser_id: string
+          id?: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          endorsed_user_id?: string
+          endorser_id?: string
+          id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_endorsements_endorsed_user_id_fkey"
+            columns: ["endorsed_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_endorsements_endorser_id_fkey"
+            columns: ["endorser_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_endorsements_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skills: {
         Row: {
           created_at: string
