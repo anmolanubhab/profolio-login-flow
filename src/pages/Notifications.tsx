@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, MessageCircle, UserPlus, Award, Check, X, ThumbsUp, MessageSquare, Share2, Eye, Briefcase } from 'lucide-react';
+import { Bell, MessageCircle, UserPlus, Award, Check, X, ThumbsUp, MessageSquare, Share2, Eye, Briefcase, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
@@ -228,6 +228,8 @@ const Notifications = () => {
         return MessageCircle;
       case 'certificate':
         return Award;
+      case 'skill_endorsement':
+        return Star;
       default:
         return Bell;
     }
@@ -256,6 +258,8 @@ const Notifications = () => {
         return `New job posted: ${payload?.job_title}`;
       case 'message':
         return `${senderName}: ${payload?.message}`;
+      case 'skill_endorsement':
+        return `${senderName} endorsed your ${payload?.skill_name || 'skill'}`;
       default:
         return payload?.message || 'New notification';
     }
@@ -284,6 +288,7 @@ const Notifications = () => {
         break;
       case 'profile_view':
       case 'profile_save':
+      case 'skill_endorsement':
         navigate('/profile');
         break;
       case 'new_job':
