@@ -4,6 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { SearchBar } from './SearchBar';
 import { NotificationBell } from './NotificationBell';
+import { MobileNavDrawer } from './MobileNavDrawer';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -31,9 +32,12 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
   return (
     <nav className="navbar">
       <div className="navbar-inner">
-        {/* Left: Brand + Sidebar trigger */}
+        {/* Left: Hamburger menu (mobile) + Brand + Sidebar trigger */}
         <div className="flex items-center gap-2 sm:gap-3">
-          <SidebarTrigger className="hidden md:inline-flex" />
+          {/* Mobile hamburger menu */}
+          <MobileNavDrawer />
+          {/* Desktop sidebar trigger */}
+          <SidebarTrigger className="hidden lg:inline-flex" />
           <div className="nav-brand cursor-pointer" onClick={() => (window.location.href = '/dashboard')}>
             <div className="w-9 h-9 rounded bg-primary text-primary-foreground grid place-items-center font-bold text-base">
               P
