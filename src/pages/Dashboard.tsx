@@ -175,11 +175,11 @@ const Dashboard = () => {
     <Layout user={user} onSignOut={handleSignOut}>
       <div className="max-w-4xl mx-auto w-full">
         <Tabs defaultValue="feed" className="w-full">
-          <TabsList className={`w-full grid ${companyId ? 'grid-cols-4' : 'grid-cols-3'}`}>
-            <TabsTrigger value="feed">Social Feed</TabsTrigger>
-            <TabsTrigger value="jobs">Jobs</TabsTrigger>
-            <TabsTrigger value="applications">My Applications</TabsTrigger>
-            {companyId && <TabsTrigger value="drafts">My Drafts</TabsTrigger>}
+          <TabsList className="w-full flex overflow-x-auto scrollbar-hide gap-1 p-1">
+            <TabsTrigger value="feed" className="flex-shrink-0 whitespace-nowrap">Social Feed</TabsTrigger>
+            <TabsTrigger value="jobs" className="flex-shrink-0 whitespace-nowrap">Jobs</TabsTrigger>
+            <TabsTrigger value="applications" className="flex-shrink-0 whitespace-nowrap">My Applications</TabsTrigger>
+            {companyId && <TabsTrigger value="drafts" className="flex-shrink-0 whitespace-nowrap">My Drafts</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="feed" className="space-y-4">
