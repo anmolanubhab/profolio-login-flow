@@ -23,8 +23,8 @@ export function Layout({ children, user, onSignOut }: LayoutProps) {
       </div>
 
       {/* Main content */}
-      <div className="layout content">
-        <main className="feed pb-24">
+      <div className="layout content w-full max-w-full overflow-x-hidden">
+        <main className="feed pb-24 w-full max-w-full">
           {children}
         </main>
       </div>

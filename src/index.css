@@ -113,12 +113,26 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  /* Prevent horizontal overflow on mobile */
+  html, body {
+    @apply w-full max-w-full overflow-x-hidden;
+  }
+
   body {
     @apply bg-background text-foreground;
     background-image: var(--bg-gradient);
     background-attachment: fixed;
     background-size: cover;
     padding-top: var(--nav-height);
+  }
+
+  #root {
+    @apply w-full max-w-full overflow-x-hidden;
+  }
+
+  /* Ensure images don't overflow */
+  img {
+    @apply max-w-full h-auto;
   }
 }
 
@@ -308,5 +322,14 @@ All colors MUST be HSL.
       transform: scale(1);
       opacity: 1;
     }
+  }
+
+  /* Hide scrollbar for horizontal scrolling tabs */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

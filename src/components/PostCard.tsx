@@ -326,7 +326,7 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
   const isOwnPost = currentUserProfileId && user.id === currentUserProfileId;
 
   return (
-    <div className="post-card" id={`post-${id}`}>
+    <div className="post-card w-full max-w-full overflow-hidden" id={`post-${id}`}>
       <div className="post-header">
         <div 
           className="flex items-center gap-3 cursor-pointer group flex-1"
