@@ -30,8 +30,8 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
   }, []);
 
   return (
-    <nav className="navbar">
-      <div className="navbar-inner">
+    <nav className="navbar w-full max-w-full overflow-x-hidden">
+      <div className="navbar-inner w-full max-w-full overflow-hidden">
         {/* Left: Hamburger menu (mobile) + Brand + Sidebar trigger */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Mobile hamburger menu */}
