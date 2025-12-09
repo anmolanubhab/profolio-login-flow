@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, MessageCircle, Share, MoreHorizontal, User, Facebook, Twitter, Copy } from 'lucide-react';
+import { Heart, MessageCircle, Share, User, Facebook, Twitter, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PostOptionsSheet } from './PostOptionsSheet';
+import { PostOptionsMenu } from './PostOptionsMenu';
 
 interface PostCardProps {
   id: string;
@@ -42,9 +42,6 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [optionsSheetOpen, setOptionsSheetOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -272,58 +269,7 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
     }
   };
 
-  const handleDeletePost = async () => {
-    if (!currentUser || !currentUserProfileId) {
-      toast({
-        title: 'Error',
-        description: 'You must be signed in to delete posts.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (user.id !== currentUserProfileId) {
-      toast({
-        title: 'Unauthorized',
-        description: 'You can only delete your own posts.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      setIsDeleting(true);
-      
-      const { error } = await supabase
-        .from('posts')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', currentUserProfileId);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Post deleted successfully.',
-      });
-
-      setDeleteDialogOpen(false);
-      
-      // Trigger onDelete callback to remove from parent feed
-      onDelete?.();
-    } catch (err) {
-      console.error('Error deleting post:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete post. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const isOwnPost = currentUserProfileId && user.id === currentUserProfileId;
+  const isOwnPost = !!(currentUserProfileId && user.id === currentUserProfileId);
 
   return (
     <div className="post-card w-full max-w-full overflow-hidden" id={`post-${id}`}>
@@ -347,16 +293,14 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
           </div>
         </div>
 
-        <button 
-          className="menu-button hover:bg-secondary transition-colors rounded-full p-2"
-          onClick={(e) => {
-            e.stopPropagation();
-            setOptionsSheetOpen(true);
-          }}
-          aria-label="Post options"
-        >
-          <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
-        </button>
+        <PostOptionsMenu
+          postId={id}
+          postUserId={user.id || ''}
+          postUserName={user.name}
+          currentUserProfileId={currentUserProfileId}
+          isOwnPost={isOwnPost}
+          onDelete={onDelete}
+        />
       </div>
 
       <div className="post-body">
@@ -474,45 +418,6 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Post</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-muted-foreground">
-              Are you sure you want to delete this post? This action cannot be undone.
-            </p>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeletePost}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <PostOptionsSheet
-        open={optionsSheetOpen}
-        onOpenChange={setOptionsSheetOpen}
-        postId={id}
-        postUserId={user.id || ''}
-        postUserName={user.name}
-        currentUserProfileId={currentUserProfileId}
-        isOwnPost={isOwnPost}
-        onDelete={() => setDeleteDialogOpen(true)}
-      />
     </div>
   );
 };
