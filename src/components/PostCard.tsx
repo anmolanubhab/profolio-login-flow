@@ -171,31 +171,92 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
       navigate('/register');
       return;
     }
+    
     const content = newComment.trim();
-    if (!content) return;
+    if (!content) {
+      toast({
+        title: 'Empty comment',
+        description: 'Please enter a comment before posting.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setSubmittingComment(true);
+    
     try {
-      setSubmittingComment(true);
       // Get the current user's profile to obtain the profile.id (comments.user_id references profiles.id)
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, display_name, avatar_url')
         .eq('user_id', currentUser.id)
+        .maybeSingle();
+      
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        throw new Error(`Profile error: ${profileError.message}`);
+      }
+      
+      if (!profile) {
+        console.error('No profile found for user:', currentUser.id);
+        throw new Error('Your profile was not found. Please try logging out and back in.');
+      }
+      
+      console.log('Adding comment:', { post_id: id, user_id: profile.id, content: content.substring(0, 50) });
+      
+      const { data: newCommentData, error: insertError } = await supabase
+        .from('comments')
+        .insert({
+          post_id: id,
+          user_id: profile.id,
+          content,
+        })
+        .select(`
+          id,
+          content,
+          created_at,
+          user_id
+        `)
         .single();
-      if (profileError || !profile) throw profileError || new Error('Profile not found');
-      const { error } = await supabase.from('comments').insert({
-        post_id: id,
-        user_id: profile.id,
-        content,
-      });
-      if (error) throw error;
+      
+      if (insertError) {
+        console.error('Comment insert error:', insertError);
+        throw new Error(insertError.message);
+      }
+      
+      console.log('Comment added successfully:', newCommentData);
+      
+      // Clear input and update UI optimistically
       setNewComment('');
-      // Refresh comments
-      await fetchComments();
-    } catch (err) {
+      
+      // Add new comment to list immediately without full refresh
+      if (newCommentData) {
+        const newCommentForUI = {
+          id: newCommentData.id,
+          user_id: newCommentData.user_id,
+          content: newCommentData.content,
+          created_at: newCommentData.created_at,
+          user: {
+            name: profile.display_name || currentUser.email?.split('@')[0] || 'You',
+            avatar: profile.avatar_url,
+          },
+        };
+        setComments(prev => [...prev, newCommentForUI]);
+      } else {
+        // Fallback: refresh comments if we didn't get the new comment back
+        await fetchComments();
+      }
+      
+      toast({
+        title: 'Comment posted',
+        description: 'Your comment has been added.',
+      });
+      
+    } catch (err: any) {
       console.error('Error adding comment:', err);
       toast({
-        title: 'Error',
-        description: 'Could not add comment.',
+        title: 'Could not add comment',
+        description: err?.message || 'An unexpected error occurred. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -404,15 +465,26 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
               placeholder="Write a comment..."
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
+              disabled={submittingComment}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === 'Enter' && !e.shiftKey && !submittingComment && newComment.trim().length > 0) {
                   e.preventDefault();
                   addComment();
                 }
               }}
             />
-            <Button disabled={submittingComment || newComment.trim().length === 0} onClick={addComment}>
-              Post
+            <Button 
+              disabled={submittingComment || newComment.trim().length === 0} 
+              onClick={addComment}
+              className="min-w-[60px]"
+            >
+              {submittingComment ? (
+                <span className="flex items-center gap-1">
+                  <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                </span>
+              ) : (
+                'Post'
+              )}
             </Button>
           </div>
         </DialogContent>
