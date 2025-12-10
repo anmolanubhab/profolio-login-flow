@@ -119,33 +119,36 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-hidden flex items-center justify-center p-4 relative">
-      {/* Animated Rainbow Gradient Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-[hsl(220,80%,60%)] via-[hsl(280,70%,55%)] to-[hsl(330,75%,60%)] animate-gradient-shift" />
-      <div className="fixed inset-0 bg-gradient-to-tr from-[hsl(45,90%,70%,0.3)] via-transparent to-[hsl(200,80%,50%,0.2)]" />
-      <div className="fixed inset-0 bg-gradient-to-bl from-transparent via-[hsl(260,60%,50%,0.15)] to-[hsl(320,70%,60%,0.25)]" />
+    <div className="min-h-screen w-full max-w-full overflow-hidden flex flex-col items-center justify-center p-4 relative">
+      {/* Multi-layer Rainbow Gradient Background */}
+      <div className="fixed inset-0 bg-gradient-to-br from-[hsl(200,90%,55%)] via-[hsl(280,80%,60%)] to-[hsl(330,85%,65%)] animate-gradient-shift" />
+      <div className="fixed inset-0 bg-gradient-to-tr from-[hsl(45,100%,65%,0.4)] via-transparent to-[hsl(180,70%,50%,0.2)]" />
+      <div className="fixed inset-0 bg-gradient-to-bl from-transparent via-[hsl(300,70%,55%,0.2)] to-[hsl(20,90%,60%,0.3)]" />
       
-      {/* Floating orbs for depth */}
-      <div className="fixed top-1/4 left-1/4 w-72 h-72 bg-[hsl(45,100%,70%,0.25)] rounded-full blur-3xl animate-float-slow" />
-      <div className="fixed bottom-1/3 right-1/4 w-96 h-96 bg-[hsl(280,80%,60%,0.2)] rounded-full blur-3xl animate-float-delayed" />
-      <div className="fixed top-1/2 right-1/3 w-64 h-64 bg-[hsl(200,80%,60%,0.2)] rounded-full blur-3xl animate-float-reverse" />
+      {/* Animated floating orbs for premium depth */}
+      <div className="fixed top-1/4 left-1/4 w-80 h-80 bg-[hsl(50,100%,70%,0.3)] rounded-full blur-3xl animate-float-slow" />
+      <div className="fixed bottom-1/4 right-1/4 w-96 h-96 bg-[hsl(280,90%,65%,0.25)] rounded-full blur-3xl animate-float-delayed" />
+      <div className="fixed top-1/2 left-1/2 w-72 h-72 bg-[hsl(200,90%,60%,0.2)] rounded-full blur-3xl animate-float-reverse" />
+      <div className="fixed bottom-1/3 left-1/3 w-64 h-64 bg-[hsl(330,90%,70%,0.25)] rounded-full blur-3xl animate-float-slow" />
 
-      <div className="w-full max-w-md relative z-10 animate-fade-in-up">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white drop-shadow-lg">
-            Profolio
-          </h1>
-          <p className="text-sm text-white/80 mt-2 font-medium">Your Future, Verified.</p>
-        </div>
+      {/* Logo & Branding */}
+      <div className="relative z-10 text-center mb-8 animate-fade-in-up">
+        <h1 className="text-5xl sm:text-6xl font-bold text-white tracking-wide drop-shadow-2xl" style={{ fontFamily: 'Inter, system-ui, sans-serif', letterSpacing: '0.05em' }}>
+          PROFOLIO
+        </h1>
+        <p className="text-base sm:text-lg text-white/90 mt-3 font-medium tracking-wide drop-shadow-lg">
+          Your Career, Verified.
+        </p>
+      </div>
 
-        {/* Login Card - Glassmorphism */}
-        <Card className="backdrop-blur-xl bg-white/90 dark:bg-white/10 border-white/30 shadow-2xl rounded-2xl overflow-hidden">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl font-semibold text-foreground">
+      {/* Login Card - Glassmorphism */}
+      <div className="w-full max-w-md relative z-10 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
+        <Card className="backdrop-blur-2xl bg-white/95 border-white/40 shadow-2xl rounded-2xl overflow-hidden">
+          <CardHeader className="text-center pb-4 pt-6">
+            <CardTitle className="text-2xl font-semibold text-gray-800">
               Welcome back
             </CardTitle>
-            <CardDescription className="text-muted-foreground">
+            <CardDescription className="text-gray-500">
               Sign in to continue to Profolio
             </CardDescription>
           </CardHeader>
@@ -159,8 +162,8 @@ const Login = () => {
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  icon={<Mail className="h-4 w-4" />}
-                  className="h-12 bg-white/50 dark:bg-white/10 border-gray-200/60 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  icon={<Mail className="h-4 w-4 text-gray-400" />}
+                  className="h-12 bg-white border-gray-200 focus:border-[hsl(211,100%,50%)] focus:ring-2 focus:ring-[hsl(211,100%,50%,0.2)] rounded-xl"
                   required
                 />
               </div>
@@ -173,14 +176,14 @@ const Login = () => {
                     placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    icon={<Lock className="h-4 w-4" />}
-                    className="h-12 bg-white/50 dark:bg-white/10 border-gray-200/60 focus:border-primary focus:ring-2 focus:ring-primary/20 pr-12"
+                    icon={<Lock className="h-4 w-4 text-gray-400" />}
+                    className="h-12 bg-white border-gray-200 focus:border-[hsl(211,100%,50%)] focus:ring-2 focus:ring-[hsl(211,100%,50%,0.2)] pr-12 rounded-xl"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-all duration-200"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-all duration-200"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -191,7 +194,7 @@ const Login = () => {
               <div className="text-right">
                 <Link
                   to="/forgot-password"
-                  className="text-sm text-primary hover:text-primary/80 font-medium transition-all duration-200"
+                  className="text-sm text-[hsl(211,100%,45%)] hover:text-[hsl(211,100%,35%)] font-medium transition-all duration-200"
                 >
                   Forgot password?
                 </Link>
@@ -200,7 +203,7 @@ const Login = () => {
               {/* Login Button */}
               <Button 
                 type="submit" 
-                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-primary to-[hsl(240,60%,55%)] hover:from-primary/90 hover:to-[hsl(240,60%,50%)] shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-0.5" 
+                className="w-full h-12 text-base font-semibold bg-[hsl(211,100%,45%)] hover:bg-[hsl(211,100%,40%)] text-white shadow-lg shadow-[hsl(211,100%,45%,0.3)] transition-all duration-300 hover:shadow-xl hover:shadow-[hsl(211,100%,45%,0.4)] hover:-translate-y-0.5 rounded-xl" 
                 size="lg"
                 disabled={loading}
               >
@@ -217,9 +220,9 @@ const Login = () => {
 
             {/* Separator */}
             <div className="relative py-2">
-              <Separator className="bg-gray-200/60" />
+              <Separator className="bg-gray-200" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="bg-white dark:bg-gray-900 px-4 text-xs text-muted-foreground font-medium">
+                <span className="bg-white px-4 text-xs text-gray-400 font-medium">
                   or continue with
                 </span>
               </div>
@@ -229,7 +232,7 @@ const Login = () => {
             <div className="grid grid-cols-2 gap-3">
               <Button 
                 variant="outline" 
-                className="h-12 bg-white hover:bg-gray-50 border-gray-200 shadow-sm hover:shadow transition-all duration-200"
+                className="h-12 bg-white hover:bg-gray-50 border-gray-200 shadow-sm hover:shadow transition-all duration-200 rounded-xl"
                 onClick={() => handleOAuthLogin('google')}
                 type="button"
               >
@@ -243,7 +246,7 @@ const Login = () => {
               
               <Button 
                 variant="outline" 
-                className="h-12 bg-white hover:bg-gray-50 border-gray-200 shadow-sm hover:shadow transition-all duration-200"
+                className="h-12 bg-white hover:bg-gray-50 border-gray-200 shadow-sm hover:shadow transition-all duration-200 rounded-xl"
                 onClick={() => handleOAuthLogin('linkedin_oidc')}
                 type="button"
               >
@@ -254,11 +257,11 @@ const Login = () => {
             </div>
 
             {/* Sign Up Link */}
-            <div className="text-center text-sm text-muted-foreground pt-2">
+            <div className="text-center text-sm text-gray-500 pt-2">
               Don't have an account?{' '}
               <Link 
                 to="/register" 
-                className="text-primary hover:text-primary/80 font-semibold transition-all duration-200"
+                className="text-[hsl(211,100%,45%)] hover:text-[hsl(211,100%,35%)] font-semibold transition-all duration-200"
               >
                 Create account
               </Link>
