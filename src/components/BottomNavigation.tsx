@@ -1,11 +1,45 @@
 import { Home, Users, Plus, Bell, Briefcase } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+
+      if (!error && count) {
+        setUnreadCount(count);
+      }
+    };
+
+    fetchUnreadCount();
+    
+    // Subscribe to notification changes
+    const channel = supabase
+      .channel('bottom-nav-notifications')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+        fetchUnreadCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const navItems = [
     { id: 'home', icon: Home, label: 'Home', path: '/dashboard' },
@@ -62,7 +96,7 @@ const BottomNavigation = () => {
                   "h-5 w-5 transition-colors",
                   active ? "text-primary" : "text-muted-foreground"
                 )} />
-                {item.id === 'notifications' && (
+                {item.id === 'notifications' && unreadCount > 0 && (
                   <div className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full" />
                 )}
               </div>

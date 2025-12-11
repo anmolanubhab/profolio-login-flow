@@ -30,9 +30,10 @@ interface PostCardProps {
   initialIsLiked?: boolean;
   onLike?: (isLiked: boolean) => void;
   onDelete?: () => void;
+  onHide?: () => void;
 }
 
-const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialIsLiked = false, onDelete }: PostCardProps) => {
+const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialIsLiked = false, onDelete, onHide }: PostCardProps) => {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [localLikes, setLocalLikes] = useState(likes);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -361,6 +362,7 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
           currentUserProfileId={currentUserProfileId}
           isOwnPost={isOwnPost}
           onDelete={onDelete}
+          onHide={onHide}
         />
       </div>
 

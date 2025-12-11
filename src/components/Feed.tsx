@@ -187,8 +187,12 @@ const Feed = ({ refresh }: FeedProps) => {
   };
 
   const handleDeletePost = (postId: string) => {
-    // Remove post from local state with animation
     setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+  };
+
+  const handleHidePost = () => {
+    // Refresh the feed to apply the new filters
+    fetchPosts();
   };
 
   if (loading) {
@@ -237,6 +241,7 @@ const Feed = ({ refresh }: FeedProps) => {
           initialIsLiked={currentUserId ? post.post_likes.some((l) => l.user_id === currentUserId) : false}
           onLike={(isLiked) => handleLike(post.id, isLiked)}
           onDelete={() => handleDeletePost(post.id)}
+          onHide={handleHidePost}
         />
       ))}
     </div>
