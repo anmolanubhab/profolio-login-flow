@@ -57,6 +57,7 @@ interface PostOptionsMenuProps {
   currentUserProfileId: string | null;
   isOwnPost: boolean;
   onDelete?: () => void;
+  onHide?: () => void;
 }
 
 export const PostOptionsMenu = ({
@@ -66,6 +67,7 @@ export const PostOptionsMenu = ({
   currentUserProfileId,
   isOwnPost,
   onDelete,
+  onHide,
 }: PostOptionsMenuProps) => {
   const [open, setOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -112,7 +114,7 @@ export const PostOptionsMenu = ({
       if (error) throw error;
       toast({ title: 'Post hidden successfully' });
       closeMenu();
-      window.location.reload();
+      onHide?.();
     } catch (err) {
       console.error('Error hiding post:', err);
       toast({ title: 'Failed to hide post', variant: 'destructive' });
@@ -169,7 +171,7 @@ export const PostOptionsMenu = ({
       if (error) throw error;
       toast({ title: `Snoozed ${postUserName} for 30 days` });
       closeMenu();
-      window.location.reload();
+      onHide?.();
     } catch (err) {
       console.error('Error snoozing user:', err);
       toast({ title: 'Failed to snooze user', variant: 'destructive' });
@@ -191,7 +193,7 @@ export const PostOptionsMenu = ({
       if (error) throw error;
       toast({ title: `Hiding all posts from ${postUserName}` });
       closeMenu();
-      window.location.reload();
+      onHide?.();
     } catch (err) {
       console.error('Error hiding user posts:', err);
       toast({ title: 'Failed to hide posts', variant: 'destructive' });
@@ -215,7 +217,7 @@ export const PostOptionsMenu = ({
         toast({ title: `Blocked ${postUserName}` });
       }
       closeMenu();
-      window.location.reload();
+      onHide?.();
     } catch (err) {
       console.error('Error blocking user:', err);
       toast({ title: 'Failed to block user', variant: 'destructive' });

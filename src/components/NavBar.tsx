@@ -1,4 +1,5 @@
 import { User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -18,6 +19,7 @@ interface NavBarProps {
 
 const NavBar = ({ user, onSignOut }: NavBarProps) => {
   const [userId, setUserId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -38,7 +40,7 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
           <MobileNavDrawer />
           {/* Desktop sidebar trigger */}
           <SidebarTrigger className="hidden lg:inline-flex" />
-          <div className="nav-brand cursor-pointer" onClick={() => (window.location.href = '/dashboard')}>
+          <div className="nav-brand cursor-pointer" onClick={() => navigate('/dashboard')}>
             <div className="w-9 h-9 rounded bg-primary text-primary-foreground grid place-items-center font-bold text-base">
               P
             </div>
@@ -73,10 +75,10 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
                 <div className="text-xs text-muted-foreground">Signed in</div>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => (window.location.href = '/profile')}>
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
                 Profile & Settings
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => (window.location.href = '/dashboard')}>
+              <DropdownMenuItem onClick={() => navigate('/dashboard')}>
                 Dashboard
               </DropdownMenuItem>
               <DropdownMenuSeparator />
