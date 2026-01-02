@@ -86,15 +86,15 @@ const Connect = () => {
 
         <Tabs defaultValue="chat" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="chat">Chat</TabsTrigger>
+            <TabsTrigger value="chat">Messages</TabsTrigger>
             <TabsTrigger value="interviews">Interviews</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="chat" className="mt-6">
+          <TabsContent value="chat" className="mt-4">
             <ChatInterface user={user} />
           </TabsContent>
           
-          <TabsContent value="interviews" className="mt-6">
+          <TabsContent value="interviews" className="mt-4">
             <InterviewInterface user={user} />
           </TabsContent>
         </Tabs>
