@@ -96,18 +96,26 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
     }
   };
 
-  const uploadLogo = async () => {
-    if (!logoFile) return editCompany?.logo_url || null;
+  const uploadLogo = async (userId: string): Promise<string | null> => {
+    if (!logoFile) return null; // Return null if no new file, don't return existing URL
 
-    const fileExt = logoFile.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `${fileName}`;
+    const fileExt = logoFile.name.split('.').pop()?.toLowerCase() || 'png';
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 10);
+    // Use userId folder to comply with RLS policy: {userId}/{filename}
+    const filePath = `${userId}/company-logo-${timestamp}-${randomStr}.${fileExt}`;
 
-    const { error: uploadError, data } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, logoFile);
+      .upload(filePath, logoFile, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Logo upload failed:', uploadError);
+      throw new Error(`Logo upload failed: ${uploadError.message}`);
+    }
 
     const { data: { publicUrl } } = supabase.storage
       .from('avatars')
@@ -131,39 +139,82 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
     setLoading(true);
 
     try {
-      const logoUrl = await uploadLogo();
+      // Get current user for storage path
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Upload logo first (only if new file selected)
+      const newLogoUrl = await uploadLogo(user.id);
 
       const valuesArray = formData.values
         .split(',')
         .map(v => v.trim())
         .filter(v => v.length > 0);
 
-      const companyData = {
-        owner_id: profileId,
-        name: formData.name,
-        description: formData.description || null,
-        location: formData.location || null,
-        website: formData.website || null,
-        logo_url: logoUrl,
-        industry: formData.industry || null,
-        employee_count: formData.employee_count || null,
-        founded_year: formData.founded_year ? parseInt(formData.founded_year) : null,
-        culture: formData.culture || null,
-        values: valuesArray.length > 0 ? valuesArray : null,
-      };
-
       let result;
       if (editCompany?.id) {
+        // Build dynamic update payload - only include changed fields
+        const updateData: Record<string, any> = {};
+        
+        // Only include fields that have changed
+        if (formData.name !== editCompany.name) updateData.name = formData.name;
+        if (formData.description !== (editCompany.description || '')) updateData.description = formData.description || null;
+        if (formData.location !== (editCompany.location || '')) updateData.location = formData.location || null;
+        if (formData.website !== (editCompany.website || '')) updateData.website = formData.website || null;
+        if (formData.industry !== (editCompany.industry || '')) updateData.industry = formData.industry || null;
+        if (formData.employee_count !== (editCompany.employee_count || '')) updateData.employee_count = formData.employee_count || null;
+        if (formData.culture !== (editCompany.culture || '')) updateData.culture = formData.culture || null;
+        
+        const foundedYear = formData.founded_year ? parseInt(formData.founded_year) : null;
+        if (foundedYear !== (editCompany.founded_year ? parseInt(editCompany.founded_year) : null)) {
+          updateData.founded_year = foundedYear;
+        }
+        
+        const newValues = valuesArray.length > 0 ? valuesArray : null;
+        if (JSON.stringify(newValues) !== JSON.stringify(editCompany.values)) {
+          updateData.values = newValues;
+        }
+        
+        // Only add logo_url if a new file was uploaded
+        if (newLogoUrl) {
+          updateData.logo_url = newLogoUrl;
+        }
+
+        // Only update if there are changes
+        if (Object.keys(updateData).length === 0) {
+          toast({
+            title: 'No Changes',
+            description: 'No changes were made to the company.',
+          });
+          onOpenChange(false);
+          return;
+        }
+
         result = await supabase
           .from('companies')
-          .update(companyData)
+          .update(updateData)
           .eq('id', editCompany.id)
           .select()
           .single();
       } else {
+        // INSERT - include all fields including owner_id
+        const insertData = {
+          owner_id: profileId,
+          name: formData.name,
+          description: formData.description || null,
+          location: formData.location || null,
+          website: formData.website || null,
+          logo_url: newLogoUrl || null,
+          industry: formData.industry || null,
+          employee_count: formData.employee_count || null,
+          founded_year: formData.founded_year ? parseInt(formData.founded_year) : null,
+          culture: formData.culture || null,
+          values: valuesArray.length > 0 ? valuesArray : null,
+        };
+
         result = await supabase
           .from('companies')
-          .insert(companyData)
+          .insert(insertData)
           .select()
           .single();
       }
