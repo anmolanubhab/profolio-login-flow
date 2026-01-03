@@ -108,7 +108,19 @@ export async function secureUpload({
       return { success: false, error: uploadError.message };
     }
 
-    // Get public URL
+    // For private buckets (certificates, resumes), store the file path instead of public URL
+    // Public URL won't work for private buckets
+    const isPrivateBucket = bucket === 'certificates' || bucket === 'resumes';
+    
+    if (isPrivateBucket) {
+      return {
+        success: true,
+        url: filePath, // Store the path, we'll generate signed URLs when viewing
+        filePath
+      };
+    }
+
+    // Get public URL for public buckets
     const { data: { publicUrl } } = supabase.storage
       .from(bucket)
       .getPublicUrl(filePath);
