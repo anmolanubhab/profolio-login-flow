@@ -32,6 +32,8 @@ interface Profile {
   id: string;
   user_id: string;
   display_name?: string;
+  full_name?: string;
+  email?: string;
   avatar_url?: string;
   profession?: string;
 }
@@ -148,9 +150,9 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, user_id, display_name, avatar_url, profession')
+          .select('id, user_id, display_name, full_name, email, avatar_url, profession')
           .neq('user_id', user.id)
-          .or(`display_name.ilike.%${searchQuery}%,profession.ilike.%${searchQuery}%`)
+          .or(`display_name.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
           .limit(10);
 
         if (error) throw error;
@@ -430,13 +432,11 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                               </Avatar>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">
-                                  {profile.display_name || 'Unknown User'}
+                                  {profile.display_name || profile.full_name || 'Unknown User'}
                                 </p>
-                                {profile.profession && (
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {profile.profession}
-                                  </p>
-                                )}
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {profile.email || profile.profession || ''}
+                                </p>
                               </div>
                             </CommandItem>
                           ))}
