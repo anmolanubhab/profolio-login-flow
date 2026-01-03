@@ -310,13 +310,26 @@ const CertificateVault = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    asChild
                     className="flex-1"
+                    onClick={async () => {
+                      // Generate a signed URL for private bucket access
+                      const { data, error } = await supabase.storage
+                        .from('certificates')
+                        .createSignedUrl(cert.file_url, 3600); // 1 hour expiry
+                      
+                      if (error || !data?.signedUrl) {
+                        toast({
+                          title: "Error",
+                          description: "Could not generate download link.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      window.open(data.signedUrl, '_blank');
+                    }}
                   >
-                    <a href={cert.file_url} target="_blank" rel="noopener noreferrer">
-                      <Download className="h-4 w-4 mr-2" />
-                      View
-                    </a>
+                    <Download className="h-4 w-4 mr-2" />
+                    View
                   </Button>
                   <Button
                     variant="outline"
