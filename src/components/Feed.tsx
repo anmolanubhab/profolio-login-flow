@@ -7,6 +7,7 @@ interface Post {
   id: string;
   content: string;
   image_url: string | null;
+  media_type: string | null;
   created_at: string;
   user_id: string;
   profiles: {
@@ -236,6 +237,7 @@ const Feed = ({ refresh }: FeedProps) => {
           }}
           content={post.content}
           image={post.image_url || undefined}
+          mediaType={(post.media_type as 'image' | 'video') || 'image'}
           timestamp={post.created_at}
           likes={post.post_likes.length}
           initialIsLiked={currentUserId ? post.post_likes.some((l) => l.user_id === currentUserId) : false}

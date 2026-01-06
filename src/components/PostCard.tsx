@@ -25,6 +25,7 @@ interface PostCardProps {
   };
   content: string;
   image?: string;
+  mediaType?: 'image' | 'video';
   timestamp: string;
   likes: number;
   initialIsLiked?: boolean;
@@ -33,7 +34,7 @@ interface PostCardProps {
   onHide?: () => void;
 }
 
-const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialIsLiked = false, onDelete, onHide }: PostCardProps) => {
+const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, likes, onLike, initialIsLiked = false, onDelete, onHide }: PostCardProps) => {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [localLikes, setLocalLikes] = useState(likes);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -372,11 +373,20 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
 
       {image && (
         <div className="px-0 mb-3">
-          <img 
-            src={image} 
-            alt="Post content" 
-            className="w-full h-auto object-cover"
-          />
+          {mediaType === 'video' ? (
+            <video 
+              src={image} 
+              controls
+              className="w-full h-auto max-h-[500px] object-contain bg-black"
+              preload="metadata"
+            />
+          ) : (
+            <img 
+              src={image} 
+              alt="Post content" 
+              className="w-full h-auto object-cover"
+            />
+          )}
         </div>
       )}
 
