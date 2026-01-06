@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, MessageCircle, Share, User, Facebook, Twitter, Copy } from 'lucide-react';
+import { User, Facebook, Twitter, Copy, MessageCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -14,7 +14,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PostOptionsMenu } from './PostOptionsMenu';
+import PostHeader from './feed/PostHeader';
+import PostContent from './feed/PostContent';
+import PostMedia from './feed/PostMedia';
+import PostActions from './feed/PostActions';
+import EngagementStats from './feed/EngagementStats';
 
 interface PostCardProps {
   id: string;
@@ -22,25 +26,43 @@ interface PostCardProps {
     id?: string;
     name: string;
     avatar?: string;
+    subtitle?: string;
   };
   content: string;
   image?: string;
   mediaType?: 'image' | 'video';
   timestamp: string;
   likes: number;
+  comments?: number;
   initialIsLiked?: boolean;
+  isPromoted?: boolean;
   onLike?: (isLiked: boolean) => void;
   onDelete?: () => void;
   onHide?: () => void;
 }
 
-const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, likes, onLike, initialIsLiked = false, onDelete, onHide }: PostCardProps) => {
+const PostCard = ({ 
+  id, 
+  user, 
+  content, 
+  image, 
+  mediaType = 'image', 
+  timestamp, 
+  likes, 
+  comments: initialCommentCount = 0,
+  onLike, 
+  initialIsLiked = false, 
+  isPromoted = false,
+  onDelete, 
+  onHide 
+}: PostCardProps) => {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [localLikes, setLocalLikes] = useState(likes);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<Array<{ id: string; user_id: string; content: string; created_at: string; user?: { name: string | null; avatar?: string | null } }>>([]);
+  const [commentCount, setCommentCount] = useState(initialCommentCount);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -66,6 +88,9 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
       }
     };
     checkUser();
+    
+    // Fetch initial comment count
+    fetchCommentCount();
   }, []);
 
   useEffect(() => {
@@ -75,6 +100,21 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
   useEffect(() => {
     setLocalLikes(likes);
   }, [likes]);
+
+  const fetchCommentCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('post_id', id);
+      
+      if (!error && count !== null) {
+        setCommentCount(count);
+      }
+    } catch (error) {
+      console.error('Error fetching comment count:', error);
+    }
+  };
 
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date();
@@ -105,12 +145,6 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
     setIsLiked(nextLiked);
     setLocalLikes((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
     onLike?.(nextLiked);
-  };
-
-  const handleProfileClick = () => {
-    if (user.id) {
-      navigate(`/profile/${user.id}`);
-    }
   };
 
   const fetchComments = async () => {
@@ -146,6 +180,7 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
       }));
 
       setComments(enriched);
+      setCommentCount(enriched.length);
     } catch (err) {
       console.error('Error loading comments:', err);
       toast({
@@ -187,7 +222,6 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
     setSubmittingComment(true);
     
     try {
-      // Get the current user's profile to obtain the profile.id (comments.user_id references profiles.id)
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id, display_name, avatar_url')
@@ -195,16 +229,12 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
         .maybeSingle();
       
       if (profileError) {
-        console.error('Profile fetch error:', profileError);
         throw new Error(`Profile error: ${profileError.message}`);
       }
       
       if (!profile) {
-        console.error('No profile found for user:', currentUser.id);
         throw new Error('Your profile was not found. Please try logging out and back in.');
       }
-      
-      console.log('Adding comment:', { post_id: id, user_id: profile.id, content: content.substring(0, 50) });
       
       const { data: newCommentData, error: insertError } = await supabase
         .from('comments')
@@ -213,25 +243,15 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
           user_id: profile.id,
           content,
         })
-        .select(`
-          id,
-          content,
-          created_at,
-          user_id
-        `)
+        .select(`id, content, created_at, user_id`)
         .single();
       
       if (insertError) {
-        console.error('Comment insert error:', insertError);
         throw new Error(insertError.message);
       }
       
-      console.log('Comment added successfully:', newCommentData);
-      
-      // Clear input and update UI optimistically
       setNewComment('');
       
-      // Add new comment to list immediately without full refresh
       if (newCommentData) {
         const newCommentForUI = {
           id: newCommentData.id,
@@ -244,8 +264,8 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
           },
         };
         setComments(prev => [...prev, newCommentForUI]);
+        setCommentCount(prev => prev + 1);
       } else {
-        // Fallback: refresh comments if we didn't get the new comment back
         await fetchComments();
       }
       
@@ -271,213 +291,217 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
     const title = `${user.name} on Profolio`;
     const text = content;
 
-    // On mobile, use navigator.share() if supported
     if (isMobile && navigator.share) {
       try {
-        await navigator.share({
-          title,
-          text,
-          url,
-        });
+        await navigator.share({ title, text, url });
       } catch (err) {
         console.error('Share failed:', err);
-        toast({
-          title: 'Error',
-          description: 'Could not share the post.',
-          variant: 'destructive',
-        });
       }
       return;
     }
-
-    // On desktop or if navigator.share() is not supported, show dropdown menu
-    // The dropdown menu will be handled in the JSX below
   };
 
   const shareOnWhatsApp = () => {
     const url = `${window.location.origin}/dashboard#post-${id}`;
     const text = encodeURIComponent(`${user.name} on Profolio: ${content}\n\n${url}`);
-    const whatsappUrl = `https://wa.me/?text=${text}`;
-    window.open(whatsappUrl, '_blank');
+    window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
   const shareOnFacebook = () => {
     const url = encodeURIComponent(`${window.location.origin}/dashboard#post-${id}`);
-    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
-    window.open(facebookUrl, '_blank');
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
   };
 
   const shareOnTwitter = () => {
     const url = encodeURIComponent(`${window.location.origin}/dashboard#post-${id}`);
     const text = encodeURIComponent(`${user.name} on Profolio: ${content}`);
-    const twitterUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
-    window.open(twitterUrl, '_blank');
+    window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
   };
 
   const copyLink = async () => {
     const url = `${window.location.origin}/dashboard#post-${id}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast({
-        title: 'Link copied',
-        description: 'Post link copied to clipboard.',
-      });
+      toast({ title: 'Link copied', description: 'Post link copied to clipboard.' });
     } catch (err) {
-      console.error('Copy failed:', err);
-      toast({
-        title: 'Error',
-        description: 'Could not copy the link.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Could not copy the link.', variant: 'destructive' });
+    }
+  };
+
+  const handleRepost = () => {
+    toast({ title: 'Coming soon', description: 'Repost feature will be available soon!' });
+  };
+
+  const handleShareClick = () => {
+    if (isMobile && navigator.share) {
+      handleShare();
     }
   };
 
   const isOwnPost = !!(currentUserProfileId && user.id === currentUserProfileId);
 
   return (
-    <div className="post-card w-full max-w-full overflow-hidden" id={`post-${id}`}>
-      <div className="post-header">
-        <div 
-          className="flex items-center gap-3 cursor-pointer group flex-1"
-          onClick={handleProfileClick}
-        >
-          <Avatar className="h-12 w-12 ring-1 ring-border group-hover:ring-primary/40 transition-all">
-            <AvatarImage src={user.avatar} className="object-cover" />
-            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-              {user.name.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
-            </AvatarFallback>
-          </Avatar>
-          
-          <div className="flex-1 min-w-0">
-            <div className="post-title group-hover:text-primary transition-colors">
-              {user.name}
-            </div>
-            <div className="post-meta">{formatTimeAgo(timestamp)}</div>
-          </div>
-        </div>
+    <article 
+      className="bg-card rounded-lg border border-border shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden" 
+      id={`post-${id}`}
+    >
+      {/* Post Header */}
+      <PostHeader
+        postId={id}
+        user={user}
+        timestamp={timestamp}
+        isPromoted={isPromoted}
+        currentUserProfileId={currentUserProfileId}
+        isOwnPost={isOwnPost}
+        onDelete={onDelete}
+        onHide={onHide}
+      />
 
-        <PostOptionsMenu
-          postId={id}
-          postUserId={user.id || ''}
-          postUserName={user.name}
-          currentUserProfileId={currentUserProfileId}
-          isOwnPost={isOwnPost}
-          onDelete={onDelete}
-          onHide={onHide}
-        />
-      </div>
+      {/* Post Content */}
+      <PostContent content={content} />
 
-      <div className="post-body">
-        <p>{content}</p>
-      </div>
-
+      {/* Post Media */}
       {image && (
-        <div className="px-0 mb-3">
-          {mediaType === 'video' ? (
-            <video 
-              src={image} 
-              controls
-              className="w-full h-auto max-h-[500px] object-contain bg-black"
-              preload="metadata"
-            />
-          ) : (
-            <img 
-              src={image} 
-              alt="Post content" 
-              className="w-full h-auto object-cover"
-            />
-          )}
+        <PostMedia src={image} mediaType={mediaType} />
+      )}
+
+      {/* Engagement Stats */}
+      <EngagementStats
+        likes={localLikes}
+        comments={commentCount}
+        onCommentsClick={openComments}
+      />
+
+      {/* Action Buttons */}
+      {isMobile && navigator.share ? (
+        <PostActions
+          isLiked={isLiked}
+          onLike={handleLike}
+          onComment={openComments}
+          onRepost={handleRepost}
+          onShare={handleShareClick}
+        />
+      ) : (
+        <div className="border-t border-border">
+          <div className="flex items-center px-1 py-1">
+            <button
+              onClick={handleLike}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-secondary active:scale-95 ${
+                isLiked ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <svg className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
+              </svg>
+              <span className="hidden sm:inline">Like</span>
+            </button>
+            
+            <button
+              onClick={openComments}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-secondary active:scale-95 text-muted-foreground hover:text-foreground"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span className="hidden sm:inline">Comment</span>
+            </button>
+            
+            <button
+              onClick={handleRepost}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-secondary active:scale-95 text-muted-foreground hover:text-foreground"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+              <span className="hidden sm:inline">Repost</span>
+            </button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-secondary active:scale-95 text-muted-foreground hover:text-foreground">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                  <span className="hidden sm:inline">Send</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={shareOnWhatsApp} className="flex items-center gap-2">
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Share on WhatsApp</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={shareOnFacebook} className="flex items-center gap-2">
+                  <Facebook className="h-4 w-4" />
+                  <span>Share on Facebook</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={shareOnTwitter} className="flex items-center gap-2">
+                  <Twitter className="h-4 w-4" />
+                  <span>Share on Twitter</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={copyLink} className="flex items-center gap-2">
+                  <Copy className="h-4 w-4" />
+                  <span>Copy Link</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       )}
 
-      <div className="px-4 sm:px-5 pb-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {localLikes > 0 && (
-            <span className="flex items-center gap-1">
-              <Heart className="h-3 w-3 fill-current text-red-500" />
-              {localLikes}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="border-t border-border mx-4 sm:mx-5" />
-
-      <div className="px-2 sm:px-3 py-1">
-        <div className="flex items-center justify-around">
-          <button 
-            type="button" 
-            className={`action-btn ${isLiked ? 'active text-primary' : ''}`} 
-            onClick={handleLike}
-          >
-            <Heart className={`icon ${isLiked ? 'fill-current' : ''}`} />
-            <span>Like</span>
-          </button>
-          <button type="button" className="action-btn" onClick={openComments}>
-            <MessageCircle className="icon" />
-            <span>Comment</span>
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" className="action-btn">
-                <Share className="icon" />
-                <span>Share</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={shareOnWhatsApp} className="flex items-center gap-2">
-                <MessageCircle className="h-4 w-4" />
-                <span>Share on WhatsApp</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={shareOnFacebook} className="flex items-center gap-2">
-                <Facebook className="h-4 w-4" />
-                <span>Share on Facebook</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={shareOnTwitter} className="flex items-center gap-2">
-                <Twitter className="h-4 w-4" />
-                <span>Share on Twitter</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={copyLink} className="flex items-center gap-2">
-                <Copy className="h-4 w-4" />
-                <span>Copy Link</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
+      {/* Comments Dialog */}
       <Dialog open={commentsOpen} onOpenChange={setCommentsOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Comments</DialogTitle>
+            <DialogTitle className="text-lg font-semibold">Comments</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+          
+          <div className="flex-1 overflow-y-auto space-y-4 py-2">
             {loadingComments ? (
-              <div className="text-sm text-muted-foreground">Loading comments...</div>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-start gap-3 animate-pulse">
+                    <div className="h-8 w-8 rounded-full bg-muted" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 w-24 bg-muted rounded" />
+                      <div className="h-4 w-full bg-muted rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : comments.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No comments yet. Be the first to comment.</div>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground text-sm">No comments yet</p>
+                <p className="text-muted-foreground text-xs mt-1">Be the first to share your thoughts!</p>
+              </div>
             ) : (
               comments.map((c) => (
-                <div key={c.id} className="flex items-start gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={c.user?.avatar} />
-                    <AvatarFallback>{(c.user?.name?.[0] || 'U').toUpperCase()}</AvatarFallback>
+                <div key={c.id} className="flex items-start gap-3 group">
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage src={c.user?.avatar || undefined} />
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                      {(c.user?.name?.[0] || 'U').toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{c.user?.name || 'Unknown User'}</div>
-                    <div className="text-sm">{c.content}</div>
-                    <div className="text-xs text-muted-foreground">{formatTimeAgo(c.created_at)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="bg-secondary rounded-xl px-3 py-2">
+                      <p className="text-sm font-medium text-foreground">{c.user?.name || 'Unknown User'}</p>
+                      <p className="text-sm text-foreground/90 break-words">{c.content}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 ml-1">{formatTimeAgo(c.created_at)}</p>
                   </div>
                 </div>
               ))
             )}
           </div>
-          <div className="flex items-center gap-2 pt-2">
+          
+          <div className="flex items-center gap-2 pt-3 border-t border-border">
             <Input
-              placeholder="Write a comment..."
+              placeholder="Add a comment..."
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               disabled={submittingComment}
+              className="flex-1"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey && !submittingComment && newComment.trim().length > 0) {
                   e.preventDefault();
@@ -488,12 +512,11 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
             <Button 
               disabled={submittingComment || newComment.trim().length === 0} 
               onClick={addComment}
-              className="min-w-[60px]"
+              size="sm"
+              className="px-4"
             >
               {submittingComment ? (
-                <span className="flex items-center gap-1">
-                  <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                </span>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
               ) : (
                 'Post'
               )}
@@ -501,8 +524,7 @@ const PostCard = ({ id, user, content, image, mediaType = 'image', timestamp, li
           </div>
         </DialogContent>
       </Dialog>
-
-    </div>
+    </article>
   );
 };
 
