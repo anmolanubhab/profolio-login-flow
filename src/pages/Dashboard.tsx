@@ -173,16 +173,16 @@ const Dashboard = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="max-w-4xl mx-auto w-full">
+      <div className="max-w-2xl mx-auto w-full px-0 sm:px-4">
         <Tabs defaultValue="feed" className="w-full">
-          <TabsList className="w-full flex overflow-x-auto scrollbar-hide gap-1 p-1">
-            <TabsTrigger value="feed" className="flex-shrink-0 whitespace-nowrap">Social Feed</TabsTrigger>
-            <TabsTrigger value="jobs" className="flex-shrink-0 whitespace-nowrap">Jobs</TabsTrigger>
-            <TabsTrigger value="applications" className="flex-shrink-0 whitespace-nowrap">My Applications</TabsTrigger>
-            {companyId && <TabsTrigger value="drafts" className="flex-shrink-0 whitespace-nowrap">My Drafts</TabsTrigger>}
+          <TabsList className="w-full flex overflow-x-auto scrollbar-hide gap-1 p-1 bg-card/80 backdrop-blur-sm sticky top-14 z-40 rounded-lg border border-border shadow-sm mb-4">
+            <TabsTrigger value="feed" className="flex-shrink-0 whitespace-nowrap text-sm">Feed</TabsTrigger>
+            <TabsTrigger value="jobs" className="flex-shrink-0 whitespace-nowrap text-sm">Jobs</TabsTrigger>
+            <TabsTrigger value="applications" className="flex-shrink-0 whitespace-nowrap text-sm">Applications</TabsTrigger>
+            {companyId && <TabsTrigger value="drafts" className="flex-shrink-0 whitespace-nowrap text-sm">Drafts</TabsTrigger>}
           </TabsList>
 
-          <TabsContent value="feed" className="space-y-4">
+          <TabsContent value="feed" className="space-y-4 mt-0">
             <Stories />
             <PostInput
               user={{

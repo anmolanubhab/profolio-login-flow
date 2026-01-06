@@ -134,39 +134,54 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   };
 
   return (
-    <Card className="bg-card shadow-card rounded-xl border-border">
-      <CardContent className="p-4 sm:p-5">
+    <Card className="bg-card rounded-lg border-border shadow-sm">
+      <CardContent className="p-4">
         {/* Post Input Area */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Avatar className="h-12 w-12 shrink-0">
+        <div className="flex gap-3">
+          <Avatar className="h-12 w-12 shrink-0 ring-2 ring-background">
             <AvatarImage src={user?.avatar} />
-            <AvatarFallback className="bg-primary/10 text-primary font-medium">
-              {user?.email?.charAt(0).toUpperCase() || <User className="h-4 w-4" />}
+            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+              {user?.email?.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
             </AvatarFallback>
           </Avatar>
           
-          <div className="flex-1">
+          <button
+            onClick={() => {
+              const textarea = document.getElementById('post-textarea');
+              if (textarea) textarea.focus();
+            }}
+            className="flex-1 h-12 px-4 text-left text-muted-foreground text-sm border border-border rounded-full hover:bg-secondary/50 transition-colors"
+          >
+            Start a post
+          </button>
+        </div>
+
+        {/* Expanded input area when focused or has content */}
+        {(postContent || selectedImage) && (
+          <div className="mt-4">
             <Textarea
-              placeholder="Share your achievement, upload a certificate, or update your resume…"
+              id="post-textarea"
+              placeholder="What do you want to talk about?"
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
-              className="min-h-[60px] resize-none border-0 bg-secondary text-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-lg px-4 py-3 transition-all duration-200"
+              className="min-h-[100px] resize-none border-0 bg-transparent text-[15px] placeholder:text-muted-foreground focus-visible:ring-0 p-0"
+              autoFocus
             />
           </div>
-        </div>
+        )}
 
         {/* Image Preview */}
         {imagePreview && (
-          <div className="mt-4 relative">
+          <div className="mt-4 relative rounded-lg overflow-hidden">
             <img
               src={imagePreview}
               alt="Preview"
-              className="max-h-64 w-full object-cover rounded-lg"
+              className="max-h-64 w-full object-cover"
             />
             <Button
-              variant="destructive"
+              variant="secondary"
               size="icon"
-              className="absolute top-2 right-2 h-8 w-8 rounded-full"
+              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
               onClick={removeImage}
             >
               <X className="h-4 w-4" />
@@ -183,37 +198,44 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
           className="hidden"
         />
 
-        {/* Action Buttons */}
+        {/* Action Buttons - LinkedIn style */}
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <Button 
               variant="ghost" 
               size="sm"
-              className="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all duration-200 ease-in-out text-sm font-medium"
+              className="text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg h-10 px-3"
               onClick={() => fileInputRef.current?.click()}
               disabled={isPosting}
             >
-              <Camera className="h-5 w-5 mr-1.5" />
-              <span className="hidden sm:inline">Upload Photo</span>
+              <Camera className="h-5 w-5 text-primary" />
+              <span className="hidden sm:inline ml-2 text-sm font-medium">Photo</span>
             </Button>
             
             <Button 
               variant="ghost" 
               size="sm"
-              className="text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all duration-200 ease-in-out text-sm font-medium"
+              className="text-muted-foreground hover:text-amber-600 hover:bg-amber-50 rounded-lg h-10 px-3"
             >
-              <FileText className="h-5 w-5 mr-1.5" />
-              <span className="hidden sm:inline">Add Certificate</span>
+              <FileText className="h-5 w-5 text-amber-600" />
+              <span className="hidden sm:inline ml-2 text-sm font-medium">Certificate</span>
             </Button>
           </div>
 
           <Button 
             onClick={handlePost} 
             size="sm"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6 text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-5 h-9 text-sm font-semibold transition-all duration-200 disabled:opacity-40"
             disabled={isPosting || (!postContent.trim() && !selectedImage)}
           >
-            {isPosting ? "Posting..." : "Post"}
+            {isPosting ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Posting
+              </span>
+            ) : (
+              "Post"
+            )}
           </Button>
         </div>
       </CardContent>
