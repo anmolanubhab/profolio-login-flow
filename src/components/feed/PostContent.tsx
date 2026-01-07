@@ -57,16 +57,16 @@ const PostContent = ({ content, maxLength = 280 }: PostContentProps) => {
 
   return (
     <div className="px-4 pb-3">
-      <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap break-words">
+      <p className="text-[15px] leading-[1.5] text-foreground whitespace-pre-wrap break-words">
         {renderWithHashtags(displayContent)}
       </p>
       
       {shouldTruncate && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-muted-foreground hover:text-primary text-sm font-medium mt-1 transition-colors"
+          className="text-muted-foreground/80 hover:text-primary text-[14px] font-medium mt-1.5 transition-colors"
         >
-          {isExpanded ? '...see less' : '...see more'}
+          {isExpanded ? '...show less' : '...see more'}
         </button>
       )}
     </div>
