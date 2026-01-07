@@ -373,16 +373,16 @@ const PostCard = ({
       />
 
       {/* Action Buttons */}
-      {isMobile && navigator.share ? (
-        <PostActions
-          isLiked={isLiked}
-          onLike={handleLike}
-          onComment={openComments}
-          onRepost={handleRepost}
-          onShare={handleShareClick}
-        />
-      ) : (
-        <div className="border-t border-border">
+      <div className="border-t border-border/60">
+        {isMobile && navigator.share ? (
+          <PostActions
+            isLiked={isLiked}
+            onLike={handleLike}
+            onComment={openComments}
+            onRepost={handleRepost}
+            onShare={handleShareClick}
+          />
+        ) : (
           <div className="flex items-center px-1 py-1">
             <button
               onClick={handleLike}
@@ -446,8 +446,11 @@ const PostCard = ({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+      
+      {/* Post separator divider */}
+      <div className="h-2 bg-muted/50 -mx-4 sm:hidden" />
 
       {/* Comments Dialog */}
       <Dialog open={commentsOpen} onOpenChange={setCommentsOpen}>

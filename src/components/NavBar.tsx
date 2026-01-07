@@ -15,9 +15,10 @@ interface NavBarProps {
     avatar?: string;
   };
   onSignOut?: () => void;
+  visible?: boolean;
 }
 
-const NavBar = ({ user, onSignOut }: NavBarProps) => {
+const NavBar = ({ user, onSignOut, visible = true }: NavBarProps) => {
   const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -32,7 +33,11 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
   }, []);
 
   return (
-    <nav className="navbar w-full max-w-full overflow-x-hidden">
+    <nav 
+      className={`navbar w-full max-w-full overflow-x-hidden transition-transform duration-300 ease-out ${
+        visible ? 'translate-y-0' : '-translate-y-full'
+      }`}
+    >
       <div className="navbar-inner w-full max-w-full overflow-hidden">
         {/* Left: Hamburger menu (mobile) + Brand + Sidebar trigger */}
         <div className="flex items-center gap-2 sm:gap-3">
