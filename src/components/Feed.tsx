@@ -183,7 +183,7 @@ const Feed = ({ refresh }: FeedProps) => {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {[...Array(3)].map((_, i) => (
           <PostCardSkeleton key={i} />
         ))}
@@ -196,7 +196,7 @@ const Feed = ({ refresh }: FeedProps) => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {posts.map((post) => (
         <PostCard
           key={post.id}

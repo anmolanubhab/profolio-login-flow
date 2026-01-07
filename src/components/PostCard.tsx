@@ -342,7 +342,7 @@ const PostCard = ({
 
   return (
     <article 
-      className="bg-card rounded-lg border border-border shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden" 
+      className="bg-card rounded-xl border border-border/50 shadow-[0_1px_3px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-shadow duration-300 overflow-hidden" 
       id={`post-${id}`}
     >
       {/* Post Header */}

@@ -10,11 +10,18 @@ interface PostActionsProps {
 }
 
 const PostActions = ({ isLiked, onLike, onComment, onRepost, onShare }: PostActionsProps) => {
-  const actionButtonClass = "flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-secondary active:scale-95";
+  const actionButtonClass = cn(
+    "flex-1 flex items-center justify-center gap-2",
+    "py-3 min-h-[48px]", // Touch-friendly height
+    "rounded-lg text-[13px] font-medium",
+    "transition-all duration-200",
+    "hover:bg-secondary/80 active:scale-[0.97]",
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+  );
   
   return (
-    <div className="border-t border-border">
-      <div className="flex items-center px-1 py-1">
+    <div className="border-t border-border/60">
+      <div className="flex items-center px-1 py-0.5">
         {/* Like Button */}
         <button
           onClick={onLike}
@@ -25,7 +32,7 @@ const PostActions = ({ isLiked, onLike, onComment, onRepost, onShare }: PostActi
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <ThumbsUp className={cn("w-5 h-5", isLiked && "fill-current")} />
+          <ThumbsUp className={cn("w-5 h-5 transition-transform", isLiked && "fill-current scale-110")} />
           <span className="hidden sm:inline">Like</span>
         </button>
         
