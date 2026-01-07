@@ -4,6 +4,7 @@ import { AppSidebar } from "./AppSidebar"
 import NavBar from "./NavBar"
 import BottomNavigation from "./BottomNavigation"
 import { User } from "@supabase/supabase-js"
+import { useScrollDirection } from "@/hooks/use-scroll-direction"
 
 interface LayoutProps {
   children: ReactNode
@@ -12,10 +13,12 @@ interface LayoutProps {
 }
 
 export function Layout({ children, user, onSignOut }: LayoutProps) {
+  const { showHeader, showBottomNav } = useScrollDirection(15);
+
   return (
     <SidebarProvider>
       {/* Fixed top navbar */}
-      <NavBar user={user} onSignOut={onSignOut} />
+      <NavBar user={user} onSignOut={onSignOut} visible={showHeader} />
 
       {/* Sidebar (desktop) */}
       <div className="hidden lg:block">
@@ -31,7 +34,7 @@ export function Layout({ children, user, onSignOut }: LayoutProps) {
 
       {/* Bottom navigation - only visible on mobile */}
       <div className="lg:hidden">
-        <BottomNavigation />
+        <BottomNavigation visible={showBottomNav} />
       </div>
     </SidebarProvider>
   )

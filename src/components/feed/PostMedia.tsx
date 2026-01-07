@@ -28,7 +28,7 @@ const PostMedia = ({ src, mediaType, alt = 'Post content' }: PostMediaProps) => 
 
   if (mediaType === 'video') {
     return (
-      <div className="relative w-full bg-black/95 border-y border-border/30">
+      <div className="relative w-full bg-black/95 -mx-4 sm:mx-0">
         <video
           src={src}
           controls
@@ -51,7 +51,7 @@ const PostMedia = ({ src, mediaType, alt = 'Post content' }: PostMediaProps) => 
   }
 
   return (
-    <div className="relative w-full border-y border-border/30 overflow-hidden">
+    <div className="relative w-full overflow-hidden -mx-4 sm:mx-0 sm:rounded-none">
       {isLoading && (
         <div className="absolute inset-0 bg-gradient-to-br from-muted/60 to-muted/40 animate-pulse" />
       )}

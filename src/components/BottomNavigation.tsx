@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
-const BottomNavigation = () => {
+interface BottomNavigationProps {
+  visible?: boolean;
+}
+
+const BottomNavigation = ({ visible = true }: BottomNavigationProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -52,7 +56,11 @@ const BottomNavigation = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border w-full max-w-full">
+    <nav 
+      className={`fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border w-full max-w-full transition-transform duration-300 ease-out ${
+        visible ? 'translate-y-0' : 'translate-y-full'
+      }`}
+    >
       <div className="relative flex items-center justify-center h-16 px-2 sm:px-4 max-w-md mx-auto w-full">
         {navItems.map((item, index) => {
           const Icon = item.icon;
