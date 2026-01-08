@@ -12,6 +12,10 @@ interface Post {
   media_type: string | null;
   created_at: string;
   user_id: string;
+  posted_as: 'user' | 'company';
+  company_id: string | null;
+  company_name: string | null;
+  company_logo: string | null;
   profiles: {
     id: string;
     display_name: string | null;
@@ -109,7 +113,7 @@ const Feed = ({ refresh }: FeedProps) => {
         profilesMap.set(profile.user_id, profile);
       });
 
-      const postsWithProfiles = postsData
+      const postsWithProfiles: Post[] = postsData
         ?.filter(post => {
           if (hiddenPostIds.includes(post.id)) return false;
           if (blockedUserIds.includes(post.user_id)) return false;
@@ -118,6 +122,7 @@ const Feed = ({ refresh }: FeedProps) => {
         })
         .map(post => ({
           ...post,
+          posted_as: (post.posted_as as 'user' | 'company') || 'user',
           profiles: profilesMap.get(post.user_id) || null
         })) || [];
 
@@ -216,6 +221,10 @@ const Feed = ({ refresh }: FeedProps) => {
           onLike={(isLiked) => handleLike(post.id, isLiked)}
           onDelete={() => handleDeletePost(post.id)}
           onHide={handleHidePost}
+          postedAs={post.posted_as}
+          companyId={post.company_id}
+          companyName={post.company_name}
+          companyLogo={post.company_logo}
         />
       ))}
     </div>

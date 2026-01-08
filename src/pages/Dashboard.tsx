@@ -15,6 +15,7 @@ import { PostJobDialog } from '@/components/jobs/PostJobDialog';
 import { ApplyJobDialog } from '@/components/jobs/ApplyJobDialog';
 import { JobDetailsDialog } from '@/components/jobs/JobDetailsDialog';
 import { MyDrafts } from '@/components/jobs/MyDrafts';
+import { CreateCompanyPostButton } from '@/components/company/CreateCompanyPostButton';
 import { Plus } from 'lucide-react';
 
 const Dashboard = () => {
@@ -184,12 +185,20 @@ const Dashboard = () => {
 
           <TabsContent value="feed" className="space-y-4 mt-0">
             <Stories />
-            <PostInput
-              user={{
-                email: user.email,
-                avatar: user.user_metadata?.avatar_url
-              }}
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <PostInput
+                  user={{
+                    email: user.email,
+                    avatar: user.user_metadata?.avatar_url
+                  }}
+                  onPostCreated={() => setFeedRefresh(prev => prev + 1)}
+                />
+              </div>
+            </div>
+            <CreateCompanyPostButton 
               onPostCreated={() => setFeedRefresh(prev => prev + 1)}
+              className="w-full sm:w-auto"
             />
             <Feed refresh={feedRefresh} />
           </TabsContent>

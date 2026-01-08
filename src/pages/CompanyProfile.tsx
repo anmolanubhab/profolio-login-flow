@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
+import { useCompanyAdmin } from '@/hooks/use-company-admin';
+import { CompanyInsights } from '@/components/company/CompanyInsights';
+import { CompanyPostDialog } from '@/components/company/CompanyPostDialog';
 import { 
   Building2, 
   MapPin, 
@@ -16,7 +19,8 @@ import {
   Briefcase,
   ExternalLink,
   Heart,
-  Target
+  Target,
+  Plus
 } from 'lucide-react';
 
 interface Company {
@@ -49,6 +53,10 @@ export default function CompanyProfile() {
   const [company, setCompany] = useState<Company | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [postDialogOpen, setPostDialogOpen] = useState(false);
+  const { companies, isCompanyAdmin } = useCompanyAdmin();
+  
+  const isAdmin = companyId ? isCompanyAdmin(companyId) : false;
 
   useEffect(() => {
     if (companyId) {
@@ -163,15 +171,27 @@ export default function CompanyProfile() {
                     )}
                   </div>
                   
-                  {company.website && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={company.website} target="_blank" rel="noopener noreferrer">
-                        <Globe className="w-4 h-4 mr-2" />
-                        Visit Website
-                        <ExternalLink className="w-3 h-3 ml-1" />
-                      </a>
-                    </Button>
-                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    {isAdmin && (
+                      <Button 
+                        onClick={() => setPostDialogOpen(true)}
+                        className="bg-primary hover:bg-primary/90"
+                        size="sm"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create Post
+                      </Button>
+                    )}
+                    {company.website && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={company.website} target="_blank" rel="noopener noreferrer">
+                          <Globe className="w-4 h-4 mr-2" />
+                          Visit Website
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
@@ -302,7 +322,28 @@ export default function CompanyProfile() {
             )}
           </CardContent>
         </Card>
+
+        {/* Company Insights (Admin only) */}
+        {isAdmin && companyId && (
+          <CompanyInsights companyId={companyId} companyName={company.name} />
+        )}
       </div>
+
+      {/* Company Post Dialog */}
+      {company && (
+        <CompanyPostDialog
+          open={postDialogOpen}
+          onOpenChange={setPostDialogOpen}
+          companies={[{
+            company_id: company.id,
+            company: {
+              id: company.id,
+              name: company.name,
+              logo_url: company.logo_url
+            }
+          }]}
+        />
+      )}
     </Layout>
   );
 }

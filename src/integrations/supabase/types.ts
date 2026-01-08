@@ -140,6 +140,8 @@ export type Database = {
       }
       comments: {
         Row: {
+          acted_as: string
+          company_id: string | null
           content: string
           created_at: string
           id: string
@@ -148,6 +150,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          acted_as?: string
+          company_id?: string | null
           content: string
           created_at?: string
           id?: string
@@ -156,6 +160,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          acted_as?: string
+          company_id?: string | null
           content?: string
           created_at?: string
           id?: string
@@ -164,6 +170,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "comments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comments_post_id_fkey"
             columns: ["post_id"]
@@ -230,6 +243,48 @@ export type Database = {
           {
             foreignKeyName: "companies_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_members: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["company_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["company_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["company_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_members_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_members_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -714,24 +769,37 @@ export type Database = {
       }
       post_likes: {
         Row: {
+          acted_as: string
+          company_id: string | null
           created_at: string
           id: string
           post_id: string
           user_id: string
         }
         Insert: {
+          acted_as?: string
+          company_id?: string | null
           created_at?: string
           id?: string
           post_id: string
           user_id: string
         }
         Update: {
+          acted_as?: string
+          company_id?: string | null
           created_at?: string
           id?: string
           post_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "post_likes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "post_likes_post_id_fkey"
             columns: ["post_id"]
@@ -818,36 +886,56 @@ export type Database = {
       }
       posts: {
         Row: {
+          company_id: string | null
+          company_logo: string | null
+          company_name: string | null
           content: string
           created_at: string
           id: string
           image_url: string | null
           media_type: string | null
+          posted_as: string
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          company_id?: string | null
+          company_logo?: string | null
+          company_name?: string | null
           content: string
           created_at?: string
           id?: string
           image_url?: string | null
           media_type?: string | null
+          posted_as?: string
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          company_id?: string | null
+          company_logo?: string | null
+          company_name?: string | null
           content?: string
           created_at?: string
           id?: string
           image_url?: string | null
           media_type?: string | null
+          posted_as?: string
           status?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "posts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profile_views: {
         Row: {
@@ -1309,6 +1397,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_company_admin: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "user" | "admin" | "recruiter"
@@ -1319,6 +1411,7 @@ export type Database = {
         | "offered"
         | "rejected"
         | "withdrawn"
+      company_role: "super_admin" | "content_admin"
       connection_status: "pending" | "accepted" | "blocked"
       friend_request_status: "pending" | "accepted" | "rejected"
       proficiency_level: "beginner" | "intermediate" | "advanced" | "expert"
@@ -1460,6 +1553,7 @@ export const Constants = {
         "rejected",
         "withdrawn",
       ],
+      company_role: ["super_admin", "content_admin"],
       connection_status: ["pending", "accepted", "blocked"],
       friend_request_status: ["pending", "accepted", "rejected"],
       proficiency_level: ["beginner", "intermediate", "advanced", "expert"],

@@ -39,6 +39,11 @@ interface PostCardProps {
   onLike?: (isLiked: boolean) => void;
   onDelete?: () => void;
   onHide?: () => void;
+  // Company post props
+  postedAs?: 'user' | 'company';
+  companyId?: string | null;
+  companyName?: string | null;
+  companyLogo?: string | null;
 }
 
 const PostCard = ({ 
@@ -54,7 +59,11 @@ const PostCard = ({
   initialIsLiked = false, 
   isPromoted = false,
   onDelete, 
-  onHide 
+  onHide,
+  postedAs = 'user',
+  companyId,
+  companyName,
+  companyLogo
 }: PostCardProps) => {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [localLikes, setLocalLikes] = useState(likes);
@@ -355,6 +364,10 @@ const PostCard = ({
         isOwnPost={isOwnPost}
         onDelete={onDelete}
         onHide={onHide}
+        postedAs={postedAs}
+        companyId={companyId}
+        companyName={companyName}
+        companyLogo={companyLogo}
       />
 
       {/* Post Content */}
