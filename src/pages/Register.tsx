@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Eye, EyeOff, User, Mail, Phone, Lock } from 'lucide-react';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 import { sanitizeInput } from '@/lib/input-sanitizer';
+import RoleSelector, { SignupRole } from '@/components/auth/RoleSelector';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -19,6 +20,7 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
+  const [selectedRole, setSelectedRole] = useState<SignupRole>('student');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -106,6 +108,17 @@ const Register = () => {
 
   const passwordStrength = getPasswordStrength(formData.password);
 
+  const getRoleDashboard = (role: SignupRole): string => {
+    const dashboards: Record<SignupRole, string> = {
+      student: '/dashboard/student',
+      employer: '/dashboard/employer',
+      company_admin: '/dashboard/company',
+      company_employee: '/dashboard/employee',
+      mentor: '/dashboard/mentor',
+    };
+    return dashboards[role];
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -126,7 +139,7 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `${window.location.origin}${getRoleDashboard(selectedRole)}`;
       const sanitizedEmail = sanitizeInput(formData.email.toLowerCase());
       
       const { data, error } = await supabase.auth.signUp({
@@ -136,7 +149,8 @@ const Register = () => {
           emailRedirectTo: redirectUrl,
           data: {
             display_name: sanitizeInput(formData.name),
-            mobile: sanitizeInput(formData.mobile)
+            mobile: sanitizeInput(formData.mobile),
+            role: selectedRole, // Role is stored in metadata and used by trigger
           }
         }
       });
@@ -224,7 +238,7 @@ const Register = () => {
       </div>
 
       {/* Register Card - Glassmorphism */}
-      <div className="w-full max-w-md relative z-10 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
+      <div className="w-full max-w-md relative z-10 animate-fade-in-up max-h-[85vh] overflow-y-auto" style={{ animationDelay: '0.15s' }}>
         <Card className="backdrop-blur-2xl bg-white/95 border-white/40 shadow-2xl rounded-2xl overflow-hidden">
           <CardHeader className="text-center pb-4 pt-6">
             <CardTitle className="text-2xl font-semibold text-gray-800">Create Account</CardTitle>
@@ -234,6 +248,9 @@ const Register = () => {
           </CardHeader>
           <CardContent className="px-6 pb-6">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Role Selector */}
+              <RoleSelector value={selectedRole} onChange={setSelectedRole} />
+
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-gray-700">Full Name</Label>
                 <Input
