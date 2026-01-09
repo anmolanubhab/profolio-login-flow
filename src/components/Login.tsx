@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 import { sanitizeInput } from '@/lib/input-sanitizer';
+import { useAuth, AppRole } from '@/contexts/AuthContext';
+import { getDefaultDashboard } from '@/components/auth/ProtectedRoute';
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,6 +19,15 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, session, role } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user && session && role) {
+      const dashboard = getDefaultDashboard(role);
+      navigate(dashboard, { replace: true });
+    }
+  }, [user, session, role, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +91,7 @@ const Login = () => {
           title: "Welcome back!",
           description: "You have been logged in successfully.",
         });
-        navigate('/');
+        // Role-based redirect will happen via useEffect when auth context updates
       }
     } catch (error) {
       toast({
