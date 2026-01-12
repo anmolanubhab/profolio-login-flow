@@ -6,45 +6,24 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Mail, Building2, Check, X, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { useCompanyInvitations } from '@/hooks/use-company';
+import { useCompanyAdmin } from '@/hooks/use-company-admin';
 
-interface CompanyInvitation {
-  id: string;
-  company_id: string;
-  email: string;
-  role: 'super_admin' | 'content_admin';
-  status: 'pending' | 'accepted' | 'rejected' | 'expired';
-  expires_at: string;
-  created_at: string;
-  company?: {
-    id: string;
-    name: string;
-    logo_url: string | null;
-    industry: string | null;
-  };
-}
-
-interface CompanyInvitationsCardProps {
-  invitations: CompanyInvitation[];
-  isLoading: boolean;
-  onAccept: (invitationId: string) => Promise<{ success: boolean; error?: string }>;
-  onReject: (invitationId: string) => Promise<{ success: boolean; error?: string }>;
-}
-
-export const CompanyInvitationsCard = ({
-  invitations,
-  isLoading,
-  onAccept,
-  onReject
-}: CompanyInvitationsCardProps) => {
+// Self-contained component that fetches its own data
+export const CompanyInvitationsCard = () => {
   const { toast } = useToast();
+  const { invitations, isLoading, acceptInvitation, rejectInvitation } = useCompanyInvitations();
+  const { refetch: refetchCompanies } = useCompanyAdmin();
 
   const handleAccept = async (invitationId: string, companyName: string) => {
-    const result = await onAccept(invitationId);
+    const result = await acceptInvitation(invitationId);
     if (result.success) {
       toast({
         title: 'Invitation Accepted',
         description: `You are now a team member of ${companyName}.`,
       });
+      // Refresh company memberships after accepting
+      refetchCompanies();
     } else {
       toast({
         title: 'Error',
@@ -55,7 +34,7 @@ export const CompanyInvitationsCard = ({
   };
 
   const handleReject = async (invitationId: string) => {
-    const result = await onReject(invitationId);
+    const result = await rejectInvitation(invitationId);
     if (result.success) {
       toast({
         title: 'Invitation Declined',
@@ -73,17 +52,15 @@ export const CompanyInvitationsCard = ({
   if (isLoading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="w-5 h-5 text-primary" />
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Mail className="w-4 h-4 text-primary" />
             Company Invitations
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[1, 2].map((i) => (
-              <Skeleton key={i} className="h-24" />
-            ))}
+            <Skeleton className="h-20" />
           </div>
         </CardContent>
       </Card>
@@ -95,10 +72,10 @@ export const CompanyInvitationsCard = ({
   }
 
   return (
-    <Card className="border-primary/20 bg-primary/5">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="w-5 h-5 text-primary" />
+    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Mail className="w-4 h-4 text-primary" />
           Company Invitations ({invitations.length})
         </CardTitle>
       </CardHeader>
@@ -130,9 +107,9 @@ export const CompanyInvitationsCard = ({
                   {invitation.company?.industry && (
                     <p className="text-sm text-muted-foreground">{invitation.company.industry}</p>
                   )}
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
                     <Badge variant={invitation.role === 'super_admin' ? 'default' : 'secondary'}>
-                      {invitation.role === 'super_admin' ? 'Super Admin' : 'Content Admin'}
+                      {invitation.role === 'super_admin' ? 'Admin' : 'Content Admin'}
                     </Badge>
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Clock className="w-3 h-3" />
@@ -141,21 +118,21 @@ export const CompanyInvitationsCard = ({
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-shrink-0">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => handleReject(invitation.id)}
                   >
-                    <X className="w-4 h-4 mr-1" />
-                    Decline
+                    <X className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Decline</span>
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => handleAccept(invitation.id, invitation.company?.name || 'this company')}
                   >
-                    <Check className="w-4 h-4 mr-1" />
-                    Accept
+                    <Check className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Accept</span>
                   </Button>
                 </div>
               </div>
