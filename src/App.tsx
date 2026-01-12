@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
+import UnifiedDashboard from "./pages/UnifiedDashboard";
 import Certificates from "./pages/Certificates";
 import Resume from "./pages/Resume";
 import Connect from "./pages/Connect";
@@ -22,11 +22,6 @@ import Companies from "./pages/Companies";
 import CompanyProfile from "./pages/CompanyProfile";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import StudentDashboard from "./pages/dashboards/StudentDashboard";
-import EmployerDashboard from "./pages/dashboards/EmployerDashboard";
-import CompanyDashboard from "./pages/dashboards/CompanyDashboard";
-import EmployeeDashboard from "./pages/dashboards/EmployeeDashboard";
-import MentorDashboard from "./pages/dashboards/MentorDashboard";
 
 const queryClient = new QueryClient();
 
@@ -43,37 +38,37 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             
-            {/* Role-based dashboards */}
-            <Route path="/dashboard/student" element={
-              <ProtectedRoute allowedRoles={['student', 'user']}>
-                <StudentDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/employer" element={
-              <ProtectedRoute allowedRoles={['employer']}>
-                <EmployerDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/company" element={
-              <ProtectedRoute allowedRoles={['company_admin']}>
-                <CompanyDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/employee" element={
-              <ProtectedRoute allowedRoles={['company_employee']}>
-                <EmployeeDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/mentor" element={
-              <ProtectedRoute allowedRoles={['mentor']}>
-                <MentorDashboard />
+            {/* Unified Dashboard - Context-based UI for all users */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <UnifiedDashboard />
               </ProtectedRoute>
             } />
             
-            {/* Legacy dashboard route - redirects to role-based */}
-            <Route path="/dashboard" element={
+            {/* Legacy role-based routes redirect to unified dashboard */}
+            <Route path="/dashboard/student" element={
               <ProtectedRoute>
-                <Dashboard />
+                <UnifiedDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/employer" element={
+              <ProtectedRoute>
+                <UnifiedDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/company" element={
+              <ProtectedRoute>
+                <UnifiedDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/employee" element={
+              <ProtectedRoute>
+                <UnifiedDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/mentor" element={
+              <ProtectedRoute>
+                <UnifiedDashboard />
               </ProtectedRoute>
             } />
             

@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-export type AppRole = 'student' | 'employer' | 'company_admin' | 'company_employee' | 'mentor' | 'admin' | 'recruiter' | 'user';
+// Simplified role type - 'user' is the default for all new signups
+export type AppRole = 'user' | 'admin' | 'recruiter' | 'student' | 'employer' | 'company_admin' | 'company_employee' | 'mentor';
 
 interface AuthContextType {
   user: User | null;
@@ -33,17 +34,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserRole = async (userId: string) => {
+  const fetchUserRole = async (userId: string): Promise<AppRole> => {
     try {
       const { data, error } = await supabase.rpc('get_user_role', { _user_id: userId });
       if (error) {
         console.error('Error fetching user role:', error);
-        return null;
+        return 'user'; // Default to 'user' if error
       }
-      return data as AppRole;
+      return (data as AppRole) || 'user';
     } catch (error) {
       console.error('Error fetching user role:', error);
-      return null;
+      return 'user'; // Default to 'user' if error
     }
   };
 

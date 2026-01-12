@@ -2,18 +2,17 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import Login from '@/components/Login';
-import { getDefaultDashboard } from '@/components/auth/ProtectedRoute';
 
 const Index = () => {
-  const { user, session, role, loading } = useAuth();
+  const { user, session, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && user && session && role) {
-      const dashboard = getDefaultDashboard(role);
-      navigate(dashboard, { replace: true });
+    // Simple redirect: authenticated users go to dashboard
+    if (!loading && user && session) {
+      navigate('/dashboard', { replace: true });
     }
-  }, [user, session, role, loading, navigate]);
+  }, [user, session, loading, navigate]);
 
   if (loading) {
     return (
@@ -28,7 +27,7 @@ const Index = () => {
     return <Login />;
   }
 
-  // Show loading while role is being fetched for redirect
+  // Show loading while redirecting
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
