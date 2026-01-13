@@ -5,10 +5,11 @@ import Stories from '@/components/Stories';
 import QuickActions from '@/components/QuickActions';
 import { CreateCompanyPostButton } from '@/components/company/CreateCompanyPostButton';
 import { CompanyInvitationsCard } from '@/components/company/CompanyInvitationsCard';
+import { UserApplicationsCard } from '@/components/jobs/UserApplicationsCard';
 import { useCompanyAdmin } from '@/hooks/use-company-admin';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, Plus, Users, Settings } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const UnifiedDashboard = () => {
@@ -22,6 +23,9 @@ const UnifiedDashboard = () => {
       <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6">
         {/* Pending Company Invitations */}
         <CompanyInvitationsCard />
+        
+        {/* User's Job Applications */}
+        <UserApplicationsCard />
         
         {/* Company Switcher - Only show if user manages companies */}
         {!companiesLoading && hasCompanies && (
