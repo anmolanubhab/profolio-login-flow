@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Play } from 'lucide-react';
+import ImageCarousel from './ImageCarousel';
 
 interface PostMediaProps {
-  src: string;
+  src: string | string[];
   mediaType: 'image' | 'video';
   alt?: string;
 }
@@ -12,6 +13,11 @@ const PostMedia = ({ src, mediaType, alt = 'Post content' }: PostMediaProps) => 
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  // Handle multi-image carousel
+  if (Array.isArray(src)) {
+    return <ImageCarousel images={src} alt={alt} />;
+  }
 
   if (hasError) {
     return (

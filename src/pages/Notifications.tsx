@@ -223,6 +223,13 @@ const Notifications = () => {
       case 'profile_save':
         return Eye;
       case 'new_job':
+      case 'application_submitted':
+      case 'new_application':
+        return Briefcase;
+      case 'application_shortlisted':
+      case 'application_offered':
+        return Star;
+      case 'application_rejected':
         return Briefcase;
       case 'message':
         return MessageCircle;
@@ -230,6 +237,8 @@ const Notifications = () => {
         return Award;
       case 'skill_endorsement':
         return Star;
+      case 'new_follower':
+        return UserPlus;
       default:
         return Bell;
     }
@@ -237,31 +246,44 @@ const Notifications = () => {
 
   const getNotificationMessage = (notification: Notification) => {
     const { type, payload } = notification;
-    const senderName = payload?.sender_name || 'Someone';
+    const senderName = payload?.sender_name || payload?.follower_name || 'Someone';
+    const jobTitle = payload?.job_title || 'a position';
 
     switch (type) {
       case 'like':
         return `${senderName} liked your post`;
       case 'comment':
-        return `${senderName} commented: "${payload?.message}"`;
+        return `${senderName} commented on your post`;
       case 'share':
         return `${senderName} shared your post`;
       case 'connection_request':
-        return `${senderName} sent you a connection request`;
+        return `${senderName} wants to connect with you`;
       case 'connection_accepted':
         return `${senderName} accepted your connection request`;
       case 'profile_view':
         return `${senderName} viewed your profile`;
       case 'profile_save':
         return `${senderName} saved your profile`;
+      case 'new_follower':
+        return `${senderName} started following you`;
       case 'new_job':
-        return `New job posted: ${payload?.job_title}`;
+        return `New job opportunity: ${jobTitle}`;
+      case 'application_submitted':
+        return `Your application for ${jobTitle} was submitted`;
+      case 'new_application':
+        return `New application received for ${jobTitle}`;
+      case 'application_shortlisted':
+        return `Great news! You've been shortlisted for ${jobTitle}`;
+      case 'application_rejected':
+        return `Update on your application for ${jobTitle}`;
+      case 'application_offered':
+        return `Congratulations! You received an offer for ${jobTitle}`;
       case 'message':
-        return `${senderName}: ${payload?.message}`;
+        return `${senderName}: ${payload?.message || 'sent you a message'}`;
       case 'skill_endorsement':
         return `${senderName} endorsed your ${payload?.skill_name || 'skill'}`;
       default:
-        return payload?.message || 'New notification';
+        return payload?.message || 'You have a new notification';
     }
   };
 
