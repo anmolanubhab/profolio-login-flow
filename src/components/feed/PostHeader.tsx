@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Globe, User, Building2 } from 'lucide-react';
 import { PostOptionsMenu } from '@/components/PostOptionsMenu';
+import { FollowButton } from '@/components/FollowButton';
 
 interface PostHeaderProps {
   postId: string;
@@ -100,7 +101,7 @@ const PostHeader = ({
           className="cursor-pointer group"
           onClick={handleProfileClick}
         >
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <h4 className="font-semibold text-foreground text-[15px] leading-5 group-hover:text-primary group-hover:underline decoration-primary/50 transition-colors truncate">
               {displayName || 'Unknown'}
             </h4>
@@ -108,6 +109,17 @@ const PostHeader = ({
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-0">
                 Company
               </Badge>
+            )}
+            {/* Follow button - show only for user posts when not own post */}
+            {!isOwnPost && !isCompanyPost && user.id && (
+              <FollowButton 
+                targetProfileId={user.id}
+                targetName={user.name}
+                size="sm"
+                variant="ghost"
+                showText={false}
+                className="h-6 w-6 p-0 ml-1"
+              />
             )}
           </div>
           {displaySubtitle && (
