@@ -4,10 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { SearchBar } from './SearchBar';
-import { NotificationBell } from './NotificationBell';
 import { MobileNavDrawer } from './MobileNavDrawer';
-import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface NavBarProps {
   user?: {
@@ -19,18 +16,7 @@ interface NavBarProps {
 }
 
 const NavBar = ({ user, onSignOut, visible = true }: NavBarProps) => {
-  const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchUserId = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        setUserId(authUser.id);
-      }
-    };
-    fetchUserId();
-  }, []);
 
   return (
     <nav 
@@ -60,8 +46,6 @@ const NavBar = ({ user, onSignOut, visible = true }: NavBarProps) => {
 
         {/* Right: Actions */}
         <div className="nav-actions">
-          {userId && <NotificationBell userId={userId} />}
-
           {/* Profile dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

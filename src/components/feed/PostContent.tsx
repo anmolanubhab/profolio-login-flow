@@ -57,7 +57,7 @@ const PostContent = ({ content, maxLength = 280 }: PostContentProps) => {
 
   return (
     <div className="px-4 pb-3">
-      <p className="text-[15px] leading-[1.5] text-foreground whitespace-pre-wrap break-words">
+      <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap break-words text-left">
         {renderWithHashtags(displayContent)}
       </p>
       
