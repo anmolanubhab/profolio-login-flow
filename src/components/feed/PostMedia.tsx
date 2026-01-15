@@ -34,11 +34,11 @@ const PostMedia = ({ src, mediaType, alt = 'Post content' }: PostMediaProps) => 
 
   if (mediaType === 'video') {
     return (
-      <div className="relative w-full bg-black/95 -mx-4 sm:mx-0">
+      <div className="relative w-full bg-black/95 flex items-center justify-center">
         <video
           src={src}
           controls
-          className="w-full max-h-[480px] object-contain"
+          className="w-full max-h-[480px] object-contain mx-auto"
           preload="metadata"
           onError={() => setHasError(true)}
           onPlay={() => setIsPlaying(true)}
@@ -57,7 +57,7 @@ const PostMedia = ({ src, mediaType, alt = 'Post content' }: PostMediaProps) => 
   }
 
   return (
-    <div className="relative w-full overflow-hidden -mx-4 sm:mx-0 sm:rounded-none">
+    <div className="relative w-full overflow-hidden flex items-center justify-center bg-muted/20">
       {isLoading && (
         <div className="absolute inset-0 bg-gradient-to-br from-muted/60 to-muted/40 animate-pulse" />
       )}
@@ -65,7 +65,7 @@ const PostMedia = ({ src, mediaType, alt = 'Post content' }: PostMediaProps) => 
         src={src}
         alt={alt}
         className={cn(
-          "w-full h-auto max-h-[520px] object-cover transition-all duration-500",
+          "w-full h-auto max-h-[520px] object-contain transition-all duration-500 mx-auto",
           isLoading ? "opacity-0 scale-105" : "opacity-100 scale-100"
         )}
         loading="lazy"
