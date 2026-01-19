@@ -12,7 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { MapPin, Briefcase, Building2, DollarSign, Eye } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CompanySelector } from './CompanySelector';
-
+import { jobSchema } from '@/lib/validation-schemas';
+import { sanitizeInput, isValidUrl } from '@/lib/input-sanitizer';
 interface Job {
   id?: string;
   title: string;
@@ -75,38 +76,20 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
   }, [editJob]);
 
   const validateForm = () => {
-    if (!formData.title.trim()) {
+    // Use zod schema for validation
+    const result = jobSchema.safeParse(formData);
+    
+    if (!result.success) {
+      const firstError = result.error.errors[0];
       toast({
         title: 'Validation Error',
-        description: 'Please enter a job title',
+        description: firstError.message,
         variant: 'destructive',
       });
       return false;
     }
-    if (!formData.company_id && !formData.company_name.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please select a company',
-        variant: 'destructive',
-      });
-      return false;
-    }
-    if (!formData.description.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter a job description',
-        variant: 'destructive',
-      });
-      return false;
-    }
-    if (!formData.location.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter a location',
-        variant: 'destructive',
-      });
-      return false;
-    }
+
+    // Additional cross-field validation
     if (formData.salary_min && formData.salary_max) {
       if (parseFloat(formData.salary_min) > parseFloat(formData.salary_max)) {
         toast({
@@ -117,6 +100,17 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
         return false;
       }
     }
+
+    // Validate apply_link is safe URL if provided
+    if (formData.apply_link && !isValidUrl(formData.apply_link)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Application link must be a valid URL (http:// or https://)',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
     return true;
   };
 
@@ -128,17 +122,18 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
     setLoading(true);
 
     try {
+      // Sanitize all text inputs
       const jobData = {
         posted_by: profileId,
-        title: formData.title,
+        title: sanitizeInput(formData.title),
         company_id: formData.company_id || null,
-        company_name: formData.company_name,
-        description: formData.description,
-        requirements: formData.requirements || null,
-        location: formData.location,
+        company_name: sanitizeInput(formData.company_name),
+        description: sanitizeInput(formData.description),
+        requirements: formData.requirements ? sanitizeInput(formData.requirements) : null,
+        location: sanitizeInput(formData.location),
         employment_type: formData.employment_type,
         remote_option: formData.remote_option,
-        apply_link: formData.apply_link || null,
+        apply_link: formData.apply_link && isValidUrl(formData.apply_link) ? formData.apply_link.trim() : null,
         salary_min: formData.salary_min ? parseFloat(formData.salary_min) : null,
         salary_max: formData.salary_max ? parseFloat(formData.salary_max) : null,
         currency: formData.currency,
@@ -229,6 +224,7 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
                         placeholder="e.g. Senior React Developer"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        maxLength={200}
                         className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all"
                         required
                       />
@@ -251,9 +247,11 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={5}
+                    maxLength={10000}
                     className="border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all resize-none"
                     required
                   />
+                  <p className="text-xs text-muted-foreground">{formData.description.length}/10,000 characters</p>
                 </div>
 
                 <div className="space-y-4">
@@ -264,8 +262,10 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
                     value={formData.requirements}
                     onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
                     rows={4}
+                    maxLength={10000}
                     className="border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all resize-none"
                   />
+                  <p className="text-xs text-muted-foreground">{formData.requirements.length}/10,000 characters</p>
                 </div>
 
                 <div className="space-y-4">
@@ -274,11 +274,14 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
                     <Label htmlFor="apply_link" className="text-sm font-medium text-[#1D2226]">Application Link or Email</Label>
                     <Input
                       id="apply_link"
-                      placeholder="e.g. https://company.com/apply or jobs@company.com"
+                      placeholder="e.g. https://company.com/apply"
                       value={formData.apply_link}
                       onChange={(e) => setFormData({ ...formData, apply_link: e.target.value })}
+                      maxLength={500}
+                      type="url"
                       className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">Must be a valid URL (http:// or https://)</p>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -294,6 +297,7 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
                         placeholder="e.g. New York, NY"
                         value={formData.location}
                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                        maxLength={200}
                         className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2] transition-all"
                         required
                       />

@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
+import { profileSchema } from '@/lib/validation-schemas';
+import { sanitizeInput, isValidUrl } from '@/lib/input-sanitizer';
 interface Profile {
   id: string;
   display_name?: string;
@@ -148,14 +149,33 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Validate input using zod schema
+      const validationResult = profileSchema.safeParse(editData);
+      
+      if (!validationResult.success) {
+        const errors = validationResult.error.errors.map(e => e.message).join(', ');
+        throw new Error(errors);
+      }
+
+      // Sanitize inputs
+      const sanitizedData = {
+        display_name: sanitizeInput(editData.display_name),
+        bio: sanitizeInput(editData.bio),
+        profession: sanitizeInput(editData.profession),
+        location: sanitizeInput(editData.location),
+        phone: sanitizeInput(editData.phone),
+        website: editData.website && isValidUrl(editData.website) ? editData.website.trim() : '',
+        profile_visibility: editData.profile_visibility,
+      };
+
       const { error } = await supabase
         .from('profiles')
-        .update(editData as any)
+        .update(sanitizedData as any)
         .eq('user_id', userId);
 
       if (error) throw error;
 
-      setProfile(prev => prev ? { ...prev, ...editData } : null);
+      setProfile(prev => prev ? { ...prev, ...sanitizedData } : null);
       setIsEditing(false);
       toast({
         title: "Success",
@@ -317,6 +337,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
                       placeholder="Enter your full name"
                       value={editData.display_name}
                       onChange={(e) => setEditData(prev => ({ ...prev, display_name: e.target.value }))}
+                      maxLength={100}
                       className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth"
                     />
                   </div>
@@ -331,6 +352,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
                       placeholder="e.g., Senior Software Engineer"
                       value={editData.profession}
                       onChange={(e) => setEditData(prev => ({ ...prev, profession: e.target.value }))}
+                      maxLength={100}
                       className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth"
                     />
                   </div>
@@ -353,6 +375,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
                         placeholder="City, Country"
                         value={editData.location}
                         onChange={(e) => setEditData(prev => ({ ...prev, location: e.target.value }))}
+                        maxLength={100}
                         className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth"
                       />
                     </div>
@@ -367,6 +390,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
                         placeholder="+1 (555) 123-4567"
                         value={editData.phone}
                         onChange={(e) => setEditData(prev => ({ ...prev, phone: e.target.value }))}
+                        maxLength={20}
                         className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth"
                       />
                     </div>
@@ -382,8 +406,13 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
                       placeholder="https://yourwebsite.com"
                       value={editData.website}
                       onChange={(e) => setEditData(prev => ({ ...prev, website: e.target.value }))}
+                      maxLength={500}
+                      type="url"
                       className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Must be a valid URL starting with http:// or https://
+                    </p>
                   </div>
                 </div>
 
@@ -400,11 +429,16 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
                       id="bio"
                       placeholder="Write a brief description about yourself, your experience, and your professional goals..."
                       value={editData.bio}
-                      onChange={(e) => setEditData(prev => ({ ...prev, bio: e.target.value }))}
+                      onChange={(e) => {
+                        if (e.target.value.length <= 500) {
+                          setEditData(prev => ({ ...prev, bio: e.target.value }));
+                        }
+                      }}
                       rows={4}
+                      maxLength={500}
                       className="bg-background/50 border-muted focus:border-primary/50 focus:bg-background transition-smooth resize-none"
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className={`text-xs ${editData.bio.length >= 450 ? 'text-warning' : 'text-muted-foreground'}`}>
                       {editData.bio.length}/500 characters
                     </p>
                   </div>
