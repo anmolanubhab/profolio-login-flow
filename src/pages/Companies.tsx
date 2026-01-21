@@ -274,7 +274,7 @@ export default function Companies() {
                       variant="outline"
                       size="sm"
                       className="flex-1 border-[#E5E7EB] hover:bg-[#F3F6F9]"
-                      onClick={() => navigate(`/jobs?company=${company.id}`)}
+                      onClick={() => navigate(`/companies/${company.id}/jobs`)}
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
                       View Jobs

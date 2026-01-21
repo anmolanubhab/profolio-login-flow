@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Briefcase, Calendar, Building2, CheckCircle2, DollarSign } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { statusConfig, ApplicationStatus } from '@/config/applicationStatus';
 
 interface JobCardProps {
   job: {
@@ -27,9 +28,10 @@ interface JobCardProps {
   onApply: (jobId: string) => void;
   onViewDetails: (jobId: string) => void;
   isApplied?: boolean;
+  applicationStatus?: string;
 }
 
-export const JobCard = ({ job, onApply, onViewDetails, isApplied }: JobCardProps) => {
+export const JobCard = ({ job, onApply, onViewDetails, isApplied, applicationStatus }: JobCardProps) => {
   const companyName = job.company?.name || job.company_name || 'Company';
   
   const formatSalary = () => {
@@ -45,6 +47,9 @@ export const JobCard = ({ job, onApply, onViewDetails, isApplied }: JobCardProps
 
   const salary = formatSalary();
   
+  const status = applicationStatus as ApplicationStatus | undefined;
+  const config = status ? statusConfig[status] : null;
+
   return (
     <Card className="hover:shadow-lg transition-all duration-200 border-border/50 hover:border-primary/20 group">
       <CardHeader className="pb-3">
@@ -92,9 +97,9 @@ export const JobCard = ({ job, onApply, onViewDetails, isApplied }: JobCardProps
             )}
           </div>
           {isApplied && (
-            <Badge variant="secondary" className="shrink-0 gap-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-              <CheckCircle2 className="w-3 h-3" />
-              Applied
+            <Badge variant="secondary" className={`shrink-0 gap-1 ${config ? config.color : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+              {config?.icon ? <config.icon className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
+              {config ? config.label : (applicationStatus ? (applicationStatus.charAt(0).toUpperCase() + applicationStatus.slice(1)) : 'Applied')}
             </Badge>
           )}
         </div>
@@ -148,8 +153,8 @@ export const JobCard = ({ job, onApply, onViewDetails, isApplied }: JobCardProps
         >
           {isApplied ? (
             <>
-              <CheckCircle2 className="w-4 h-4 mr-1.5" />
-              Applied
+              {config?.icon ? <config.icon className="w-4 h-4 mr-1.5" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />}
+              {config ? config.label : (applicationStatus ? (applicationStatus.charAt(0).toUpperCase() + applicationStatus.slice(1)) : 'Applied')}
             </>
           ) : (
             'Apply Now'

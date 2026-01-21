@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -127,6 +127,7 @@ export const CompanyPostDialog = ({
       }
 
       // Create the post
+      console.log('Creating post for company:', selectedCompanyId, 'with status: published');
       const { error: postError } = await supabase
         .from('posts')
         .insert({
@@ -175,6 +176,9 @@ export const CompanyPostDialog = ({
             <Building2 className="w-5 h-5 text-primary" />
             Create Company Post
           </DialogTitle>
+          <DialogDescription>
+            Share updates, news, or content with your company's followers.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">

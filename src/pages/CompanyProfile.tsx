@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +44,7 @@ interface Job {
 
 export default function CompanyProfile() {
   const { companyId } = useParams<{ companyId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(true);
@@ -194,6 +195,14 @@ export default function CompanyProfile() {
                         >
                           <Plus className="w-4 h-4 mr-2" />
                           Create Post
+                        </Button>
+                        <Button 
+                          onClick={() => navigate(`/jobs/create?companyId=${companyId}`)}
+                          className="bg-primary hover:bg-primary/90"
+                          size="sm"
+                        >
+                          <Briefcase className="w-4 h-4 mr-2" />
+                          Post Job
                         </Button>
                       </>
                     )}

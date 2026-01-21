@@ -88,7 +88,7 @@ export function useCompany(companyId?: string) {
             .select('role')
             .eq('company_id', companyId)
             .eq('user_id', profile.id)
-            .single();
+            .maybeSingle();
 
           setIsAdmin(!!membership || companyData?.owner_id === profile.id);
 
@@ -98,7 +98,7 @@ export function useCompany(companyId?: string) {
             .select('id')
             .eq('company_id', companyId)
             .eq('user_id', profile.id)
-            .single();
+            .maybeSingle();
 
           setIsFollowing(!!following);
         }

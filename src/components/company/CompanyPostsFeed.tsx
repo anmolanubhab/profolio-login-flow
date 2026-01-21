@@ -45,6 +45,13 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
   };
 
   const fetchPosts = async () => {
+    if (!companyId) {
+      console.log('CompanyPostsFeed: No companyId provided, skipping fetch');
+      return;
+    }
+
+    console.log('CompanyPostsFeed: Fetching posts for companyId:', companyId);
+
     try {
       const { data, error } = await supabase
         .from('posts')
@@ -59,7 +66,7 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
           company_id,
           company_name,
           company_logo,
-          profiles!posts_user_id_fkey (
+          profiles!posts_profiles_fk (
             display_name,
             avatar_url,
             profession
@@ -73,6 +80,8 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      console.log('CompanyPostsFeed: Fetched raw posts:', data);
 
       const formattedPosts = (data || []).map((post: any) => ({
         id: post.id,

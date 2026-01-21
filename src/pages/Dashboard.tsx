@@ -18,10 +18,11 @@ const Dashboard = () => {
   const [feedRefresh, setFeedRefresh] = useState(0);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
+  const [appliedJobs, setAppliedJobs] = useState<Map<string, string>>(new Map());
   const [postJobOpen, setPostJobOpen] = useState(false);
   const [applyJobOpen, setApplyJobOpen] = useState(false);
   const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
+
   const [selectedJobId, setSelectedJobId] = useState<string>('');
   const [selectedJobTitle, setSelectedJobTitle] = useState<string>('');
   const { toast } = useToast();
@@ -86,15 +87,28 @@ const Dashboard = () => {
     try {
       const { data, error } = await supabase
         .from('applications')
-        .select('job_id')
+        .select('job_id, status')
         .eq('user_id', userId);
 
       if (error) throw error;
-      setAppliedJobIds(new Set(data.map(app => app.job_id)));
+      const jobsMap = new Map<string, string>();
+      data.forEach(app => jobsMap.set(app.job_id, app.status));
+      setAppliedJobs(jobsMap);
     } catch (error) {
       console.error('Error fetching applications:', error);
     }
   };
+
+  useEffect(() => {
+    if (!user) return;
+    
+    const handleFocus = () => {
+      fetchAppliedJobs(user.id);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user]);
 
   const handleApply = async (jobId: string) => {
     if (!user) {
@@ -206,6 +220,7 @@ const Dashboard = () => {
         open={jobDetailsOpen}
         onOpenChange={setJobDetailsOpen}
         jobId={selectedJobId}
+        applicationStatus={appliedJobs.get(selectedJobId)}
       />
     </Layout>
   );

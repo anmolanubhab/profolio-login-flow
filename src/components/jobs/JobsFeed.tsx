@@ -24,7 +24,7 @@ interface Job {
 interface JobsFeedProps {
   onApply: (jobId: string) => void;
   onViewDetails: (jobId: string) => void;
-  appliedJobIds: Set<string>;
+  appliedJobIds: Map<string, string>;
   refresh?: number;
 }
 
@@ -94,6 +94,7 @@ export const JobsFeed = ({ onApply, onViewDetails, appliedJobIds, refresh }: Job
           onApply={onApply}
           onViewDetails={onViewDetails}
           isApplied={appliedJobIds.has(job.id)}
+          applicationStatus={appliedJobIds.get(job.id)}
         />
       ))}
     </div>

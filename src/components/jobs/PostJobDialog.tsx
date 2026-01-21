@@ -35,15 +35,16 @@ interface PostJobDialogProps {
   profileId: string;
   onJobPosted: () => void;
   editJob?: Job | null;
+  initialCompanyId?: string;
 }
 
-export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, editJob }: PostJobDialogProps) => {
+export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, editJob, initialCompanyId }: PostJobDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('form');
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     title: '',
-    company_id: '',
+    company_id: initialCompanyId || '',
     company_name: '',
     description: '',
     requirements: '',
@@ -72,8 +73,10 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
         salary_max: editJob.salary_max?.toString() || '',
         currency: editJob.currency || 'USD',
       });
+    } else if (initialCompanyId) {
+      setFormData(prev => ({ ...prev, company_id: initialCompanyId }));
     }
-  }, [editJob]);
+  }, [editJob, initialCompanyId]);
 
   const validateForm = () => {
     // Use zod schema for validation

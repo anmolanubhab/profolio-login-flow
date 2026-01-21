@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Briefcase, DollarSign, Building2, Globe, Clock, CheckCircle2, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { statusConfig, ApplicationStatus } from '@/config/applicationStatus';
 
 interface JobDetailsDialogProps {
   open: boolean;
@@ -15,6 +16,7 @@ interface JobDetailsDialogProps {
   jobId: string;
   isApplied?: boolean;
   onApply?: () => void;
+  applicationStatus?: string;
 }
 
 export const JobDetailsDialog = ({ 
@@ -22,7 +24,8 @@ export const JobDetailsDialog = ({
   onOpenChange, 
   jobId, 
   isApplied, 
-  onApply 
+  onApply,
+  applicationStatus
 }: JobDetailsDialogProps) => {
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +75,11 @@ export const JobDetailsDialog = ({
     if (max) return `Up to ${currency} ${max}`;
     return null;
   };
+
+  const hasApplied = isApplied || !!applicationStatus;
+  const status = applicationStatus as ApplicationStatus | undefined;
+  const config = status ? statusConfig[status] : null;
+  const displayStatus = config ? config.label : (applicationStatus ? applicationStatus.charAt(0).toUpperCase() + applicationStatus.slice(1) : 'Applied');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -163,8 +171,8 @@ export const JobDetailsDialog = ({
                 >
                   {isApplied ? (
                     <>
-                      <CheckCircle2 className="w-5 h-5 mr-2" />
-                      Already Applied
+                      {config?.icon ? <config.icon className="w-5 h-5 mr-2" /> : <CheckCircle2 className="w-5 h-5 mr-2" />}
+                      {displayStatus}
                     </>
                   ) : (
                     'Apply Now'
@@ -185,10 +193,10 @@ export const JobDetailsDialog = ({
               </div>
 
               {isApplied && (
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                  <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    You've already applied for this position. Check your applications for status updates.
+                <div className={`p-3 rounded-lg border flex items-center gap-2 ${config ? config.color : 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400'}`}>
+                  {config?.icon ? <config.icon className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                  <p className="text-sm font-medium">
+                    {config ? config.description : (applicationStatus ? `Status: ${applicationStatus}` : 'Application Submitted')}
                   </p>
                 </div>
               )}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,10 @@ import { Layout } from '@/components/Layout';
 import { PostJobDialog } from '@/components/jobs/PostJobDialog';
 import { JobFilters, JobFiltersState } from '@/components/jobs/JobFilters';
 
+import { JobDetailsDialog } from '@/components/jobs/JobDetailsDialog';
+
+import { statusConfig, ApplicationStatus } from '@/config/applicationStatus';
+
 interface Job {
   id: string;
   title: string;
@@ -52,7 +56,7 @@ interface Job {
   };
 }
 
-const Jobs = () => {
+const Jobs = ({ createMode = false }: { createMode?: boolean }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profileId, setProfileId] = useState<string>('');
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -69,11 +73,19 @@ const Jobs = () => {
   const [showPostJobDialog, setShowPostJobDialog] = useState(false);
   const [coverLetter, setCoverLetter] = useState('');
   const [applying, setApplying] = useState(false);
-  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
+  const [appliedJobs, setAppliedJobs] = useState<Map<string, string>>(new Map());
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const companyIdParam = searchParams.get('companyId');
+
+  useEffect(() => {
+    if (createMode) {
+      setShowPostJobDialog(true);
+    }
+  }, [createMode]);
 
   useEffect(() => {
     const getUser = async () => {
@@ -102,6 +114,13 @@ const Jobs = () => {
     if (user) {
       fetchJobs();
       fetchApplications();
+
+      const handleFocus = () => {
+        fetchApplications();
+      };
+
+      window.addEventListener('focus', handleFocus);
+      return () => window.removeEventListener('focus', handleFocus);
     }
   }, [user]);
 
@@ -180,11 +199,13 @@ const Jobs = () => {
 
       const { data, error } = await supabase
         .from('applications')
-        .select('job_id')
+        .select('job_id, status')
         .eq('user_id', profile.id);
 
       if (error) throw error;
-      setAppliedJobs(new Set(data?.map(app => app.job_id) || []));
+      const jobsMap = new Map<string, string>();
+      data?.forEach(app => jobsMap.set(app.job_id, app.status));
+      setAppliedJobs(jobsMap);
     } catch (error: any) {
       console.error('Error fetching applications:', error);
     }
@@ -225,7 +246,11 @@ const Jobs = () => {
         description: 'Application submitted successfully!',
       });
 
-      setAppliedJobs(prev => new Set([...prev, selectedJob.id]));
+      setAppliedJobs(prev => {
+        const newMap = new Map(prev);
+        newMap.set(selectedJob.id, 'applied');
+        return newMap;
+      });
       setShowApplyDialog(false);
       setCoverLetter('');
       setSelectedJob(null);
@@ -339,6 +364,9 @@ const Jobs = () => {
           <div className="space-y-4">
             {filteredJobs.map((job) => {
               const hasApplied = appliedJobs.has(job.id);
+              const status = appliedJobs.get(job.id);
+              const config = status ? statusConfig[status as ApplicationStatus] : null;
+
               return (
                 <Card key={job.id} className="bg-gradient-card shadow-card border-0 hover:shadow-elegant transition-smooth">
                   <CardContent className="p-6">
@@ -359,8 +387,13 @@ const Jobs = () => {
                             </div>
                           </div>
                          <div className="flex items-center gap-2">
-                           <Badge variant={hasApplied ? "secondary" : "outline"}>
-                             {hasApplied ? 'Applied' : job.employment_type}
+                           <Badge variant={hasApplied ? "secondary" : "outline"} className={hasApplied && config ? config.color : ''}>
+                             {hasApplied ? (
+                               <div className="flex items-center gap-1">
+                                 {config?.icon && <config.icon className="w-3 h-3" />}
+                                 {config ? config.label : (status ? (status.charAt(0).toUpperCase() + status.slice(1)) : 'Applied')}
+                               </div>
+                             ) : job.employment_type}
                            </Badge>
                            {isJobOwner(job) && (
                               <DropdownMenu>
@@ -433,7 +466,12 @@ const Jobs = () => {
                             }}
                             disabled={hasApplied}
                           >
-                            {hasApplied ? 'Applied' : 'Apply Now'}
+                            {hasApplied ? (
+                              <>
+                                {config?.icon && <config.icon className="w-4 h-4 mr-1.5" />}
+                                {config ? config.label : (status ? (status.charAt(0).toUpperCase() + status.slice(1)) : 'Applied')}
+                              </>
+                            ) : 'Apply Now'}
                           </Button>
                         </div>
                       </div>
@@ -475,80 +513,14 @@ const Jobs = () => {
         </Dialog>
 
         {/* Job Details Dialog */}
-        <Dialog open={!!selectedJob && !showApplyDialog} onOpenChange={() => setSelectedJob(null)}>
-          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-            {selectedJob && (
-              <div className="space-y-6">
-                 <div>
-                   <div className="flex items-start gap-4 mb-4">
-                     {selectedJob.company?.logo_url && (
-                       <img 
-                         src={selectedJob.company.logo_url} 
-                         alt={selectedJob.company?.name || selectedJob.company_name}
-                         className="h-16 w-16 rounded object-cover"
-                       />
-                     )}
-                     <div className="flex-1">
-                       <h2 className="text-2xl font-bold">{selectedJob.title}</h2>
-                       {/* FIXED: Show company_name or fallback */}
-                       <p className="text-lg text-muted-foreground">{selectedJob.company_name || selectedJob.company?.name}</p>
-                     </div>
-                   </div>
-
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <Badge>{selectedJob.employment_type}</Badge>
-                    {selectedJob.remote_option && <Badge variant="secondary">{selectedJob.remote_option}</Badge>}
-                    <Badge variant="outline">{selectedJob.location}</Badge>
-                  </div>
-
-                  {formatSalary(selectedJob) && (
-                    <div className="flex items-center gap-2 text-primary font-semibold mb-4">
-                      <DollarSign className="h-5 w-5" />
-                      <span>{formatSalary(selectedJob)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Job Description</h3>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{selectedJob.description}</p>
-                </div>
-
-                {selectedJob.requirements && (
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">Requirements</h3>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{selectedJob.requirements}</p>
-                  </div>
-                )}
-
-                 <div className="flex gap-2 pt-4 border-t">
-                   {selectedJob.apply_link ? (
-                     <Button 
-                       className="flex-1"
-                       onClick={() => {
-                         if (selectedJob.apply_link.includes('@')) {
-                           window.location.href = `mailto:${selectedJob.apply_link}`;
-                         } else {
-                           window.open(selectedJob.apply_link, '_blank');
-                         }
-                       }}
-                     >
-                       Apply Now
-                     </Button>
-                   ) : (
-                     <Button 
-                       className="flex-1"
-                       onClick={() => setShowApplyDialog(true)}
-                       disabled={appliedJobs.has(selectedJob.id)}
-                     >
-                       {appliedJobs.has(selectedJob.id) ? 'Already Applied' : 'Apply for this Job'}
-                     </Button>
-                   )}
-                 </div>
-               </div>
-             )}
-           </DialogContent>
-         </Dialog>
+        <JobDetailsDialog 
+          open={!!selectedJob && !showApplyDialog} 
+          onOpenChange={(open) => !open && setSelectedJob(null)}
+          jobId={selectedJob?.id || ''}
+          isApplied={selectedJob ? appliedJobs.has(selectedJob.id) : false}
+          onApply={() => setShowApplyDialog(true)}
+          applicationStatus={selectedJob ? appliedJobs.get(selectedJob.id) : undefined}
+        />
 
           {/* Post/Edit Job Dialog */}
           {profileId && (
@@ -556,13 +528,18 @@ const Jobs = () => {
               open={showPostJobDialog}
               onOpenChange={(open) => {
                 setShowPostJobDialog(open);
-                if (!open) setEditingJob(null);
+                if (!open) {
+                  setEditingJob(null);
+                  if (createMode) navigate('/jobs');
+                }
               }}
               profileId={profileId}
               editJob={editingJob}
+              initialCompanyId={companyIdParam || undefined}
               onJobPosted={() => {
                 fetchJobs();
                 setEditingJob(null);
+                if (createMode) navigate('/jobs');
               }}
             />
           )}

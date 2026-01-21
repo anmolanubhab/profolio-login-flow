@@ -19,6 +19,10 @@ interface Job {
   requirements: string | null;
   remote_option: string | null;
   apply_link: string | null;
+  companies?: {
+    name: string;
+    logo_url?: string;
+  };
 }
 
 interface Applicant {
@@ -192,6 +196,13 @@ export function useJobApplicants(jobId?: string) {
 
   useEffect(() => {
     fetchApplicants();
+
+    const handleFocus = () => {
+      fetchApplicants();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [fetchApplicants]);
 
   const updateApplicationStatus = async (
@@ -305,6 +316,13 @@ export function useUserApplications() {
 
   useEffect(() => {
     fetchApplications();
+
+    const handleFocus = () => {
+      fetchApplications();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [fetchApplications]);
 
   const withdrawApplication = async (applicationId: string) => {

@@ -20,6 +20,7 @@ import Notifications from "./pages/Notifications";
 import Jobs from "./pages/Jobs";
 import Companies from "./pages/Companies";
 import CompanyProfile from "./pages/CompanyProfile";
+import CompanyJobs from "./pages/CompanyJobs";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -95,6 +96,9 @@ const App = () => (
             <Route path="/notifications" element={
               <ProtectedRoute><Notifications /></ProtectedRoute>
             } />
+            <Route path="/jobs/create" element={
+              <ProtectedRoute><Jobs createMode={true} /></ProtectedRoute>
+            } />
             <Route path="/jobs" element={
               <ProtectedRoute><Jobs /></ProtectedRoute>
             } />
@@ -103,6 +107,9 @@ const App = () => (
             } />
             <Route path="/company/:companyId" element={
               <ProtectedRoute><CompanyProfile /></ProtectedRoute>
+            } />
+            <Route path="/companies/:companyId/jobs" element={
+              <ProtectedRoute><CompanyJobs /></ProtectedRoute>
             } />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

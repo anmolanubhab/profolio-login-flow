@@ -56,6 +56,10 @@ export const ApplyJobDialog = ({ open, onOpenChange, jobId, jobTitle, onApplicat
 
       if (error) throw error;
 
+      // Notify company owner and admins
+      // Notification is handled by database trigger 'on_application_created' to ensure reliability and bypass RLS
+
+
       toast({
         title: 'Success',
         description: 'Application submitted successfully!',

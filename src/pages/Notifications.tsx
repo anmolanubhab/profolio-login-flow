@@ -225,6 +225,7 @@ const Notifications = () => {
       case 'new_job':
       case 'application_submitted':
       case 'new_application':
+      case 'job_application_received':
         return Briefcase;
       case 'application_shortlisted':
       case 'application_offered':
@@ -276,6 +277,7 @@ const Notifications = () => {
       case 'application_submitted':
         return `Your application for ${jobTitle} was submitted`;
       case 'new_application':
+      case 'job_application_received':
         return `New application received for ${jobTitle}`;
       case 'application_shortlisted':
         return `Great news! You've been shortlisted for ${jobTitle}`;
@@ -340,6 +342,13 @@ const Notifications = () => {
       case 'interview_selected':
       case 'interview_rejected':
         navigate('/jobs');
+        break;
+      case 'job_application_received':
+        if (payload?.company_id) {
+          navigate(`/companies/${payload.company_id}/jobs`);
+        } else {
+          navigate('/jobs');
+        }
         break;
       case 'message':
         navigate('/connect');
