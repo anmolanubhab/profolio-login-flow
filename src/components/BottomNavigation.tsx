@@ -48,7 +48,7 @@ const BottomNavigation = ({ visible = true }: BottomNavigationProps) => {
   const navItems = [
     { id: 'home', icon: Home, label: 'Home', path: '/dashboard' },
     { id: 'network', icon: Users, label: 'Network', path: '/connect' },
-    { id: 'add', icon: Plus, label: 'Add Post', path: '/add-post', isCenter: true },
+    { id: 'create', icon: Plus, label: '', path: '/create-post', isCenter: true },
     { id: 'notifications', icon: Bell, label: 'Notifications', path: '/notifications' },
     { id: 'jobs', icon: Briefcase, label: 'Jobs', path: '/jobs' }
   ];
@@ -57,64 +57,66 @@ const BottomNavigation = ({ visible = true }: BottomNavigationProps) => {
 
   return (
     <nav 
-      className={`fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border w-full max-w-full transition-transform duration-300 ease-out ${
+      className={`fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border/40 shadow-[0_-2px_10px_rgba(0,0,0,0.02)] transition-transform duration-300 ease-out ${
         visible ? 'translate-y-0' : 'translate-y-full'
       }`}
     >
-      <div className="relative flex items-center justify-center h-16 px-2 sm:px-4 max-w-md mx-auto w-full">
-        {navItems.map((item, index) => {
+      <div className="flex items-center justify-between px-2 h-16 max-w-md mx-auto w-full">
+        {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
           
           if (item.isCenter) {
             return (
-              <div key={item.id} className="flex-1 flex justify-center">
+              <div key={item.id} className="flex-1 flex justify-center items-center">
                 <Button
                   onClick={() => navigate(item.path)}
                   className={cn(
-                    "w-14 h-14 rounded-full shadow-lg shadow-primary/25",
-                    "bg-gradient-to-br from-primary to-primary/80",
-                    "hover:shadow-xl hover:shadow-primary/30 hover:scale-105",
-                    "transition-all duration-300 ease-out",
-                    "border-4 border-background",
-                    "-mt-6 relative z-10"
+                    "w-11 h-11 rounded-xl shadow-md shadow-primary/20",
+                    "bg-primary hover:bg-primary/90 text-primary-foreground",
+                    "flex items-center justify-center transition-transform active:scale-95",
+                    "border-0"
                   )}
                   size="icon"
                 >
-                  <Icon className="h-6 w-6 text-primary-foreground" />
+                  <Plus className="h-6 w-6 text-white" strokeWidth={3} />
                 </Button>
               </div>
             );
           }
 
           return (
-            <Button
+            <button
               key={item.id}
-              variant="ghost"
-              size="icon"
               onClick={() => navigate(item.path)}
               className={cn(
-                "flex-1 flex flex-col items-center justify-center h-16 gap-1",
-                "hover:bg-muted/50 transition-all duration-200",
-                active && "text-primary bg-primary/5"
+                "flex-1 flex flex-col items-center justify-center gap-1 py-1",
+                "transition-colors duration-200 bg-transparent border-0 cursor-pointer",
+                active ? "text-primary" : "text-muted-foreground hover:text-foreground/80"
               )}
             >
               <div className="relative">
-                <Icon className={cn(
-                  "h-5 w-5 transition-colors",
-                  active ? "text-primary" : "text-muted-foreground"
-                )} />
+                <Icon 
+                  className={cn(
+                    "h-[22px] w-[22px] transition-all",
+                    active && "fill-current"
+                  )} 
+                  strokeWidth={active ? 2.5 : 2}
+                />
                 {item.id === 'notifications' && unreadCount > 0 && (
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full" />
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 border-[1.5px] border-background"></span>
+                  </span>
                 )}
               </div>
               <span className={cn(
-                "text-xs font-medium transition-colors",
-                active ? "text-primary" : "text-muted-foreground"
+                "text-[10px] leading-none transition-all",
+                active ? "font-bold" : "font-medium"
               )}>
                 {item.label}
               </span>
-            </Button>
+            </button>
           );
         })}
       </div>

@@ -1,82 +1,66 @@
-import { User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { SidebarTrigger } from '@/components/ui/sidebar';
-import { SearchBar } from './SearchBar';
 import { MobileNavDrawer } from './MobileNavDrawer';
+import { SearchBar } from './SearchBar';
+import { useSidebar } from "@/components/ui/sidebar"
 
 interface NavBarProps {
-  user?: {
-    email?: string;
-    avatar?: string;
-  };
+  user?: any;
   onSignOut?: () => void;
   visible?: boolean;
 }
 
-const NavBar = ({ user, onSignOut, visible = true }: NavBarProps) => {
-  const navigate = useNavigate();
+const NavBar = ({ visible = true }: NavBarProps) => {
+  const { state } = useSidebar()
+  const offset = state === "collapsed" ? "3.5rem" : "16rem"
 
   return (
-    <nav 
-      className={`navbar w-full max-w-full overflow-x-hidden transition-transform duration-300 ease-out ${
-        visible ? 'translate-y-0' : '-translate-y-full'
-      }`}
-    >
-      <div className="navbar-inner w-full max-w-full overflow-hidden">
-        {/* Left: Hamburger menu (mobile) + Brand + Sidebar trigger */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Mobile hamburger menu */}
-          <MobileNavDrawer />
-          {/* Desktop sidebar trigger */}
-          <SidebarTrigger className="hidden lg:inline-flex" />
-          <div className="nav-brand cursor-pointer" onClick={() => navigate('/dashboard')}>
-            <div className="w-9 h-9 rounded bg-primary text-primary-foreground grid place-items-center font-bold text-base">
-              P
-            </div>
-            <span className="hidden sm:inline">Profolio</span>
+    <>
+      <style>
+        {`@import url('https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap');`}
+      </style>
+      
+      <nav 
+        style={{ 
+          "--nav-left-offset": offset 
+        } as React.CSSProperties}
+        className={`fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/40 transition-all duration-300 ease-out lg:left-[var(--nav-left-offset)] lg:w-[calc(100%-var(--nav-left-offset))] ${
+          visible ? 'translate-y-0' : '-translate-y-full'
+        }`}
+      >
+        {/* DESKTOP LAYOUT (lg:flex) - Single Row */}
+        <div className="hidden lg:flex items-center justify-center w-full h-16 px-6">
+          {/* Search Bar - Inline, centered, balanced width */}
+          <div className="w-full max-w-2xl">
+            <SearchBar />
           </div>
         </div>
 
-        {/* Middle: Search */}
-        <div className="nav-search hidden sm:block">
-          <SearchBar />
-        </div>
+        {/* MOBILE LAYOUT (lg:hidden) - Two Rows */}
+        <div className="lg:hidden w-full max-w-md mx-auto flex flex-col pb-2">
+          {/* Row 1: App Title (Instagram Style) */}
+          <div className="h-11 flex items-center justify-center relative">
+            <h1 className="text-[28px] leading-none text-foreground select-none pt-2" style={{ fontFamily: '"Grand Hotel", cursive' }}>
+              Profolio
+            </h1>
+          </div>
 
-        {/* Right: Actions */}
-        <div className="nav-actions">
-          {/* Profile dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="avatar" aria-label="Open profile menu">
-                <Avatar className="h-full w-full">
-                  <AvatarImage src={user?.avatar} />
-                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                    {user?.email?.charAt(0).toUpperCase() || <User className="h-4 w-4" />}
-                  </AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="dropdown-menu">
-              <div className="px-3 py-2">
-                <div className="text-sm font-medium">{user?.email || 'Guest'}</div>
-                <div className="text-xs text-muted-foreground">Signed in</div>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/profile')}>
-                Profile & Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-                Dashboard
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onSignOut}>Logout</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Row 2: Action Bar */}
+          <div className="flex items-center px-3 gap-3">
+            {/* Left: Hamburger menu */}
+            <div className="-ml-2">
+              <MobileNavDrawer />
+            </div>
+
+            {/* Center/Right: Search */}
+            <div className="flex-1">
+              <SearchBar />
+            </div>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+      
+      {/* Spacer to push content down (Mobile: 90px, Desktop: 64px/4rem) */}
+      <div className="h-[90px] lg:h-16" />
+    </>
   );
 };
 

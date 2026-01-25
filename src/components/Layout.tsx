@@ -12,11 +12,11 @@ interface LayoutProps {
   onSignOut?: () => void
 }
 
-export function Layout({ children, user, onSignOut }: LayoutProps) {
+function LayoutContent({ children, user, onSignOut }: LayoutProps) {
   const { showHeader, showBottomNav } = useScrollDirection(15);
 
   return (
-    <SidebarProvider>
+    <>
       {/* Fixed top navbar */}
       <NavBar user={user} onSignOut={onSignOut} visible={showHeader} />
 
@@ -26,7 +26,9 @@ export function Layout({ children, user, onSignOut }: LayoutProps) {
       </div>
 
       {/* Main content */}
-      <div className="layout content w-full max-w-full overflow-x-hidden">
+      <div 
+        className="layout content flex-1 min-w-0 transition-all duration-300 ease-out"
+      >
         <main className="feed pb-24 w-full max-w-full">
           {children}
         </main>
@@ -36,6 +38,14 @@ export function Layout({ children, user, onSignOut }: LayoutProps) {
       <div className="lg:hidden">
         <BottomNavigation visible={showBottomNav} />
       </div>
+    </>
+  )
+}
+
+export function Layout(props: LayoutProps) {
+  return (
+    <SidebarProvider>
+      <LayoutContent {...props} />
     </SidebarProvider>
   )
 }

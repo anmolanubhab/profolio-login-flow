@@ -147,8 +147,8 @@ export const SearchBar = () => {
       <PopoverTrigger asChild>
         <div className="relative w-full">
           <input
-            className="nav-search-input"
-            placeholder="Search posts, people, jobs..."
+            className="w-full h-9 bg-secondary/80 rounded-xl pl-9 pr-4 text-sm transition-all focus:bg-secondary focus:ring-0 focus:outline-none placeholder:text-muted-foreground/70"
+            placeholder="Search"
             aria-label="Search"
             value={query}
             onChange={(e) => {
@@ -157,7 +157,7 @@ export const SearchBar = () => {
             }}
             onFocus={() => query.length > 0 && setOpen(true)}
           />
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70 pointer-events-none" />
         </div>
       </PopoverTrigger>
       <PopoverContent 

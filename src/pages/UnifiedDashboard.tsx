@@ -11,15 +11,17 @@ const UnifiedDashboard = () => {
 
   return (
     <Layout user={user} onSignOut={signOut}>
-      <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6">
-        {/* Pending Company Invitations - Only shows if there are pending invitations */}
-        <CompanyInvitationsCard />
-        
-        {/* Stories Row */}
-        <Stories />
-        
-        {/* Main Feed */}
-        <Feed />
+      {/* Desktop Alignment Wrapper: Matches NavBar centering logic */}
+      <div className="w-full flex justify-center lg:px-6">
+        <div className="w-full max-w-2xl space-y-4 sm:space-y-6">
+          
+          <CompanyInvitationsCard />
+
+          <Stories />
+
+          <Feed />
+
+        </div>
       </div>
     </Layout>
   );
