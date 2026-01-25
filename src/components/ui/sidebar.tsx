@@ -100,7 +100,7 @@ const SidebarProvider = React.forwardRef<HTMLDivElement, React.ComponentProps<"d
         "--sidebar-width": SIDEBAR_WIDTH,
         "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
         ...style
-      } as React.CSSProperties} className={cn("group/sidebar-wrapper min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar pr-0 items-center justify-center flex flex-row pl-[11px] px-[100px]", className)} ref={ref} {...props}>
+      } as React.CSSProperties} className={cn("group/sidebar-wrapper min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar pr-0 items-center justify-center flex flex-row pl-[11px] px-[110px]", className)} ref={ref} {...props}>
             {children}
           </div>
         </TooltipProvider>
