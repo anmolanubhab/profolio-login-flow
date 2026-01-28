@@ -64,25 +64,13 @@ const Stories = () => {
     getCurrentUser();
   }, []);
 
-  // Check if current story is liked
+  // Like state (local only - story_likes table doesn't exist yet)
   useEffect(() => {
-    if (!currentStory || !currentUser) return;
-    
-    const checkLike = async () => {
-      const { data } = await supabase
-        .from('story_likes')
-        .select('*')
-        .eq('story_id', currentStory.id)
-        .eq('user_id', currentUser.id)
-        .maybeSingle();
-      
-      setIsLiked(!!data);
-    };
-
-    checkLike();
-    // Reset reply text
+    if (!currentStory) return;
+    // Reset like state and reply text when story changes
+    setIsLiked(false);
     setReplyText('');
-  }, [currentStory, currentUser]);
+  }, [currentStory]);
 
   // Story auto-advance timer
   useEffect(() => {
@@ -299,43 +287,17 @@ const Stories = () => {
   };
 
   const handleEditStory = () => {
-    if (!currentStory) return;
-    setIsPaused(true);
-    setEditCaption(currentStory.caption || '');
-    setShowEditDialog(true);
+    // Edit functionality disabled - caption column doesn't exist in schema
+    toast({
+      title: "Edit not available",
+      description: "Story editing is not supported yet.",
+    });
   };
 
   const handleSaveEdit = async () => {
-    if (!currentStory) return;
-    
-    try {
-      setIsSaving(true);
-      const { error } = await supabase
-        .from('stories')
-        .update({ caption: editCaption })
-        .eq('id', currentStory.id);
-
-      if (error) throw error;
-
-      // Update local state
-      const updatedGroup = selectedStoryGroup?.map(s => 
-        s.id === currentStory.id ? { ...s, caption: editCaption } : s
-      ) || null;
-      setSelectedStoryGroup(updatedGroup);
-
-      toast({ title: "Story updated" });
-      setShowEditDialog(false);
-      // Resume will happen via Dialog onOpenChange handling or explicit play
-      setIsPaused(false); 
-    } catch (error: any) {
-      toast({ 
-        title: "Error updating story", 
-        description: error.message,
-        variant: "destructive" 
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    // Save functionality disabled - caption column doesn't exist
+    setShowEditDialog(false);
+    setIsPaused(false);
   };
 
   const handleDeleteStory = async () => {
@@ -381,24 +343,15 @@ const Stories = () => {
     // Pause instantly
     setIsPaused(true);
     
+    // Toggle like locally (story_likes table doesn't exist yet)
     const newLikeStatus = !isLiked;
     setIsLiked(newLikeStatus);
-
-    try {
-      if (newLikeStatus) {
-        await supabase.from('story_likes').insert({
-          story_id: currentStory.id,
-          user_id: currentUser.id
-        });
-      } else {
-        await supabase.from('story_likes').delete()
-          .eq('story_id', currentStory.id)
-          .eq('user_id', currentUser.id);
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error);
-      setIsLiked(!newLikeStatus);
-    }
+    
+    // Show feedback
+    toast({
+      title: newLikeStatus ? "Liked!" : "Unliked",
+      description: newLikeStatus ? "You liked this story" : "Like removed",
+    });
   };
 
   const handleReplySubmit = () => {

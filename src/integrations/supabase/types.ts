@@ -206,6 +206,7 @@ export type Database = {
           logo_url: string | null
           name: string
           owner_id: string | null
+          owner_profile_id: string | null
           values: string[] | null
           website: string | null
         }
@@ -221,6 +222,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           owner_id?: string | null
+          owner_profile_id?: string | null
           values?: string[] | null
           website?: string | null
         }
@@ -236,6 +238,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           owner_id?: string | null
+          owner_profile_id?: string | null
           values?: string[] | null
           website?: string | null
         }
@@ -243,6 +246,13 @@ export type Database = {
           {
             foreignKeyName: "companies_owner_id_fkey"
             columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "companies_owner_profile_id_fkey"
+            columns: ["owner_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1025,6 +1035,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "posts_profiles_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       profile_views: {
@@ -1326,7 +1343,6 @@ export type Database = {
           media_type: string | null
           media_url: string
           user_id: string | null
-          caption: string | null
         }
         Insert: {
           created_at?: string | null
@@ -1335,7 +1351,6 @@ export type Database = {
           media_type?: string | null
           media_url: string
           user_id?: string | null
-          caption?: string | null
         }
         Update: {
           created_at?: string | null
@@ -1344,38 +1359,8 @@ export type Database = {
           media_type?: string | null
           media_url?: string
           user_id?: string | null
-          caption?: string | null
         }
         Relationships: []
-      }
-      story_likes: {
-        Row: {
-          created_at: string
-          id: string
-          story_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          story_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          story_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_likes_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "stories"
-            referencedColumns: ["id"]
-          }
-        ]
       }
       story_views: {
         Row: {
@@ -1532,6 +1517,10 @@ export type Database = {
         Returns: boolean
       }
       is_company_admin: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_company_member_safe: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }

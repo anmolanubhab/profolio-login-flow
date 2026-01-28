@@ -6,12 +6,33 @@
     <title>Profolio - Your Future, Verified</title>
     <meta name="description" content="Professional portfolio platform for students and employers" />
     <meta name="author" content="Profolio" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Preconnect to critical origins for faster resource loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Load Google Fonts asynchronously to prevent render-blocking -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    </noscript>
 
-    <meta property="og:title" content="fd036f0b-2b9d-4b27-8f26-69059b779a0c" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <!-- Critical CSS inlined for faster FCP -->
+    <style>
+      /* Critical CSS - minimal styles for initial paint */
+      *,*::before,*::after{box-sizing:border-box;border-width:0;border-style:solid}
+      html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+      body{margin:0;line-height:inherit;background-color:hsl(0 0% 100%);color:hsl(240 10% 3.9%)}
+      @media(prefers-color-scheme:dark){body{background-color:hsl(240 10% 3.9%);color:hsl(0 0% 98%)}}
+      #root{min-height:100vh;display:flex;flex-direction:column}
+      .loading-skeleton{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite;background:linear-gradient(90deg,hsl(240 4.8% 95.9%) 25%,hsl(240 5.9% 90%) 50%,hsl(240 4.8% 95.9%) 75%);background-size:200% 100%}
+      @media(prefers-color-scheme:dark){.loading-skeleton{background:linear-gradient(90deg,hsl(240 3.7% 15.9%) 25%,hsl(240 5.3% 26.1%) 50%,hsl(240 3.7% 15.9%) 75%)}}
+      @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    </style>
+
+    <meta property="og:title" content="Profolio - Your Future, Verified" />
+    <meta property="og:description" content="Professional portfolio platform for students and employers" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
