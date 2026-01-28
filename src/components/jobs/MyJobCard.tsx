@@ -2,9 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
-import { MapPin, Briefcase, Calendar, Building2, Clock, CheckCircle, AlertCircle, XCircle, Video } from "lucide-react";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { MapPin, Briefcase, Calendar, Building2, XCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,25 +38,7 @@ interface MyJobCardProps {
 }
 
 export const MyJobCard = ({ application, onWithdraw }: MyJobCardProps) => {
-  const [interview, setInterview] = useState<any>(null);
-
-  useEffect(() => {
-    if (application.status === 'interview') {
-      fetchInterview();
-    }
-  }, [application.id, application.status]);
-
-  const fetchInterview = async () => {
-    const { data, error } = await supabase
-      .from('job_interviews')
-      .select('*')
-      .eq('application_id', application.id)
-      .maybeSingle();
-
-    if (!error && data) {
-      setInterview(data);
-    }
-  };
+  // Interview functionality removed - table doesn't exist yet
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -150,32 +130,7 @@ export const MyJobCard = ({ application, onWithdraw }: MyJobCardProps) => {
           </div>
         )}
 
-        {/* Interview UI Guard */}
-        {application.status === 'interview' && interview && (
-          <div className="mt-4 p-4 bg-muted/30 rounded-lg border border-border/50">
-            <h4 className="font-semibold mb-2 flex items-center gap-2">
-              <Video className="w-4 h-4" />
-              Interview Details
-            </h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Type:</span>
-                <span>{interview.interview_type}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Date:</span>
-                <span>{interview.scheduled_date} at {interview.scheduled_time}</span>
-              </div>
-              {interview.meeting_link && (
-                 <div className="pt-2">
-                   <Button size="sm" variant="outline" className="w-full" onClick={() => window.open(interview.meeting_link, '_blank')}>
-                     Join Meeting
-                   </Button>
-                 </div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Interview details will be shown when interview system is implemented */}
       </CardContent>
     </Card>
   );
