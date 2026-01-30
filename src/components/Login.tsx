@@ -193,10 +193,10 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-all duration-200 p-1 min-w-[24px] min-h-[24px] flex items-center justify-center"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-all duration-200 w-10 h-10 flex items-center justify-center rounded-lg hover:bg-gray-100"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
@@ -233,7 +233,7 @@ const Login = () => {
             <div className="relative py-2">
               <Separator className="bg-gray-200" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="bg-white px-4 text-xs text-gray-600 font-medium">
+                <span className="bg-white px-4 text-xs text-gray-700 font-medium">
                   or
                 </span>
               </div>
