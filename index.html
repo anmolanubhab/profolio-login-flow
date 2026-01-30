@@ -12,12 +12,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
     
-    <!-- Load Google Fonts asynchronously to prevent render-blocking -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <!-- Load Google Fonts asynchronously using requestIdleCallback to break chain -->
     <noscript>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
     </noscript>
+    <script>
+      (function(){var l=function(){var e=document.createElement('link');e.rel='stylesheet';e.href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';document.head.appendChild(e)};if('requestIdleCallback'in window){requestIdleCallback(l)}else{setTimeout(l,1)}})();
+    </script>
 
     <!-- Critical CSS inlined for faster FCP -->
     <style>
