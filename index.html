@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profolio - Your Future, Verified</title>
+    <meta name="description" content="Professional portfolio platform for students and employers" />
+    <meta name="author" content="Profolio" />
+    
+    <!-- Preconnect to critical origins for faster resource loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
+    
+    <!-- Load Google Fonts asynchronously using requestIdleCallback to break chain -->
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+    </noscript>
+    <script>
+      (function(){var l=function(){var e=document.createElement('link');e.rel='stylesheet';e.href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';document.head.appendChild(e)};if('requestIdleCallback'in window){requestIdleCallback(l)}else{setTimeout(l,1)}})();
+    </script>
+
+    <!-- Critical CSS inlined for faster FCP/LCP -->
+    <style>
+      /* Critical CSS - minimal styles for initial paint with font fallback */
+      @font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:local('Inter'),local('-apple-system'),local('BlinkMacSystemFont')}
+      *,*::before,*::after{box-sizing:border-box;border-width:0;border-style:solid}
+      html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif}
+      body{margin:0;line-height:inherit;background:linear-gradient(135deg,hsl(200,90%,55%),hsl(280,80%,60%),hsl(330,85%,65%));min-height:100vh}
+      #root{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+      /* LCP optimization - show text immediately with fallback font */
+      h1,h2,.text-5xl,.text-6xl{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700}
+    </style>
+
+    <meta property="og:title" content="Profolio - Your Future, Verified" />
+    <meta property="og:description" content="Professional portfolio platform for students and employers" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@lovable_dev" />
+    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
