@@ -56,6 +56,34 @@ const AddPost = () => {
   const displayName = profile?.display_name || profile?.full_name || user?.email?.split("@")[0] || "User";
   const avatarUrl = profile?.avatar_url;
 
+  const [viewportHeight, setViewportHeight] = useState(
+    window.visualViewport?.height || window.innerHeight
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.visualViewport) {
+        setViewportHeight(window.visualViewport.height);
+      } else {
+        setViewportHeight(window.innerHeight);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleResize);
+      window.visualViewport.addEventListener("scroll", handleResize);
+    }
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleResize);
+        window.visualViewport.removeEventListener("scroll", handleResize);
+      }
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   // Focus textarea on mount
   useEffect(() => {
     if (textareaRef.current) {
@@ -189,9 +217,12 @@ const AddPost = () => {
   const hasContent = content.trim().length > 0 || !!selectedImage || !!selectedVideo;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div 
+      className="fixed inset-0 bg-white flex flex-col overflow-hidden"
+      style={{ height: `${viewportHeight}px` }}
+    >
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white sticky top-0 z-50">
+      <header className="flex-none flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white z-50">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => navigate(-1)} 
@@ -232,14 +263,14 @@ const AddPost = () => {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-y-auto">
-        <div className="flex-1 p-4">
+      <div className="flex-1 overflow-y-auto overscroll-y-contain">
+        <div className="p-4 min-h-full">
           <Textarea
             ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Share your thoughts..."
-            className="w-full h-full min-h-[200px] border-none focus-visible:ring-0 resize-none text-lg p-0 placeholder:text-gray-500 leading-relaxed"
+            className="w-full h-full min-h-[200px] border-none focus-visible:ring-0 resize-none text-lg p-0 placeholder:text-gray-500 leading-relaxed bg-transparent"
             style={{ boxShadow: 'none' }}
           />
 
@@ -264,7 +295,7 @@ const AddPost = () => {
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 pb-6 safe-area-bottom">
+      <div className="flex-none bg-white border-t border-gray-100 p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <div className="flex items-center justify-between">
           <button className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-600 font-medium text-sm transition-colors group">
             <Sparkles className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
