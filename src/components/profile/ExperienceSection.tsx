@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { VisualExperienceTimeline } from './redesign/VisualExperienceTimeline';
 
 interface Experience {
   id: string;
@@ -209,13 +210,6 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
     resetEditData();
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
   if (loading) {
     return (
       <Card>
@@ -331,78 +325,13 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
         </Card>
       )}
 
-      {/* Experience List */}
-      <div className="space-y-4">
-        {experiences.map((experience) => (
-          <Card key={experience.id} className="shadow-card">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-foreground">
-                    {experience.role}
-                  </h3>
-                  <p className="text-primary font-medium">
-                    {experience.company}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    {formatDate(experience.start_date)} - {
-                      experience.is_current ? 'Present' : 
-                      experience.end_date ? formatDate(experience.end_date) : 'Present'
-                    }
-                  </p>
-                  {experience.employment_type && (
-                    <p className="text-muted-foreground text-sm">
-                      {experience.employment_type}
-                    </p>
-                  )}
-                  {experience.location && (
-                    <p className="text-muted-foreground text-sm">
-                      📍 {experience.location}
-                    </p>
-                  )}
-                  {experience.description && (
-                    <p className="text-foreground mt-3 leading-relaxed">
-                      {experience.description}
-                    </p>
-                  )}
-                </div>
-                
-                {isOwnProfile && (
-                  <div className="flex gap-2 ml-4">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(experience)}
-                      disabled={editingId !== null || isAdding}
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(experience.id)}
-                      disabled={editingId !== null || isAdding}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        {experiences.length === 0 && !isAdding && (
-          <Card>
-            <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground">
-                No work experience added yet. Click "Add Experience" to get started.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
+      {/* Experience Timeline */}
+      <VisualExperienceTimeline 
+        experiences={experiences}
+        isOwnProfile={isOwnProfile}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
     </div>
   );
 };

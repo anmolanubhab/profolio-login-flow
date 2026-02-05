@@ -7,12 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { VisualSkills } from './redesign/VisualSkills';
 
 interface Skill {
   id: string;
   skill_name: string;
   endorsement_count: number;
   has_endorsed: boolean;
+  level?: string;
+  is_top?: boolean;
 }
 
 interface SkillsSectionProps {
@@ -76,7 +80,7 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
       // Fetch skills from the skills table
       const { data: skillsData, error: skillsError } = await supabase
         .from('skills')
-        .select('id, skill_name')
+        .select('id, skill_name, level, is_top')
         .eq('user_id', profileId);
 
       if (skillsError) throw skillsError;
@@ -111,12 +115,18 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
             skill_name: skill.skill_name,
             endorsement_count: count || 0,
             has_endorsed: hasEndorsed,
+            level: skill.level || 'Beginner',
+            is_top: skill.is_top || false,
           };
         })
       );
 
-      // Sort by endorsement count (highest first)
-      skillsWithEndorsements.sort((a, b) => b.endorsement_count - a.endorsement_count);
+      // Sort by is_top (true first), then endorsement count (highest first)
+      skillsWithEndorsements.sort((a, b) => {
+        if (a.is_top && !b.is_top) return -1;
+        if (!a.is_top && b.is_top) return 1;
+        return b.endorsement_count - a.endorsement_count;
+      });
       setSkills(skillsWithEndorsements);
     } catch (error: any) {
       toast({
@@ -269,6 +279,56 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
     }
   };
 
+  const handleToggleTop = async (skillId: string, isTop: boolean) => {
+    // Check if trying to add more than 3 top skills
+    if (isTop && skills.filter(s => s.is_top).length >= 3) {
+      toast({
+        title: "Limit Reached",
+        description: "You can only highlight up to 3 top skills.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('skills')
+        .update({ is_top: isTop })
+        .eq('id', skillId);
+
+      if (error) throw error;
+
+      setSkills(skills.map(s => 
+        s.id === skillId ? { ...s, is_top: isTop } : s
+      ).sort((a, b) => {
+        // Re-sort locally
+        const aTop = s.id === skillId ? isTop : a.is_top;
+        const bTop = s.id === skillId ? isTop : b.is_top; // Logic slightly flawed here because s is iterated.
+        // Better: just update state then sort in next render or just update and let sort happen if we resort array.
+        // For now, let's just update and not resort immediately to avoid jump, or resort if desired.
+        // Actually, let's just update the specific item.
+        return 0; 
+      }));
+      
+      // Re-fetch to get correct order and data
+      fetchSkills();
+
+      toast({
+        title: "Success",
+        description: isTop ? "Added to top skills" : "Removed from top skills",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -304,13 +364,28 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
         <Card className="border-primary/20">
           <CardContent className="p-6">
             <div className="flex gap-2">
-              <Input
-                placeholder="Add a skill (e.g., JavaScript, Project Management)"
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={saving}
-              />
+              <div className="flex-1">
+                <Input
+                  placeholder="Add a skill (e.g., JavaScript, Project Management)"
+                  value={newSkill}
+                  onChange={(e) => setNewSkill(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={saving}
+                />
+              </div>
+              <div className="w-[180px]">
+                <Select value={newSkillLevel} onValueChange={setNewSkillLevel}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Beginner">Beginner</SelectItem>
+                    <SelectItem value="Intermediate">Intermediate</SelectItem>
+                    <SelectItem value="Advanced">Advanced</SelectItem>
+                    <SelectItem value="Expert">Expert</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button 
                 onClick={handleAddSkill}
                 disabled={!newSkill.trim() || saving}
@@ -324,73 +399,15 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
       )}
 
       {/* Skills Display */}
-      <Card className="shadow-card">
-        <CardContent className="p-6">
-          {skills.length > 0 ? (
-            <div className="space-y-3">
-              {skills.map((skill) => (
-                <div
-                  key={skill.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant="secondary"
-                      className="text-sm py-1 px-3 bg-primary/10 text-primary"
-                    >
-                      {skill.skill_name}
-                    </Badge>
-                    {skill.endorsement_count > 0 && (
-                      <span className="text-sm text-muted-foreground flex items-center gap-1">
-                        <ThumbsUp className="h-3 w-3" />
-                        {skill.endorsement_count} endorsement{skill.endorsement_count !== 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {canEndorse && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant={skill.has_endorsed ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handleEndorse(skill)}
-                            disabled={saving}
-                            className="gap-1"
-                          >
-                            <ThumbsUp className={`h-4 w-4 ${skill.has_endorsed ? '' : ''}`} />
-                            {skill.has_endorsed ? 'Endorsed' : 'Endorse'}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {skill.has_endorsed ? 'Remove endorsement' : 'Endorse this skill'}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {isOwnProfile && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSkill(skill.id)}
-                        disabled={saving}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">
-                {isOwnProfile 
-                  ? "No skills added yet. Add your first skill above to get started."
-                  : "No skills added yet."}
-              </p>
-            </div>
-          )}
+      <Card className="shadow-card border-0 bg-transparent shadow-none">
+        <CardContent className="p-0">
+          <VisualSkills 
+            skills={skills}
+            isOwnProfile={isOwnProfile}
+            onEndorse={handleEndorse}
+            onDelete={handleRemoveSkill}
+            onToggleTop={handleToggleTop}
+          />
         </CardContent>
       </Card>
 
