@@ -59,7 +59,7 @@ const Feed = ({ refresh, userId }: FeedProps) => {
           .from('profiles')
           .select('id')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         currentUserProfileId = profile?.id || null;
         
         if (currentUserProfileId) {

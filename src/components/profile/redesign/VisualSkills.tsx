@@ -28,8 +28,9 @@ export const VisualSkills = ({
   onDelete,
   onToggleTop 
 }: VisualSkillsProps) => {
-  const topSkills = skills.filter(s => s.is_top);
-  const otherSkills = skills.filter(s => !s.is_top);
+  const safeSkills = skills || [];
+  const topSkills = safeSkills.filter(s => s.is_top);
+  const otherSkills = safeSkills.filter(s => !s.is_top);
 
   const getLevelColor = (level?: string) => {
     switch (level?.toLowerCase()) {

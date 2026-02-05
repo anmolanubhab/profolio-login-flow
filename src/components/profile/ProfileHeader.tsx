@@ -32,6 +32,7 @@ interface ProfileHeaderProps {
 
 const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [skillsCount, setSkillsCount] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,6 +64,14 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
         .maybeSingle();
 
       if (error) throw error;
+
+      // Fetch skills count
+      const { count: sCount } = await supabase
+        .from('skills')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      
+      setSkillsCount(sCount || 0);
 
       if (data) {
         setProfile(data as any);
