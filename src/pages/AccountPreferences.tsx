@@ -113,14 +113,22 @@ const AccountPreferences = () => {
     queryKey: ["profile", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-      
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (error) {
+          console.error("Profile fetch error:", error);
+          return null;
+        }
+        return data;
+      } catch (error) {
+        console.error("Profile fetch error:", error);
+        return null;
+      }
     },
     enabled: !!user?.id,
   });
@@ -150,9 +158,13 @@ const AccountPreferences = () => {
       });
     },
     onError: (error: any) => {
+      const errorMessage = error.message === 'Failed to fetch' 
+        ? 'Network error: Unable to connect to server. Please check your internet connection.' 
+        : (error.message || "Failed to update preferences.");
+
       toast({
         title: "Error",
-        description: error.message || "Failed to update preferences.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
