@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import PostCard from './PostCard';
 import PostCardSkeleton from './feed/PostCardSkeleton';
@@ -189,7 +189,15 @@ const Feed = ({ refresh, userId }: FeedProps) => {
     }
   };
 
-  const handleLike = async (postId: string, isLiked: boolean) => {
+  const handleDeletePost = useCallback((postId: string) => {
+    setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+  }, []);
+
+  const handleHidePost = useCallback(() => {
+    fetchPosts(0, true);
+  }, []);
+
+  const handleLike = useCallback(async (postId: string, isLiked: boolean) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -228,15 +236,7 @@ const Feed = ({ refresh, userId }: FeedProps) => {
       });
       fetchPosts(0, true); // Revert on error
     }
-  };
-
-  const handleDeletePost = (postId: string) => {
-    setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
-  };
-
-  const handleHidePost = () => {
-    fetchPosts(0, true);
-  };
+  }, [toast]);
 
   if (loading) {
     return (

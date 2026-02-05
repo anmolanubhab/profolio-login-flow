@@ -28,6 +28,7 @@ const CompanyProfile = lazy(() => import("./pages/CompanyProfile"));
 const Groups = lazy(() => import("./pages/Groups"));
 const Settings = lazy(() => import("./pages/Settings"));
 const AccountPreferences = lazy(() => import("./pages/AccountPreferences"));
+const MyApplications = lazy(() => import("./pages/MyApplications"));
 const SignInSecurity = lazy(() => import("./pages/SignInSecurity"));
 const Visibility = lazy(() => import("./pages/Visibility"));
 const DataPrivacy = lazy(() => import("./pages/DataPrivacy"));
@@ -120,6 +121,9 @@ const App = () => (
               } />
               <Route path="/jobs/my-jobs" element={
                 <ProtectedRoute><MyJobs /></ProtectedRoute>
+              } />
+              <Route path="/jobs/applications" element={
+                <ProtectedRoute><MyApplications /></ProtectedRoute>
               } />
               <Route path="/companies" element={
                 <ProtectedRoute><Companies /></ProtectedRoute>
