@@ -167,26 +167,33 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
     setUploadingCover(true);
     try {
       const { secureUpload } = await import('@/lib/secure-upload');
+      // Use 'avatars' bucket for cover images (public bucket that exists)
       const result = await secureUpload({
-        bucket: 'covers',
+        bucket: 'avatars',
         file: file,
         userId: userId
       });
 
       if (!result.success) {
+        console.error('Cover upload failed:', result.error);
         throw new Error(result.error || 'Upload failed');
       }
 
       const publicUrl = result.url;
+      console.log('Cover uploaded successfully:', publicUrl);
 
+      // Store cover URL in photo_url field (existing column in profiles table)
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ cover_url: publicUrl })
+        .update({ photo_url: publicUrl })
         .eq('user_id', userId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Database update error:', updateError);
+        throw updateError;
+      }
 
-      setProfile(prev => prev ? { ...prev, cover_url: publicUrl } : null);
+      setProfile(prev => prev ? { ...prev, photo_url: publicUrl } : null);
       setEditData(prev => ({ ...prev, cover_url: publicUrl }));
       
       toast({
@@ -194,6 +201,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
         description: "Cover photo updated successfully!",
       });
     } catch (error: any) {
+      console.error('Cover upload error:', error);
       toast({
         title: "Error",
         description: error.message,
