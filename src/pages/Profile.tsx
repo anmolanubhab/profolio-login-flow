@@ -1,40 +1,37 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Layout } from '@/components/Layout';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileTabs from '@/components/profile/ProfileTabs';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Profile = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
   const [profileId, setProfileId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [creatingProfile, setCreatingProfile] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const getUser = async () => {
-      try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        
-        if (authError || !user) {
-          navigate('/');
-          return;
-        }
-        setUser(user);
-        
-        // Fetch profile ID - try to get existing or create if missing
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (profile) {
-          setProfileId(profile.id);
-        } else {
+    const initProfile = async () => {
+      if (authLoading) return;
+
+      if (!user) {
+        navigate('/');
+        return;
+      }
+
+      if (profile) {
+        setProfileId(profile.id);
+        return;
+      }
+
+      // Only attempt creation if we have a user but no profile and aren't already creating
+      if (!profile && !creatingProfile) {
+        setCreatingProfile(true);
+        try {
           // If profile doesn't exist, create it immediately to prevent blank screens
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
@@ -44,6 +41,7 @@ const Profile = () => {
             
           if (newProfile) {
             setProfileId(newProfile.id);
+            await refreshProfile(); // Sync with context
           } else if (createError) {
             console.error('Error creating profile:', createError);
             toast({
@@ -52,31 +50,23 @@ const Profile = () => {
               variant: "destructive",
             });
           }
+        } catch (error) {
+          console.error('Error in profile initialization:', error);
+        } finally {
+          setCreatingProfile(false);
         }
-      } catch (error) {
-        console.error('Error in profile initialization:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
-    getUser();
-  }, [navigate, toast]);
+    initProfile();
+  }, [user, profile, authLoading, navigate, toast, creatingProfile, refreshProfile]);
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      navigate('/');
-    }
+    await signOut();
+    navigate('/');
   };
 
-  if (loading) {
+  if (authLoading || (user && !profileId && creatingProfile)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

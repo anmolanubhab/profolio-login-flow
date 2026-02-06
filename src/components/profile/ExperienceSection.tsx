@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { VisualExperienceTimeline } from './redesign/VisualExperienceTimeline';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Experience {
   id: string;
@@ -32,6 +33,7 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
+  const { user, profile: authProfile, refreshProfile } = useAuth();
 
   const [editData, setEditData] = useState({
     company: '',
@@ -45,8 +47,25 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
   });
 
   useEffect(() => {
-    fetchExperiences();
-  }, [userId]);
+    if (isOwnProfile && authProfile && user?.id === userId) {
+      const experienceArray = (authProfile as any)?.experience || [];
+      const formattedExperiences = experienceArray.map((exp: any, index: number) => ({
+        id: exp.id || `exp_${index}`,
+        company: exp.company || '',
+        role: exp.role || '',
+        start_date: exp.start_date || '',
+        end_date: exp.end_date || '',
+        is_current: exp.is_current || false,
+        employment_type: exp.employment_type || '',
+        location: exp.location || '',
+        description: exp.description || ''
+      }));
+      setExperiences(formattedExperiences);
+      setLoading(false);
+    } else {
+      fetchExperiences();
+    }
+  }, [userId, authProfile, isOwnProfile, user]);
 
   const fetchExperiences = async () => {
     try {
@@ -152,7 +171,12 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
 
       if (error) throw error;
 
-      fetchExperiences();
+      if (isOwnProfile) {
+        await refreshProfile();
+      } else {
+        fetchExperiences();
+      }
+      
       setIsAdding(false);
       setEditingId(null);
       resetEditData();
@@ -190,7 +214,12 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
 
       if (error) throw error;
 
-      fetchExperiences();
+      if (isOwnProfile) {
+        await refreshProfile();
+      } else {
+        fetchExperiences();
+      }
+      
       toast({
         title: "Success",
         description: "Experience deleted successfully!",

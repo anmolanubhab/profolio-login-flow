@@ -125,9 +125,12 @@ export async function secureUpload({
       .from(bucket)
       .getPublicUrl(filePath);
 
+    // Add cache busting timestamp
+    const publicUrlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
+
     return {
       success: true,
-      url: publicUrl,
+      url: publicUrlWithTimestamp,
       filePath
     };
 

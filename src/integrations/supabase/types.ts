@@ -1071,6 +1071,7 @@ export type Database = {
           address: string | null
           avatar_url: string | null
           bio: string | null
+          cover_url: string | null
           created_at: string
           display_name: string | null
           education: Json | null
@@ -1098,6 +1099,7 @@ export type Database = {
           address?: string | null
           avatar_url?: string | null
           bio?: string | null
+          cover_url?: string | null
           created_at?: string
           display_name?: string | null
           education?: Json | null
@@ -1125,6 +1127,7 @@ export type Database = {
           address?: string | null
           avatar_url?: string | null
           bio?: string | null
+          cover_url?: string | null
           created_at?: string
           display_name?: string | null
           education?: Json | null

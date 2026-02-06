@@ -61,25 +61,9 @@ const LinkItem = ({ label, onClick }: LinkItemProps) => (
 );
 
 const Settings = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  // Fetch user profile
-  const { data: profile } = useQuery({
-    queryKey: ["profile", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
 
   const handleSignOut = async () => {
     try {

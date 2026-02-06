@@ -57,7 +57,7 @@ export const CoverImage = ({ coverUrl, isOwner, userId, onUpdate }: CoverImagePr
       // Update profile with cover URL
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ photo_url: result.url })
+        .update({ cover_url: result.url })
         .eq('user_id', userId);
 
       if (updateError) throw updateError;

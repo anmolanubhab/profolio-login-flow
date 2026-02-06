@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { ProfileHero } from './redesign/ProfileHero';
 
@@ -20,6 +21,7 @@ interface Profile {
   profession?: string;
   location?: string;
   avatar_url?: string;
+  cover_url?: string;
   phone?: string;
   website?: string;
   profile_visibility?: string;
@@ -39,6 +41,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const { toast } = useToast();
+  const { user, refreshProfile, profile: authProfile } = useAuth();
 
   const [editData, setEditData] = useState({
     display_name: '',
@@ -54,10 +57,47 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
   const [coverPreview, setCoverPreview] = useState('');
 
   useEffect(() => {
-    fetchProfile();
-  }, [userId]);
+    const initProfile = async () => {
+      // 1. Handle Profile Data
+      // If viewing own profile and we have auth context data, use it (Single Source of Truth)
+      if (user?.id === userId && authProfile) {
+        setProfile(authProfile as any);
+        setEditData({
+          display_name: authProfile.display_name || '',
+          bio: authProfile.bio || '',
+          profession: authProfile.profession || '',
+          location: authProfile.location || '',
+          phone: authProfile.phone || '',
+          website: authProfile.website || '',
+          profile_visibility: authProfile.profile_visibility || 'public',
+        });
+        setCoverPreview(authProfile.cover_url || authProfile.photo_url || '');
+        setLoading(false);
+      } else {
+        // Otherwise fetch from DB (viewing others or auth not ready)
+        await fetchProfileData();
+      }
 
-  const fetchProfile = async () => {
+      // 2. Always fetch skills count (not in AuthContext)
+      fetchSkillsCount();
+    };
+
+    initProfile();
+  }, [userId, user?.id, authProfile]);
+
+  const fetchSkillsCount = async () => {
+    try {
+      const { count: sCount } = await supabase
+        .from('skills')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+      setSkillsCount(sCount || 0);
+    } catch (error) {
+      console.error('Error fetching skills count:', error);
+    }
+  };
+
+  const fetchProfileData = async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -66,14 +106,6 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
         .maybeSingle();
 
       if (error) throw error;
-
-      // Fetch skills count
-      const { count: sCount } = await supabase
-        .from('skills')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
-      
-      setSkillsCount(sCount || 0);
 
       if (data) {
         setProfile(data as any);
@@ -86,7 +118,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
           website: (data as any).website || '',
           profile_visibility: (data as any).profile_visibility || 'public',
         });
-        setCoverPreview((data as any).photo_url || '');
+        setCoverPreview((data as any).cover_url || (data as any).photo_url || '');
       } else {
         // Create a new profile if it doesn't exist
         const { data: newProfile, error: createError } = await supabase
@@ -147,6 +179,12 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
       if (updateError) throw updateError;
 
       setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      
+      // Update global context if this is the current user's profile
+      if (user?.id === userId) {
+        await refreshProfile();
+      }
+
       toast({
         title: "Success",
         description: "Profile photo updated successfully!",
@@ -184,10 +222,10 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
       const publicUrl = result.url;
       console.log('Cover uploaded successfully:', publicUrl);
 
-      // Store cover URL in photo_url field (existing column in profiles table)
+      // Store cover URL in cover_url field
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ photo_url: publicUrl })
+        .update({ cover_url: publicUrl })
         .eq('user_id', userId);
 
       if (updateError) {
@@ -195,8 +233,13 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
         throw updateError;
       }
 
-      setProfile(prev => prev ? { ...prev, photo_url: publicUrl } : null);
+      setProfile(prev => prev ? { ...prev, cover_url: publicUrl } : null);
       setCoverPreview(publicUrl);
+      
+      // Update global context if this is the current user's profile
+      if (user?.id === userId) {
+        await refreshProfile();
+      }
       
       toast({
         title: "Success",
@@ -225,6 +268,12 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
       if (error) throw error;
 
       setProfile(prev => prev ? { ...prev, ...editData } : null);
+
+      // Update global context if this is the current user's profile
+      if (user?.id === userId) {
+        await refreshProfile();
+      }
+
       setIsEditing(false);
       toast({
         title: "Success",

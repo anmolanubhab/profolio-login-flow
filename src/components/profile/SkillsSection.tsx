@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VisualSkills } from './redesign/VisualSkills';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Skill {
   id: string;
@@ -31,10 +32,13 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const { toast } = useToast();
+  const { user, profile: authProfile } = useAuth();
 
   useEffect(() => {
-    fetchCurrentProfile();
-  }, []);
+    if (authProfile) {
+      setCurrentProfileId(authProfile.id);
+    }
+  }, [authProfile]);
 
   useEffect(() => {
     if (profileId) {
@@ -44,21 +48,6 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
       }
     }
   }, [profileId, currentProfileId]);
-
-  const fetchCurrentProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (data) {
-        setCurrentProfileId(data.id);
-      }
-    }
-  };
 
   const checkConnection = async () => {
     if (!currentProfileId || !profileId) return;

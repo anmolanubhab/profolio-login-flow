@@ -4,10 +4,9 @@ import {
   ChevronRight
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/AuthContext"
-import { supabase } from "@/integrations/supabase/client"
 import {
   Sheet,
   SheetContent,
@@ -19,36 +18,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { navigationConfig } from "@/config/navigationConfig"
 
-interface ProfileData {
-  full_name: string | null
-  avatar_url: string | null
-  profession: string | null
-  location: string | null
-}
-
 export function MobileNavDrawer() {
   const [open, setOpen] = useState(false)
   const location = useLocation()
-  const { user } = useAuth()
-  const [profile, setProfile] = useState<ProfileData | null>(null)
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) return
-      
-      const { data } = await supabase
-        .from('profiles')
-        .select('full_name, avatar_url, profession, location')
-        .eq('user_id', user.id)
-        .single()
-      
-      if (data) {
-        setProfile(data)
-      }
-    }
-    
-    fetchProfile()
-  }, [user])
+  const { profile } = useAuth()
 
   const isActive = (url: string) => location.pathname === url
 
@@ -56,6 +29,10 @@ export function MobileNavDrawer() {
     if (!name) return 'U'
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
+
+  // Use profile from AuthContext (single source of truth)
+  // Fallback to display_name if full_name is missing
+  const displayName = profile?.full_name || profile?.display_name || 'User'
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -76,14 +53,14 @@ export function MobileNavDrawer() {
             <NavLink to="/profile" className="block">
               <div className="flex items-start gap-3">
                 <Avatar className="h-14 w-14 border-2 border-background shadow-md">
-                  <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User'} />
+                  <AvatarImage src={profile?.avatar_url || undefined} alt={displayName} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-lg font-semibold">
-                    {getInitials(profile?.full_name)}
+                    {getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-foreground truncate text-base">
-                    {profile?.full_name || 'User'}
+                    {displayName}
                   </h3>
                   {profile?.profession && (
                     <p className="text-sm text-muted-foreground truncate">

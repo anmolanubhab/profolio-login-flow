@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Education {
   id: string;
@@ -29,6 +30,7 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
+  const { user, profile: authProfile, refreshProfile } = useAuth();
 
   const [editData, setEditData] = useState({
     institution: '',
@@ -41,8 +43,24 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
   });
 
   useEffect(() => {
-    fetchEducations();
-  }, [userId]);
+    if (isOwnProfile && authProfile && user?.id === userId) {
+      const educationArray = (authProfile as any)?.education || [];
+      const formattedEducations = educationArray.map((edu: any, index: number) => ({
+        id: edu.id || `edu_${index}`,
+        institution: edu.institution || '',
+        degree: edu.degree || '',
+        field_of_study: edu.field_of_study || '',
+        start_date: edu.start_date || '',
+        end_date: edu.end_date || '',
+        grade: edu.grade || '',
+        description: edu.description || ''
+      }));
+      setEducations(formattedEducations);
+      setLoading(false);
+    } else {
+      fetchEducations();
+    }
+  }, [userId, authProfile, isOwnProfile, user]);
 
   const fetchEducations = async () => {
     try {
@@ -146,7 +164,12 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
 
       if (error) throw error;
 
-      fetchEducations();
+      if (isOwnProfile) {
+        await refreshProfile();
+      } else {
+        fetchEducations();
+      }
+      
       setIsAdding(false);
       setEditingId(null);
       resetEditData();
@@ -184,7 +207,12 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
 
       if (error) throw error;
 
-      fetchEducations();
+      if (isOwnProfile) {
+        await refreshProfile();
+      } else {
+        fetchEducations();
+      }
+
       toast({
         title: "Success",
         description: "Education deleted successfully!",

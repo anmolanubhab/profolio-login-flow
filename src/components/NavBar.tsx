@@ -2,9 +2,9 @@ import { MobileNavDrawer } from './MobileNavDrawer';
 import { SearchBar } from './SearchBar';
 import { useSidebar } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useEffect, useState } from 'react'
-import { supabase } from "@/integrations/supabase/client"
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface NavBarProps {
   user?: any;
@@ -15,25 +15,11 @@ interface NavBarProps {
 const NavBar = ({ visible = true, user }: NavBarProps) => {
   const { state } = useSidebar()
   const offset = state === "collapsed" ? "3.5rem" : "16rem"
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const navigate = useNavigate()
-
-  useEffect(() => {
-    if (user?.id) {
-      const fetchProfile = async () => {
-        const { data } = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('user_id', user.id)
-          .single()
-        
-        if (data?.avatar_url) {
-          setAvatarUrl(data.avatar_url)
-        }
-      }
-      fetchProfile()
-    }
-  }, [user])
+  const { profile } = useAuth()
+  
+  // Use profile from AuthContext (single source of truth)
+  const avatarUrl = profile?.avatar_url
 
   return (
     <>

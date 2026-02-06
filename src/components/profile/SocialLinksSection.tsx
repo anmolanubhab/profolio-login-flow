@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SocialLinksSectionProps {
   userId: string;
@@ -17,6 +18,7 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
+  const { user, profile: authProfile, refreshProfile } = useAuth();
 
   const [formData, setFormData] = useState({
     linkedin_url: '',
@@ -27,8 +29,19 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
   });
 
   useEffect(() => {
-    fetchData();
-  }, [userId]);
+    if (isOwnProfile && authProfile && user?.id === userId) {
+      setFormData({
+        linkedin_url: authProfile.linkedin_url || '',
+        github_url: authProfile.github_url || '',
+        twitter_url: authProfile.twitter_url || '',
+        website: authProfile.website || '',
+        phone: authProfile.phone || '',
+      });
+      setLoading(false);
+    } else {
+      fetchData();
+    }
+  }, [userId, authProfile, isOwnProfile, user]);
 
   const fetchData = async () => {
     try {
@@ -69,6 +82,10 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
         .eq('user_id', userId);
 
       if (error) throw error;
+
+      if (isOwnProfile) {
+        await refreshProfile();
+      }
 
       setIsEditing(false);
       toast({
