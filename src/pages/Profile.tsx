@@ -81,7 +81,7 @@ const Profile = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="container mx-auto max-w-4xl pb-20">
+      <div className="w-full bg-white pb-20 min-h-screen">
         <ProfileHeader userId={user.id} />
         {/* Only render tabs if we have a profile ID, otherwise show a loader or empty state */}
         {profileId ? (
