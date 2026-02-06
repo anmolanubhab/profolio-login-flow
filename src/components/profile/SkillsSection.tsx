@@ -5,8 +5,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { VisualSkills } from './redesign/VisualSkills';
 
@@ -15,8 +13,7 @@ interface Skill {
   skill_name: string;
   endorsement_count: number;
   has_endorsed: boolean;
-  level?: string;
-  is_top?: boolean;
+  proficiency?: string;
 }
 
 interface SkillsSectionProps {
@@ -29,6 +26,7 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [newSkill, setNewSkill] = useState('');
+  const [newSkillLevel, setNewSkillLevel] = useState('beginner');
   const [saving, setSaving] = useState(false);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -77,10 +75,10 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
 
   const fetchSkills = async () => {
     try {
-      // Fetch skills from the skills table
+      // Fetch skills from the skills table - only columns that exist
       const { data: skillsData, error: skillsError } = await supabase
         .from('skills')
-        .select('id, skill_name, level, is_top')
+        .select('id, skill_name, proficiency, years_of_experience')
         .eq('user_id', profileId);
 
       if (skillsError) throw skillsError;
@@ -115,18 +113,13 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
             skill_name: skill.skill_name,
             endorsement_count: count || 0,
             has_endorsed: hasEndorsed,
-            level: skill.level || 'Beginner',
-            is_top: skill.is_top || false,
+            proficiency: skill.proficiency || 'beginner',
           };
         })
       );
 
-      // Sort by is_top (true first), then endorsement count (highest first)
-      skillsWithEndorsements.sort((a, b) => {
-        if (a.is_top && !b.is_top) return -1;
-        if (!a.is_top && b.is_top) return 1;
-        return b.endorsement_count - a.endorsement_count;
-      });
+      // Sort by endorsement count (highest first)
+      skillsWithEndorsements.sort((a, b) => b.endorsement_count - a.endorsement_count);
       setSkills(skillsWithEndorsements);
     } catch (error: any) {
       toast({
@@ -159,11 +152,13 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
         .insert({
           user_id: profileId,
           skill_name: trimmedSkill,
+          proficiency: newSkillLevel as 'beginner' | 'intermediate' | 'advanced' | 'expert',
         });
 
       if (error) throw error;
 
       setNewSkill('');
+      setNewSkillLevel('beginner');
       fetchSkills();
       toast({
         title: "Success",
@@ -279,64 +274,12 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
     }
   };
 
-  const handleToggleTop = async (skillId: string, isTop: boolean) => {
-    // Check if trying to add more than 3 top skills
-    if (isTop && skills.filter(s => s.is_top).length >= 3) {
-      toast({
-        title: "Limit Reached",
-        description: "You can only highlight up to 3 top skills.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('skills')
-        .update({ is_top: isTop })
-        .eq('id', skillId);
-
-      if (error) throw error;
-
-      setSkills(skills.map(s => 
-        s.id === skillId ? { ...s, is_top: isTop } : s
-      ).sort((a, b) => {
-        // Re-sort locally
-        const aTop = s.id === skillId ? isTop : a.is_top;
-        const bTop = s.id === skillId ? isTop : b.is_top; // Logic slightly flawed here because s is iterated.
-        // Better: just update state then sort in next render or just update and let sort happen if we resort array.
-        // For now, let's just update and not resort immediately to avoid jump, or resort if desired.
-        // Actually, let's just update the specific item.
-        return 0; 
-      }));
-      
-      // Re-fetch to get correct order and data
-      fetchSkills();
-
-      toast({
-        title: "Success",
-        description: isTop ? "Added to top skills" : "Removed from top skills",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       handleAddSkill();
     }
   };
-
-  const canEndorse = !isOwnProfile && currentProfileId && (isConnected || true); // Allow all logged-in users to endorse
 
   if (loading) {
     return (
@@ -379,10 +322,10 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
                     <SelectValue placeholder="Select Level" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Beginner">Beginner</SelectItem>
-                    <SelectItem value="Intermediate">Intermediate</SelectItem>
-                    <SelectItem value="Advanced">Advanced</SelectItem>
-                    <SelectItem value="Expert">Expert</SelectItem>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                    <SelectItem value="expert">Expert</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -406,7 +349,6 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
             isOwnProfile={isOwnProfile}
             onEndorse={handleEndorse}
             onDelete={handleRemoveSkill}
-            onToggleTop={handleToggleTop}
           />
         </CardContent>
       </Card>
