@@ -60,7 +60,20 @@ export const CoverImage = ({ coverUrl, isOwner, userId, onUpdate }: CoverImagePr
         .update({ cover_url: result.url })
         .eq('user_id', userId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        // Check for schema/column error specifically
+        if (updateError.message?.includes('column') || updateError.message?.includes('schema')) {
+          console.error('Schema mismatch detected:', updateError);
+          toast({
+            title: 'Configuration Error',
+            description: 'The database schema is missing the cover_url column. Please apply the latest migrations.',
+            variant: 'destructive',
+          });
+          // Do not throw, allow the UI to show the uploaded image at least locally
+        } else {
+          throw updateError;
+        }
+      }
 
       onUpdate?.(result.url!);
       toast({
@@ -68,9 +81,10 @@ export const CoverImage = ({ coverUrl, isOwner, userId, onUpdate }: CoverImagePr
         description: 'Your cover image has been updated successfully.',
       });
     } catch (error: any) {
+      console.error('Cover upload error:', error);
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Failed to update cover image',
         variant: 'destructive',
       });
     } finally {

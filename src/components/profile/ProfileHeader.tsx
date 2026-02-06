@@ -229,8 +229,19 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
         .eq('user_id', userId);
 
       if (updateError) {
-        console.error('Database update error:', updateError);
-        throw updateError;
+        // Check for schema/column error specifically
+        if (updateError.message?.includes('column') || updateError.message?.includes('schema')) {
+          console.error('Schema mismatch detected:', updateError);
+          toast({
+            title: 'Configuration Error',
+            description: 'The database schema is missing the cover_url column. Please apply the latest migrations.',
+            variant: 'destructive',
+          });
+          // Do not block the UI, just warn
+        } else {
+          console.error('Database update error:', updateError);
+          throw updateError;
+        }
       }
 
       setProfile(prev => prev ? { ...prev, cover_url: publicUrl } : null);
