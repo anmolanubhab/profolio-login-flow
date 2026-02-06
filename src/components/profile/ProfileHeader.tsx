@@ -48,8 +48,10 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
     phone: '',
     website: '',
     profile_visibility: 'public',
-    cover_url: ''
   });
+  
+  // Local state for cover preview (not saved to DB directly, uses photo_url)
+  const [coverPreview, setCoverPreview] = useState('');
 
   useEffect(() => {
     fetchProfile();
@@ -83,8 +85,8 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
           phone: (data as any).phone || '',
           website: (data as any).website || '',
           profile_visibility: (data as any).profile_visibility || 'public',
-          cover_url: (data as any).cover_url || ''
         });
+        setCoverPreview((data as any).photo_url || '');
       } else {
         // Create a new profile if it doesn't exist
         const { data: newProfile, error: createError } = await supabase
@@ -104,8 +106,8 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
           phone: '',
           website: '',
           profile_visibility: 'public',
-          cover_url: ''
         });
+        setCoverPreview('');
       }
     } catch (error: any) {
       toast({
@@ -194,7 +196,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
       }
 
       setProfile(prev => prev ? { ...prev, photo_url: publicUrl } : null);
-      setEditData(prev => ({ ...prev, cover_url: publicUrl }));
+      setCoverPreview(publicUrl);
       
       toast({
         title: "Success",
@@ -217,7 +219,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(editData as any)
+        .update(editData)
         .eq('user_id', userId);
 
       if (error) throw error;
@@ -248,8 +250,8 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
       phone: profile?.phone || '',
       website: profile?.website || '',
       profile_visibility: profile?.profile_visibility || 'public',
-      cover_url: profile?.cover_url || ''
     });
+    setCoverPreview(profile?.photo_url || '');
     setIsEditing(false);
   };
 
@@ -311,8 +313,8 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
       <CardContent className="space-y-6">
         {/* Cover Photo Section */}
         <div className="relative h-32 md:h-40 w-full rounded-xl overflow-hidden bg-muted group">
-          {editData.cover_url ? (
-            <img src={editData.cover_url} alt="Cover" className="w-full h-full object-cover" />
+          {coverPreview ? (
+            <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-gradient-to-r from-primary/10 to-primary/5 flex items-center justify-center text-muted-foreground">
               <span className="text-sm">No cover photo</span>
