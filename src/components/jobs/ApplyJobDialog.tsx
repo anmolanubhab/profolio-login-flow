@@ -39,7 +39,7 @@ export const ApplyJobDialog = ({ job, open, onOpenChange }: ApplyJobDialogProps)
     apply({
       jobId: job.id,
       resumeId: selectedResumeId,
-      coverNote
+      coverNote: coverNote.trim()
     }, {
       onSuccess: () => {
         onOpenChange(false);
