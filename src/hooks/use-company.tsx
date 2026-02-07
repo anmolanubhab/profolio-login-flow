@@ -288,18 +288,20 @@ export function useCompany(companyId?: string) {
 }
 
 export function useCompanyInvitations() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [invitations, setInvitations] = useState<CompanyInvitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchInvitations = useCallback(async () => {
-    if (!user) {
+    if (!user?.email) {
       setIsLoading(false);
+      setInvitations([]);
       return;
     }
 
     setIsLoading(true);
     try {
+      // Filter by user's email to get their invitations
       const { data, error } = await supabase
         .from('company_invitations')
         .select(`
@@ -311,10 +313,15 @@ export function useCompanyInvitations() {
           expires_at,
           created_at
         `)
+        .eq('email', user.email)
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString());
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching invitations:', error);
+        setInvitations([]);
+        return;
+      }
 
       if (data && data.length > 0) {
         // Fetch company details for each invitation
@@ -341,10 +348,11 @@ export function useCompanyInvitations() {
       }
     } catch (error) {
       console.error('Error fetching invitations:', error);
+      setInvitations([]);
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user?.email]);
 
   useEffect(() => {
     fetchInvitations();

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,14 +10,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Briefcase, Building2, DollarSign, Eye } from 'lucide-react';
+import { MapPin, Briefcase, Building2, DollarSign, Eye, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CompanySelector } from './CompanySelector';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Job {
   id?: string;
   title: string;
   company_name: string;
+  company_id?: string;
   description: string;
   requirements: string;
   location: string;
@@ -26,6 +29,8 @@ interface Job {
   salary_min: string | number;
   salary_max: string | number;
   currency: string;
+  status?: string;
+  posted_by?: string;
 }
 
 interface PostJobDialogProps {
@@ -34,11 +39,21 @@ interface PostJobDialogProps {
   profileId: string;
   onJobPosted: () => void;
   editJob?: Job | null;
+  redirectAfterPost?: boolean;
 }
 
-export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, editJob }: PostJobDialogProps) => {
+export const PostJobDialog = ({ 
+  open, 
+  onOpenChange, 
+  profileId, 
+  onJobPosted, 
+  editJob,
+  redirectAfterPost = true 
+}: PostJobDialogProps) => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('form');
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     title: '',
@@ -74,71 +89,91 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
     }
   }, [editJob]);
 
-  const validateForm = () => {
+  const validateForm = (): boolean => {
+    const errors: string[] = [];
+    
     if (!formData.title.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter a job title',
-        variant: 'destructive',
-      });
-      return false;
+      errors.push('Job title is required');
     }
-    if (!formData.company_id && !formData.company_name.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please select a company',
-        variant: 'destructive',
-      });
-      return false;
+    
+    // CRITICAL: Company is always required for job posting
+    if (!formData.company_id) {
+      errors.push('Please select a company. Jobs must be associated with a company.');
     }
+    
     if (!formData.description.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter a job description',
-        variant: 'destructive',
-      });
-      return false;
+      errors.push('Job description is required');
     }
+    
     if (!formData.location.trim()) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please enter a location',
-        variant: 'destructive',
-      });
-      return false;
+      errors.push('Location is required');
     }
+    
     if (formData.salary_min && formData.salary_max) {
       if (parseFloat(formData.salary_min) > parseFloat(formData.salary_max)) {
-        toast({
-          title: 'Validation Error',
-          description: 'Minimum salary cannot be greater than maximum salary',
-          variant: 'destructive',
-        });
-        return false;
+        errors.push('Minimum salary cannot be greater than maximum salary');
       }
     }
+
+    setValidationErrors(errors);
+    
+    if (errors.length > 0) {
+      toast({
+        title: 'Validation Error',
+        description: errors[0],
+        variant: 'destructive',
+      });
+      return false;
+    }
+    
     return true;
+  };
+
+  // Check if current user can edit this job
+  const canEditJob = (): boolean => {
+    if (!editJob) return true;
+    return editJob.posted_by === profileId;
   };
 
   const handleSubmit = async (e: React.FormEvent, isDraft = false) => {
     e.preventDefault();
     
+    // Prevent non-owners from editing
+    if (editJob && !canEditJob()) {
+      toast({
+        title: 'Permission Denied',
+        description: 'You can only edit jobs that you posted.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     if (!isDraft && !validateForm()) return;
+    
+    // For drafts, still require company_id
+    if (isDraft && !formData.company_id) {
+      toast({
+        title: 'Company Required',
+        description: 'Please select a company before saving as draft.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     setLoading(true);
 
     try {
       const jobData = {
         posted_by: profileId,
-        title: formData.title,
-        company_id: formData.company_id || null,
+        title: formData.title.trim(),
+        company_id: formData.company_id, // Always required
         company_name: formData.company_name,
-        description: formData.description,
-        requirements: formData.requirements || null,
-        location: formData.location,
+        description: formData.description.trim(),
+        requirements: formData.requirements?.trim() || null,
+        location: formData.location.trim(),
         employment_type: formData.employment_type,
         remote_option: formData.remote_option,
-        apply_link: formData.apply_link || null,
+        apply_link: formData.apply_link?.trim() || null,
         salary_min: formData.salary_min ? parseFloat(formData.salary_min) : null,
         salary_max: formData.salary_max ? parseFloat(formData.salary_max) : null,
         currency: formData.currency,
@@ -150,22 +185,29 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
         const result = await supabase
           .from('jobs')
           .update(jobData)
-          .eq('id', editJob.id);
+          .eq('id', editJob.id)
+          .eq('posted_by', profileId); // Ensure only owner can update
         error = result.error;
       } else {
         const result = await supabase.from('jobs').insert(jobData);
         error = result.error;
       }
 
-      if (error) throw error;
+      if (error) {
+        console.error('Job post error:', error);
+        throw error;
+      }
 
       toast({
         title: 'Success',
-        description: editJob ? 'Job updated successfully!' : isDraft ? 'Job saved as draft!' : 'Job posted successfully!',
+        description: editJob 
+          ? 'Job updated successfully!' 
+          : isDraft 
+            ? 'Job saved as draft!' 
+            : 'Job posted successfully!',
       });
 
-      onOpenChange(false);
-      onJobPosted();
+      // Reset form
       setFormData({
         title: '',
         company_id: '',
@@ -180,10 +222,20 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
         salary_max: '',
         currency: 'USD',
       });
+      setValidationErrors([]);
+      
+      onOpenChange(false);
+      onJobPosted();
+      
+      // Redirect to My Jobs after posting (not drafts)
+      if (redirectAfterPost && !isDraft && !editJob) {
+        navigate('/jobs/my-jobs');
+      }
     } catch (error: any) {
+      console.error('Job submission error:', error);
       toast({
         title: 'Error',
-        description: error.message,
+        description: error.message || 'Failed to save job. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -215,6 +267,20 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
 
           <TabsContent value="form">
             <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+              {/* Validation Errors Display */}
+              {validationErrors.length > 0 && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <ul className="list-disc list-inside space-y-1">
+                      {validationErrors.map((error, idx) => (
+                        <li key={idx}>{error}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <div className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
