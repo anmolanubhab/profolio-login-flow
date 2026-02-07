@@ -36,6 +36,7 @@ const Visibility = lazy(() => import("./pages/Visibility"));
 const DataPrivacy = lazy(() => import("./pages/DataPrivacy"));
 const AdvertisingData = lazy(() => import("./pages/AdvertisingData"));
 const SavedPosts = lazy(() => import("./pages/SavedPosts"));
+const SavedJobs = lazy(() => import("./pages/SavedJobs"));
 const JobApplicants = lazy(() => import("./pages/JobApplicantsPage"));
 const JobMessages = lazy(() => import("./pages/JobMessagesPage"));
 const JobInsights = lazy(() => import("./pages/JobInsightsPage"));
