@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,7 +9,7 @@ import { PostJobDialog } from './PostJobDialog';
 import { JobApplicantsDialog } from './JobApplicantsDialog';
 import { 
   Briefcase, Plus, MapPin, DollarSign, Users, MoreVertical, 
-  Edit, Trash2, Eye, EyeOff, Calendar
+  Edit, Trash2, Eye, EyeOff, Calendar, RefreshCw, AlertCircle
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -33,9 +33,10 @@ import { formatDistanceToNow } from 'date-fns';
 interface CompanyJobsManagerProps {
   companyId: string;
   companyName: string;
+  isOwner?: boolean; // Whether current user is company owner/admin
 }
 
-export const CompanyJobsManager = ({ companyId, companyName }: CompanyJobsManagerProps) => {
+export const CompanyJobsManager = ({ companyId, companyName, isOwner = false }: CompanyJobsManagerProps) => {
   const { jobs, isLoading, profileId, closeJob, reopenJob, deleteJob, refetch } = useCompanyJobs(companyId);
   const { toast } = useToast();
   
@@ -43,6 +44,11 @@ export const CompanyJobsManager = ({ companyId, companyName }: CompanyJobsManage
   const [editingJob, setEditingJob] = useState<any>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const [viewingApplicantsJob, setViewingApplicantsJob] = useState<{ id: string; title: string } | null>(null);
+
+  // Check if user can manage a specific job
+  const canManageJob = (job: any): boolean => {
+    return isOwner || job.posted_by === profileId;
+  };
 
   const handleCloseJob = async (jobId: string) => {
     const result = await closeJob(jobId);
@@ -107,10 +113,17 @@ export const CompanyJobsManager = ({ companyId, companyName }: CompanyJobsManage
             {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'} posted by {companyName}
           </p>
         </div>
-        <Button onClick={() => setShowPostJobDialog(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Post New Job
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh jobs">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          {isOwner && (
+            <Button onClick={() => setShowPostJobDialog(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Post New Job
+            </Button>
+          )}
+        </div>
       </div>
 
       {jobs.length === 0 ? (
@@ -118,12 +131,16 @@ export const CompanyJobsManager = ({ companyId, companyName }: CompanyJobsManage
           <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="font-semibold text-lg mb-2">No jobs posted yet</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Start hiring by posting your first job opening
+            {isOwner 
+              ? "Start hiring by posting your first job opening" 
+              : "This company hasn't posted any jobs yet"}
           </p>
-          <Button onClick={() => setShowPostJobDialog(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Post Your First Job
-          </Button>
+          {isOwner && (
+            <Button onClick={() => setShowPostJobDialog(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Post Your First Job
+            </Button>
+          )}
         </Card>
       ) : (
         <div className="space-y-4">
@@ -136,8 +153,16 @@ export const CompanyJobsManager = ({ companyId, companyName }: CompanyJobsManage
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold text-lg">{job.title}</h3>
-                          <Badge variant={job.status === 'open' ? 'default' : 'secondary'}>
-                            {job.status === 'open' ? 'Active' : 'Closed'}
+                          <Badge 
+                            variant={
+                              job.status === 'open' ? 'default' : 
+                              job.status === 'draft' ? 'outline' : 
+                              'secondary'
+                            }
+                          >
+                            {job.status === 'open' ? 'Active' : 
+                             job.status === 'draft' ? 'Draft' : 
+                             'Closed'}
                           </Badge>
                         </div>
                         
@@ -173,59 +198,73 @@ export const CompanyJobsManager = ({ companyId, companyName }: CompanyJobsManage
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-4">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="gap-1.5"
-                        onClick={() => setViewingApplicantsJob({ id: job.id, title: job.title })}
-                      >
-                        <Users className="h-4 w-4" />
-                        View Applicants
-                      </Button>
-                    </div>
+                    {canManageJob(job) && (
+                      <div className="flex items-center gap-2 mt-4">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="gap-1.5"
+                          onClick={() => setViewingApplicantsJob({ id: job.id, title: job.title })}
+                        >
+                          <Users className="h-4 w-4" />
+                          View Applicants
+                          {job.stats && job.stats.total > 0 && (
+                            <Badge variant="secondary" className="ml-1 text-xs">
+                              {job.stats.total}
+                            </Badge>
+                          )}
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                        setEditingJob(job);
-                        setShowPostJobDialog(true);
-                      }}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit Job
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setViewingApplicantsJob({ id: job.id, title: job.title })}>
-                        <Users className="h-4 w-4 mr-2" />
-                        View Applicants
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      {job.status === 'open' ? (
-                        <DropdownMenuItem onClick={() => handleCloseJob(job.id)}>
-                          <EyeOff className="h-4 w-4 mr-2" />
-                          Close Job
+                  {canManageJob(job) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => {
+                          setEditingJob(job);
+                          setShowPostJobDialog(true);
+                        }}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Job
                         </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem onClick={() => handleReopenJob(job.id)}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          Reopen Job
+                        <DropdownMenuItem onClick={() => setViewingApplicantsJob({ id: job.id, title: job.title })}>
+                          <Users className="h-4 w-4 mr-2" />
+                          View Applicants
                         </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => setDeletingJobId(job.id)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Job
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <DropdownMenuSeparator />
+                        {job.status === 'open' ? (
+                          <DropdownMenuItem onClick={() => handleCloseJob(job.id)}>
+                            <EyeOff className="h-4 w-4 mr-2" />
+                            Close Job
+                          </DropdownMenuItem>
+                        ) : job.status === 'draft' ? (
+                          <DropdownMenuItem onClick={() => handleReopenJob(job.id)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Publish Job
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => handleReopenJob(job.id)}>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Repost Job
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => setDeletingJobId(job.id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Job
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </CardContent>
             </Card>
