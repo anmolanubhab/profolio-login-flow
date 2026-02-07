@@ -127,13 +127,15 @@ export const CompanyJobsManager = ({ companyId, companyName, isOwner = false }: 
       </div>
 
       {jobs.length === 0 ? (
-        <Card className="p-12 text-center">
+        <div className="text-center py-12">
           <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="font-semibold text-lg mb-2">No jobs posted yet</h3>
-          <p className="text-sm text-muted-foreground mb-4">
+          <h3 className="font-semibold text-lg mb-2">
+            {isOwner ? "No jobs yet" : "This company has not posted any jobs yet"}
+          </h3>
+          <p className="text-sm text-muted-foreground mb-6">
             {isOwner 
-              ? "Start hiring by posting your first job opening" 
-              : "This company hasn't posted any jobs yet"}
+              ? "Post your first job 🚀" 
+              : "Check back later for new opportunities"}
           </p>
           {isOwner && (
             <Button onClick={() => setShowPostJobDialog(true)} className="gap-2">
@@ -141,7 +143,7 @@ export const CompanyJobsManager = ({ companyId, companyName, isOwner = false }: 
               Post Your First Job
             </Button>
           )}
-        </Card>
+        </div>
       ) : (
         <div className="space-y-4">
           {jobs.map((job) => (

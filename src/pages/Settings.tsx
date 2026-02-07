@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +13,8 @@ import {
   Shield, 
   FileText, 
   Bell,
-  LogOut
+  LogOut,
+  Loader2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -64,8 +66,13 @@ const Settings = () => {
   const { user, signOut, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const handleSignOut = async () => {
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isSigningOut) return;
+    
+    setIsSigningOut(true);
     try {
       await signOut();
       toast({
@@ -79,6 +86,7 @@ const Settings = () => {
         description: error.message || "Failed to sign out",
         variant: "destructive",
       });
+      setIsSigningOut(false);
     }
   };
 
@@ -179,8 +187,11 @@ const Settings = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSignOut}>Sign Out</AlertDialogAction>
+            <AlertDialogCancel disabled={isSigningOut}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSignOut} disabled={isSigningOut}>
+              {isSigningOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sign Out
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

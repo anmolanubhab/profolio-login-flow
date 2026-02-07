@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MapPin, Briefcase, DollarSign, Building2, Globe, Clock, CheckCircle2, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface JobDetailsDialogProps {
   open: boolean;
@@ -26,6 +27,7 @@ export const JobDetailsDialog = ({
 }: JobDetailsDialogProps) => {
   const [job, setJob] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { profile } = useAuth();
 
   useEffect(() => {
     if (open && jobId) {
@@ -54,9 +56,49 @@ export const JobDetailsDialog = ({
         .single();
 
       if (error) throw error;
+      
+      // Safety check: Don't show draft jobs to non-owners
+      // If the job belongs to a company, check if current user is owner/admin
+      // If the job is posted by an individual, check if current user is the poster
+      
+      let isAuthorized = false;
+      
+      if (data.status !== 'draft') {
+        isAuthorized = true;
+      } else if (profile?.id) {
+        // If it's a draft, check ownership
+        if (data.posted_by === profile.id) {
+          isAuthorized = true;
+        } else if (data.companies) {
+           // We need to check if user is admin of this company
+           // Since we can't easily join company_admins here without modifying the query significantly or making another request,
+           // we'll rely on a separate check or assume if they have the link and are not the poster, they shouldn't see it if it's draft.
+           // However, for safety, if we can't verify, we block.
+           
+           // Let's make a quick check for company admin if needed
+           const { data: adminData } = await supabase
+             .from('company_admins')
+             .select('role')
+             .eq('company_id', data.companies.id)
+             .eq('user_id', profile.id)
+             .single();
+             
+           if (adminData) {
+             isAuthorized = true;
+           }
+        }
+      }
+
+      if (!isAuthorized) {
+        // Safe fallback for unauthorized draft access
+        setJob(null);
+        return;
+      }
+      
       setJob(data);
     } catch (error) {
       console.error('Error fetching job details:', error);
+      setJob(null);
     } finally {
       setLoading(false);
     }

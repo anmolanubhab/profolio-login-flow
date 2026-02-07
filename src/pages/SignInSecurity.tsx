@@ -12,21 +12,30 @@ interface PreferenceRowProps {
   rightValue?: string;
   onClick?: () => void;
   hasArrow?: boolean;
+  loading?: boolean;
+  disabled?: boolean;
 }
 
-const PreferenceRow = ({ label, rightValue, onClick, hasArrow = true }: PreferenceRowProps) => (
+const PreferenceRow = ({ label, rightValue, onClick, hasArrow = true, loading = false, disabled = false }: PreferenceRowProps) => (
   <button
     onClick={onClick}
-    className="w-full flex items-center justify-between px-4 py-4 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100 last:border-0"
+    disabled={disabled || loading}
+    className="w-full flex items-center justify-between px-4 py-4 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100 last:border-0 disabled:opacity-50 disabled:cursor-not-allowed"
   >
     <span className="text-base font-normal text-gray-900 text-left flex-1">{label}</span>
     <div className="flex items-center gap-2">
-      {rightValue && (
-        <span className="text-sm text-gray-500 font-normal truncate max-w-[150px] sm:max-w-xs">
-          {rightValue}
-        </span>
+      {loading ? (
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      ) : (
+        <>
+          {rightValue && (
+            <span className="text-sm text-gray-500 font-normal truncate max-w-[150px] sm:max-w-xs">
+              {rightValue}
+            </span>
+          )}
+          {hasArrow && <ChevronRight className="h-5 w-5 text-gray-500" strokeWidth={1.5} />}
+        </>
       )}
-      {hasArrow && <ChevronRight className="h-5 w-5 text-gray-500" strokeWidth={1.5} />}
     </div>
   </button>
 );
@@ -219,6 +228,7 @@ const SignInSecurity = () => {
             label="Change password" 
             onClick={handleChangePassword}
             hasArrow={!changingPassword}
+            loading={changingPassword}
           />
           <PreferenceRow 
             label="Passkeys" 

@@ -171,6 +171,7 @@ const AccountPreferences = () => {
   });
 
   const preferences = (profile?.preferences as UserPreferences) || {};
+  const isUpdating = updatePreferencesMutation.isPending;
   
   // Default values
   const soundEffects = preferences.sound_effects ?? true;
@@ -272,7 +273,7 @@ const AccountPreferences = () => {
             subLabel="In-app sounds"
             checked={soundEffects}
             onCheckedChange={handleToggleSound}
-            disabled={updatePreferencesMutation.isPending}
+            disabled={isUpdating}
           />
           <PreferenceRow 
             label="Feed preferences" 
@@ -294,7 +295,7 @@ const AccountPreferences = () => {
             label="Push notifications" 
             checked={pushNotifications}
             onCheckedChange={handleTogglePush}
-            disabled={updatePreferencesMutation.isPending}
+            disabled={isUpdating}
           />
 
           <SectionSeparator />

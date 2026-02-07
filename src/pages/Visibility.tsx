@@ -143,6 +143,7 @@ const Visibility = () => {
   });
 
   const prefs = (profile?.preferences as VisibilityPreferences) || {};
+  const isUpdating = updateVisibilityMutation.isPending;
   
   // Default values
   const pageVisitVisibility = prefs.page_visit_visibility ?? true;
@@ -202,19 +203,20 @@ const Visibility = () => {
             }}
           />
           <PreferenceToggle 
-            label="Page visit visibility"
-            subLabel="Let others know when you view their profile"
+            label="Profile viewing options"
+            subLabel="Choose whether you're visible when viewing other profiles"
             checked={pageVisitVisibility}
             onCheckedChange={(val) => handleToggle("page_visit_visibility", val)}
-            disabled={updateVisibilityMutation.isPending}
+            disabled={isUpdating}
           />
           <PreferenceRow label="Edit your public profile" />
           <PreferenceRow label="Who can see or download your email address" />
           <PreferenceToggle 
-            label="Who can see your connections"
+            label="Connections"
+            subLabel="Choose who can see your connections"
             checked={connectionsVisible}
             onCheckedChange={(val) => handleToggle("connections_visible", val)}
-            disabled={updateVisibilityMutation.isPending}
+            disabled={isUpdating}
           />
           <PreferenceRow 
             label="Who can see members you follow" 
@@ -242,23 +244,25 @@ const Visibility = () => {
             rightValue="Your connections" 
           />
           <PreferenceToggle 
-            label="Share job changes, education changes"
-            subLabel="From your profile"
+            label="Share job changes" 
+            subLabel="Notify connections when you start a new job"
             checked={shareJobChanges}
             onCheckedChange={(val) => handleToggle("share_job_changes", val)}
-            disabled={updateVisibilityMutation.isPending}
+            disabled={isUpdating}
           />
           <PreferenceToggle 
-            label="Notify connections when you're in the news"
+            label="News notify connections" 
+            subLabel="Notify connections when you're in the news"
             checked={newsNotify}
             onCheckedChange={(val) => handleToggle("news_notify_connections", val)}
-            disabled={updateVisibilityMutation.isPending}
+            disabled={isUpdating}
           />
           <PreferenceToggle 
-            label="Mentioned by others"
+            label="Mentions by others" 
+            subLabel="Allow others to mention you in posts"
             checked={mentionedByOthers}
             onCheckedChange={(val) => handleToggle("mentioned_by_others", val)}
-            disabled={updateVisibilityMutation.isPending}
+            disabled={isUpdating}
           />
           <PreferenceRow label="Followers" />
         </div>

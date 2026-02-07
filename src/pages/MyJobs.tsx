@@ -85,7 +85,7 @@ const MyJobs = () => {
                 />
               ))
             ) : (
-              <EmptyState title="No active applications" message="Jobs you have applied to will appear here." />
+              <EmptyState title="No applications yet" message="Jobs you have applied to will appear here." />
             )}
           </TabsContent>
 

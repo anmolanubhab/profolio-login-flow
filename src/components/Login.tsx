@@ -129,7 +129,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-hidden flex flex-col items-center justify-center p-4 relative">
+    <div className="min-h-screen w-full max-w-full overflow-y-auto flex flex-col items-center justify-center p-4 relative">
       {/* Multi-layer Rainbow Gradient Background */}
       <div className="fixed inset-0 bg-gradient-to-br from-[hsl(200,90%,55%)] via-[hsl(280,80%,60%)] to-[hsl(330,85%,65%)] animate-gradient-shift" />
       <div className="fixed inset-0 bg-gradient-to-tr from-[hsl(45,100%,65%,0.4)] via-transparent to-[hsl(180,70%,50%,0.2)]" />

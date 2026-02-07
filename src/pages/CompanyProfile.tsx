@@ -493,12 +493,7 @@ export default function CompanyProfile() {
                       <Skeleton key={i} className="h-20" />
                     ))}
                   </div>
-                ) : jobs.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>This company hasn’t posted any jobs yet.</p>
-                  </div>
-                ) : (
+                ) : jobs.length > 0 ? (
                   <div className="space-y-3">
                     {jobs.map((job) => (
                       <div
@@ -598,23 +593,18 @@ export default function CompanyProfile() {
                             )}
                           </div>
                         </div>
-                        
-                        {!isAdmin && (
-                          <div className="text-right text-sm shrink-0">
-                            {formatSalary(job.salary_min, job.salary_max, job.currency) && (
-                              <p className="font-medium text-foreground">
-                                {formatSalary(job.salary_min, job.salary_max, job.currency)}
-                              </p>
-                            )}
-                            <p className="text-muted-foreground text-xs mt-1">
-                              Posted {formatDate(job.posted_at)}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
-                )}
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center border rounded-lg bg-card text-card-foreground shadow-sm">
+                    <Briefcase className="w-12 h-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No jobs posted yet</h3>
+                    <p className="text-sm text-muted-foreground">
+                      This company has not posted any jobs yet
+                    </p>
+                  </div>
+                )} 
               </CardContent>
             </Card>
           </TabsContent>
