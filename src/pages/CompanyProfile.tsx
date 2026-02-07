@@ -53,7 +53,8 @@ import {
   Trash2,
   Archive,
   RotateCcw,
-  RefreshCw
+  RefreshCw,
+  BarChart2
 } from 'lucide-react';
 
 interface Job {
@@ -556,6 +557,12 @@ export default function CompanyProfile() {
                                   }}>
                                     <Users className="w-4 h-4 mr-2" />
                                     View Applicants
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <Link to={`/jobs/${job.id}/insights`} className="cursor-pointer w-full flex items-center">
+                                      <BarChart2 className="w-4 h-4 mr-2" />
+                                      View Insights
+                                    </Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => {
                                     setEditingJob(job);

@@ -30,11 +30,15 @@ const Groups = lazy(() => import("./pages/Groups"));
 const Settings = lazy(() => import("./pages/Settings"));
 const AccountPreferences = lazy(() => import("./pages/AccountPreferences"));
 const MyApplications = lazy(() => import("./pages/MyApplications"));
+const JobPreferences = lazy(() => import("./pages/JobPreferences"));
 const SignInSecurity = lazy(() => import("./pages/SignInSecurity"));
 const Visibility = lazy(() => import("./pages/Visibility"));
 const DataPrivacy = lazy(() => import("./pages/DataPrivacy"));
 const AdvertisingData = lazy(() => import("./pages/AdvertisingData"));
 const SavedPosts = lazy(() => import("./pages/SavedPosts"));
+const JobApplicants = lazy(() => import("./pages/JobApplicantsPage"));
+const JobMessages = lazy(() => import("./pages/JobMessagesPage"));
+const JobInsights = lazy(() => import("./pages/JobInsightsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -134,6 +138,21 @@ const App = () => (
               } />
               <Route path="/jobs/applications" element={
                 <ProtectedRoute><MyApplications /></ProtectedRoute>
+              } />
+              <Route path="/jobs/:jobId/applicants" element={
+                <ProtectedRoute><JobApplicants /></ProtectedRoute>
+              } />
+              <Route path="/jobs/messages" element={
+                <ProtectedRoute><JobMessages /></ProtectedRoute>
+              } />
+              <Route path="/jobs/:jobId/insights" element={
+                <ProtectedRoute><JobInsights /></ProtectedRoute>
+              } />
+              <Route path="/jobs/preferences" element={
+                <ProtectedRoute><JobPreferences /></ProtectedRoute>
+              } />
+              <Route path="/jobs/saved" element={
+                <ProtectedRoute><SavedJobs /></ProtectedRoute>
               } />
               <Route path="/companies" element={
                 <ProtectedRoute><Companies /></ProtectedRoute>

@@ -14,7 +14,8 @@ import {
   FileText, 
   Bell,
   LogOut,
-  Loader2
+  Loader2,
+  Briefcase
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -100,6 +101,7 @@ const Settings = () => {
   // Main settings options
   const mainSettings = [
     { icon: User, label: "Account preferences", onClick: () => navigate("/settings/account") },
+    { icon: Briefcase, label: "Job preferences", onClick: () => navigate("/jobs/preferences") },
     { icon: Lock, label: "Sign in & security", onClick: () => navigate("/settings/security") },
     { icon: Eye, label: "Visibility", onClick: () => navigate("/settings/visibility") },
     { icon: Shield, label: "Data privacy", onClick: () => navigate("/settings/privacy") },

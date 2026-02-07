@@ -6,6 +6,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+
 interface NavBarProps {
   user?: any;
   onSignOut?: () => void;
@@ -36,14 +38,20 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
         }`}
       >
         {/* DESKTOP LAYOUT (lg:flex) - Single Row */}
-        <div className="hidden lg:flex items-center justify-center w-full h-16 px-6">
+        <div className="hidden lg:flex items-center justify-between w-full h-16 px-6">
+          <div className="w-10" /> {/* Spacer */}
+          
           {/* Search Bar - Inline, centered, balanced width */}
           <div className="w-full max-w-2xl">
             <SearchBar />
           </div>
+          
+          <div className="flex items-center gap-2">
+            <NotificationCenter />
+          </div>
         </div>
 
-        {/* MOBILE LAYOUT (lg:hidden) - Single Row: [Menu] [Profile] [Logo] [Search] */}
+        {/* MOBILE LAYOUT (lg:hidden) - Single Row: [Menu] [Profile] [Logo] [Notif] [Search] */}
         <div className="lg:hidden w-full h-16 px-3 flex items-center gap-2">
           {/* Left: Menu & Profile */}
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -55,15 +63,18 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
           </div>
 
           {/* Center: Logo */}
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 hidden sm:block">
              <h1 className="text-[24px] leading-none text-foreground select-none" style={{ fontFamily: '"Grand Hotel", cursive' }}>
               Profolio
             </h1>
           </div>
 
-          {/* Right: Search */}
-          <div className="flex-1 min-w-0">
-            <SearchBar />
+          {/* Right: Notifications & Search */}
+          <div className="flex-1 min-w-0 flex items-center justify-end gap-2">
+            <NotificationCenter />
+            <div className="flex-1 min-w-0 max-w-[200px]">
+              <SearchBar />
+            </div>
           </div>
         </div>
       </nav>

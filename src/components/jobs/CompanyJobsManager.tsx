@@ -9,7 +9,7 @@ import { PostJobDialog } from './PostJobDialog';
 import { JobApplicantsDialog } from './JobApplicantsDialog';
 import { 
   Briefcase, Plus, MapPin, DollarSign, Users, MoreVertical, 
-  Edit, Trash2, Eye, EyeOff, Calendar, RefreshCw, AlertCircle
+  Edit, Trash2, Eye, EyeOff, Calendar, RefreshCw, AlertCircle, Sparkles
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -166,6 +166,12 @@ export const CompanyJobsManager = ({ companyId, companyName, isOwner = false }: 
                              job.status === 'draft' ? 'Draft' : 
                              'Closed'}
                           </Badge>
+                          {job.is_featured && (
+                            <Badge variant="default" className="bg-amber-500 hover:bg-amber-600 text-white gap-1 text-xs border-amber-600/20 shadow-sm">
+                              <Sparkles className="w-3 h-3 fill-white" />
+                              Featured
+                            </Badge>
+                          )}
                         </div>
                         
                         <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">

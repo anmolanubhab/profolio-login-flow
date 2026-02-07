@@ -10,7 +10,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Briefcase, Building2, DollarSign, Eye, AlertCircle } from 'lucide-react';
+import { MapPin, Briefcase, Building2, DollarSign, Eye, AlertCircle, Lock } from 'lucide-react';
+import { useSubscription } from '@/hooks/useSubscription';
+import { UpgradeAlert } from '@/components/monetization/UpgradeAlert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CompanySelector } from './CompanySelector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -31,6 +34,7 @@ interface Job {
   currency: string;
   status?: string;
   posted_by?: string;
+  is_featured?: boolean;
 }
 
 interface PostJobDialogProps {
@@ -55,6 +59,8 @@ export const PostJobDialog = ({
   const [activeTab, setActiveTab] = useState('form');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const { toast } = useToast();
+  const { data: subscription } = useSubscription();
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     company_id: '',
@@ -68,6 +74,7 @@ export const PostJobDialog = ({
     salary_min: '',
     salary_max: '',
     currency: 'USD',
+    is_featured: false,
   });
 
   useEffect(() => {
@@ -85,6 +92,7 @@ export const PostJobDialog = ({
         salary_min: editJob.salary_min?.toString() || '',
         salary_max: editJob.salary_max?.toString() || '',
         currency: editJob.currency || 'USD',
+        is_featured: (editJob as any).is_featured || false,
       });
     }
   }, [editJob]);
@@ -221,6 +229,7 @@ export const PostJobDialog = ({
         salary_min: '',
         salary_max: '',
         currency: 'USD',
+        is_featured: false,
       });
       setValidationErrors([]);
       
@@ -249,7 +258,22 @@ export const PostJobDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="sm:max-w-md">
+          <UpgradeAlert 
+            title="Feature Your Job" 
+            description="Get 3x more views by pinning your job to the top of search results. Upgrade to Recruiter Pro to unlock this feature."
+            className="border-0 shadow-none"
+            onUpgrade={() => {
+              setShowUpgradeDialog(false);
+              navigate('/settings');
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">{editJob ? 'Edit Job Post' : 'Post a New Job'}</DialogTitle>
@@ -438,6 +462,43 @@ export const PostJobDialog = ({
                     </div>
                   </div>
                 </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-[#0A66C2]" />
+                    Visibility
+                  </h3>
+                  <div className="flex items-start space-x-3 p-4 border rounded-lg bg-slate-50">
+                    <Checkbox 
+                      id="featured" 
+                      checked={formData.is_featured} 
+                      onCheckedChange={(checked) => {
+                        if (checked && !subscription?.features.canFeatureJobs) {
+                          setShowUpgradeDialog(true);
+                          return;
+                        }
+                        setFormData({ ...formData, is_featured: !!checked });
+                      }}
+                    />
+                    <div className="space-y-1">
+                      <Label 
+                        htmlFor="featured" 
+                        className="text-sm font-medium text-[#1D2226] flex items-center gap-2 cursor-pointer"
+                      >
+                        Feature this job
+                        {!subscription?.features.canFeatureJobs && (
+                          <Badge variant="secondary" className="h-5 px-1.5 bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200 gap-1 text-[10px]">
+                            <Lock className="h-3 w-3" />
+                            Pro
+                          </Badge>
+                        )}
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Featured jobs are pinned to the top of search results and get up to 3x more applications.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button 
@@ -543,5 +604,6 @@ export const PostJobDialog = ({
         </Tabs>
       </DialogContent>
     </Dialog>
+    </>
   );
 };

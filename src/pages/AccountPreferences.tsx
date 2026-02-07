@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { 
   ArrowLeft, 
   HelpCircle, 
-  ChevronRight,
   User,
   Globe,
   MonitorPlay,
@@ -10,77 +9,33 @@ import {
   Eye,
   ShieldAlert
 } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { PreferenceRow, PreferenceToggle, SectionTitle, SectionSeparator } from "@/components/settings/PreferenceComponents";
+import { VisibilitySelector } from "@/components/settings/VisibilitySelector";
 
-interface PreferenceRowProps {
-  label: string;
-  subLabel?: string;
-  rightValue?: string;
-  onClick?: () => void;
-  hasArrow?: boolean;
+interface VisibilitySettings {
+  profile: 'everyone' | 'connections' | 'recruiters' | 'only_me';
+  job_activity: 'recruiters' | 'connections' | 'only_me';
+  email: 'connections' | 'recruiters' | 'only_me';
 }
 
-const PreferenceRow = ({ label, subLabel, rightValue, onClick, hasArrow = true }: PreferenceRowProps) => (
-  <button
-    onClick={onClick}
-    className="w-full flex items-center justify-between px-4 py-4 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors"
-  >
-    <div className="flex flex-col items-start flex-1 mr-4">
-      <span className="text-base font-normal text-gray-900 text-left">{label}</span>
-      {subLabel && (
-        <span className="text-sm text-gray-500 font-normal text-left mt-0.5">{subLabel}</span>
-      )}
-    </div>
-    <div className="flex items-center gap-2">
-      {rightValue && (
-        <span className="text-sm text-gray-500 font-normal truncate max-w-[150px] sm:max-w-xs">
-          {rightValue}
-        </span>
-      )}
-      {hasArrow && <ChevronRight className="h-5 w-5 text-gray-500" strokeWidth={1.5} />}
-    </div>
-  </button>
-);
-
-interface PreferenceToggleProps {
-  label: string;
-  subLabel?: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  disabled?: boolean;
+interface LocalizationSettings {
+  language: string;
+  region: string;
 }
 
-const PreferenceToggle = ({ label, subLabel, checked, onCheckedChange, disabled }: PreferenceToggleProps) => (
-  <div className="w-full flex items-center justify-between px-4 py-4 bg-white">
-    <div className="flex flex-col items-start flex-1 mr-4">
-      <span className="text-base font-normal text-gray-900 text-left">{label}</span>
-      {subLabel && (
-        <span className="text-sm text-gray-500 font-normal text-left mt-0.5">{subLabel}</span>
-      )}
-    </div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
-  </div>
-);
-
-const SectionTitle = ({ title, icon: Icon }: { title: string, icon?: React.ElementType }) => (
-  <div className="px-4 py-4 bg-white flex items-center gap-2">
-    {Icon && <Icon className="h-5 w-5 text-gray-700" />}
-    <h2 className="text-lg font-bold text-gray-900 leading-tight">{title}</h2>
-  </div>
-);
-
-const SectionSeparator = () => (
-  <div className="h-2 bg-[#F3F2EF] w-full border-t border-b border-gray-200/50" />
-);
+interface NotificationSettings {
+  job_alerts: boolean;
+  profile_views: boolean;
+  messages: boolean;
+  email_frequency: 'instant' | 'daily' | 'weekly' | 'never';
+}
 
 interface UserPreferences {
-  language?: string;
-  region?: string;
+  localization?: LocalizationSettings;
   timezone?: string;
   autoplay?: string;
   sound_effects?: boolean;
@@ -88,8 +43,48 @@ interface UserPreferences {
   email_frequency?: string;
   push_notifications?: boolean;
   story_viewing?: string;
+  profile_visibility?: VisibilitySettings;
+  notifications?: NotificationSettings;
   [key: string]: any;
 }
+
+const PROFILE_VISIBILITY_OPTIONS = [
+  { value: 'everyone', label: 'Everyone', description: 'Your profile is visible to all members and non-members' },
+  { value: 'connections', label: 'Connections only', description: 'Your profile is visible only to your connections' },
+  { value: 'recruiters', label: 'Recruiters only', description: 'Your profile is visible only to recruiters' },
+  { value: 'only_me', label: 'Only me', description: 'No one can see your profile' },
+];
+
+const JOB_ACTIVITY_OPTIONS = [
+  { value: 'recruiters', label: 'Recruiters only', description: 'Share your job activity with recruiters only' },
+  { value: 'connections', label: 'Connections only', description: 'Share your job activity with connections only' },
+  { value: 'only_me', label: 'Only me', description: 'Do not share your job activity' },
+];
+
+const EMAIL_VISIBILITY_OPTIONS = [
+  { value: 'connections', label: 'Connections only', description: 'Only connections can see your email' },
+  { value: 'recruiters', label: 'Recruiters only', description: 'Only recruiters can see your email' },
+  { value: 'only_me', label: 'Only me', description: 'No one can see your email' },
+];
+
+const LANGUAGE_OPTIONS = [
+  { value: 'en', label: 'English' },
+  { value: 'hi', label: 'Hindi' },
+];
+
+const REGION_OPTIONS = [
+  { value: 'IN', label: 'India' },
+  { value: 'US', label: 'United States' },
+  { value: 'UK', label: 'United Kingdom' },
+  { value: 'ROW', label: 'Other' },
+];
+
+const EMAIL_FREQUENCY_OPTIONS = [
+  { value: 'instant', label: 'Instant', description: 'Receive emails immediately' },
+  { value: 'daily', label: 'Daily digest', description: 'Get a summary once a day' },
+  { value: 'weekly', label: 'Weekly digest', description: 'Get a summary once a week' },
+  { value: 'never', label: 'Never', description: 'Turn off email notifications' },
+];
 
 const AccountPreferences = () => {
   const navigate = useNavigate();
@@ -178,11 +173,28 @@ const AccountPreferences = () => {
   const pushNotifications = preferences.push_notifications ?? true;
   const autoplay = preferences.autoplay || "On Mobile Data and Wi-Fi";
   const feedPreferences = preferences.feed_preferences || "Curated";
-  const emailFrequency = preferences.email_frequency || "Daily Digest";
   const storyViewing = preferences.story_viewing || "Public";
   
-  // Profile visibility is stored in a separate column
-  const profileVisibility = profile?.profile_visibility || "Your name & headline";
+  // Visibility Settings with defaults
+  const visibilitySettings: VisibilitySettings = preferences.profile_visibility || {
+    profile: 'everyone',
+    job_activity: 'recruiters',
+    email: 'connections'
+  };
+
+  // Localization Settings with defaults
+  const localizationSettings: LocalizationSettings = preferences.localization || {
+    language: 'en',
+    region: 'IN'
+  };
+
+  // Notification Settings with defaults
+  const notificationSettings: NotificationSettings = preferences.notifications || {
+    job_alerts: true,
+    profile_views: true,
+    messages: true,
+    email_frequency: 'daily'
+  };
 
   const handleToggleSound = (checked: boolean) => {
     updatePreferencesMutation.mutate({ sound_effects: checked });
@@ -190,6 +202,27 @@ const AccountPreferences = () => {
 
   const handleTogglePush = (checked: boolean) => {
     updatePreferencesMutation.mutate({ push_notifications: checked });
+  };
+
+  const handleNotificationChange = (key: keyof NotificationSettings, value: any) => {
+    const newNotifications = { ...notificationSettings, [key]: value };
+    updatePreferencesMutation.mutate({
+      notifications: newNotifications
+    });
+  };
+
+  const handleVisibilityChange = (key: keyof VisibilitySettings, value: string) => {
+    const newVisibility = { ...visibilitySettings, [key]: value };
+    updatePreferencesMutation.mutate({
+      profile_visibility: newVisibility
+    });
+  };
+
+  const handleLocalizationChange = (key: keyof LocalizationSettings, value: string) => {
+    const newLocalization = { ...localizationSettings, [key]: value };
+    updatePreferencesMutation.mutate({
+      localization: newLocalization
+    });
   };
 
   return (
@@ -242,15 +275,21 @@ const AccountPreferences = () => {
 
           {/* SECTION 2: Language & Region */}
           <SectionTitle title="Language & Region" icon={Globe} />
-          <PreferenceRow 
-            label="App language" 
-            rightValue={preferences.language || "English"} 
-            onClick={() => handleNotImplemented("App language")} 
+          <VisibilitySelector
+            title="App language"
+            description="Select your preferred language"
+            value={localizationSettings.language}
+            options={LANGUAGE_OPTIONS}
+            onChange={(val) => handleLocalizationChange('language', val)}
+            disabled={isUpdating}
           />
-          <PreferenceRow 
-            label="Region / Country" 
-            rightValue={preferences.region || "United States"} 
-            onClick={() => handleNotImplemented("Region settings")} 
+          <VisibilitySelector
+            title="Region / Country"
+            description="Select your region"
+            value={localizationSettings.region}
+            options={REGION_OPTIONS}
+            onChange={(val) => handleLocalizationChange('region', val)}
+            disabled={isUpdating}
           />
           <PreferenceRow 
             label="Time zone" 
@@ -284,12 +323,36 @@ const AccountPreferences = () => {
 
           <SectionSeparator />
 
-          {/* SECTION 4: Email & Notifications */}
-          <SectionTitle title="Email & Notifications" icon={Bell} />
-          <PreferenceRow 
-            label="Email frequency" 
-            rightValue={emailFrequency} 
-            onClick={() => handleNotImplemented("Email frequency")} 
+          {/* SECTION 4: Notifications */}
+          <SectionTitle title="Notifications" icon={Bell} />
+          <VisibilitySelector
+            title="Email frequency"
+            description="How often you receive emails"
+            value={notificationSettings.email_frequency}
+            options={EMAIL_FREQUENCY_OPTIONS}
+            onChange={(val) => handleNotificationChange('email_frequency', val)}
+            disabled={isUpdating}
+          />
+          <PreferenceToggle
+            label="Job alerts"
+            subLabel="Get notified about new jobs"
+            checked={notificationSettings.job_alerts}
+            onCheckedChange={(checked) => handleNotificationChange('job_alerts', checked)}
+            disabled={isUpdating}
+          />
+          <PreferenceToggle
+            label="Profile views"
+            subLabel="See who viewed your profile"
+            checked={notificationSettings.profile_views}
+            onCheckedChange={(checked) => handleNotificationChange('profile_views', checked)}
+            disabled={isUpdating}
+          />
+          <PreferenceToggle
+            label="Messages"
+            subLabel="Direct messages and recruiter outreach"
+            checked={notificationSettings.messages}
+            onCheckedChange={(checked) => handleNotificationChange('messages', checked)}
+            disabled={isUpdating}
           />
           <PreferenceToggle 
             label="Push notifications" 
@@ -302,11 +365,34 @@ const AccountPreferences = () => {
 
           {/* SECTION 5: Profile Visibility */}
           <SectionTitle title="Profile Visibility" icon={Eye} />
-          <PreferenceRow 
-            label="Profile viewing options" 
-            rightValue={profileVisibility} 
-            onClick={() => handleNotImplemented("Profile viewing options")} 
+          
+          <VisibilitySelector
+            title="Profile visibility"
+            description="Control who can see your profile"
+            value={visibilitySettings.profile}
+            options={PROFILE_VISIBILITY_OPTIONS}
+            onChange={(val) => handleVisibilityChange('profile', val)}
+            disabled={isUpdating}
           />
+
+          <VisibilitySelector
+            title="Job activity"
+            description="Manage who sees your job activity"
+            value={visibilitySettings.job_activity}
+            options={JOB_ACTIVITY_OPTIONS}
+            onChange={(val) => handleVisibilityChange('job_activity', val)}
+            disabled={isUpdating}
+          />
+
+          <VisibilitySelector
+            title="Email visibility"
+            description="Choose who can see your email address"
+            value={visibilitySettings.email}
+            options={EMAIL_VISIBILITY_OPTIONS}
+            onChange={(val) => handleVisibilityChange('email', val)}
+            disabled={isUpdating}
+          />
+
           <PreferenceRow 
             label="Story viewing" 
             rightValue={storyViewing} 

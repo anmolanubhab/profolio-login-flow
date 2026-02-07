@@ -11,10 +11,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useJobApplicants } from '@/hooks/use-company-jobs';
-import { Loader2, MoreVertical, FileText, User, Mail, Calendar, ExternalLink } from 'lucide-react';
+import { Loader2, MoreVertical, FileText, User, Mail, Calendar, ExternalLink, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { useSubscription } from '@/hooks/useSubscription';
+import { UpgradeAlert } from '@/components/monetization/UpgradeAlert';
 
 interface JobApplicantsDialogProps {
   jobId: string | null;
@@ -45,8 +47,23 @@ export function JobApplicantsDialog({ jobId, open, onOpenChange, jobTitle }: Job
   const { applicants, isLoading, updateApplicationStatus } = useJobApplicants(jobId || undefined);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { data: subscription } = useSubscription();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [selectedCoverLetter, setSelectedCoverLetter] = useState<{name: string, content: string} | null>(null);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+
+  const handleExport = () => {
+    if (!subscription?.features.canExportApplicants) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+    
+    // Mock export functionality
+    toast({
+      title: "Exporting applicants...",
+      description: "Your CSV download will start shortly.",
+    });
+  };
 
   const handleStatusUpdate = async (applicationId: string, newStatus: any, profileId?: string) => {
     setUpdatingId(applicationId);
@@ -68,13 +85,37 @@ export function JobApplicantsDialog({ jobId, open, onOpenChange, jobTitle }: Job
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Applicants for {jobTitle}</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="sm:max-w-md">
+          <UpgradeAlert 
+            title="Export Applicants" 
+            description="Download your applicant list as a CSV file to manage candidates in your preferred tools. Upgrade to Recruiter Pro to unlock this feature."
+            className="border-0 shadow-none"
+            onUpgrade={() => {
+              setShowUpgradeDialog(false);
+              navigate('/settings');
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
-        {isLoading ? (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+          <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b">
+            <DialogTitle>Applicants for {jobTitle}</DialogTitle>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleExport}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          </DialogHeader>
+
+          {isLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>

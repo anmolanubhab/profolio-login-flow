@@ -19,6 +19,7 @@ export interface Job {
   requirements: string | null;
   remote_option: string | null;
   apply_link: string | null;
+  is_featured?: boolean;
   stats?: {
     total: number;
     applied: number;

@@ -1,127 +1,133 @@
+
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Upload } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useResumes } from '@/hooks/useResumes';
+import { useJobApplication } from '@/hooks/useJobApplication';
+import { useNavigate } from 'react-router-dom';
+import { FileText, Loader2, AlertCircle } from 'lucide-react';
 
 interface ApplyJobDialogProps {
+  job: {
+    id: string;
+    title: string;
+    company_name?: string;
+  } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  jobId: string;
-  jobTitle: string;
-  onApplicationSubmitted: () => void;
 }
 
-export const ApplyJobDialog = ({ open, onOpenChange, jobId, jobTitle, onApplicationSubmitted }: ApplyJobDialogProps) => {
-  const [loading, setLoading] = useState(false);
-  const [coverLetter, setCoverLetter] = useState('');
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const { toast } = useToast();
+export const ApplyJobDialog = ({ job, open, onOpenChange }: ApplyJobDialogProps) => {
+  const navigate = useNavigate();
+  const { resumes, isLoading: isLoadingResumes } = useResumes();
+  const { apply, isApplying } = useJobApplication();
+  
+  const [selectedResumeId, setSelectedResumeId] = useState<string>('');
+  const [coverNote, setCoverNote] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      let resumeUrl = null;
-      if (resumeFile) {
-        const fileExt = resumeFile.name.split('.').pop();
-        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('resumes')
-          .upload(fileName, resumeFile);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('resumes')
-          .getPublicUrl(fileName);
-        
-        resumeUrl = publicUrl;
+  // Filter resumes visible to recruiters
+  // If no resumes at all, we'll guide to create one.
+  // If resumes exist but none are public/recruiter, we also guide.
+  const availableResumes = resumes?.filter(r => r.visibility === 'recruiters' || r.visibility === 'everyone') || [];
+  const hasAnyResumes = resumes && resumes.length > 0;
+  
+  const handleApply = () => {
+    if (!job || !selectedResumeId) return;
+    
+    apply({
+      jobId: job.id,
+      resumeId: selectedResumeId,
+      coverNote
+    }, {
+      onSuccess: () => {
+        onOpenChange(false);
+        setCoverNote('');
+        setSelectedResumeId('');
       }
-
-      const { error } = await supabase.from('applications').insert({
-        job_id: jobId,
-        user_id: user.id,
-        cover_letter: coverLetter,
-        status: 'applied',
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Application submitted successfully!',
-      });
-
-      onOpenChange(false);
-      onApplicationSubmitted();
-      setCoverLetter('');
-      setResumeFile(null);
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
+    });
   };
+
+  if (!job) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Apply for {jobTitle}</DialogTitle>
-          <DialogDescription>Submit your application for this position</DialogDescription>
+          <DialogTitle>Apply for {job.title}</DialogTitle>
+          <DialogDescription>
+            {job.company_name ? `at ${job.company_name}` : ''}
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="cover_letter">Cover Letter</Label>
-            <Textarea
-              id="cover_letter"
-              value={coverLetter}
-              onChange={(e) => setCoverLetter(e.target.value)}
-              rows={6}
-              placeholder="Tell us why you're a great fit for this role..."
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="resume">Resume (Optional)</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="resume"
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-                className="flex-1"
-              />
-              <Upload className="w-5 h-5 text-muted-foreground" />
-            </div>
-            {resumeFile && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {resumeFile.name}
-              </p>
+
+        <div className="space-y-6 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Select Resume</label>
+            {isLoadingResumes ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading resumes...
+              </div>
+            ) : availableResumes.length > 0 ? (
+              <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a resume..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableResumes.map(resume => (
+                    <SelectItem key={resume.id} value={resume.id}>
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        <span>{resume.title}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="p-4 border border-dashed rounded-lg bg-muted/50 text-center">
+                <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm font-medium mb-1">
+                  {hasAnyResumes ? "No suitable resumes found" : "No resumes found"}
+                </p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  {hasAnyResumes 
+                    ? "You need a resume visible to recruiters to apply." 
+                    : "You need to create a resume to apply for jobs."}
+                </p>
+                <Button variant="outline" size="sm" onClick={() => navigate('/resume')}>
+                  {hasAnyResumes ? "Update Resume Visibility" : "Create Resume"}
+                </Button>
+              </div>
             )}
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Submitting...' : 'Submit Application'}
-            </Button>
-          </DialogFooter>
-        </form>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Cover Note (Optional)</label>
+            <Textarea
+              placeholder="Briefly introduce yourself..."
+              value={coverNote}
+              onChange={(e) => setCoverNote(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button 
+            onClick={handleApply} 
+            disabled={!selectedResumeId || isApplying}
+          >
+            {isApplying ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Applying...
+              </>
+            ) : (
+              'Submit Application'
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
