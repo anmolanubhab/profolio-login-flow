@@ -152,6 +152,8 @@ const PostHeader = ({
         isOwnPost={isOwnPost}
         onDelete={onDelete}
         onHide={onHide}
+        isPromoted={isPromoted}
+        isCompanyPost={isCompanyPost}
       />
     </div>
   );
