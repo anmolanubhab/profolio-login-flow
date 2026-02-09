@@ -994,6 +994,8 @@ export type Database = {
           id: string
           image_url: string | null
           media_type: string | null
+          original_post_id: string | null
+          post_type: string
           posted_as: string
           status: string
           updated_at: string
@@ -1008,6 +1010,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           media_type?: string | null
+          original_post_id?: string | null
+          post_type?: string
           posted_as?: string
           status?: string
           updated_at?: string
@@ -1022,6 +1026,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           media_type?: string | null
+          original_post_id?: string | null
+          post_type?: string
           posted_as?: string
           status?: string
           updated_at?: string

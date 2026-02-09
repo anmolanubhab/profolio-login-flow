@@ -1,5 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, HelpCircle, ChevronRight } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Layout } from "@/components/Layout";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PreferenceRowProps {
   label: string;
@@ -39,36 +42,58 @@ const SectionSeparator = () => (
 
 const AdvertisingData = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  const { toast } = useToast();
 
   const handleBack = () => {
     navigate(-1);
   };
 
+  const handleNotImplemented = (feature: string) => {
+    toast({
+      title: "Coming Soon",
+      description: `${feature} will be available soon.`,
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between px-2 h-[52px]">
+    <Layout user={user} onSignOut={handleSignOut}>
+      <div className="bg-background min-h-screen">
+        {/* Header */}
+        <div className="flex items-center gap-4 px-4 py-4 border-b border-border">
           <button
             onClick={handleBack}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 -ml-2 hover:bg-muted/50 rounded-full transition-colors"
             aria-label="Go back"
           >
-            <ArrowLeft className="h-6 w-6 text-gray-600" strokeWidth={1.5} />
+            <ArrowLeft className="h-6 w-6 text-foreground" />
           </button>
-          <h1 className="text-[17px] font-semibold text-gray-900 flex-1 text-left ml-2">
+          <h1 className="text-2xl font-semibold text-foreground">
             Advertising data
           </h1>
+          <div className="flex-1" />
           <button
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 -mr-2 hover:bg-muted/50 rounded-full transition-colors"
             aria-label="Help"
+            onClick={() => handleNotImplemented("Help Center")}
           >
-            <HelpCircle className="h-6 w-6 text-gray-600 fill-gray-600" strokeWidth={0} />
+            <HelpCircle className="h-6 w-6 text-foreground fill-foreground" />
           </button>
         </div>
-      </header>
 
       <div className="flex flex-col pb-8">
+        <div className="px-4 py-4 bg-blue-50 border-b border-blue-100">
+          <p className="text-sm text-blue-800">
+            These settings are currently for display purposes only. Advertising features are not yet active in this version of Profolio.
+          </p>
+        </div>
+
         {/* SECTION 1: Profile data */}
         <SectionTitle title="Profile data" />
         <PreferenceRow label="Connections" rightValue="On" />
@@ -99,6 +124,7 @@ const AdvertisingData = () => {
         <PreferenceRow label="Share data with affiliates and partners" rightValue="On" />
       </div>
     </div>
+    </Layout>
   );
 };
 

@@ -212,17 +212,14 @@ export function useCompany(companyId?: string) {
     if (!profileId || !companyId) return { success: false, error: 'Not authenticated' };
 
     try {
-      const { error } = await supabase
-        .from('company_invitations')
-        .insert({
-          company_id: companyId,
-          email,
-          role,
-          invited_by: profileId
-        });
+      const { data: token, error } = await supabase.rpc('create_company_invitation', {
+        company_id: companyId,
+        email,
+        role
+      });
 
       if (error) throw error;
-      return { success: true };
+      return { success: true, token }; // Return token to UI
     } catch (error: any) {
       console.error('Error inviting employee:', error);
       return { success: false, error: error.message };
@@ -358,14 +355,20 @@ export function useCompanyInvitations() {
     fetchInvitations();
   }, [fetchInvitations]);
 
-  const acceptInvitation = async (invitationId: string) => {
+  const acceptInvitation = async (invitationId: string, token: string) => {
     try {
-      const { error } = await supabase.rpc('accept_company_invitation', {
-        invitation_id: invitationId
+      const { data, error } = await supabase.rpc('accept_company_invitation_v2', {
+        invitation_id: invitationId,
+        token_input: token
       });
 
       if (error) throw error;
       
+      // Check for application-level errors returned by RPC
+      if (data && !data.success) {
+         throw new Error(data.error || 'Failed to accept invitation');
+      }
+
       setInvitations(prev => prev.filter(inv => inv.id !== invitationId));
       return { success: true };
     } catch (error: any) {

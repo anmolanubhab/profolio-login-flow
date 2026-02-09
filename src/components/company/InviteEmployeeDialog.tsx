@@ -11,7 +11,7 @@ interface InviteEmployeeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companyName: string;
-  onInvite: (email: string, role: 'super_admin' | 'content_admin') => Promise<{ success: boolean; error?: string }>;
+  onInvite: (email: string, role: 'super_admin' | 'content_admin') => Promise<{ success: boolean; error?: string; token?: string }>;
 }
 
 export const InviteEmployeeDialog = ({
@@ -23,7 +23,25 @@ export const InviteEmployeeDialog = ({
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'super_admin' | 'content_admin'>('content_admin');
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleCopyLink = () => {
+    if (inviteToken) {
+      navigator.clipboard.writeText(inviteToken);
+      toast({
+        title: 'Copied',
+        description: 'Invitation token copied to clipboard.',
+      });
+    }
+  };
+
+  const handleClose = () => {
+    setInviteToken(null);
+    setEmail('');
+    setRole('content_admin');
+    onOpenChange(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,14 +70,16 @@ export const InviteEmployeeDialog = ({
     const result = await onInvite(email.trim().toLowerCase(), role);
     setIsLoading(false);
 
-    if (result.success) {
+    if (result.success && result.token) {
+      setInviteToken(result.token);
       toast({
-        title: 'Invitation Sent',
-        description: `An invitation has been sent to ${email}.`,
+        title: 'Invitation Created',
+        description: `Invitation created for ${email}. Please share the token.`,
       });
-      setEmail('');
-      setRole('content_admin');
-      onOpenChange(false);
+    } else if (result.success) {
+       // Fallback if no token returned (legacy path?)
+       toast({ title: 'Invitation Sent', description: `Invitation sent to ${email}.` });
+       handleClose();
     } else {
       toast({
         title: 'Invitation Failed',
@@ -68,6 +88,32 @@ export const InviteEmployeeDialog = ({
       });
     }
   };
+
+  if (inviteToken) {
+     return (
+       <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
+         <DialogContent className="sm:max-w-md">
+           <DialogHeader>
+             <DialogTitle>Invitation Created</DialogTitle>
+             <DialogDescription>
+               Share this secure token with <strong>{email}</strong>. They will need it to accept the invitation.
+             </DialogDescription>
+           </DialogHeader>
+           <div className="p-4 bg-muted rounded-md break-all font-mono text-sm border">
+             {inviteToken}
+           </div>
+           <DialogFooter className="sm:justify-start">
+             <Button type="button" variant="secondary" onClick={handleCopyLink}>
+               Copy Token
+             </Button>
+             <Button type="button" onClick={handleClose}>
+               Done
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+     );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -14,6 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RepostDialog } from './feed/RepostDialog';
+import SharedPost from './feed/SharedPost';
 import PostHeader from './feed/PostHeader';
 import PostContent from './feed/PostContent';
 import PostMedia from './feed/PostMedia';
@@ -44,6 +46,9 @@ interface PostCardProps {
   companyId?: string | null;
   companyName?: string | null;
   companyLogo?: string | null;
+  // Repost props
+  postType?: string;
+  originalPost?: any;
 }
 
 const PostCard = ({ 
@@ -63,7 +68,9 @@ const PostCard = ({
   postedAs = 'user',
   companyId,
   companyName,
-  companyLogo
+  companyLogo,
+  postType,
+  originalPost
 }: PostCardProps) => {
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [localLikes, setLocalLikes] = useState(likes);
@@ -75,6 +82,7 @@ const PostCard = ({
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [showRepostDialog, setShowRepostDialog] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -338,7 +346,37 @@ const PostCard = ({
   };
 
   const handleRepost = () => {
-    toast({ title: 'Coming soon', description: 'Repost feature will be available soon!' });
+    setShowRepostDialog(true);
+  };
+
+  const handleCreateRepost = async (comment?: string) => {
+    try {
+      if (!currentUser) {
+        toast({ title: 'Sign in required', description: 'Please sign in to repost.', variant: 'destructive' });
+        navigate('/register');
+        return;
+      }
+
+      // If this post is already a repost, we want to repost the ORIGINAL post
+      // This prevents nested reposts (A reposts B, B reposts C -> A reposts C)
+      const targetPostId = postType === 'repost' && originalPost ? originalPost.id : id;
+
+      const { error } = await supabase.from('posts').insert({
+        content: comment || '',
+        user_id: currentUser.id,
+        post_type: 'repost',
+        original_post_id: targetPostId,
+        posted_as: 'user', // Default to user for now
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Success', description: 'Post reposted successfully' });
+      // Ideally trigger a feed refresh here
+    } catch (error: any) {
+      console.error('Error reposting:', error);
+      toast({ title: 'Error', description: error.message || 'Failed to repost', variant: 'destructive' });
+    }
   };
 
   const handleShareClick = () => {
@@ -374,6 +412,11 @@ const PostCard = ({
 
       {/* Post Content */}
       <PostContent content={content} />
+
+      {/* Shared Post (if this is a repost) */}
+      {postType === 'repost' && originalPost && (
+        <SharedPost post={originalPost} />
+      )}
 
       {/* Post Media */}
       {image && (
@@ -542,6 +585,21 @@ const PostCard = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Repost Dialog */}
+      <RepostDialog
+        open={showRepostDialog}
+        onOpenChange={setShowRepostDialog}
+        onRepost={handleCreateRepost}
+        originalPost={{
+          user: {
+            name: postType === 'repost' && originalPost ? (originalPost.posted_as === 'company' ? originalPost.company_name : originalPost.profiles?.display_name) : user.name,
+            avatar: postType === 'repost' && originalPost ? (originalPost.posted_as === 'company' ? originalPost.company_logo : originalPost.profiles?.avatar_url) : user.avatar,
+          },
+          content: postType === 'repost' && originalPost ? originalPost.content : content,
+          created_at: postType === 'repost' && originalPost ? originalPost.created_at : timestamp,
+        }}
+      />
     </article>
   );
 };

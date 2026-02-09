@@ -81,6 +81,10 @@ export const JobPreferencesForm = () => {
         
         // Optimistic update handled by local state, but we could show a subtle saved indicator
         setSaving(false);
+        toast({
+          title: "Saved",
+          description: "Job preferences updated successfully",
+        });
       } catch (error) {
         console.error('Error saving preferences:', error);
         setSaving(false);

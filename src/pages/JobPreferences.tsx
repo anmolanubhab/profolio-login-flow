@@ -1,7 +1,7 @@
 
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowLeft, HelpCircle } from 'lucide-react';
+import { useToast } from "@/components/ui/use-toast";
 import { Layout } from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { JobPreferencesForm } from '@/components/jobs/JobPreferencesForm';
@@ -16,6 +16,19 @@ const JobPreferences = () => {
     navigate('/');
   };
 
+  const { toast } = useToast();
+
+  const handleBack = () => {
+    navigate(-1);
+  };
+
+  const handleNotImplemented = (feature: string) => {
+    toast({
+      title: "Coming Soon",
+      description: `${feature} will be available soon.`,
+    });
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -26,15 +39,32 @@ const JobPreferences = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="container mx-auto max-w-3xl py-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-bold">Job Preferences</h1>
+      <div className="bg-background min-h-screen">
+        {/* Header */}
+        <div className="flex items-center gap-4 px-4 py-4 border-b border-border">
+          <button
+            onClick={handleBack}
+            className="p-2 -ml-2 hover:bg-muted/50 rounded-full transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-6 w-6 text-foreground" />
+          </button>
+          <h1 className="text-2xl font-semibold text-foreground">
+            Job preferences
+          </h1>
+          <div className="flex-1" />
+          <button
+            className="p-2 -mr-2 hover:bg-muted/50 rounded-full transition-colors"
+            aria-label="Help"
+            onClick={() => handleNotImplemented("Help Center")}
+          >
+            <HelpCircle className="h-6 w-6 text-foreground fill-foreground" />
+          </button>
         </div>
         
-        <JobPreferencesForm />
+        <div className="p-4">
+          <JobPreferencesForm />
+        </div>
       </div>
     </Layout>
   );

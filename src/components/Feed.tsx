@@ -5,7 +5,7 @@ import PostCardSkeleton from './feed/PostCardSkeleton';
 import EmptyFeedState from './feed/EmptyFeedState';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCcw } from "lucide-react";
 
 interface Post {
   id: string;
@@ -25,6 +25,25 @@ interface Post {
     profession: string | null;
   } | null;
   post_likes: { id: string; user_id: string }[];
+  original_post_id: string | null;
+  post_type: string;
+  original_post: {
+    id: string;
+    content: string;
+    image_url: string | null;
+    media_type: string | null;
+    created_at: string;
+    user_id: string;
+    posted_as: 'user' | 'company';
+    company_id: string | null;
+    company_name: string | null;
+    company_logo: string | null;
+    profiles: {
+      display_name: string | null;
+      avatar_url: string | null;
+      profession: string | null;
+    } | null;
+  } | null;
 }
 
 interface FeedProps {
@@ -37,6 +56,7 @@ const POSTS_PER_PAGE = 10;
 const Feed = ({ refresh, userId }: FeedProps) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
@@ -45,8 +65,12 @@ const Feed = ({ refresh, userId }: FeedProps) => {
 
   const fetchPosts = async (pageNumber: number, isRefresh = false) => {
     try {
-      if (pageNumber === 0) setLoading(true);
-      else setLoadingMore(true);
+      if (pageNumber === 0) {
+        setLoading(true);
+        setError(null);
+      } else {
+        setLoadingMore(true);
+      }
 
       const { data: { user } } = await supabase.auth.getUser();
       let currentUserProfileId: string | null = null;
@@ -100,73 +124,156 @@ const Feed = ({ refresh, userId }: FeedProps) => {
         }
       }
 
-      let query = supabase
-        .from('posts')
-        .select(`
-          *,
-          post_likes (id, user_id)
-        `);
+      // Helper to process and set posts data
+      const handlePostsData = async (data: any[], pageNum: number) => {
+        const postsData = data as unknown as Post[];
+        
+        const userIds = [...new Set([
+          ...(postsData?.map(post => post.user_id) || []),
+          ...(postsData?.map(post => post.original_post?.user_id).filter(Boolean) || [])
+        ])];
+        
+        let profilesData: any[] = [];
+        if (userIds.length > 0) {
+          const { data, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, user_id, display_name, avatar_url, profession')
+            .in('user_id', userIds);
+            
+          if (profilesError) throw profilesError;
+          profilesData = data || [];
+        }
 
-      if (userId) {
-        query = query.eq('user_id', userId);
+        const profilesMap = new Map();
+        profilesData?.forEach((profile: any) => {
+          profilesMap.set(profile.user_id, profile);
+        });
+
+        const newPosts: Post[] = postsData
+          ?.filter(post => {
+            if (hiddenPostIds.includes(post.id)) return false;
+            if (!userId && blockedUserIds.includes(post.user_id)) return false;
+            if (!userId && snoozedUserIds.includes(post.user_id)) return false;
+            return true;
+          })
+          .map(post => ({
+            ...post,
+            posted_as: (post.posted_as as 'user' | 'company') || 'user',
+            profiles: profilesMap.get(post.user_id) || null,
+            original_post: post.original_post ? {
+              ...post.original_post,
+              profiles: profilesMap.get(post.original_post.user_id) || null
+            } : null
+          })) || [];
+
+        setPosts(prev => isRefresh || pageNum === 0 ? newPosts : [...prev, ...newPosts]);
+        setHasMore((data?.length || 0) === POSTS_PER_PAGE);
+        setPage(pageNum);
+      };
+
+      try {
+        let query = supabase
+          .from('posts')
+          .select(`
+            *,
+            post_likes (id, user_id),
+            original_post:posts!original_post_id (
+              id,
+              content,
+              image_url,
+              media_type,
+              created_at,
+              user_id,
+              posted_as,
+              company_id,
+              company_name,
+              company_logo,
+              profiles:user_id (
+                display_name,
+                avatar_url,
+                profession
+              )
+            )
+          `);
+
+        if (userId) {
+          query = query.eq('user_id', userId);
+        }
+
+        if (!userId && blockedUserIds.length > 0) {
+          query = query.not('user_id', 'in', `(${blockedUserIds.join(',')})`);
+        }
+
+        if (pageNumber === 0) {
+          query = query.order('created_at', { ascending: false });
+        } else {
+          query = query
+            .order('created_at', { ascending: false })
+            .range(pageNumber * POSTS_PER_PAGE, (pageNumber * POSTS_PER_PAGE) + POSTS_PER_PAGE - 1);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        await handlePostsData(data, pageNumber);
+
+      } catch (error: any) {
+        // Fallback for missing relationship (migration not applied)
+        if (error.message?.includes('Could not find a relationship') || error.code === 'PGRST200') {
+          console.warn('Repost migration not applied, falling back to basic feed');
+          
+          let fallbackQuery = supabase
+            .from('posts')
+            .select(`
+              *,
+              post_likes (id, user_id)
+            `);
+
+          if (userId) {
+            fallbackQuery = fallbackQuery.eq('user_id', userId);
+          }
+
+          if (!userId && blockedUserIds.length > 0) {
+            fallbackQuery = fallbackQuery.not('user_id', 'in', `(${blockedUserIds.join(',')})`);
+          }
+
+          if (pageNumber === 0) {
+            fallbackQuery = fallbackQuery.order('created_at', { ascending: false });
+          } else {
+            fallbackQuery = fallbackQuery
+              .order('created_at', { ascending: false })
+              .range(pageNumber * POSTS_PER_PAGE, (pageNumber * POSTS_PER_PAGE) + POSTS_PER_PAGE - 1);
+          }
+
+          const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+          if (fallbackError) throw fallbackError;
+
+          // Filter out reposts in fallback mode since we can't show them correctly
+          const validPosts = (fallbackData as any[]).filter(p => p.post_type !== 'repost');
+          await handlePostsData(validPosts, pageNumber);
+          
+          if (pageNumber === 0) {
+            toast({
+              title: "Update Required",
+              description: "Reposts are hidden until database update.",
+              variant: "default",
+            });
+          }
+        } else {
+          throw error;
+        }
       }
 
-      if (!userId && blockedUserIds.length > 0) {
-        query = query.not('user_id', 'in', `(${blockedUserIds.join(',')})`);
-      }
-
-      const from = pageNumber * POSTS_PER_PAGE;
-      const to = from + POSTS_PER_PAGE - 1;
-
-      const { data: postsData, error: postsError } = await query
-        .order('created_at', { ascending: false })
-        .range(from, to);
-
-      if (postsError) throw postsError;
-
-      if (postsData?.length < POSTS_PER_PAGE) {
-        setHasMore(false);
-      } else {
-        setHasMore(true);
-      }
-
-      const userIds = [...new Set(postsData?.map(post => post.user_id) || [])];
-      
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, user_id, display_name, avatar_url, profession')
-        .in('user_id', userIds);
-
-      if (profilesError) throw profilesError;
-
-      const profilesMap = new Map();
-      profilesData?.forEach(profile => {
-        profilesMap.set(profile.user_id, profile);
-      });
-
-      const newPosts: Post[] = postsData
-        ?.filter(post => {
-          if (hiddenPostIds.includes(post.id)) return false;
-          // Blocked users are filtered in query for home feed, but double check here
-          if (!userId && blockedUserIds.includes(post.user_id)) return false;
-          // Snoozed users filter
-          if (!userId && snoozedUserIds.includes(post.user_id)) return false;
-          return true;
-        })
-        .map(post => ({
-          ...post,
-          posted_as: (post.posted_as as 'user' | 'company') || 'user',
-          profiles: profilesMap.get(post.user_id) || null
-        })) || [];
-
-      setPosts(prev => isRefresh || pageNumber === 0 ? newPosts : [...prev, ...newPosts]);
-      setPage(pageNumber);
-
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching posts:', error);
+      // Only set error state if we don't have posts to show (initial load)
+      // If loading more fails, we just toast
+      if (pageNumber === 0) {
+        setError(error.message || "Could not load the feed. Please try again.");
+      }
+      
       toast({
         title: "Error loading posts",
-        description: "Could not load the feed. Please try again.",
+        description: error.message || "Could not load the feed. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -248,6 +355,22 @@ const Feed = ({ refresh, userId }: FeedProps) => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-card rounded-lg border border-border shadow-sm">
+        <div className="bg-destructive/10 p-4 rounded-full mb-4">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">Error loading feed</h3>
+        <p className="text-muted-foreground mb-6 max-w-sm">{error}</p>
+        <Button onClick={() => fetchPosts(0, true)} variant="outline" className="gap-2">
+          <RefreshCcw className="h-4 w-4" />
+          Try Again
+        </Button>
+      </div>
+    );
+  }
+
   if (posts.length === 0) {
     return <EmptyFeedState />;
   }
@@ -277,6 +400,8 @@ const Feed = ({ refresh, userId }: FeedProps) => {
           companyId={post.company_id}
           companyName={post.company_name}
           companyLogo={post.company_logo}
+          postType={post.post_type}
+          originalPost={post.original_post}
         />
       ))}
 

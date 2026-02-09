@@ -35,6 +35,7 @@ const SignInSecurity = lazy(() => import("./pages/SignInSecurity"));
 const Visibility = lazy(() => import("./pages/Visibility"));
 const DataPrivacy = lazy(() => import("./pages/DataPrivacy"));
 const AdvertisingData = lazy(() => import("./pages/AdvertisingData"));
+const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const SavedPosts = lazy(() => import("./pages/SavedPosts"));
 const SavedJobs = lazy(() => import("./pages/SavedJobs"));
 const JobApplicants = lazy(() => import("./pages/JobApplicantsPage"));
@@ -184,6 +185,9 @@ const App = () => (
               } />
               <Route path="/settings/advertising-data" element={
                 <ProtectedRoute><AdvertisingData /></ProtectedRoute>
+              } />
+              <Route path="/settings/notifications" element={
+                <ProtectedRoute><NotificationSettings /></ProtectedRoute>
               } />
               <Route path="/saved" element={
                 <ProtectedRoute><SavedPosts /></ProtectedRoute>

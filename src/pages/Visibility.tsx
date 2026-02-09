@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Layout } from "@/components/Layout";
 
 interface PreferenceRowProps {
   label: string;
@@ -76,8 +77,13 @@ interface VisibilityPreferences {
 const Visibility = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const queryClient = useQueryClient();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   const handleBack = () => {
     navigate(-1);
@@ -161,29 +167,37 @@ const Visibility = () => {
     updateVisibilityMutation.mutate({ profile_visibility: visibility });
   };
 
+  const handleNotImplemented = (feature: string) => {
+    toast({
+      title: "Coming Soon",
+      description: `${feature} will be available soon.`,
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="flex items-center justify-between px-2 h-[52px]">
+    <Layout user={user} onSignOut={handleSignOut}>
+      <div className="bg-background min-h-screen">
+        {/* Header */}
+        <div className="flex items-center gap-4 px-4 py-4 border-b border-border">
           <button
             onClick={handleBack}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 -ml-2 hover:bg-muted/50 rounded-full transition-colors"
             aria-label="Go back"
           >
-            <ArrowLeft className="h-6 w-6 text-gray-600" strokeWidth={1.5} />
+            <ArrowLeft className="h-6 w-6 text-foreground" />
           </button>
-          <h1 className="text-[17px] font-semibold text-gray-900 flex-1 text-left ml-2">
+          <h1 className="text-2xl font-semibold text-foreground">
             Visibility
           </h1>
+          <div className="flex-1" />
           <button
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 -mr-2 hover:bg-muted/50 rounded-full transition-colors"
             aria-label="Help"
+            onClick={() => handleNotImplemented("Help Center")}
           >
-            <HelpCircle className="h-6 w-6 text-gray-600 fill-gray-600" strokeWidth={0} />
+            <HelpCircle className="h-6 w-6 text-foreground fill-foreground" />
           </button>
         </div>
-      </header>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -267,7 +281,8 @@ const Visibility = () => {
           <PreferenceRow label="Followers" />
         </div>
       )}
-    </div>
+      </div>
+    </Layout>
   );
 };
 

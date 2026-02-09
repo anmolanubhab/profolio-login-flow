@@ -31,6 +31,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+import { Layout } from "@/components/Layout";
+
 const APP_VERSION = "1.0.0001";
 
 interface SettingsItemProps {
@@ -106,7 +108,7 @@ const Settings = () => {
     { icon: Eye, label: "Visibility", onClick: () => navigate("/settings/visibility") },
     { icon: Shield, label: "Data privacy", onClick: () => navigate("/settings/privacy") },
     { icon: FileText, label: "Advertising data", onClick: () => navigate("/settings/advertising-data") },
-    { icon: Bell, label: "Notifications", onClick: () => navigate("/notifications") },
+    { icon: Bell, label: "Notifications", onClick: () => navigate("/settings/notifications") },
   ];
 
   // Secondary links
@@ -121,8 +123,9 @@ const Settings = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
+    <Layout user={user} onSignOut={handleSignOut}>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="flex items-center justify-between px-4 h-14">
           <button
@@ -202,7 +205,8 @@ const Settings = () => {
       <div className="px-4 py-6">
         <p className="text-xs text-muted-foreground">VERSION: {APP_VERSION}</p>
       </div>
-    </div>
+      </div>
+    </Layout>
   );
 };
 
