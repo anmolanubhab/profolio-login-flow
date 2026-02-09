@@ -217,6 +217,7 @@ export function JobApplicantsDialog({ jobId, open, onOpenChange, jobTitle }: Job
           </ScrollArea>
         )}
       </DialogContent>
+      </Dialog>
 
       <Dialog open={!!selectedCoverLetter} onOpenChange={(open) => !open && setSelectedCoverLetter(null)}>
         <DialogContent>
@@ -230,6 +231,6 @@ export function JobApplicantsDialog({ jobId, open, onOpenChange, jobTitle }: Job
           </ScrollArea>
         </DialogContent>
       </Dialog>
-    </Dialog>
+    </>
   );
 }
