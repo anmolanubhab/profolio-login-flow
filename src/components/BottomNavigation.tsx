@@ -54,7 +54,7 @@ export default function BottomNavigation({ visible = true }: BottomNavigationPro
         {postItem && (
           <button
             onClick={handleCreatePost}
-            className="flex items-center justify-center w-12 h-12 rounded-[14px] shadow-lg -mt-5 transition-all duration-200 ease-out hover:scale-105 hover:shadow-xl active:scale-95"
+            className="flex items-center justify-center w-12 h-12 rounded-[14px] shadow-lg transition-all duration-200 ease-out hover:scale-105 hover:shadow-xl active:scale-95"
             style={{
               background: 'linear-gradient(135deg, #6A11CB 0%, #2575FC 30%, #00C6FF 60%, #00E676 100%)'
             }}

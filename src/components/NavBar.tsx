@@ -46,9 +46,8 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
             <SearchBar />
           </div>
           
-          <div className="flex items-center gap-2">
-            <NotificationCenter />
-          </div>
+          {/* Right Spacer to balance the layout (matches left spacer) */}
+          <div className="w-10" />
         </div>
 
         {/* MOBILE LAYOUT (lg:hidden) - Single Row: [Menu] [Profile] [Logo] [Notif] [Search] */}
@@ -69,9 +68,8 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
             </h1>
           </div>
 
-          {/* Right: Notifications & Search */}
+          {/* Right: Search Only (Notifications removed) */}
           <div className="flex-1 min-w-0 flex items-center justify-end gap-2">
-            <NotificationCenter />
             <div className="flex-1 min-w-0 max-w-[200px]">
               <SearchBar />
             </div>
