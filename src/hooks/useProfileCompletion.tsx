@@ -26,19 +26,36 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
     queryFn: async () => {
       if (!user?.id) return { experience: 0, education: 0, certificates: 0, resumes: 0 };
 
-      // Parallel fetch for counts
-      const [exp, edu, cert, res] = await Promise.all([
-        supabase.from('experience').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('education').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('certificates').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('resumes').select('id', { count: 'exact', head: true }).eq('user_id', user.id)
+      const getCount = async (table: string) => {
+        try {
+          const { count, error } = await supabase
+            .from(table as any)
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+          
+          if (error) {
+            // Silently fail for missing tables or permission issues
+            return 0;
+          }
+          return count || 0;
+        } catch {
+          return 0;
+        }
+      };
+
+      // Parallel fetch for counts with error handling
+      const [experience, education, certificates, resumes] = await Promise.all([
+        getCount('experience'),
+        getCount('education'),
+        getCount('certificates'),
+        getCount('resumes')
       ]);
 
       return {
-        experience: exp.count || 0,
-        education: edu.count || 0,
-        certificates: cert.count || 0,
-        resumes: res.count || 0
+        experience,
+        education,
+        certificates,
+        resumes
       };
     },
     enabled: !!user?.id,

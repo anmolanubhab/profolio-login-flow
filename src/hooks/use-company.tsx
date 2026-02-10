@@ -315,7 +315,10 @@ export function useCompanyInvitations() {
         .gt('expires_at', new Date().toISOString());
 
       if (error) {
-        console.error('Error fetching invitations:', error);
+        // Suppress permission denied errors (42501) which happen if RLS is strict or table permissions are missing
+        if (error.code !== '42501') {
+          console.error('Error fetching invitations:', error);
+        }
         setInvitations([]);
         return;
       }
