@@ -1,5 +1,7 @@
 
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Layout } from '@/components/Layout';
 import { useJobApplicants, Applicant } from '@/hooks/useJobApplicants';
 import { ApplicantList } from '@/components/jobs/ApplicantList';
 import { ApplicantDetailDrawer } from '@/components/jobs/ApplicantDetailDrawer';
@@ -100,6 +102,7 @@ const JobApplicantsPage = () => {
         onUpdateStatus={handleUpdateStatus}
       />
     </div>
+    </Layout>
   );
 };
 

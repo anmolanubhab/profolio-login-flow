@@ -8,7 +8,7 @@ const Certificates = () => {
   return (
     <Layout user={user} onSignOut={signOut}>
       <div className="container mx-auto px-4 py-6 max-w-6xl">
-        <h1 className="text-xl font-bold mb-4">Certificate Vault</h1>
+        <h1 className="text-2xl font-semibold text-foreground mb-6">Certificate Vault</h1>
         <CertificateVault />
       </div>
     </Layout>

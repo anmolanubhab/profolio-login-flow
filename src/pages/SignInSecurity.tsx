@@ -89,9 +89,7 @@ const SignInSecurity = () => {
     navigate('/');
   };
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+
 
   // Fetch profile for security preferences
   const { data: profile, isLoading } = useQuery({
@@ -191,26 +189,10 @@ const SignInSecurity = () => {
   return (
     <Layout user={user} onSignOut={handleSignOut}>
       <div className="bg-background min-h-screen">
-        {/* Header */}
-        <div className="flex items-center gap-4 px-4 py-4 border-b border-border">
-          <button
-            onClick={handleBack}
-            className="p-2 -ml-2 hover:bg-muted/50 rounded-full transition-colors"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-6 w-6 text-foreground" />
-          </button>
+        <div className="px-4 py-6">
           <h1 className="text-2xl font-semibold text-foreground">
             Sign in & security
           </h1>
-          <div className="flex-1" />
-          <button
-            className="p-2 -mr-2 hover:bg-muted/50 rounded-full transition-colors"
-            aria-label="Help"
-            onClick={() => handleNotImplemented("Help Center")}
-          >
-            <HelpCircle className="h-6 w-6 text-foreground fill-foreground" />
-          </button>
         </div>
 
       {isLoading ? (

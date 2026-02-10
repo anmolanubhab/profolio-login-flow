@@ -93,9 +93,7 @@ const Settings = () => {
     }
   };
 
-  const handleBack = () => {
-    navigate(-1);
-  };
+
 
   const displayName = profile?.display_name || profile?.full_name || user?.email?.split("@")[0] || "User";
   const avatarUrl = profile?.avatar_url;
@@ -125,27 +123,9 @@ const Settings = () => {
   return (
     <Layout user={user} onSignOut={handleSignOut}>
       <div className="min-h-screen bg-background">
-        {/* Header */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border">
-        <div className="flex items-center justify-between px-4 h-14">
-          <button
-            onClick={handleBack}
-            className="p-2 -ml-2 hover:bg-muted/50 rounded-full transition-colors"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-6 w-6 text-foreground" />
-          </button>
-          <button
-            className="p-2 -mr-2 hover:bg-muted/50 rounded-full transition-colors"
-            aria-label="Help"
-          >
-            <HelpCircle className="h-6 w-6 text-foreground fill-foreground" />
-          </button>
-        </div>
-      </header>
-
-      {/* Profile Section */}
-      <div className="flex items-center gap-3 px-4 py-4">
+        
+        {/* Profile Section */}
+        <div className="flex items-center gap-3 px-4 py-6">
         <Avatar className="h-12 w-12">
           <AvatarImage src={avatarUrl || undefined} alt={displayName} />
           <AvatarFallback className="bg-primary text-primary-foreground text-lg">

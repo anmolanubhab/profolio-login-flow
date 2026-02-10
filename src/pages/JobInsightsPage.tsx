@@ -1,6 +1,8 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Layout } from '@/components/Layout';
 import { useJobAnalytics } from '@/hooks/useJobAnalytics';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,8 +14,14 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { UpgradeAlert } from '@/components/monetization/UpgradeAlert';
 
 const JobInsightsPage = () => {
+  const { user, signOut } = useAuth();
   const { jobId } = useParams();
   const navigate = useNavigate();
+  
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
   const { data: analytics, isLoading: isAnalyticsLoading, error } = useJobAnalytics(jobId);
   const { data: subscription } = useSubscription();
   const [jobTitle, setJobTitle] = useState<string>('');
@@ -44,6 +52,7 @@ const JobInsightsPage = () => {
 
   if (error) {
     return (
+      <Layout user={user} onSignOut={handleSignOut}>
       <div className="container py-8 max-w-4xl">
         <Button variant="ghost" onClick={handleBack} className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -63,10 +72,12 @@ const JobInsightsPage = () => {
           </CardContent>
         </Card>
       </div>
+      </Layout>
     );
   }
 
   return (
+    <Layout user={user} onSignOut={handleSignOut}>
     <div className="container py-8 max-w-5xl space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
@@ -296,6 +307,7 @@ const JobInsightsPage = () => {
         </div>
       )}
     </div>
+    </Layout>
   );
 };
 

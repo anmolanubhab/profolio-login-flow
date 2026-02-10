@@ -357,6 +357,9 @@ const Notifications = () => {
   return (
     <Layout user={user} onSignOut={signOut}>
       <div className="space-y-4">
+        {/* Main Title */}
+        <h1 className="text-2xl font-bold text-foreground px-1">Notifications</h1>
+
         {/* Friend Requests Section */}
           {friendRequests.length > 0 && (
             <>

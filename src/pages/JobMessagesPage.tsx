@@ -1,6 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Layout } from '@/components/Layout';
 import { useJobConversations, Conversation } from '@/hooks/useJobConversations';
 import { JobChat } from '@/components/jobs/JobChat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,10 +14,16 @@ import { formatDistanceToNow } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const JobMessagesPage = () => {
+  const { user, signOut } = useAuth();
   const { conversations, isLoading } = useJobConversations();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
   
   const jobId = searchParams.get('jobId');
   const correspondentId = searchParams.get('correspondentId');
@@ -36,7 +44,8 @@ const JobMessagesPage = () => {
   if (isMobile) {
     if (jobId && correspondentId && selectedConversation) {
       return (
-        <div className="flex flex-col h-[calc(100vh-4rem)]">
+        <Layout user={user} onSignOut={handleSignOut}>
+        <div className="flex flex-col h-[calc(100vh-8rem)]">
           <div className="flex items-center gap-2 p-4 border-b">
             <Button variant="ghost" size="icon" onClick={handleBack}>
               <ArrowLeft className="h-5 w-5" />
@@ -61,10 +70,12 @@ const JobMessagesPage = () => {
             className="flex-1 border-0 rounded-none"
           />
         </div>
+        </Layout>
       );
     }
 
     return (
+      <Layout user={user} onSignOut={handleSignOut}>
       <div className="container py-4 space-y-4">
         <h1 className="text-2xl font-bold px-2">Messages</h1>
         <ConversationList 
@@ -73,12 +84,14 @@ const JobMessagesPage = () => {
           onSelect={handleSelect} 
         />
       </div>
+      </Layout>
     );
   }
 
   // Desktop View Logic
   return (
-    <div className="container py-6 max-w-6xl h-[calc(100vh-5rem)]">
+    <Layout user={user} onSignOut={handleSignOut}>
+    <div className="container py-6 max-w-6xl h-[calc(100vh-8rem)]">
       <div className="grid grid-cols-12 h-full border rounded-xl overflow-hidden bg-card shadow-sm">
         {/* Sidebar List */}
         <div className="col-span-4 border-r flex flex-col bg-muted/10">
@@ -120,6 +133,7 @@ const JobMessagesPage = () => {
         </div>
       </div>
     </div>
+    </Layout>
   );
 };
 

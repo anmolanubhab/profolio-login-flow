@@ -98,9 +98,6 @@ const SavedJobs = () => {
     <Layout user={user} onSignOut={handleSignOut}>
       <div className="container mx-auto max-w-5xl py-6 px-4">
         <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/jobs')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
           <div className="flex items-center gap-2">
             <Bookmark className="h-6 w-6 text-primary fill-current" />
             <h1 className="text-2xl font-bold">Saved Jobs</h1>

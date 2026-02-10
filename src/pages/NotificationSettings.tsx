@@ -102,26 +102,12 @@ const NotificationSettings = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="bg-white min-h-screen">
-        {/* Header */}
-        <div className="flex items-center gap-4 px-4 py-4 border-b border-gray-200">
-          <button
-            onClick={handleBack}
-            className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-6 w-6 text-gray-600" strokeWidth={1.5} />
-          </button>
-          <h1 className="text-[17px] font-semibold text-gray-900 flex-1 text-left ml-2">
+      <div className="bg-background min-h-screen">
+        {/* Title */}
+        <div className="px-4 py-6">
+          <h1 className="text-2xl font-semibold text-foreground">
             Notifications
           </h1>
-          <button
-            className="p-2 -mr-2 hover:bg-gray-100 rounded-full transition-colors"
-            aria-label="Help"
-            onClick={() => handleNotImplemented("Help Center")}
-          >
-            <HelpCircle className="h-6 w-6 text-gray-600 fill-gray-600" strokeWidth={0} />
-          </button>
         </div>
 
       {isLoading ? (

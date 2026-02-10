@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, HelpCircle, ChevronRight } from "lucide-react";
+import { HelpCircle, ChevronRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -83,10 +83,6 @@ const Visibility = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
-  };
-
-  const handleBack = () => {
-    navigate(-1);
   };
 
   // Fetch user profile
@@ -176,27 +172,12 @@ const Visibility = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="bg-background min-h-screen">
-        {/* Header */}
-        <div className="flex items-center gap-4 px-4 py-4 border-b border-border">
-          <button
-            onClick={handleBack}
-            className="p-2 -ml-2 hover:bg-muted/50 rounded-full transition-colors"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-6 w-6 text-foreground" />
-          </button>
+      <div className="bg-background min-h-screen pt-4">
+        {/* Title */}
+        <div className="px-4 pb-4">
           <h1 className="text-2xl font-semibold text-foreground">
             Visibility
           </h1>
-          <div className="flex-1" />
-          <button
-            className="p-2 -mr-2 hover:bg-muted/50 rounded-full transition-colors"
-            aria-label="Help"
-            onClick={() => handleNotImplemented("Help Center")}
-          >
-            <HelpCircle className="h-6 w-6 text-foreground fill-foreground" />
-          </button>
         </div>
 
       {isLoading ? (
