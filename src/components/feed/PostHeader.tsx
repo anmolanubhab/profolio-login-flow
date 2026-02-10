@@ -41,7 +41,7 @@ const PostHeader = ({
   companyLogo,
 }: PostHeaderProps) => {
   const navigate = useNavigate();
-  const isCompanyPost = postedAs === 'company' && companyId;
+  const isCompanyPost = postedAs === 'company' && !!companyId;
 
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date();

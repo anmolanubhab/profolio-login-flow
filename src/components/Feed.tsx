@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, memo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import PostCard from './PostCard';
 import PostCardSkeleton from './feed/PostCardSkeleton';
@@ -62,6 +63,25 @@ const Feed = ({ refresh, userId }: FeedProps) => {
   const [page, setPage] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
+  const location = useLocation();
+
+  // Handle hash scrolling after posts load
+  useEffect(() => {
+    if (location.hash && posts.length > 0 && !loading) {
+      const id = location.hash.replace('#', '');
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Highlight the post temporarily
+          element.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+          }, 2000);
+        }, 100);
+      }
+    }
+  }, [location.hash, posts, loading]);
 
   const fetchPosts = async (pageNumber: number, isRefresh = false) => {
     try {
@@ -204,6 +224,9 @@ const Feed = ({ refresh, userId }: FeedProps) => {
           query = query.not('user_id', 'in', `(${blockedUserIds.join(',')})`);
         }
 
+        // Filter out deleted posts
+        query = query.neq('status', 'deleted');
+
         if (pageNumber === 0) {
           query = query.order('created_at', { ascending: false });
         } else {
@@ -235,6 +258,9 @@ const Feed = ({ refresh, userId }: FeedProps) => {
           if (!userId && blockedUserIds.length > 0) {
             fallbackQuery = fallbackQuery.not('user_id', 'in', `(${blockedUserIds.join(',')})`);
           }
+
+          // Filter out deleted posts
+          fallbackQuery = fallbackQuery.neq('status', 'deleted');
 
           if (pageNumber === 0) {
             fallbackQuery = fallbackQuery.order('created_at', { ascending: false });

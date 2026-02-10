@@ -16,7 +16,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
-import { navigationConfig } from "@/config/navigationConfig"
+import { secondaryNavItems } from "@/config/navigationConfig"
 
 export function MobileNavDrawer() {
   const [open, setOpen] = useState(false)
@@ -83,7 +83,7 @@ export function MobileNavDrawer() {
         {/* Menu Items */}
         <div className="flex flex-col py-3 flex-1 overflow-y-auto">
           <nav className="flex flex-col px-2">
-            {navigationConfig.map((item) => (
+            {secondaryNavItems.map((item) => (
               <SheetClose asChild key={item.title}>
                 <NavLink
                   to={item.url}

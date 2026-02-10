@@ -70,6 +70,7 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
         `)
         .eq('company_id', companyId)
         .eq('status', 'published')
+        .neq('status', 'deleted')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -125,6 +126,10 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
     setPosts(prev => prev.filter(p => p.id !== postId));
   };
 
+  const handleHidePost = (postId: string) => {
+    setPosts(prev => prev.filter(p => p.id !== postId));
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -173,7 +178,7 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
           initialIsLiked={post.likes.some(like => like.user_id === currentUserId)}
           onLike={(isLiked) => handleLike(post.id)}
           onDelete={() => handleDeletePost(post.id)}
-          onHide={() => {}}
+          onHide={() => handleHidePost(post.id)}
           postedAs={post.posted_as as 'user' | 'company'}
           companyId={post.company_id}
           companyName={post.company_name}

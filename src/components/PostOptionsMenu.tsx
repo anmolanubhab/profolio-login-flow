@@ -37,6 +37,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
   BookmarkPlus,
@@ -53,7 +54,7 @@ import {
   ThumbsDown,
   Trash2,
   MoreHorizontal,
-  Check,
+  Globe,
 } from 'lucide-react';
 
 interface PostOptionsMenuProps {
@@ -85,6 +86,7 @@ export const PostOptionsMenu = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [whySeeingDialogOpen, setWhySeeingDialogOpen] = useState(false);
+  const [whoCanSeeDialogOpen, setWhoCanSeeDialogOpen] = useState(false);
   
   // Logic States
   const [isDeleting, setIsDeleting] = useState(false);
@@ -96,6 +98,7 @@ export const PostOptionsMenu = ({
   const [isSaved, setIsSaved] = useState(false);
   const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
   const [isLoadingState, setIsLoadingState] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -149,9 +152,18 @@ export const PostOptionsMenu = ({
     setWhySeeingDialogOpen(true);
   };
 
+  // 1.1 Who can see this?
+  const handleWhoCanSeeThis = () => {
+    closeMenu();
+    setWhoCanSeeDialogOpen(true);
+  };
+
   // 2. Interested
-  const handleMarkInterested = async () => {
+  const handleMarkInterested = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!currentUserProfileId) return;
+    
+    setLoadingAction('interested');
     try {
       const { data: prefs, error: fetchError } = await supabase
         .from('user_feed_preferences')
@@ -183,17 +195,27 @@ export const PostOptionsMenu = ({
     } catch (err) {
       console.error('Error marking interested:', err);
       toast({ title: 'Failed to update preference', variant: 'destructive' });
+    } finally {
+      setLoadingAction(null);
     }
   };
 
   // 3. Not Interested
-  const handleMarkNotInterested = async () => {
+  const handleMarkNotInterested = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!currentUserProfileId) return;
+    
+    setLoadingAction('not_interested');
     try {
       // Optimistic UI
-      onHide?.();
-      closeMenu();
-
+      // onHide?.(); // Don't hide immediately if we want to show loading state? 
+      // Actually, for "Not Interested", hiding immediately is better UX. 
+      // But user asked for loading states. 
+      // If I hide immediately, the menu disappears anyway because the post disappears!
+      // So loading state is moot if onHide removes the post.
+      
+      // If I delay onHide until after API call, then loading state is useful.
+      
       const { data: prefs, error: fetchError } = await supabase
         .from('user_feed_preferences')
         .select('not_interested_posts')
@@ -216,22 +238,56 @@ export const PostOptionsMenu = ({
         if (upsertError) throw upsertError;
       }
 
-      toast({ title: "Post hidden", description: "We'll show fewer posts like this." });
+      closeMenu();
+      onHide?.(); // Hide after success
+
+      toast({ 
+        title: "Post hidden", 
+        description: "We'll show fewer posts like this.",
+        action: (
+          <ToastAction altText="Undo" onClick={async () => {
+            // Undo logic for Not Interested
+            try {
+              const { data: undoPrefs } = await supabase
+                .from('user_feed_preferences')
+                .select('not_interested_posts')
+                .eq('user_id', currentUserProfileId)
+                .single();
+                
+              const currentList = (undoPrefs?.not_interested_posts as string[]) || [];
+              const newList = currentList.filter(id => id !== postId);
+              
+              await supabase
+                .from('user_feed_preferences')
+                .upsert({
+                  user_id: currentUserProfileId,
+                  not_interested_posts: newList,
+                }, { onConflict: 'user_id' });
+                
+              toast({ title: "Preference updated. Refresh to see post." });
+            } catch (e) {
+              console.error("Undo failed", e);
+            }
+          }}>
+            Undo
+          </ToastAction>
+        )
+      });
     } catch (err) {
       console.error('Error marking not interested:', err);
-      // Ideally we would undo the hide here, but simpler to just show error
       toast({ title: 'Failed to update preference', variant: 'destructive' });
+    } finally {
+      setLoadingAction(null);
     }
   };
 
   // 4. Save Post (Toggle)
-  const handleSavePost = async () => {
+  const handleSavePost = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!currentUserProfileId) return;
     
-    // Optimistic Update
+    setLoadingAction('save');
     const newSavedState = !isSaved;
-    setIsSaved(newSavedState);
-    closeMenu();
 
     try {
       if (newSavedState) {
@@ -241,7 +297,12 @@ export const PostOptionsMenu = ({
           post_id: postId,
         });
         if (error && error.code !== '23505') throw error;
-        toast({ title: 'Post saved' });
+        toast({ 
+          title: 'Post saved',
+          action: (
+            <ToastAction altText="Undo" onClick={(e) => handleSavePost(e)}>Undo</ToastAction>
+          )
+        });
       } else {
         // Unsave
         const { error } = await supabase
@@ -250,33 +311,63 @@ export const PostOptionsMenu = ({
           .eq('user_id', currentUserProfileId)
           .eq('post_id', postId);
         if (error) throw error;
-        toast({ title: 'Removed from Saved' });
+        toast({ 
+          title: 'Removed from Saved',
+          action: (
+            <ToastAction altText="Undo" onClick={(e) => handleSavePost(e)}>Undo</ToastAction>
+          )
+        });
       }
+      setIsSaved(newSavedState);
+      closeMenu();
     } catch (err) {
       console.error('Error toggling save post:', err);
-      setIsSaved(!newSavedState); // Revert
       toast({ title: 'Failed to update saved status', variant: 'destructive' });
+    } finally {
+      setLoadingAction(null);
     }
   };
 
   // 5. Hide Post
-  const handleHidePost = async () => {
+  const handleHidePost = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!currentUserProfileId) return;
+    
+    setLoadingAction('hide');
     try {
-      // Optimistic
-      onHide?.();
-      closeMenu();
-
       const { error } = await supabase.from('hidden_posts').insert({
         user_id: currentUserProfileId,
         post_id: postId,
       });
       if (error && error.code !== '23505') throw error;
       
-      toast({ title: 'Post hidden' });
+      closeMenu();
+      onHide?.();
+
+      toast({ 
+        title: 'Post hidden',
+        action: (
+          <ToastAction altText="Undo" onClick={async () => {
+            try {
+              await supabase
+                .from('hidden_posts')
+                .delete()
+                .eq('user_id', currentUserProfileId)
+                .eq('post_id', postId);
+              toast({ title: "Post unhidden. Refresh to view." });
+            } catch (e) {
+              console.error("Undo hide failed", e);
+            }
+          }}>
+            Undo
+          </ToastAction>
+        )
+      });
     } catch (err) {
       console.error('Error hiding post:', err);
       toast({ title: 'Failed to hide post', variant: 'destructive' });
+    } finally {
+      setLoadingAction(null);
     }
   };
 
@@ -314,13 +405,12 @@ export const PostOptionsMenu = ({
   };
 
   // 7. Turn On/Off Notifications
-  const handleToggleNotifications = async () => {
+  const handleToggleNotifications = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!currentUserProfileId) return;
     
-    // Optimistic
+    setLoadingAction('notifications');
     const newState = !isNotificationsEnabled;
-    setIsNotificationsEnabled(newState);
-    closeMenu();
 
     try {
       if (newState) {
@@ -330,7 +420,12 @@ export const PostOptionsMenu = ({
           post_id: postId,
         });
         if (error && error.code !== '23505') throw error;
-        toast({ title: 'Notifications turned on for this post' });
+        toast({ 
+          title: 'Notifications turned on for this post',
+          action: (
+            <ToastAction altText="Undo" onClick={(e) => handleToggleNotifications(e)}>Undo</ToastAction>
+          )
+        });
       } else {
         // Disable
         const { error } = await supabase
@@ -339,17 +434,38 @@ export const PostOptionsMenu = ({
           .eq('user_id', currentUserProfileId)
           .eq('post_id', postId);
         if (error) throw error;
-        toast({ title: 'Notifications turned off' });
+        toast({ 
+          title: 'Notifications turned off',
+          action: (
+            <ToastAction altText="Undo" onClick={(e) => handleToggleNotifications(e)}>Undo</ToastAction>
+          )
+        });
       }
+      setIsNotificationsEnabled(newState);
+      closeMenu();
     } catch (err) {
       console.error('Error toggling notifications:', err);
-      setIsNotificationsEnabled(!newState); // Revert
       toast({ title: 'Failed to update notifications', variant: 'destructive' });
+    } finally {
+      setLoadingAction(null);
     }
   };
 
   // 8. Copy Link
-  const handleCopyLink = async () => {
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    // Synchronous-ish, but let's prevent default anyway if we want to show anything? 
+    // Actually copy is fast. No loading state needed. But we can keep it consistent.
+    // e.preventDefault(); 
+    // ...
+    // closeMenu();
+    
+    // Original was:
+    // const handleCopyLink = async () => { ... closeMenu(); }
+    
+    // I will leave it as is or update signature to match MenuItem onClick if needed.
+    // MenuItem onClick passes MouseEvent.
+    // So let's just accept e but not use it heavily unless we want to show a spinner.
+    
     const url = `${window.location.origin}/dashboard#post-${postId}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -370,9 +486,11 @@ export const PostOptionsMenu = ({
     if (!currentUserProfileId) return;
     try {
       setIsDeleting(true);
+      
+      // Soft delete using status='deleted' since deleted_at column is missing
       const { error } = await supabase
         .from('posts')
-        .delete()
+        .update({ status: 'deleted' })
         .eq('id', postId)
         .eq('user_id', currentUserProfileId);
 
@@ -390,8 +508,11 @@ export const PostOptionsMenu = ({
   };
 
   // Secondary actions (User management)
-  const handleSnoozeUser = async () => {
+  const handleSnoozeUser = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!currentUserProfileId || postUserId === currentUserProfileId) return;
+    
+    setLoadingAction('snooze');
     try {
       const snoozedUntil = new Date();
       snoozedUntil.setDate(snoozedUntil.getDate() + 30);
@@ -409,11 +530,16 @@ export const PostOptionsMenu = ({
     } catch (err) {
       console.error('Error snoozing user:', err);
       toast({ title: 'Failed to snooze user', variant: 'destructive' });
+    } finally {
+      setLoadingAction(null);
     }
   };
 
-  const handleHideAllFromUser = async () => {
+  const handleHideAllFromUser = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!currentUserProfileId || postUserId === currentUserProfileId) return;
+    
+    setLoadingAction('hide_all');
     try {
       const snoozedUntil = new Date();
       snoozedUntil.setFullYear(snoozedUntil.getFullYear() + 100);
@@ -431,11 +557,16 @@ export const PostOptionsMenu = ({
     } catch (err) {
       console.error('Error hiding user posts:', err);
       toast({ title: 'Failed to hide posts', variant: 'destructive' });
+    } finally {
+      setLoadingAction(null);
     }
   };
 
-  const handleBlockUser = async () => {
+  const handleBlockUser = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!currentUserProfileId || postUserId === currentUserProfileId) return;
+    
+    setLoadingAction('block');
     try {
       const { error } = await supabase.from('blocked_users').insert({
         user_id: currentUserProfileId,
@@ -449,6 +580,8 @@ export const PostOptionsMenu = ({
     } catch (err) {
       console.error('Error blocking user:', err);
       toast({ title: 'Failed to block user', variant: 'destructive' });
+    } finally {
+      setLoadingAction(null);
     }
   };
 
@@ -464,10 +597,21 @@ export const PostOptionsMenu = ({
       <MenuItem icon={Info} onClick={handleWhySeeingThis}>
         Why am I seeing this?
       </MenuItem>
-      <MenuItem icon={ThumbsUp} onClick={handleMarkInterested}>
+      <MenuItem icon={Globe} onClick={handleWhoCanSeeThis}>
+        Who can see this post?
+      </MenuItem>
+      <MenuItem 
+        icon={ThumbsUp} 
+        onClick={handleMarkInterested}
+        loading={loadingAction === 'interested'}
+      >
         Interested
       </MenuItem>
-      <MenuItem icon={ThumbsDown} onClick={handleMarkNotInterested}>
+      <MenuItem 
+        icon={ThumbsDown} 
+        onClick={handleMarkNotInterested}
+        loading={loadingAction === 'not_interested'}
+      >
         Not Interested
       </MenuItem>
       <div className="h-px bg-border my-1" />
@@ -475,16 +619,25 @@ export const PostOptionsMenu = ({
         icon={isSaved ? BookmarkCheck : BookmarkPlus} 
         onClick={handleSavePost}
         className={isSaved ? "text-primary font-medium" : ""}
+        loading={loadingAction === 'save'}
       >
         {isSaved ? "Saved" : "Save Post"}
       </MenuItem>
-      <MenuItem icon={EyeOff} onClick={handleHidePost}>
+      <MenuItem 
+        icon={EyeOff} 
+        onClick={handleHidePost}
+        loading={loadingAction === 'hide'}
+      >
         Hide Post
       </MenuItem>
       <MenuItem icon={Flag} onClick={() => { closeMenu(); setReportDialogOpen(true); }}>
         Report Post
       </MenuItem>
-      <MenuItem icon={isNotificationsEnabled ? BellOff : Bell} onClick={handleToggleNotifications}>
+      <MenuItem 
+        icon={isNotificationsEnabled ? BellOff : Bell} 
+        onClick={handleToggleNotifications}
+        loading={loadingAction === 'notifications'}
+      >
         {isNotificationsEnabled ? "Turn Off Notifications" : "Turn On Notifications"}
       </MenuItem>
       <MenuItem icon={Link2} onClick={handleCopyLink}>
@@ -494,13 +647,26 @@ export const PostOptionsMenu = ({
       {!isOwnPost && (
         <>
           <div className="h-px bg-border my-1" />
-          <MenuItem icon={Clock} onClick={handleSnoozeUser}>
+          <MenuItem 
+            icon={Clock} 
+            onClick={handleSnoozeUser}
+            loading={loadingAction === 'snooze'}
+          >
             Snooze {postUserName} for 30 days
           </MenuItem>
-          <MenuItem icon={EyeOff} onClick={handleHideAllFromUser}>
+          <MenuItem 
+            icon={EyeOff} 
+            onClick={handleHideAllFromUser}
+            loading={loadingAction === 'hide_all'}
+          >
             Hide all from {postUserName}
           </MenuItem>
-          <MenuItem icon={UserX} onClick={handleBlockUser} destructive>
+          <MenuItem 
+            icon={UserX} 
+            onClick={handleBlockUser} 
+            destructive
+            loading={loadingAction === 'block'}
+          >
             Block {postUserName}
           </MenuItem>
         </>
@@ -567,6 +733,10 @@ export const PostOptionsMenu = ({
             <DropdownMenuItem onClick={handleWhySeeingThis}>
               <Info className="h-4 w-4 mr-2" />
               Why am I seeing this?
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleWhoCanSeeThis}>
+              <Globe className="h-4 w-4 mr-2" />
+              Who can see this post?
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleMarkInterested}>
               <ThumbsUp className="h-4 w-4 mr-2" />
@@ -661,6 +831,35 @@ export const PostOptionsMenu = ({
         isSubmitting={isSubmitting}
       />
 
+      <Dialog open={whoCanSeeDialogOpen} onOpenChange={setWhoCanSeeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Who can see this post?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-muted p-2 rounded-full mt-0.5">
+                <Globe className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-medium">Anyone</h4>
+                <p className="text-sm text-muted-foreground">
+                  Anyone on or off Profolio can see this post.
+                </p>
+              </div>
+            </div>
+            <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground">
+              Visible to the public, including search engines and people without a Profolio account.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setWhoCanSeeDialogOpen(false)}>
+              Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={whySeeingDialogOpen} onOpenChange={setWhySeeingDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -709,21 +908,28 @@ const MenuItem = ({
   children, 
   onClick, 
   destructive = false,
-  className = ""
+  className = "",
+  loading = false,
 }: { 
   icon?: React.ElementType;
   children: React.ReactNode;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
   destructive?: boolean;
   className?: string;
+  loading?: boolean;
 }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted rounded-lg transition-colors text-left ${
+    disabled={loading}
+    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted rounded-lg transition-colors text-left disabled:opacity-50 disabled:pointer-events-none ${
       destructive ? 'text-destructive hover:bg-destructive/10' : ''
     } ${className}`}
   >
-    {Icon && <Icon className="h-5 w-5 flex-shrink-0" />}
+    {loading ? (
+      <Loader2 className="h-5 w-5 flex-shrink-0 animate-spin" />
+    ) : (
+      Icon && <Icon className="h-5 w-5 flex-shrink-0" />
+    )}
     <span className="text-sm">{children}</span>
   </button>
 );
