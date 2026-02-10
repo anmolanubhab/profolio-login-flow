@@ -52,18 +52,14 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
 
         {/* MOBILE LAYOUT (lg:hidden) - Single Row: [Menu] [Profile] [Logo] [Notif] [Search] */}
         <div className="lg:hidden w-full h-16 px-3 flex items-center gap-2">
-          {/* Left: Menu & Profile */}
+          {/* Left: Menu & Profile & Brand */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <MobileNavDrawer />
             <Avatar className="h-8 w-8 cursor-pointer border border-border/50" onClick={() => navigate('/profile')}>
               <AvatarImage src={avatarUrl || user?.user_metadata?.avatar_url} />
               <AvatarFallback className="text-xs">{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
-          </div>
-
-          {/* Center: Logo */}
-          <div className="flex-shrink-0 hidden sm:block">
-             <h1 className="text-[24px] leading-none text-foreground select-none" style={{ fontFamily: '"Grand Hotel", cursive' }}>
+            <h1 className="text-[24px] leading-none text-foreground select-none ml-1" style={{ fontFamily: '"Grand Hotel", cursive' }}>
               Profolio
             </h1>
           </div>
