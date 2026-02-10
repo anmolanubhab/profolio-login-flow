@@ -16,6 +16,7 @@ interface PostHeaderProps {
   timestamp: string;
   isPromoted?: boolean;
   currentUserProfileId: string | null;
+  currentUserId?: string | null;
   isOwnPost: boolean;
   onDelete?: () => void;
   onHide?: () => void;
@@ -32,6 +33,7 @@ const PostHeader = ({
   timestamp,
   isPromoted,
   currentUserProfileId,
+  currentUserId,
   isOwnPost,
   onDelete,
   onHide,
@@ -143,12 +145,13 @@ const PostHeader = ({
         </div>
       </div>
 
-      {/* Options menu */}
+      {/* Options Menu */}
       <PostOptionsMenu
         postId={postId}
         postUserId={user.id || ''}
         postUserName={user.name}
         currentUserProfileId={currentUserProfileId}
+        currentUserId={currentUserId}
         isOwnPost={isOwnPost}
         onDelete={onDelete}
         onHide={onHide}

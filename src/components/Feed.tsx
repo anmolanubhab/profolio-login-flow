@@ -26,6 +26,7 @@ interface Post {
     profession: string | null;
   } | null;
   post_likes: { id: string; user_id: string }[];
+  comments: { count: number }[];
   original_post_id: string | null;
   post_type: string;
   original_post: {
@@ -197,6 +198,7 @@ const Feed = ({ refresh, userId }: FeedProps) => {
           .select(`
             *,
             post_likes (id, user_id),
+            comments (count),
             original_post:posts!original_post_id (
               id,
               content,
@@ -248,7 +250,8 @@ const Feed = ({ refresh, userId }: FeedProps) => {
             .from('posts')
             .select(`
               *,
-              post_likes (id, user_id)
+              post_likes (id, user_id),
+              comments (count)
             `);
 
           if (userId) {

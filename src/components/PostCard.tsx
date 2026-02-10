@@ -88,6 +88,10 @@ const PostCard = ({
   const isMobile = useIsMobile();
 
   useEffect(() => {
+    setCommentCount(initialCommentCount);
+  }, [initialCommentCount]);
+
+  useEffect(() => {
     const checkUser = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       setCurrentUser(authUser);
@@ -401,6 +405,7 @@ const PostCard = ({
         timestamp={timestamp}
         isPromoted={isPromoted}
         currentUserProfileId={currentUserProfileId}
+        currentUserId={currentUser?.id}
         isOwnPost={isOwnPost}
         onDelete={onDelete}
         onHide={onHide}

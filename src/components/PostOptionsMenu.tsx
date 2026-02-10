@@ -62,6 +62,7 @@ interface PostOptionsMenuProps {
   postUserId: string;
   postUserName: string;
   currentUserProfileId: string | null;
+  currentUserId?: string | null;
   isOwnPost: boolean;
   onDelete?: () => void;
   onHide?: () => void;
@@ -74,6 +75,7 @@ export const PostOptionsMenu = ({
   postUserId,
   postUserName,
   currentUserProfileId,
+  currentUserId,
   isOwnPost,
   onDelete,
   onHide,
@@ -483,16 +485,22 @@ export const PostOptionsMenu = ({
 
   // 9. Delete Post
   const handleDeletePost = async () => {
-    if (!currentUserProfileId) return;
+    // Use auth ID (currentUserId) if available, otherwise fallback to profile ID
+    // Standard Supabase RLS usually checks against auth.uid() which matches currentUserId
+    const userIdToCheck = currentUserId || currentUserProfileId;
+    
+    if (!userIdToCheck) return;
+    
     try {
       setIsDeleting(true);
       
       // Soft delete using status='deleted' since deleted_at column is missing
+      // We explicitly check user_id to ensure ownership, though RLS should also enforce it
       const { error } = await supabase
         .from('posts')
         .update({ status: 'deleted' })
         .eq('id', postId)
-        .eq('user_id', currentUserProfileId);
+        .eq('user_id', userIdToCheck);
 
       if (error) throw error;
 
