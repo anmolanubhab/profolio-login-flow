@@ -9,11 +9,11 @@ const MyApplications = () => {
 
   return (
     <Layout user={user} onSignOut={signOut}>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="container mx-auto max-w-5xl py-6 px-4 space-y-6">
         {/* Header Section */}
         <div className="space-y-2">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">My Applications</h1>
+            <h1 className="text-2xl font-bold text-foreground">My Applications</h1>
             <p className="text-muted-foreground">Track the status of jobs you've applied to</p>
           </div>
         </div>

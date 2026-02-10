@@ -5,8 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Layout } from '@/components/Layout';
 import { useJobAnalytics } from '@/hooks/useJobAnalytics';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, Users, CheckCircle2, XCircle, MessageSquare, TrendingUp, BarChart3, Lock, History } from 'lucide-react';
+import { Eye, Users, XCircle, MessageSquare, TrendingUp, BarChart3, History } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
@@ -46,18 +45,10 @@ const JobInsightsPage = () => {
     fetchJobDetails();
   }, [jobId]);
 
-  const handleBack = () => {
-    navigate('/jobs/my-jobs');
-  };
-
   if (error) {
     return (
       <Layout user={user} onSignOut={handleSignOut}>
-      <div className="container py-8 max-w-4xl">
-        <Button variant="ghost" onClick={handleBack} className="mb-4">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Jobs
-        </Button>
+      <div className="container mx-auto max-w-5xl py-6 px-4">
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center justify-center text-center p-6">
@@ -78,21 +69,15 @@ const JobInsightsPage = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-    <div className="container py-8 max-w-5xl space-y-8 animate-in fade-in duration-500">
+    <div className="container mx-auto max-w-5xl py-6 px-4 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <Button variant="ghost" size="sm" onClick={handleBack} className="-ml-3 h-8">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">Job Insights</h1>
+          <h1 className="text-2xl font-bold text-foreground">Job Insights</h1>
           <div className="flex items-center gap-2">
              {isLoadingJob ? (
                <Skeleton className="h-6 w-48" />
              ) : (
-               <p className="text-lg text-muted-foreground">
+               <p className="text-base text-muted-foreground">
                  Performance metrics for <span className="font-medium text-foreground">{jobTitle}</span>
                </p>
              )}
