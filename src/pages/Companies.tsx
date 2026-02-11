@@ -131,24 +131,30 @@ export default function Companies() {
 
   return (
     <Layout>
-      <div className="relative w-full overflow-hidden mb-8">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-10 animate-gradient-shift" />
-        <div className="max-w-6xl mx-auto py-12 px-4 relative">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-[#1D2226] mb-2 tracking-tight">My Companies</h1>
-              <p className="text-[#5E6B7E] text-base md:text-lg font-medium">Manage your professional presence and job opportunities</p>
+      <div className="relative w-full overflow-hidden mb-8 border-b border-gray-100">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
+        <div className="max-w-6xl mx-auto py-12 px-6 relative">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            <div className="text-center lg:text-left">
+              <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+                My Companies
+              </h1>
+              <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto lg:mx-0">
+                Manage your professional presence and job opportunities in one central dashboard.
+              </p>
             </div>
-            <Button
-              onClick={() => {
-                setEditingCompany(null);
-                setShowCompanyDialog(true);
-              }}
-              className="w-full md:w-auto rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 px-8 py-6 h-auto text-base font-semibold border-none"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Add Company
-            </Button>
+            <div className="w-full lg:w-auto">
+              <Button
+                onClick={() => {
+                  setEditingCompany(null);
+                  setShowCompanyDialog(true);
+                }}
+                className="w-full lg:w-auto rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 px-10 py-7 h-auto text-lg font-bold border-none group"
+              >
+                <Plus className="w-6 h-6 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                Add Company
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -161,39 +167,43 @@ export default function Companies() {
             ))}
           </div>
         ) : companies.length === 0 ? (
-          <Card className="border-2 border-dashed border-gray-200 rounded-3xl bg-white/50 backdrop-blur-sm">
-            <CardContent className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-24 h-24 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                <Building2 className="w-12 h-12 text-[#0077B5] opacity-50" />
+          <Card className="border-4 border-dashed border-gray-100 rounded-[3rem] bg-white/50 backdrop-blur-sm overflow-hidden group">
+            <CardContent className="flex flex-col items-center justify-center py-32 text-center relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+              <div className="relative z-10">
+                <div className="w-32 h-32 bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl group-hover:scale-110 transition-transform duration-500 border-8 border-white">
+                  <Building2 className="w-16 h-16 text-[#0077B5] opacity-20 group-hover:opacity-40 transition-opacity" />
+                </div>
+                <h3 className="text-3xl md:text-4xl font-black text-[#1D2226] mb-4 tracking-tight">No Companies Yet</h3>
+                <p className="text-[#5E6B7E] mb-12 max-w-lg text-lg md:text-xl font-medium leading-relaxed">
+                  Start your journey by creating a company profile. Post jobs, manage applicants, and build your employer brand.
+                </p>
+                <Button
+                  onClick={() => setShowCompanyDialog(true)}
+                  className="rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-2xl hover:shadow-[0_20px_50px_rgba(0,119,181,0.3)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 px-12 py-8 h-auto text-xl font-black border-none"
+                >
+                  <Plus className="w-7 h-7 mr-3" />
+                  Create Company Profile
+                </Button>
               </div>
-              <h3 className="text-2xl font-bold text-[#1D2226] mb-3">No Companies Yet</h3>
-              <p className="text-[#5E6B7E] mb-8 max-w-md text-lg">
-                Create your first company profile to start posting jobs and building your employer brand
-              </p>
-              <Button
-                onClick={() => setShowCompanyDialog(true)}
-                className="rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 px-10 py-7 h-auto text-lg font-bold border-none"
-              >
-                <Plus className="w-6 h-6 mr-2" />
-                Create Company Profile
-              </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {companies.map((company) => (
-              <Card key={company.id} className="group overflow-hidden border-none shadow-md hover:shadow-2xl transition-all duration-500 rounded-3xl bg-white/80 backdrop-blur-sm flex flex-col">
+              <Card key={company.id} className="group overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 rounded-3xl bg-white/90 backdrop-blur-md flex flex-col hover:-translate-y-1">
                 {/* Cover Banner */}
-                <div className="h-32 w-full bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-80 group-hover:opacity-100 transition-opacity duration-500 relative shrink-0">
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500" />
+                <div className="h-32 w-full bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] relative shrink-0 overflow-hidden">
+                  <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors duration-500" />
+                  <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] animate-gradient-shift" />
                   
                   {/* Top-right Edit/Delete Actions */}
-                  <div className="absolute top-4 right-4 flex gap-2 z-20">
+                  <div className="absolute top-4 right-4 flex gap-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-[-10px] group-hover:translate-y-0">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEdit(company)}
-                      className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white hover:text-[#0077B5] border border-white/30 transition-all duration-300"
+                      className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md text-[#0077B5] hover:bg-[#0077B5] hover:text-white border border-white/50 shadow-sm transition-all duration-300"
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -201,7 +211,7 @@ export default function Companies() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeletingCompanyId(company.id)}
-                      className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-red-500 hover:text-white border border-white/30 transition-all duration-300"
+                      className="w-10 h-10 rounded-full bg-white/90 backdrop-blur-md text-red-500 hover:bg-red-500 hover:text-white border border-white/50 shadow-sm transition-all duration-300"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -209,82 +219,83 @@ export default function Companies() {
                 </div>
 
                 <CardContent className="p-0 relative flex-1">
-                  <div className="px-6 pb-6">
-                    {/* Header: Logo + Info Layout (Horizontal on Web, Vertical on Mobile) */}
-                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 -mt-12 mb-6 relative z-10">
+                  <div className="px-8 pb-8">
+                    {/* Header: Logo + Info Layout */}
+                    <div className="flex flex-col sm:flex-row gap-6 -mt-14 mb-6 relative z-10">
                       {/* Logo Container */}
-                      <div className="relative shrink-0 mx-auto sm:mx-0">
+                      <div className="relative shrink-0 mx-auto sm:mx-0 group/logo">
                         {company.logo_url ? (
                           <img
                             src={company.logo_url}
                             alt={company.name}
-                            className="w-28 h-28 rounded-3xl object-cover border-4 border-white shadow-xl bg-white"
+                            className="w-32 h-32 rounded-[2rem] object-cover border-[6px] border-white shadow-2xl bg-white group-hover/logo:scale-105 transition-transform duration-500"
                           />
                         ) : (
-                          <div className="w-28 h-28 rounded-3xl bg-[#F3F6F9] flex items-center justify-center border-4 border-white shadow-xl">
-                            <Building2 className="w-14 h-14 text-[#5E6B7E]" />
+                          <div className="w-32 h-32 rounded-[2rem] bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] flex items-center justify-center border-[6px] border-white shadow-2xl group-hover/logo:scale-105 transition-transform duration-500">
+                            <Building2 className="w-16 h-16 text-[#94A3B8]" />
                           </div>
                         )}
-                        <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-500 border-4 border-white rounded-full shadow-lg" title="Active Company" />
+                        <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-green-500 border-4 border-white rounded-full shadow-lg animate-pulse" title="Active Company" />
                       </div>
 
                       {/* Name and Industry */}
-                      <div className="flex-1 text-center sm:text-left pt-1 sm:pt-14">
-                        <h3 className="text-2xl font-extrabold text-[#1D2226] mb-1 group-hover:text-[#0077B5] transition-colors line-clamp-1">
+                      <div className="flex-1 text-center sm:text-left pt-2 sm:pt-16">
+                        <h3 className="text-2xl md:text-3xl font-black text-[#1D2226] mb-2 group-hover:text-[#0077B5] transition-colors line-clamp-1 tracking-tight">
                           {company.name}
                         </h3>
                         {company.industry && (
-                          <Badge className="bg-gradient-to-r from-blue-50 to-indigo-50 text-[#0077B5] border-blue-100 rounded-full px-4 py-1 font-semibold hover:from-blue-100 hover:to-indigo-100 transition-all">
+                          <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 text-[#0077B5] border border-blue-100/50 text-xs font-bold uppercase tracking-wider shadow-sm">
+                            <span className="w-2 h-2 rounded-full bg-[#0077B5] mr-2 animate-pulse" />
                             {company.industry}
-                          </Badge>
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-8">
                       {/* Description */}
                       {company.description && (
-                        <p className="text-[#5E6B7E] text-sm md:text-base line-clamp-2 leading-relaxed italic border-l-2 border-blue-100 pl-4">
+                        <p className="text-[#5E6B7E] text-base leading-relaxed line-clamp-2 font-medium bg-gray-50/50 p-4 rounded-2xl border-l-4 border-[#0077B5]/30 italic">
                           "{company.description}"
                         </p>
                       )}
 
-                      {/* Info Grid: Responsive 1 column on mobile, 2 on tablet/web */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 bg-gray-50/50 rounded-2xl p-4 border border-gray-100/50">
+                      {/* Info Grid: Responsive layout */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {company.location && (
-                          <div className="flex items-center gap-3 text-[#5E6B7E] text-sm font-medium">
-                            <div className="p-2 rounded-xl bg-white text-gray-400 group-hover:text-[#0077B5] group-hover:shadow-sm transition-all duration-300">
-                              <MapPin className="w-4 h-4" />
+                          <div className="flex items-center gap-4 text-[#5E6B7E] p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-300 border border-transparent hover:border-gray-100">
+                            <div className="p-2.5 rounded-xl bg-blue-50 text-[#0077B5] shadow-sm">
+                              <MapPin className="w-5 h-5" />
                             </div>
-                            <span className="truncate">{company.location}</span>
+                            <span className="font-semibold text-sm truncate">{company.location}</span>
                           </div>
                         )}
                         {company.employee_count && (
-                          <div className="flex items-center gap-3 text-[#5E6B7E] text-sm font-medium">
-                            <div className="p-2 rounded-xl bg-white text-gray-400 group-hover:text-[#0077B5] group-hover:shadow-sm transition-all duration-300">
-                              <Users className="w-4 h-4" />
+                          <div className="flex items-center gap-4 text-[#5E6B7E] p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-300 border border-transparent hover:border-gray-100">
+                            <div className="p-2.5 rounded-xl bg-indigo-50 text-[#6366F1] shadow-sm">
+                              <Users className="w-5 h-5" />
                             </div>
-                            <span>{company.employee_count}</span>
+                            <span className="font-semibold text-sm">{company.employee_count} Employees</span>
                           </div>
                         )}
                         {company.founded_year && (
-                          <div className="flex items-center gap-3 text-[#5E6B7E] text-sm font-medium">
-                            <div className="p-2 rounded-xl bg-white text-gray-400 group-hover:text-[#0077B5] group-hover:shadow-sm transition-all duration-300">
-                              <Calendar className="w-4 h-4" />
+                          <div className="flex items-center gap-4 text-[#5E6B7E] p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-300 border border-transparent hover:border-gray-100">
+                            <div className="p-2.5 rounded-xl bg-purple-50 text-[#8B5CF6] shadow-sm">
+                              <Calendar className="w-5 h-5" />
                             </div>
-                            <span>Est. {company.founded_year}</span>
+                            <span className="font-semibold text-sm">Founded {company.founded_year}</span>
                           </div>
                         )}
                         {company.website && (
-                          <div className="flex items-center gap-3 text-sm font-medium overflow-hidden">
-                            <div className="p-2 rounded-xl bg-white text-gray-400 group-hover:text-[#0077B5] group-hover:shadow-sm transition-all duration-300">
-                              <Globe className="w-4 h-4" />
+                          <div className="flex items-center gap-4 text-[#5E6B7E] p-3 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-300 border border-transparent hover:border-gray-100">
+                            <div className="p-2.5 rounded-xl bg-pink-50 text-[#EC4899] shadow-sm">
+                              <Globe className="w-5 h-5" />
                             </div>
                             <a
                               href={company.website}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[#0077B5] hover:underline truncate"
+                              className="font-bold text-sm text-[#0077B5] hover:underline truncate"
                             >
                               {company.website.replace(/^https?:\/\//, '')}
                             </a>
@@ -293,19 +304,19 @@ export default function Companies() {
                       </div>
 
                       {/* Action Buttons: Stacked on Mobile, Side-by-Side on Web */}
-                      <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                      <div className="pt-4 flex flex-col lg:flex-row gap-4">
                         <Button
                           variant="outline"
-                          className="flex-1 rounded-2xl border-2 border-[#0077B5]/20 text-[#0077B5] hover:bg-gradient-to-r hover:from-[#0077B5] hover:to-[#00A0DC] hover:text-white hover:border-transparent transition-all duration-300 font-bold py-6 shadow-sm hover:shadow-md"
+                          className="flex-1 rounded-2xl border-2 border-[#0077B5]/20 text-[#0077B5] hover:bg-[#0077B5] hover:text-white hover:border-[#0077B5] transition-all duration-300 font-extrabold py-7 text-base shadow-sm hover:shadow-xl hover:-translate-y-1"
                           onClick={() => navigate(`/company/${company.id}`)}
                         >
                           View Profile
                         </Button>
                         <Button
-                          className="flex-1 rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 font-bold py-6 border-none"
+                          className="flex-1 rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-lg hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 font-extrabold py-7 text-base border-none"
                           onClick={() => navigate(`/company/${company.id}/jobs`)}
                         >
-                          <Briefcase className="w-5 h-5 mr-2" />
+                          <Briefcase className="w-6 h-6 mr-2" />
                           View Jobs
                         </Button>
                       </div>
