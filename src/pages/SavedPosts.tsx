@@ -145,60 +145,87 @@ const SavedPosts = () => {
 
   return (
     <Layout user={user} onSignOut={signOut}>
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <h1 className="text-2xl font-bold mb-6">Saved Posts</h1>
-        
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-white">
+        {/* Universal Page Hero Section */}
+        <div className="relative w-full overflow-hidden border-b border-gray-100">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
+          <div className="max-w-4xl mx-auto py-12 px-6 relative">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="text-center md:text-left">
+                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+                  Saved Content
+                </h1>
+                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
+                  Access your bookmarked posts and insights anytime.
+                </p>
+              </div>
+            </div>
           </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center border rounded-lg bg-card text-card-foreground shadow-sm">
-            <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Error loading saved posts</h3>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={fetchSavedPosts} variant="outline">Try Again</Button>
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center border rounded-lg bg-card text-card-foreground shadow-sm">
-            <Bookmark className="w-12 h-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No saved posts</h3>
-            <p className="text-sm text-muted-foreground">
-              Posts you save will appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {posts.map((post) => (
-              <PostCard
-                key={post.id}
-                id={post.id}
-                user={{
-                  id: post.user_id,
-                  name: post.profiles?.display_name || 'Unknown',
-                  avatar: post.profiles?.avatar_url || undefined,
-                  subtitle: post.profiles?.profession || undefined
-                }}
-                content={post.content}
-                image={post.image_url || undefined}
-                mediaType={(post.media_type as 'image' | 'video') || 'image'}
-                timestamp={post.created_at}
-                likes={post.post_likes.length}
-                initialIsLiked={post.post_likes.some(l => l.user_id === user?.id)}
-                onLike={(isLiked) => handleLike(post.id, isLiked)}
-                onDelete={() => handleDeletePost(post.id)}
-                onHide={() => {}} // No hide functionality needed for saved posts specifically, or maybe remove from list?
-                postedAs={post.posted_as as 'user' | 'company'}
-                companyId={post.company_id}
-                companyName={post.company_name}
-                companyLogo={post.company_logo}
-              />
-            ))}
-          </div>
-        )}
+        </div>
+
+        <div className="max-w-2xl mx-auto py-12 px-6">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="h-12 w-12 animate-spin text-[#833AB4] mb-4" />
+              <p className="text-gray-500 font-medium">Loading your saved collection...</p>
+            </div>
+          ) : error ? (
+            <div className="bg-gray-50/50 rounded-[2rem] p-12 text-center border-2 border-dashed border-red-100">
+              <div className="bg-white h-20 w-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <AlertTriangle className="h-10 w-10 text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h3>
+              <p className="text-gray-500 mb-8 max-w-xs mx-auto">{error}</p>
+              <Button 
+                onClick={fetchSavedPosts} 
+                className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-8 py-4 h-auto font-bold transition-all"
+              >
+                Try Again
+              </Button>
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="bg-gray-50/50 rounded-[2rem] p-12 text-center border-2 border-dashed border-gray-200">
+              <div className="bg-white h-20 w-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <Bookmark className="h-10 w-10 text-gray-300" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No saved posts</h3>
+              <p className="text-gray-500 max-w-xs mx-auto">
+                Posts you save from your feed will appear here for quick access.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  id={post.id}
+                  user={{
+                    id: post.user_id,
+                    name: post.profiles?.display_name || 'Unknown',
+                    avatar: post.profiles?.avatar_url || undefined,
+                    subtitle: post.profiles?.profession || undefined
+                  }}
+                  content={post.content}
+                  image={post.image_url || undefined}
+                  mediaType={(post.media_type as 'image' | 'video') || 'image'}
+                  timestamp={post.created_at}
+                  likes={post.post_likes.length}
+                  initialIsLiked={post.post_likes.some(l => l.user_id === user?.id)}
+                  onLike={(isLiked) => handleLike(post.id, isLiked)}
+                  onDelete={() => handleDeletePost(post.id)}
+                  onHide={() => {}}
+                  postedAs={post.posted_as as 'user' | 'company'}
+                  companyId={post.company_id}
+                  companyName={post.company_name}
+                  companyLogo={post.company_logo}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </Layout>
-  );
+  );  );
 };
 
 export default SavedPosts;

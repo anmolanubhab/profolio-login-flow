@@ -70,38 +70,54 @@ const JobApplicantsPage = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="container max-w-4xl mx-auto py-6 px-4 space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Applicants
-              {job?.title && <span className="text-muted-foreground font-normal ml-2">for {job.title}</span>}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Manage candidates who applied to this position.
-            </p>
+      {/* Gradient Hero Section */}
+      <div className="relative bg-white border-b overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5]/5 via-[#833AB4]/5 to-[#E1306C]/5 animate-gradient-shift" />
+        <div className="container max-w-4xl mx-auto px-4 py-12 relative">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => navigate(-1)}
+                className="rounded-full hover:bg-white/50 transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">
+                  Applicants
+                  {job?.title && <span className="text-[#833AB4] font-normal block md:inline md:ml-3">for {job.title}</span>}
+                </h1>
+                <p className="text-gray-600 mt-2 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-[#0077B5]" />
+                  Manage candidates who applied to this position.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
+      <div className="container max-w-4xl mx-auto py-12 px-4">
         {!applicants || applicants.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center border rounded-lg bg-muted/10">
-            <div className="bg-muted p-4 rounded-full mb-4">
-              <Users className="h-8 w-8 text-muted-foreground" />
+          <div className="flex flex-col items-center justify-center py-20 text-center bg-white border border-gray-100 rounded-[2rem] shadow-xl shadow-gray-200/50">
+            <div className="bg-gradient-to-br from-[#0077B5]/10 to-[#E1306C]/10 p-6 rounded-[2rem] mb-6">
+              <Users className="h-12 w-12 text-[#833AB4]" />
             </div>
-            <h3 className="font-semibold text-lg">No applicants yet</h3>
-            <p className="text-muted-foreground max-w-sm mt-2">
+            <h3 className="font-bold text-2xl text-gray-900">No applicants yet</h3>
+            <p className="text-gray-500 max-w-sm mt-3 text-lg leading-relaxed">
               Once candidates apply to this job, they will appear here.
             </p>
           </div>
         ) : (
-          <ApplicantList 
-            applicants={applicants}
-            onViewDetails={handleViewDetails}
-            onUpdateStatus={handleUpdateStatus}
-          />
+          <div className="grid gap-6">
+            <ApplicantList 
+              applicants={applicants}
+              onViewDetails={handleViewDetails}
+              onUpdateStatus={handleUpdateStatus}
+            />
+          </div>
         )}
 
         <ApplicantDetailDrawer 

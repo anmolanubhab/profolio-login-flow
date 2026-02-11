@@ -347,8 +347,9 @@ const Notifications = () => {
   if (loading) {
     return (
       <Layout user={user} onSignOut={signOut}>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <Loader2 className="h-12 w-12 animate-spin text-[#833AB4] mb-4" />
+          <p className="text-gray-500 font-medium">Updating your notifications...</p>
         </div>
       </Layout>
     );
@@ -356,106 +357,143 @@ const Notifications = () => {
 
   return (
     <Layout user={user} onSignOut={signOut}>
-      <div className="space-y-4">
-        {/* Main Title */}
-        <h1 className="text-2xl font-bold text-foreground px-1">Notifications</h1>
-
-        {/* Friend Requests Section */}
-          {friendRequests.length > 0 && (
-            <>
-              <h2 className="text-lg font-semibold text-foreground mb-2">Friend Requests</h2>
-              {friendRequests.map((request) => (
-                <Card key={request.id} className="bg-primary/5 border-primary/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={request.sender_profile.avatar_url} />
-                        <AvatarFallback className="bg-primary text-primary-foreground">
-                          {request.sender_profile.display_name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-sm">
-                          {request.sender_profile.display_name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          Sent you a friend request
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {formatTime(request.created_at)}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleAcceptRequest(request.id)}
-                          disabled={processing === request.id}
-                          className="bg-success hover:bg-success/90"
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRejectRequest(request.id)}
-                          disabled={processing === request.id}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </>
-          )}
-
-          {/* Other Notifications */}
-          {notifications.length > 0 && (
-            <>
-              <h2 className="text-lg font-semibold text-foreground mb-2 mt-6">All Notifications</h2>
-              {notifications.map((notification) => {
-                const Icon = getNotificationIcon(notification.type);
-                return (
-                  <Card 
-                    key={notification.id} 
-                    className={`cursor-pointer hover:shadow-md transition-shadow ${!notification.is_read ? 'bg-primary/5' : ''}`}
-                    onClick={() => handleNotificationClick(notification)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={notification.payload?.sender_avatar} />
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            <Icon className="h-5 w-5" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <p className="text-sm">
-                            {getNotificationMessage(notification)}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {formatTime(notification.created_at)}
-                          </p>
-                        </div>
-                        {!notification.is_read && (
-                          <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </>
-          )}
-
-          {friendRequests.length === 0 && notifications.length === 0 && (
-            <Card className="p-12 text-center">
-              <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No notifications yet</p>
-            </Card>
-          )}
+      <div className="min-h-screen bg-white">
+        {/* Universal Page Hero Section */}
+        <div className="relative w-full overflow-hidden border-b border-gray-100">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
+          <div className="max-w-4xl mx-auto py-12 px-6 relative">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="text-center md:text-left">
+                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+                  Notifications
+                </h1>
+                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
+                  Stay updated with your network and career opportunities.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <div className="max-w-3xl mx-auto py-12 px-6">
+          <div className="space-y-10">
+            {/* Friend Requests Section */}
+            {friendRequests.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 px-2">
+                  <UserPlus className="h-5 w-5 text-[#833AB4]" />
+                  <h2 className="text-xl font-bold text-gray-900">Connection Requests</h2>
+                </div>
+                <div className="grid gap-4">
+                  {friendRequests.map((request) => (
+                    <Card key={request.id} className="rounded-[2rem] border-gray-100 bg-gradient-to-br from-[#0077B5]/5 to-[#E1306C]/5 overflow-hidden border-2 border-[#833AB4]/10 shadow-lg shadow-[#833AB4]/5">
+                      <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                          <Avatar className="h-14 w-14 rounded-2xl ring-4 ring-white">
+                            <AvatarImage src={request.sender_profile.avatar_url} />
+                            <AvatarFallback className="bg-gradient-to-br from-[#0077B5] to-[#E1306C] text-white font-bold text-lg">
+                              {request.sender_profile.display_name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-gray-900">
+                              {request.sender_profile.display_name}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              wants to connect with you
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1 font-medium uppercase tracking-wider">
+                              {formatTime(request.created_at)}
+                            </p>
+                          </div>
+                          <div className="flex gap-3">
+                            <Button
+                              size="sm"
+                              onClick={() => handleAcceptRequest(request.id)}
+                              disabled={processing === request.id}
+                              className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-6 shadow-md shadow-[#833AB4]/20 h-10"
+                            >
+                              {processing === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-5 w-5" />}
+                            </Button>
+                            <div className="relative p-[1px] rounded-full overflow-hidden">
+                              <div className="absolute inset-0 bg-gray-200" />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRejectRequest(request.id)}
+                                disabled={processing === request.id}
+                                className="relative bg-white hover:bg-gray-50 border-none rounded-full px-6 h-10 transition-all"
+                              >
+                                <X className="h-5 w-5 text-gray-500" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Other Notifications */}
+            {notifications.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 px-2">
+                  <Bell className="h-5 w-5 text-[#833AB4]" />
+                  <h2 className="text-xl font-bold text-gray-900">Recent Activity</h2>
+                </div>
+                <div className="grid gap-4">
+                  {notifications.map((notification) => {
+                    const Icon = getNotificationIcon(notification.type);
+                    return (
+                      <Card 
+                        key={notification.id} 
+                        className={`cursor-pointer hover:shadow-xl transition-all duration-300 rounded-[2rem] border-gray-100 overflow-hidden group ${!notification.is_read ? 'bg-gradient-to-r from-[#0077B5]/5 to-transparent border-l-4 border-l-[#833AB4]' : 'bg-white'}`}
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <CardContent className="p-6">
+                          <div className="flex items-center gap-4">
+                            <Avatar className="h-12 w-12 rounded-xl ring-2 ring-gray-50 group-hover:scale-110 transition-transform">
+                              <AvatarImage src={notification.payload?.sender_avatar} />
+                              <AvatarFallback className="bg-gray-100 text-gray-400">
+                                <Icon className="h-6 w-6" />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-base ${!notification.is_read ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
+                                {getNotificationMessage(notification)}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-1 font-medium">
+                                {formatTime(notification.created_at)}
+                              </p>
+                            </div>
+                            {!notification.is_read && (
+                              <div className="w-3 h-3 bg-gradient-to-r from-[#0077B5] to-[#E1306C] rounded-full shadow-lg shadow-[#833AB4]/30" />
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {friendRequests.length === 0 && notifications.length === 0 && (
+              <div className="bg-gray-50/50 rounded-[2rem] p-16 text-center border-2 border-dashed border-gray-200">
+                <div className="bg-white h-24 w-24 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-sm">
+                  <Bell className="h-12 w-12 text-gray-300" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">All caught up!</h3>
+                <p className="text-gray-500 max-w-xs mx-auto text-lg">
+                  You have no new notifications at the moment.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </Layout>
   );
 };

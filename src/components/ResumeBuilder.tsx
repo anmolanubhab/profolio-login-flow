@@ -419,10 +419,16 @@ const ResumeBuilder = () => {
         <div className="flex gap-2">
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
-               <Button variant="outline">
-                 <Plus className="h-4 w-4 mr-2" />
-                 Upload PDF
-               </Button>
+               <div className="relative p-[1px] rounded-full overflow-hidden group/btn">
+                 <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+                 <Button 
+                   variant="outline"
+                   className="relative bg-white hover:bg-transparent hover:text-white border-none rounded-full px-6 h-10 transition-all duration-300"
+                 >
+                   <Plus className="h-4 w-4 mr-2" />
+                   Upload PDF
+                 </Button>
+               </div>
             </DialogTrigger>
             <DialogContent>
                <DialogHeader>
@@ -449,38 +455,54 @@ const ResumeBuilder = () => {
             </DialogContent>
           </Dialog>
 
-          <Button onClick={resetForm} variant={editingId ? "secondary" : "default"}>
+          <Button 
+            onClick={resetForm} 
+            className={`rounded-full px-6 h-10 font-bold transition-all duration-300 shadow-lg ${
+              editingId 
+                ? 'bg-gray-100 text-gray-900 hover:bg-gray-200 shadow-none' 
+                : 'bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white hover:opacity-90 shadow-[#833AB4]/20'
+            }`}
+          >
              {editingId ? "Cancel Edit" : "New Builder Resume"}
           </Button>
         </div>
       </div>
 
       {/* Saved Resumes Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Resumes</CardTitle>
+      <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
+        <CardHeader className="border-b border-gray-50 bg-gray-50/30">
+          <CardTitle className="text-xl font-bold text-gray-900">Your Resumes</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           {loading ? (
-            <p>Loading resumes...</p>
+            <div className="flex items-center justify-center py-12">
+              <p className="text-gray-400 font-medium">Loading resumes...</p>
+            </div>
           ) : savedResumes.length === 0 ? (
-            <div className="text-center py-8">
-               <p className="text-muted-foreground mb-4">No resumes found.</p>
-               <p className="text-sm">Upload a PDF or build one from scratch.</p>
+            <div className="text-center py-12 bg-gray-50/50 rounded-[2rem] border-2 border-dashed border-gray-200">
+               <div className="bg-white h-20 w-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                 <FileText className="h-10 w-10 text-gray-300" />
+               </div>
+               <h3 className="text-xl font-bold text-gray-900 mb-2">No resumes found</h3>
+               <p className="text-gray-500 max-w-sm mx-auto">Upload a PDF or build one from scratch to start your journey.</p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {savedResumes.map((resume) => (
-                <Card key={resume.id} className="hover:shadow-md transition-shadow flex flex-col justify-between">
-                  <CardContent className="p-4 space-y-3">
+                <Card key={resume.id} className="hover:shadow-xl transition-all duration-300 rounded-[2rem] border-gray-100 overflow-hidden flex flex-col group">
+                  <CardContent className="p-6 space-y-4">
                     <div className="flex justify-between items-start">
                        <div>
-                         <h3 className="font-semibold">{resume.title}</h3>
-                         <p className="text-xs text-muted-foreground">
-                           {new Date(resume.updated_at).toLocaleDateString()}
+                         <h3 className="font-bold text-gray-900 group-hover:text-[#833AB4] transition-colors">{resume.title}</h3>
+                         <p className="text-xs text-gray-400 font-medium mt-1">
+                           Updated {new Date(resume.updated_at).toLocaleDateString()}
                          </p>
                        </div>
-                       {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') && <Badge variant="secondary">PDF</Badge>}
+                       {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') && (
+                         <Badge className="bg-[#0077B5]/10 text-[#0077B5] border-none rounded-full px-3 py-1 text-[10px] font-bold">
+                           PDF
+                         </Badge>
+                       )}
                     </div>
                     
                     <div className="pt-2">
@@ -492,33 +514,40 @@ const ResumeBuilder = () => {
                        />
                     </div>
 
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2 pt-4">
                       {!(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') && (
+                        <div className="relative flex-1 p-[1px] rounded-full overflow-hidden group/btn">
+                          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="relative w-full bg-white hover:bg-transparent hover:text-white border-none rounded-full h-9 transition-all duration-300 flex items-center justify-center gap-2"
+                            onClick={() => handleEdit(resume)}
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                            <span className="text-xs font-bold">Edit</span>
+                          </Button>
+                        </div>
+                      )}
+                      <div className={`relative p-[1px] rounded-full overflow-hidden group/btn ${(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? "flex-1" : "flex-1"}`}>
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1"
-                          onClick={() => handleEdit(resume)}
+                          className="relative w-full bg-white hover:bg-transparent hover:text-white border-none rounded-full h-9 transition-all duration-300 flex items-center justify-center gap-2"
+                          onClick={() => handleDownloadPDF(resume)}
                         >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
+                          {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? <Eye className="h-3.5 w-3.5"/> : <Download className="h-3.5 w-3.5" />}
+                          <span className="text-xs font-bold">{(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? "View" : "PDF"}</span>
                         </Button>
-                      )}
+                      </div>
                       <Button
                         size="sm"
                         variant="outline"
-                        className={(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? "flex-1" : ""}
-                        onClick={() => handleDownloadPDF(resume)}
-                      >
-                        {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? <Eye className="h-4 w-4 mr-1"/> : <Download className="h-4 w-4 mr-1" />}
-                        {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? "View" : "PDF"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
+                        className="rounded-full h-9 w-9 p-0 border-gray-100 hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all duration-300"
                         onClick={() => handleDelete(resume.id)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </CardContent>
@@ -536,15 +565,16 @@ const ResumeBuilder = () => {
          </div>
          
          <div className="grid gap-6">
-           <Card>
-             <CardHeader>
-               <CardTitle>Resume Details</CardTitle>
+           <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
+             <CardHeader className="border-b border-gray-50 bg-gray-50/30">
+               <CardTitle className="text-xl font-bold text-gray-900">Resume Details</CardTitle>
              </CardHeader>
-             <CardContent className="space-y-4">
+             <CardContent className="p-6 space-y-4">
                <Input
                  placeholder="Resume Title"
                  value={formData.title}
                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all"
                />
                <VisibilitySelector
                   title="Visibility"
@@ -555,11 +585,11 @@ const ResumeBuilder = () => {
              </CardContent>
            </Card>
 
-           <Card>
-             <CardHeader>
-               <CardTitle>Personal Information</CardTitle>
+           <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
+             <CardHeader className="border-b border-gray-50 bg-gray-50/30">
+               <CardTitle className="text-xl font-bold text-gray-900">Personal Information</CardTitle>
              </CardHeader>
-             <CardContent className="space-y-4">
+             <CardContent className="p-6 space-y-4">
                <Input
                  placeholder="Full Name"
                  value={formData.personalInfo.name}
@@ -567,6 +597,7 @@ const ResumeBuilder = () => {
                    ...formData,
                    personalInfo: { ...formData.personalInfo, name: e.target.value }
                  })}
+                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all"
                />
                <Input
                  placeholder="Email"
@@ -576,56 +607,74 @@ const ResumeBuilder = () => {
                    ...formData,
                    personalInfo: { ...formData.personalInfo, email: e.target.value }
                  })}
+                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all"
                />
              </CardContent>
            </Card>
 
-           <Card>
-             <CardHeader>
-               <CardTitle>Professional Summary</CardTitle>
+           <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
+             <CardHeader className="border-b border-gray-50 bg-gray-50/30">
+               <CardTitle className="text-xl font-bold text-gray-900">Professional Summary</CardTitle>
              </CardHeader>
-             <CardContent>
+             <CardContent className="p-6">
                <Textarea
                  placeholder="Write a brief summary..."
                  value={formData.summary}
                  onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
                  rows={4}
+                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all resize-none"
                />
              </CardContent>
            </Card>
 
-           <Card>
-             <CardHeader>
-               <CardTitle>Experience</CardTitle>
+           <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
+             <CardHeader className="border-b border-gray-50 bg-gray-50/30">
+               <CardTitle className="text-xl font-bold text-gray-900">Experience</CardTitle>
              </CardHeader>
-             <CardContent>
+             <CardContent className="p-6">
                <Textarea
                  placeholder="List your work experience..."
                  value={formData.experience}
                  onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
                  rows={6}
+                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all resize-none"
                />
              </CardContent>
            </Card>
 
-           <Card>
-             <CardHeader>
-               <CardTitle>Skills</CardTitle>
+           <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
+             <CardHeader className="border-b border-gray-50 bg-gray-50/30">
+               <CardTitle className="text-xl font-bold text-gray-900">Skills</CardTitle>
              </CardHeader>
-             <CardContent>
+             <CardContent className="p-6">
                <Textarea
                  placeholder="List your skills..."
                  value={formData.skills}
                  onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
                  rows={3}
+                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all resize-none"
                />
              </CardContent>
            </Card>
            
-           <div className="flex justify-end">
-              <Button onClick={handleSave} disabled={saving} size="lg">
-                <FileText className="h-4 w-4 mr-2" />
-                {saving ? "Saving..." : "Save Resume"}
+           <div className="flex justify-end pt-4">
+              <Button 
+                onClick={handleSave} 
+                disabled={saving} 
+                size="lg"
+                className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-10 py-6 h-auto text-lg font-bold shadow-xl shadow-[#833AB4]/20 gap-3 transition-all duration-300 hover:scale-105"
+              >
+                {saving ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Saving...</span>
+                  </div>
+                ) : (
+                  <>
+                    <FileText className="h-6 w-6" />
+                    <span>Save Resume</span>
+                  </>
+                )}
               </Button>
            </div>
          </div>

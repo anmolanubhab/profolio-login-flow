@@ -221,88 +221,104 @@ const AddPost = () => {
       className="fixed inset-0 bg-white flex flex-col overflow-hidden"
       style={{ height: `${viewportHeight}px` }}
     >
-      {/* Header */}
-      <header className="flex-none flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white z-50">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
-          <div className="flex items-center gap-3">
-             <Avatar className="h-10 w-10">
-              <AvatarImage src={avatarUrl || undefined} alt={displayName} />
-              <AvatarFallback className="bg-gray-200 text-gray-600">
-                {displayName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded-full text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
-              <Globe className="h-3.5 w-3.5" />
-              <span>Anyone</span>
-              <ChevronDown className="h-3.5 w-3.5" />
+      {/* Universal Page Hero Section (Subtle version for editor) */}
+      <div className="relative w-full overflow-hidden border-b border-gray-100 flex-none">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
+        <header className="flex items-center justify-between px-6 py-4 relative z-50">
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={() => navigate(-1)} 
+              className="text-gray-400 hover:text-gray-900 transition-all hover:scale-110 p-2 hover:bg-gray-100 rounded-full"
+            >
+              <X className="h-6 w-6" />
             </button>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="text-gray-500 hover:text-gray-700 transition-colors">
-            <Clock className="h-6 w-6" />
-          </button>
-          <Button 
-            onClick={handlePost} 
-            disabled={!hasContent || loading}
-            className={`rounded-full px-4 py-1.5 h-8 font-semibold text-sm transition-all ${
-              hasContent 
-                ? 'bg-[#0a66c2] hover:bg-[#004182] text-white shadow-sm' 
-                : 'bg-gray-100 text-gray-400 hover:bg-gray-100 cursor-not-allowed'
-            }`}
-          >
-            {loading ? 'Posting...' : 'Post'}
-          </Button>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto overscroll-y-contain">
-        <div className="p-4 min-h-full">
-          <Textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Share your thoughts..."
-            className="w-full h-full min-h-[200px] border-none focus-visible:ring-0 resize-none text-lg p-0 placeholder:text-gray-500 leading-relaxed bg-transparent"
-            style={{ boxShadow: 'none' }}
-          />
-
-          {/* Media Previews */}
-          {(imagePreview || videoPreview) && (
-            <div className="mt-4 relative rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
-              {imagePreview && (
-                <img src={imagePreview} alt="Preview" className="w-full h-auto max-h-[400px] object-contain" />
-              )}
-              {videoPreview && (
-                <video src={videoPreview} controls className="w-full h-auto max-h-[400px]" />
-              )}
-              <button
-                onClick={selectedImage ? removeImage : removeVideo}
-                className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
+            <div className="flex items-center gap-3">
+               <Avatar className="h-12 w-12 rounded-2xl ring-4 ring-white shadow-sm">
+                <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+                <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 font-bold">
+                  {displayName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <span className="font-bold text-gray-900">{displayName}</span>
+                <button className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100/50 hover:bg-gray-100 border border-gray-200 rounded-full text-[10px] font-bold text-gray-500 transition-all uppercase tracking-wider w-fit">
+                  <Globe className="h-3 w-3" />
+                  <span>Public</span>
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              </div>
             </div>
-          )}
+          </div>
+          <div className="flex items-center gap-4">
+            <button className="text-gray-400 hover:text-[#833AB4] transition-all p-2 hover:bg-[#833AB4]/5 rounded-full">
+              <Clock className="h-6 w-6" />
+            </button>
+            <Button 
+              onClick={handlePost} 
+              disabled={!hasContent || loading}
+              className={`rounded-full px-8 h-12 font-bold text-base transition-all duration-300 shadow-lg ${
+                hasContent 
+                  ? 'bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white hover:opacity-90 shadow-[#833AB4]/20' 
+                  : 'bg-gray-100 text-gray-400 hover:bg-gray-100 cursor-not-allowed shadow-none'
+              }`}
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Publishing...</span>
+                </div>
+              ) : 'Post Now'}
+            </Button>
+          </div>
+        </header>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto overscroll-y-contain bg-gray-50/30">
+        <div className="max-w-3xl mx-auto p-8 min-h-full">
+          <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/50 border border-gray-100/50 min-h-[400px] flex flex-col">
+            <Textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="What's on your mind? Share an update, photo, or insight with your professional network..."
+              className="w-full flex-1 border-none focus-visible:ring-0 resize-none text-xl p-0 placeholder:text-gray-300 leading-relaxed bg-transparent min-h-[200px]"
+              style={{ boxShadow: 'none' }}
+            />
+
+            {/* Media Previews */}
+            {(imagePreview || videoPreview) && (
+              <div className="mt-8 relative rounded-[2rem] overflow-hidden bg-gray-50 border-2 border-gray-100 group">
+                {imagePreview && (
+                  <img src={imagePreview} alt="Preview" className="w-full h-auto max-h-[500px] object-contain" />
+                )}
+                {videoPreview && (
+                  <video src={videoPreview} controls className="w-full h-auto max-h-[500px]" />
+                )}
+                <button
+                  onClick={selectedImage ? removeImage : removeVideo}
+                  className="absolute top-4 right-4 p-2.5 bg-black/50 hover:bg-red-500 rounded-full text-white transition-all duration-300 shadow-lg backdrop-blur-md opacity-0 group-hover:opacity-100"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="flex-none bg-white border-t border-gray-100 p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-        <div className="flex items-center justify-between">
-          <button className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-600 font-medium text-sm transition-colors group">
-            <Sparkles className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform" />
-            <span>Rewrite with AI</span>
-          </button>
+      <div className="flex-none bg-white border-t border-gray-100 p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <div className="relative p-[1px] rounded-full overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-50 group-hover:opacity-100 transition-opacity" />
+            <button className="relative flex items-center gap-2 px-6 py-3 bg-white hover:bg-gray-50 rounded-full text-gray-700 font-bold text-sm transition-all">
+              <Sparkles className="h-5 w-5 text-[#833AB4] group-hover:scale-125 transition-transform" />
+              <span>AI Smart Write</span>
+            </button>
+          </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
              <input
               ref={imageInputRef}
               type="file"
@@ -320,18 +336,21 @@ const AddPost = () => {
             
             <button 
               onClick={() => imageInputRef.current?.click()}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-3 text-gray-400 hover:text-[#0077B5] hover:bg-[#0077B5]/5 rounded-2xl transition-all"
+              title="Add Image"
             >
-              <ImageIcon className="h-6 w-6" />
+              <ImageIcon className="h-7 w-7" />
             </button>
             <button 
               onClick={() => videoInputRef.current?.click()}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-3 text-gray-400 hover:text-[#833AB4] hover:bg-[#833AB4]/5 rounded-2xl transition-all"
+              title="Add Video"
             >
-              <Video className="h-6 w-6" />
+              <Video className="h-7 w-7" />
             </button>
-            <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
-              <Plus className="h-6 w-6" />
+            <div className="w-px h-8 bg-gray-100 mx-2" />
+            <button className="p-3 text-gray-400 hover:text-[#E1306C] hover:bg-[#E1306C]/5 rounded-2xl transition-all">
+              <Plus className="h-7 w-7" />
             </button>
           </div>
         </div>

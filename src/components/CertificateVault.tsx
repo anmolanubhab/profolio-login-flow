@@ -252,7 +252,7 @@ const CertificateVault = () => {
         <h2 className="text-2xl font-bold">Certificate Vault</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-6 shadow-lg shadow-[#833AB4]/20 transition-all duration-300">
               <Plus className="h-4 w-4 mr-2" />
               Add Certificate
             </Button>
@@ -298,7 +298,7 @@ const CertificateVault = () => {
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
+            <Card key={i} className="animate-pulse rounded-[2rem]">
               <CardHeader>
                 <div className="h-4 bg-muted rounded w-3/4" />
                 <div className="h-3 bg-muted rounded w-1/2" />
@@ -311,16 +311,19 @@ const CertificateVault = () => {
           ))}
         </div>
       ) : certificates.length === 0 ? (
-        <Card className="text-center py-12 border-dashed">
+        <Card className="text-center py-12 border-dashed rounded-[2rem] bg-gray-50/50">
           <CardContent>
-            <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-               <FileText className="h-8 w-8 text-primary" />
+            <div className="bg-white h-20 w-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+               <FileText className="h-10 w-10 text-gray-300" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No certificates yet</h3>
-            <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">No certificates yet</h3>
+            <p className="text-gray-500 mb-8 max-w-sm mx-auto">
               Upload your certifications, diplomas, and awards to showcase your achievements.
             </p>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button 
+              onClick={() => setIsDialogOpen(true)}
+              className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-8 py-4 h-auto font-bold transition-all shadow-lg shadow-[#833AB4]/20"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Certificate
             </Button>
@@ -329,7 +332,7 @@ const CertificateVault = () => {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {certificates.map((cert) => (
-            <Card key={cert.id} className="hover:shadow-md transition-shadow flex flex-col">
+            <Card key={cert.id} className="hover:shadow-xl transition-all duration-300 rounded-[2rem] border-gray-100 overflow-hidden flex flex-col group">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
@@ -367,18 +370,22 @@ const CertificateVault = () => {
                    />
 
                    <div className="flex gap-2">
+                    <div className="relative flex-1 p-[1px] rounded-full overflow-hidden group/btn">
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="relative w-full bg-white hover:bg-transparent hover:text-white border-none rounded-full px-4 h-9 transition-all duration-300 flex items-center justify-center gap-2"
+                        onClick={() => handleView(cert)}
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span>View</span>
+                      </Button>
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
-                      onClick={() => handleView(cert)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
+                      className="rounded-full h-9 w-9 p-0 border-gray-200 hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all duration-300"
                       onClick={() => {
                         const fileNameInStorage = cert.file_url.split('/').pop();
                         const storagePath = `${cert.user_id}/${fileNameInStorage}`;

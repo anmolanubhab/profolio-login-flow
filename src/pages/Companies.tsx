@@ -149,7 +149,7 @@ export default function Companies() {
                   setEditingCompany(null);
                   setShowCompanyDialog(true);
                 }}
-                className="w-full lg:w-auto rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 px-10 py-7 h-auto text-lg font-bold border-none group"
+                className="w-full lg:w-auto rounded-2xl bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 px-10 py-7 h-auto text-lg font-bold border-none group"
               >
                 <Plus className="w-6 h-6 mr-2 group-hover:rotate-90 transition-transform duration-300" />
                 Add Company
@@ -180,7 +180,7 @@ export default function Companies() {
                 </p>
                 <Button
                   onClick={() => setShowCompanyDialog(true)}
-                  className="rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-2xl hover:shadow-[0_20px_50px_rgba(0,119,181,0.3)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 px-12 py-8 h-auto text-xl font-black border-none"
+                  className="rounded-2xl bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white shadow-2xl hover:shadow-[0_20px_50px_rgba(131,58,180,0.3)] hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 px-12 py-8 h-auto text-xl font-black border-none"
                 >
                   <Plus className="w-7 h-7 mr-3" />
                   Create Company Profile

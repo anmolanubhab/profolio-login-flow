@@ -147,20 +147,22 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
         <div className="mb-6">
           {isOwnProfile ? (
             <Button 
-              className="w-full md:max-w-md h-10 rounded-full font-semibold shadow-sm text-white border-none transition-all hover:opacity-90 active:scale-[0.98]"
-              style={{ background: 'var(--gradient-hero, linear-gradient(135deg, hsl(200 90% 55%), hsl(280 80% 60%), hsl(330 85% 65%)))' }}
+              className="w-full md:max-w-md h-10 rounded-full font-semibold shadow-sm text-white border-none transition-all hover:opacity-90 active:scale-[0.98] bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]"
             >
               Open to Opportunities
             </Button>
           ) : (
             <div className="flex gap-3 w-full md:max-w-md">
-              <Button className="flex-1 rounded-full font-semibold bg-[#0a66c2] hover:bg-[#004182]">
+              <Button className="flex-1 rounded-full font-semibold text-white border-none transition-all hover:opacity-90 active:scale-[0.98] bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]">
                 <UserPlus className="h-4 w-4 mr-2" />
                 Connect
               </Button>
-              <Button variant="outline" className="flex-1 rounded-full font-semibold border-gray-300 text-gray-600 hover:bg-gray-50">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Message
+              <Button variant="outline" className="flex-1 rounded-full font-semibold relative p-[1px] overflow-hidden group border-none">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+                <div className="flex items-center justify-center w-full h-full bg-white rounded-full relative z-10 px-4 py-2 text-[#1D2226] group-hover:bg-gray-50 transition-colors">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Message
+                </div>
               </Button>
               <Button variant="outline" size="icon" className="rounded-full border-gray-300 text-gray-600 hover:bg-gray-50 shrink-0">
                 <Download className="h-4 w-4" />

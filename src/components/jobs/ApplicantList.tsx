@@ -29,56 +29,103 @@ export const ApplicantList = ({ applicants, onViewDetails, onUpdateStatus }: App
   };
 
   return (
-    <div className="space-y-4">
+    <div className="grid gap-6">
       {applicants.map((app) => (
         <div 
           key={app.id} 
-          className="flex items-center justify-between p-4 bg-card rounded-lg border shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+          className="group flex flex-col md:flex-row md:items-center justify-between p-6 bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
           onClick={() => onViewDetails(app)}
         >
-          <div className="flex items-center gap-4">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={app.profile?.avatar_url} />
-              <AvatarFallback>{app.profile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
-            </Avatar>
+          <div className="flex items-center gap-5 mb-4 md:mb-0">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity blur-lg" />
+              <Avatar className="h-14 w-14 rounded-2xl ring-4 ring-gray-50 relative">
+                <AvatarImage src={app.profile?.avatar_url} />
+                <AvatarFallback className="rounded-2xl bg-gradient-to-br from-[#0077B5]/10 to-[#E1306C]/10 text-[#833AB4] font-bold">
+                  {app.profile?.full_name?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
             <div>
-              <h3 className="font-medium text-sm md:text-base">{app.profile?.full_name || 'Unknown Candidate'}</h3>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>Applied {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}</span>
+              <h3 className="font-bold text-lg text-gray-900 group-hover:text-[#0077B5] transition-colors">{app.profile?.full_name || 'Unknown Candidate'}</h3>
+              <div className="flex flex-wrap items-center gap-3 mt-1">
+                <span className="text-sm text-gray-500 flex items-center gap-1">
+                  Applied {formatDistanceToNow(new Date(app.created_at), { addSuffix: true })}
+                </span>
                 {app.resume && (
-                  <span className="flex items-center gap-1 text-primary">
-                    <FileText className="h-3 w-3" />
-                    Resume
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 bg-[#0077B5]/5 text-[#0077B5] rounded-full text-xs font-semibold">
+                    <FileText className="h-3.5 w-3.5" />
+                    Resume Attached
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className={`hidden md:inline-flex capitalize ${getStatusColor(app.status)}`}>
+          <div className="flex items-center gap-4 self-end md:self-center">
+            <Badge 
+              variant="outline" 
+              className={`capitalize px-4 py-1.5 rounded-full text-xs font-bold border-2 ${
+                app.status === 'shortlisted' ? 'bg-green-50 text-green-700 border-green-100' :
+                app.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-100' :
+                app.status === 'viewed' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                'bg-gray-50 text-gray-700 border-gray-100'
+              }`}
+            >
               {app.status}
             </Badge>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onViewDetails(app)}>
+            <div className="flex items-center gap-2">
+              <div className="relative p-[1px] rounded-full overflow-hidden group/btn">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="relative bg-white hover:bg-transparent hover:text-white border-none rounded-full h-9 px-5 transition-all duration-300 font-bold"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewDetails(app);
+                  }}
+                >
                   <Eye className="mr-2 h-4 w-4" />
-                  View Details
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateStatus(app.id, 'shortlisted')}>
-                  Shortlist
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onUpdateStatus(app.id, 'rejected')}>
-                  Reject
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  View
+                </Button>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-9 w-9 rounded-full hover:bg-gray-100" 
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="h-5 w-5 text-gray-500" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-2xl p-2 border-gray-100 shadow-xl">
+                  <DropdownMenuItem 
+                    className="rounded-xl focus:bg-[#0077B5]/5 focus:text-[#0077B5] cursor-pointer"
+                    onClick={() => onViewDetails(app)}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    Full Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className="rounded-xl focus:bg-green-50 focus:text-green-600 cursor-pointer"
+                    onClick={() => onUpdateStatus(app.id, 'shortlisted')}
+                  >
+                    Shortlist Candidate
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className="rounded-xl focus:bg-red-50 focus:text-red-600 cursor-pointer text-red-600"
+                    onClick={() => onUpdateStatus(app.id, 'rejected')}
+                  >
+                    Reject Application
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       ))}

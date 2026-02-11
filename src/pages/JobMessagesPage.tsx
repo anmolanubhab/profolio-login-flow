@@ -91,45 +91,64 @@ const JobMessagesPage = () => {
   // Desktop View Logic
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-    <div className="container py-6 max-w-6xl h-[calc(100vh-8rem)]">
-      <div className="grid grid-cols-12 h-full border rounded-xl overflow-hidden bg-card shadow-sm">
-        {/* Sidebar List */}
-        <div className="col-span-4 border-r flex flex-col bg-muted/10">
-          <div className="p-4 border-b bg-background/50 backdrop-blur">
-            <h1 className="text-xl font-bold">Messages</h1>
-          </div>
-          <ScrollArea className="flex-1">
-            <ConversationList 
-              conversations={conversations} 
-              isLoading={isLoading} 
-              onSelect={handleSelect} 
-              selectedId={`${jobId}-${correspondentId}`}
-            />
-          </ScrollArea>
-        </div>
-
-        {/* Chat Area */}
-        <div className="col-span-8 flex flex-col bg-background">
-          {jobId && correspondentId && selectedConversation ? (
-            <JobChat 
-              jobId={jobId} 
-              correspondentId={correspondentId}
-              correspondentName={selectedConversation.correspondentName}
-              correspondentAvatar={selectedConversation.correspondentAvatar}
-              jobTitle={selectedConversation.jobTitle}
-              className="flex-1 border-0 rounded-none"
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8 text-center">
-              <div className="bg-muted p-4 rounded-full mb-4">
-                <MessageSquare className="h-8 w-8 opacity-50" />
-              </div>
-              <h3 className="text-lg font-medium">Select a conversation</h3>
-              <p className="max-w-xs mt-2">
-                Choose a conversation from the list to start messaging.
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Universal Page Hero Section */}
+      <div className="relative w-full overflow-hidden border-b border-gray-100 shrink-0">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
+        <div className="max-w-6xl mx-auto py-8 px-6 relative">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="text-center md:text-left">
+              <h1 className="text-2xl md:text-4xl font-extrabold text-[#1D2226] mb-1 tracking-tight">
+                Messages
+              </h1>
+              <p className="text-[#5E6B7E] text-sm md:text-base font-medium">
+                Connect with recruiters and hiring managers.
               </p>
             </div>
-          )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 overflow-hidden">
+        <div className="grid grid-cols-12 h-full border border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-xl shadow-gray-100/50">
+          {/* Sidebar List */}
+          <div className="col-span-4 border-r border-gray-50 flex flex-col bg-gray-50/30">
+            <div className="p-6 border-b border-gray-50 bg-white/50 backdrop-blur">
+              <h2 className="text-lg font-bold text-gray-900">Conversations</h2>
+            </div>
+            <ScrollArea className="flex-1">
+              <ConversationList 
+                conversations={conversations} 
+                isLoading={isLoading} 
+                onSelect={handleSelect} 
+                selectedId={`${jobId}-${correspondentId}`}
+              />
+            </ScrollArea>
+          </div>
+
+          {/* Chat Area */}
+          <div className="col-span-8 flex flex-col bg-white">
+            {jobId && correspondentId && selectedConversation ? (
+              <JobChat 
+                jobId={jobId} 
+                correspondentId={correspondentId}
+                correspondentName={selectedConversation.correspondentName}
+                correspondentAvatar={selectedConversation.correspondentAvatar}
+                jobTitle={selectedConversation.jobTitle}
+                className="flex-1 border-0 rounded-none"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 p-8 text-center">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                  <MessageSquare className="h-10 w-10 text-gray-200" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Select a conversation</h3>
+                <p className="max-w-xs text-sm font-medium">
+                  Choose a conversation from the list to start messaging.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

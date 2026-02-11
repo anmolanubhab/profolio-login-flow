@@ -143,51 +143,85 @@ const Jobs = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="container mx-auto max-w-4xl">
-        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Next Opportunity</h1>
-            <p className="text-muted-foreground">Discover jobs that match your skills and interests</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="gap-2" onClick={() => navigate('/jobs/saved')}>
-              <Bookmark className="h-4 w-4" />
-              Saved Jobs
-            </Button>
-            <Button variant="outline" onClick={() => navigate('/jobs/preferences')}>
-              Job Preferences
-            </Button>
-            <Button variant="outline" onClick={() => navigate('/jobs/my-jobs')}>
-              My Posted Jobs
-            </Button>
-            <Button onClick={() => setShowPostJobDialog(true)}>
-              Post a Job
-            </Button>
+      <div className="min-h-screen bg-white">
+        {/* Universal Page Hero Section */}
+        <div className="relative w-full overflow-hidden border-b border-gray-100">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
+          <div className="max-w-4xl mx-auto py-12 px-6 relative">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="text-center md:text-left">
+                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+                  Find Your Next Opportunity
+                </h1>
+                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
+                  Discover jobs that match your skills and interests.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <Button 
+                  onClick={() => setShowPostJobDialog(true)}
+                  className="w-full sm:w-auto rounded-full font-bold h-12 px-8 text-white border-none transition-all hover:opacity-90 active:scale-[0.98] bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] shadow-lg hover:shadow-xl"
+                >
+                  Post a Job
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <Card className="mb-6 bg-gradient-card shadow-card border-0">
-          <CardContent className="pt-6">
-            <JobFilters
-              filters={filters}
-              onFiltersChange={setFilters}
-              locations={uniqueLocations}
-            />
-          </CardContent>
-        </Card>
+        <div className="max-w-4xl mx-auto py-8 px-4">
+          <div className="mb-8 flex flex-wrap items-center gap-3">
+            <Button 
+              variant="outline" 
+              className="rounded-full font-semibold relative p-[1px] overflow-hidden group border-none h-10"
+              onClick={() => navigate('/jobs/saved')}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+              <div className="flex items-center justify-center w-full h-full bg-white rounded-full relative z-10 px-4 text-gray-700 group-hover:bg-gray-50 transition-colors">
+                <Bookmark className="h-4 w-4 mr-2" />
+                Saved Jobs
+              </div>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="rounded-full font-semibold h-10 px-6 border-gray-200 text-gray-600 hover:bg-gray-50"
+              onClick={() => navigate('/jobs/preferences')}
+            >
+              Job Preferences
+            </Button>
+            <Button 
+              variant="outline" 
+              className="rounded-full font-semibold h-10 px-6 border-gray-200 text-gray-600 hover:bg-gray-50"
+              onClick={() => navigate('/jobs/my-jobs')}
+            >
+              My Posted Jobs
+            </Button>
+          </div>
 
-        <JobsFeed 
-          onApply={handleApplyClick}
-          onViewDetails={handleViewDetails}
-          onEdit={handleEditJob}
-          onDelete={setDeletingJobId}
-          onToggleSave={toggleSave}
-          appliedJobIds={appliedJobIds}
-          savedJobIds={savedJobIds}
-          readOnly={false}
-          filters={filters}
-          userProfileId={profileId}
-        />
+          <Card className="mb-10 bg-white shadow-xl shadow-gray-100/50 border border-gray-100 rounded-[2rem] overflow-hidden">
+            <CardContent className="p-8">
+              <JobFilters
+                filters={filters}
+                onFiltersChange={setFilters}
+                locations={uniqueLocations}
+              />
+            </CardContent>
+          </Card>
+
+          <JobsFeed 
+            onApply={handleApplyClick}
+            onViewDetails={handleViewDetails}
+            onEdit={handleEditJob}
+            onDelete={setDeletingJobId}
+            onToggleSave={toggleSave}
+            appliedJobIds={appliedJobIds}
+            savedJobIds={savedJobIds}
+            readOnly={false}
+            filters={filters}
+            userProfileId={profileId}
+          />
+        </div>
+      </div>
 
         {/* Apply Dialog */}
         <ApplyJobDialog 
