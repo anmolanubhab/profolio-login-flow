@@ -136,15 +136,15 @@ export default function Companies() {
         <div className="max-w-6xl mx-auto py-12 px-4 relative">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <h1 className="text-4xl font-bold text-[#1D2226] mb-2 tracking-tight">My Companies</h1>
-              <p className="text-[#5E6B7E] text-lg font-medium">Manage your professional presence and job opportunities</p>
+              <h1 className="text-3xl md:text-4xl font-bold text-[#1D2226] mb-2 tracking-tight">My Companies</h1>
+              <p className="text-[#5E6B7E] text-base md:text-lg font-medium">Manage your professional presence and job opportunities</p>
             </div>
             <Button
               onClick={() => {
                 setEditingCompany(null);
                 setShowCompanyDialog(true);
               }}
-              className="rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 px-8 py-6 h-auto text-base font-semibold border-none"
+              className="w-full md:w-auto rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 px-8 py-6 h-auto text-base font-semibold border-none"
             >
               <Plus className="w-5 h-5 mr-2" />
               Add Company
@@ -180,95 +180,104 @@ export default function Companies() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {companies.map((company) => (
-              <Card key={company.id} className="group overflow-hidden border-none shadow-md hover:shadow-2xl transition-all duration-500 rounded-2xl bg-white/80 backdrop-blur-sm">
-                <div className="h-24 w-full bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-80 group-hover:opacity-100 transition-opacity duration-500 relative">
+              <Card key={company.id} className="group overflow-hidden border-none shadow-md hover:shadow-2xl transition-all duration-500 rounded-3xl bg-white/80 backdrop-blur-sm flex flex-col">
+                {/* Cover Banner */}
+                <div className="h-32 w-full bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-80 group-hover:opacity-100 transition-opacity duration-500 relative shrink-0">
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500" />
+                  
+                  {/* Top-right Edit/Delete Actions */}
+                  <div className="absolute top-4 right-4 flex gap-2 z-20">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(company)}
+                      className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white hover:text-[#0077B5] border border-white/30 transition-all duration-300"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeletingCompanyId(company.id)}
+                      className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-red-500 hover:text-white border border-white/30 transition-all duration-300"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-                <CardContent className="p-0 relative">
+
+                <CardContent className="p-0 relative flex-1">
                   <div className="px-6 pb-6">
-                    <div className="flex justify-between items-start -mt-10 mb-4 relative z-10">
-                      <div className="relative">
+                    {/* Header: Logo + Info Layout (Horizontal on Web, Vertical on Mobile) */}
+                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 -mt-12 mb-6 relative z-10">
+                      {/* Logo Container */}
+                      <div className="relative shrink-0 mx-auto sm:mx-0">
                         {company.logo_url ? (
                           <img
                             src={company.logo_url}
                             alt={company.name}
-                            className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-xl bg-white"
+                            className="w-28 h-28 rounded-3xl object-cover border-4 border-white shadow-xl bg-white"
                           />
                         ) : (
-                          <div className="w-24 h-24 rounded-2xl bg-[#F3F6F9] flex items-center justify-center border-4 border-white shadow-xl">
-                            <Building2 className="w-12 h-12 text-[#5E6B7E]" />
+                          <div className="w-28 h-28 rounded-3xl bg-[#F3F6F9] flex items-center justify-center border-4 border-white shadow-xl">
+                            <Building2 className="w-14 h-14 text-[#5E6B7E]" />
                           </div>
                         )}
-                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-2 border-white rounded-full shadow-sm" title="Active Company" />
+                        <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-500 border-4 border-white rounded-full shadow-lg" title="Active Company" />
                       </div>
-                      <div className="flex gap-2 pt-12">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(company)}
-                          className="w-9 h-9 rounded-full bg-white/90 shadow-sm hover:bg-white hover:text-[#0077B5] transition-all"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeletingCompanyId(company.id)}
-                          className="w-9 h-9 rounded-full bg-white/90 shadow-sm hover:bg-red-50 hover:text-red-600 transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
 
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-2xl font-bold text-[#1D2226] mb-1 group-hover:text-[#0077B5] transition-colors line-clamp-1">
+                      {/* Name and Industry */}
+                      <div className="flex-1 text-center sm:text-left pt-1 sm:pt-14">
+                        <h3 className="text-2xl font-extrabold text-[#1D2226] mb-1 group-hover:text-[#0077B5] transition-colors line-clamp-1">
                           {company.name}
                         </h3>
                         {company.industry && (
-                          <Badge className="bg-gradient-to-r from-blue-50 to-indigo-50 text-[#0077B5] border-blue-100 rounded-full px-3 py-0.5 font-medium hover:from-blue-100 hover:to-indigo-100 transition-all">
+                          <Badge className="bg-gradient-to-r from-blue-50 to-indigo-50 text-[#0077B5] border-blue-100 rounded-full px-4 py-1 font-semibold hover:from-blue-100 hover:to-indigo-100 transition-all">
                             {company.industry}
                           </Badge>
                         )}
                       </div>
+                    </div>
 
+                    <div className="space-y-6">
+                      {/* Description */}
                       {company.description && (
-                        <p className="text-[#5E6B7E] text-sm line-clamp-2 leading-relaxed italic">
+                        <p className="text-[#5E6B7E] text-sm md:text-base line-clamp-2 leading-relaxed italic border-l-2 border-blue-100 pl-4">
                           "{company.description}"
                         </p>
                       )}
 
-                      <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                      {/* Info Grid: Responsive 1 column on mobile, 2 on tablet/web */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 bg-gray-50/50 rounded-2xl p-4 border border-gray-100/50">
                         {company.location && (
-                          <div className="flex items-center gap-2.5 text-[#5E6B7E] text-sm font-medium">
-                            <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400 group-hover:text-[#0077B5] group-hover:bg-blue-50 transition-colors">
+                          <div className="flex items-center gap-3 text-[#5E6B7E] text-sm font-medium">
+                            <div className="p-2 rounded-xl bg-white text-gray-400 group-hover:text-[#0077B5] group-hover:shadow-sm transition-all duration-300">
                               <MapPin className="w-4 h-4" />
                             </div>
                             <span className="truncate">{company.location}</span>
                           </div>
                         )}
                         {company.employee_count && (
-                          <div className="flex items-center gap-2.5 text-[#5E6B7E] text-sm font-medium">
-                            <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400 group-hover:text-[#0077B5] group-hover:bg-blue-50 transition-colors">
+                          <div className="flex items-center gap-3 text-[#5E6B7E] text-sm font-medium">
+                            <div className="p-2 rounded-xl bg-white text-gray-400 group-hover:text-[#0077B5] group-hover:shadow-sm transition-all duration-300">
                               <Users className="w-4 h-4" />
                             </div>
                             <span>{company.employee_count}</span>
                           </div>
                         )}
                         {company.founded_year && (
-                          <div className="flex items-center gap-2.5 text-[#5E6B7E] text-sm font-medium">
-                            <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400 group-hover:text-[#0077B5] group-hover:bg-blue-50 transition-colors">
+                          <div className="flex items-center gap-3 text-[#5E6B7E] text-sm font-medium">
+                            <div className="p-2 rounded-xl bg-white text-gray-400 group-hover:text-[#0077B5] group-hover:shadow-sm transition-all duration-300">
                               <Calendar className="w-4 h-4" />
                             </div>
                             <span>Est. {company.founded_year}</span>
                           </div>
                         )}
                         {company.website && (
-                          <div className="flex items-center gap-2.5 text-sm font-medium overflow-hidden">
-                            <div className="p-1.5 rounded-lg bg-gray-50 text-gray-400 group-hover:text-[#0077B5] group-hover:bg-blue-50 transition-colors">
+                          <div className="flex items-center gap-3 text-sm font-medium overflow-hidden">
+                            <div className="p-2 rounded-xl bg-white text-gray-400 group-hover:text-[#0077B5] group-hover:shadow-sm transition-all duration-300">
                               <Globe className="w-4 h-4" />
                             </div>
                             <a
@@ -283,19 +292,20 @@ export default function Companies() {
                         )}
                       </div>
 
-                      <div className="pt-6 flex gap-3">
+                      {/* Action Buttons: Stacked on Mobile, Side-by-Side on Web */}
+                      <div className="pt-2 flex flex-col sm:flex-row gap-3">
                         <Button
                           variant="outline"
-                          className="flex-1 rounded-xl border-2 border-[#0077B5]/20 text-[#0077B5] hover:bg-gradient-to-r hover:from-[#0077B5] hover:to-[#00A0DC] hover:text-white hover:border-transparent transition-all duration-300 font-semibold py-5"
+                          className="flex-1 rounded-2xl border-2 border-[#0077B5]/20 text-[#0077B5] hover:bg-gradient-to-r hover:from-[#0077B5] hover:to-[#00A0DC] hover:text-white hover:border-transparent transition-all duration-300 font-bold py-6 shadow-sm hover:shadow-md"
                           onClick={() => navigate(`/company/${company.id}`)}
                         >
                           View Profile
                         </Button>
                         <Button
-                          className="flex-1 rounded-xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 font-semibold py-5"
+                          className="flex-1 rounded-2xl bg-gradient-to-r from-[#0077B5] to-[#00A0DC] hover:from-[#005E93] hover:to-[#008CC9] text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-300 font-bold py-6 border-none"
                           onClick={() => navigate(`/company/${company.id}/jobs`)}
                         >
-                          <Briefcase className="w-4 h-4 mr-2" />
+                          <Briefcase className="w-5 h-5 mr-2" />
                           View Jobs
                         </Button>
                       </div>
