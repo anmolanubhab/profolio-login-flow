@@ -354,9 +354,8 @@ const Jobs = () => {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-       </div>
-     </Layout>
-   );
- };
+      </Layout>
+    );
+  };
  
  export default Jobs;

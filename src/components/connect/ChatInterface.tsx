@@ -641,40 +641,5 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     </div>
   );
 };
-                    placeholder="Type a message..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                    disabled={sendingMessage}
-                    className="flex-1"
-                  />
-                  <Button 
-                    onClick={sendMessage} 
-                    disabled={sendingMessage || !newMessage.trim()}
-                    size="icon"
-                  >
-                    {sendingMessage ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </>
-        ) : (
-          <CardContent className="flex items-center justify-center h-full">
-            <div className="text-center text-muted-foreground">
-              <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <h3 className="font-medium mb-1">Select a conversation</h3>
-              <p className="text-sm">Choose from your existing conversations or start a new chat</p>
-            </div>
-          </CardContent>
-        )}
-      </Card>
-    </div>
-  );
-};
 
 export default ChatInterface;
