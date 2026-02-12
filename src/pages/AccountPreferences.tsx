@@ -89,6 +89,7 @@ const EMAIL_FREQUENCY_OPTIONS = [
 
 const AccountPreferences = () => {
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 

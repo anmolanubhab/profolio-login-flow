@@ -13,14 +13,15 @@ export interface JobAnalytics {
 export const useJobAnalytics = (jobId: string | undefined) => {
   return useQuery({
     queryKey: ['job-analytics', jobId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!jobId) throw new Error('Job ID is required');
       
       const { data, error } = await supabase.rpc('get_job_analytics', {
         p_job_id: jobId
-      });
+      }).abortSignal(signal);
 
       if (error) {
+        if (error.code === 'ABORTED') return null;
         throw error;
       }
 

@@ -27,7 +27,7 @@ export const useJobApplicants = (jobId: string) => {
 
   const { data: applicants, isLoading } = useQuery({
     queryKey: ['job-applicants', jobId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       // 1. Fetch applications
       const { data, error } = await supabase
         .from('job_applications')
@@ -37,9 +37,13 @@ export const useJobApplicants = (jobId: string) => {
           resume:resumes(id, title, file_url)
         `)
         .eq('job_id', jobId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return [];
+        throw error;
+      }
       return data as any as Applicant[];
     },
     enabled: !!jobId

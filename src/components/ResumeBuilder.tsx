@@ -39,23 +39,30 @@ const ResumeBuilder = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadResumes();
+    const controller = new AbortController();
+    loadResumes(controller.signal);
+    return () => controller.abort();
   }, []);
 
-  const loadResumes = async () => {
+  const loadResumes = async (signal?: AbortSignal) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || (signal && signal.aborted)) return;
 
       const { data, error } = await supabase
         .from('resumes')
         .select('*')
         .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
+        .order('updated_at', { ascending: false })
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return;
+        throw error;
+      }
       setSavedResumes(data || []);
     } catch (error) {
+      if (error.name === 'AbortError') return;
       console.error('Error loading resumes:', error);
     } finally {
       setLoading(false);
@@ -403,276 +410,374 @@ const ResumeBuilder = () => {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/50 backdrop-blur-sm p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
         <div className="flex items-center gap-4">
           <Button 
-            variant="outline" 
+            variant="ghost" 
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2"
+            className="rounded-full hover:bg-gray-100/80 transition-all duration-300"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
+            <ArrowLeft className="h-5 w-5 text-[#5E6B7E]" />
           </Button>
-          <h2 className="text-2xl font-bold">Resume Manager</h2>
+          <div>
+            <h2 className="text-3xl font-bold text-[#1D2226] tracking-tight">Resume Manager</h2>
+            <p className="text-[#5E6B7E] font-medium text-sm">Manage and build your professional resumes</p>
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-3 justify-center">
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
                <div className="relative p-[1px] rounded-full overflow-hidden group/btn">
-                 <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+                 <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-80 group-hover/btn:opacity-100 transition-opacity" />
                  <Button 
                    variant="outline"
-                   className="relative bg-white hover:bg-transparent hover:text-white border-none rounded-full px-6 h-10 transition-all duration-300"
+                   className="relative bg-white hover:bg-transparent hover:text-white border-none rounded-full px-8 h-12 font-bold transition-all duration-300 shadow-lg shadow-black/5"
                  >
-                   <Plus className="h-4 w-4 mr-2" />
+                   <Plus className="h-5 w-5 mr-2" />
                    Upload PDF
                  </Button>
                </div>
             </DialogTrigger>
-            <DialogContent>
-               <DialogHeader>
-                 <DialogTitle>Upload Resume (PDF)</DialogTitle>
-               </DialogHeader>
-               <div className="space-y-4 pt-4">
-                 <Input 
-                   placeholder="Resume Title (e.g. Software Engineer 2024)" 
-                   value={uploadTitle}
-                   onChange={(e) => setUploadTitle(e.target.value)}
-                 />
+            <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+               <div className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] p-8 text-white">
+                 <DialogHeader>
+                   <DialogTitle className="text-2xl font-bold text-white">Upload Resume (PDF)</DialogTitle>
+                 </DialogHeader>
+               </div>
+               <div className="p-8 space-y-6 bg-white">
+                 <div className="space-y-2">
+                   <label className="text-sm font-bold text-[#1D2226] ml-1">Resume Title</label>
+                   <Input 
+                     placeholder="e.g. Senior Software Engineer 2024" 
+                     value={uploadTitle}
+                     onChange={(e) => setUploadTitle(e.target.value)}
+                     className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all h-12"
+                   />
+                 </div>
                  <VisibilitySelector 
-                   title="Visibility" 
+                   title="Who can see this?" 
                    value={uploadVisibility} 
                    onChange={setUploadVisibility} 
                    options={visibilityOptions} 
                  />
-                 <DocumentUpload 
-                   bucket="resumes" 
-                   acceptedTypes=".pdf"
-                   onUploadComplete={handleUploadComplete}
-                 />
+                 <div className="pt-2">
+                   <DocumentUpload 
+                     bucket="resumes" 
+                     acceptedTypes=".pdf"
+                     onUploadComplete={handleUploadComplete}
+                   />
+                 </div>
                </div>
             </DialogContent>
           </Dialog>
 
           <Button 
             onClick={resetForm} 
-            className={`rounded-full px-6 h-10 font-bold transition-all duration-300 shadow-lg ${
+            className={`rounded-full px-8 h-12 font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-xl ${
               editingId 
-                ? 'bg-gray-100 text-gray-900 hover:bg-gray-200 shadow-none' 
+                ? 'bg-gray-100 text-[#1D2226] hover:bg-gray-200' 
                 : 'bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white hover:opacity-90 shadow-[#833AB4]/20'
             }`}
           >
-             {editingId ? "Cancel Edit" : "New Builder Resume"}
+             {editingId ? "Cancel Editing" : "Build New Resume"}
           </Button>
         </div>
       </div>
 
       {/* Saved Resumes Section */}
-      <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
-        <CardHeader className="border-b border-gray-50 bg-gray-50/30">
-          <CardTitle className="text-xl font-bold text-gray-900">Your Resumes</CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-gray-400 font-medium">Loading resumes...</p>
-            </div>
-          ) : savedResumes.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50/50 rounded-[2rem] border-2 border-dashed border-gray-200">
-               <div className="bg-white h-20 w-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-                 <FileText className="h-10 w-10 text-gray-300" />
-               </div>
-               <h3 className="text-xl font-bold text-gray-900 mb-2">No resumes found</h3>
-               <p className="text-gray-500 max-w-sm mx-auto">Upload a PDF or build one from scratch to start your journey.</p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {savedResumes.map((resume) => (
-                <Card key={resume.id} className="hover:shadow-xl transition-all duration-300 rounded-[2rem] border-gray-100 overflow-hidden flex flex-col group">
-                  <CardContent className="p-6 space-y-4">
-                    <div className="flex justify-between items-start">
-                       <div>
-                         <h3 className="font-bold text-gray-900 group-hover:text-[#833AB4] transition-colors">{resume.title}</h3>
-                         <p className="text-xs text-gray-400 font-medium mt-1">
-                           Updated {new Date(resume.updated_at).toLocaleDateString()}
-                         </p>
-                       </div>
-                       {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') && (
-                         <Badge className="bg-[#0077B5]/10 text-[#0077B5] border-none rounded-full px-3 py-1 text-[10px] font-bold">
-                           PDF
-                         </Badge>
-                       )}
-                    </div>
-                    
-                    <div className="pt-2">
-                       <VisibilitySelector
-                          title="Visibility"
-                          value={resume.visibility || 'recruiters'}
-                          onChange={(val) => handleUpdateVisibility(resume.id, val)}
-                          options={visibilityOptions}
-                       />
-                    </div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-2">
+          <h3 className="text-2xl font-bold text-[#1D2226] tracking-tight">Your Portfolio</h3>
+          {!loading && savedResumes.length > 0 && (
+            <span className="bg-gray-100 text-[#5E6B7E] px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200">
+              {savedResumes.length} {savedResumes.length === 1 ? 'Resume' : 'Resumes'}
+            </span>
+          )}
+        </div>
 
-                    <div className="flex gap-2 pt-4">
-                      {!(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') && (
-                        <div className="relative flex-1 p-[1px] rounded-full overflow-hidden group/btn">
-                          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="relative w-full bg-white hover:bg-transparent hover:text-white border-none rounded-full h-9 transition-all duration-300 flex items-center justify-center gap-2"
-                            onClick={() => handleEdit(resume)}
-                          >
-                            <Edit className="h-3.5 w-3.5" />
-                            <span className="text-xs font-bold">Edit</span>
-                          </Button>
-                        </div>
-                      )}
-                      <div className={`relative p-[1px] rounded-full overflow-hidden group/btn ${(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? "flex-1" : "flex-1"}`}>
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-white/50 backdrop-blur-sm rounded-[3rem] border border-gray-100">
+            <div className="h-12 w-12 border-4 border-gray-100 border-t-[#833AB4] rounded-full animate-spin mb-4" />
+            <p className="text-[#5E6B7E] font-bold animate-pulse">Loading your portfolio...</p>
+          </div>
+        ) : savedResumes.length === 0 ? (
+          <Card className="border-2 border-dashed border-gray-100 bg-gray-50/30 rounded-[3rem] overflow-hidden">
+            <CardContent className="flex flex-col items-center justify-center py-24 px-6 text-center">
+               <div className="relative mb-8">
+                 <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-3xl rounded-full" />
+                 <div className="relative h-24 w-24 bg-white rounded-[2.5rem] shadow-2xl flex items-center justify-center text-[#833AB4]">
+                   <FileText className="h-12 w-12" />
+                 </div>
+               </div>
+               <h3 className="text-2xl font-extrabold text-[#1D2226] mb-3 tracking-tight">Your portfolio is ready for its first resume</h3>
+               <p className="text-[#5E6B7E] font-medium max-w-md mb-10 leading-relaxed text-lg">
+                 Upload your existing PDF or use our professional builder to create a standout resume in minutes.
+               </p>
+               <div className="flex flex-wrap justify-center gap-4">
+                 <Button 
+                   onClick={() => setIsUploadDialogOpen(true)}
+                   variant="outline"
+                   className="rounded-full px-8 h-12 font-bold border-2 border-[#833AB4]/20 hover:border-[#833AB4] hover:bg-[#833AB4]/5 text-[#833AB4] transition-all"
+                 >
+                   Upload PDF
+                 </Button>
+                 <Button 
+                   onClick={resetForm}
+                   className="rounded-full px-8 h-12 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white font-bold hover:opacity-90 shadow-xl shadow-[#833AB4]/25 transition-all transform hover:scale-105"
+                 >
+                   Start Building
+                 </Button>
+               </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {savedResumes.map((resume, index) => (
+              <Card 
+                key={resume.id} 
+                className="group relative hover:shadow-2xl transition-all duration-500 rounded-[2.5rem] border-gray-100 overflow-hidden flex flex-col bg-white animate-in fade-in slide-in-from-bottom-4"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <CardContent className="p-8 space-y-6">
+                  <div className="flex justify-between items-start gap-4">
+                     <div className="space-y-1">
+                       <h3 className="font-extrabold text-xl text-[#1D2226] group-hover:text-[#833AB4] transition-colors line-clamp-2 leading-tight">
+                         {resume.title}
+                       </h3>
+                       <p className="text-xs text-[#5E6B7E] font-bold tracking-wider uppercase opacity-70">
+                         Updated {new Date(resume.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                       </p>
+                     </div>
+                     {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') && (
+                       <div className="bg-gradient-to-br from-[#0077B5]/10 to-[#833AB4]/10 p-2.5 rounded-2xl">
+                         <FileText className="h-5 w-5 text-[#0077B5]" />
+                       </div>
+                     )}
+                  </div>
+                  
+                  <div className="pt-2">
+                     <VisibilitySelector
+                        title=""
+                        value={resume.visibility || 'recruiters'}
+                        onChange={(val) => handleUpdateVisibility(resume.id, val)}
+                        options={visibilityOptions}
+                     />
+                  </div>
+
+                  <div className="flex gap-3 pt-4 mt-auto">
+                    {!(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') && (
+                      <div className="relative flex-1 p-[1px] rounded-full overflow-hidden group/btn-inner">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-80 group-hover/btn-inner:opacity-100 transition-opacity" />
                         <Button
                           size="sm"
                           variant="outline"
-                          className="relative w-full bg-white hover:bg-transparent hover:text-white border-none rounded-full h-9 transition-all duration-300 flex items-center justify-center gap-2"
-                          onClick={() => handleDownloadPDF(resume)}
+                          className="relative w-full bg-white hover:bg-transparent hover:text-white border-none rounded-full h-11 transition-all duration-300 flex items-center justify-center gap-2"
+                          onClick={() => handleEdit(resume)}
                         >
-                          {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? <Eye className="h-3.5 w-3.5"/> : <Download className="h-3.5 w-3.5" />}
-                          <span className="text-xs font-bold">{(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? "View" : "PDF"}</span>
+                          <Edit className="h-4 w-4" />
+                          <span className="text-sm font-bold">Edit</span>
                         </Button>
                       </div>
+                    )}
+                    <div className="relative flex-1 p-[1px] rounded-full overflow-hidden group/btn-inner">
+                      <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-80 group-hover/btn-inner:opacity-100 transition-opacity" />
                       <Button
                         size="sm"
                         variant="outline"
-                        className="rounded-full h-9 w-9 p-0 border-gray-100 hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all duration-300"
-                        onClick={() => handleDelete(resume.id)}
+                        className="relative w-full bg-white hover:bg-transparent hover:text-white border-none rounded-full h-11 transition-all duration-300 flex items-center justify-center gap-2"
+                        onClick={() => handleDownloadPDF(resume)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? <Eye className="h-4 w-4"/> : <Download className="h-4 w-4" />}
+                        <span className="text-sm font-bold">{(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? "View" : "PDF"}</span>
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full h-11 w-11 p-0 border-gray-100 hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all duration-300 bg-gray-50/50"
+                      onClick={() => handleDelete(resume.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Builder Form - Only show if not editing a PDF or if creating new */}
-      <div className={editingId || (!loading && savedResumes.length === 0) ? "block" : "hidden"}>
-         <div className="flex items-center gap-2 mb-4">
-            <h3 className="text-xl font-semibold">Resume Editor</h3>
+      <div className={`${editingId || (!loading && savedResumes.length === 0) ? "block" : "hidden"} space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pt-12 border-t border-gray-100`}>
+         <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-2">
+            <div>
+              <h3 className="text-3xl font-extrabold text-[#1D2226] tracking-tight">
+                {editingId ? "Refine Your Resume" : "Create Professional Resume"}
+              </h3>
+              <p className="text-[#5E6B7E] font-medium mt-1">Fill in your details to generate a stunning PDF</p>
+            </div>
+            {editingId && (
+              <Button 
+                variant="outline" 
+                onClick={resetForm}
+                className="rounded-full border-2 border-gray-100 hover:bg-gray-50 text-[#5E6B7E] font-bold h-11"
+              >
+                Discard Changes
+              </Button>
+            )}
          </div>
          
-         <div className="grid gap-6">
-           <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
-             <CardHeader className="border-b border-gray-50 bg-gray-50/30">
-               <CardTitle className="text-xl font-bold text-gray-900">Resume Details</CardTitle>
-             </CardHeader>
-             <CardContent className="p-6 space-y-4">
-               <Input
-                 placeholder="Resume Title"
-                 value={formData.title}
-                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all"
-               />
-               <VisibilitySelector
-                  title="Visibility"
-                  value={formData.visibility}
-                  onChange={(val) => setFormData({...formData, visibility: val})}
-                  options={visibilityOptions}
-               />
-             </CardContent>
-           </Card>
+         <div className="grid gap-8">
+           <div className="grid md:grid-cols-2 gap-8">
+             <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
+               <CardHeader className="border-b border-gray-50 bg-gray-50/50 p-8">
+                 <CardTitle className="text-xl font-extrabold text-[#1D2226] flex items-center gap-3">
+                   <div className="p-2 bg-white rounded-xl shadow-sm">
+                     <Edit className="h-5 w-5 text-[#833AB4]" />
+                   </div>
+                   Resume Basics
+                 </CardTitle>
+               </CardHeader>
+               <CardContent className="p-8 space-y-6">
+                 <div className="space-y-2">
+                   <label className="text-sm font-bold text-[#1D2226] ml-1">Document Title</label>
+                   <Input
+                     placeholder="e.g. Creative Director Resume"
+                     value={formData.title}
+                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                     className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all h-12 px-5"
+                   />
+                 </div>
+                 <VisibilitySelector
+                    title="Visibility Preference"
+                    value={formData.visibility}
+                    onChange={(val) => setFormData({...formData, visibility: val})}
+                    options={visibilityOptions}
+                 />
+               </CardContent>
+             </Card>
 
-           <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
-             <CardHeader className="border-b border-gray-50 bg-gray-50/30">
-               <CardTitle className="text-xl font-bold text-gray-900">Personal Information</CardTitle>
-             </CardHeader>
-             <CardContent className="p-6 space-y-4">
-               <Input
-                 placeholder="Full Name"
-                 value={formData.personalInfo.name}
-                 onChange={(e) => setFormData({
-                   ...formData,
-                   personalInfo: { ...formData.personalInfo, name: e.target.value }
-                 })}
-                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all"
-               />
-               <Input
-                 placeholder="Email"
-                 type="email"
-                 value={formData.personalInfo.email}
-                 onChange={(e) => setFormData({
-                   ...formData,
-                   personalInfo: { ...formData.personalInfo, email: e.target.value }
-                 })}
-                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all"
-               />
-             </CardContent>
-           </Card>
+             <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
+               <CardHeader className="border-b border-gray-50 bg-gray-50/50 p-8">
+                 <CardTitle className="text-xl font-extrabold text-[#1D2226] flex items-center gap-3">
+                   <div className="p-2 bg-white rounded-xl shadow-sm">
+                     <Plus className="h-5 w-5 text-[#0077B5]" />
+                   </div>
+                   Personal Details
+                 </CardTitle>
+               </CardHeader>
+               <CardContent className="p-8 space-y-6">
+                 <div className="grid gap-6">
+                   <div className="space-y-2">
+                     <label className="text-sm font-bold text-[#1D2226] ml-1">Full Name</label>
+                     <Input
+                       placeholder="John Doe"
+                       value={formData.personalInfo.name}
+                       onChange={(e) => setFormData({
+                         ...formData,
+                         personalInfo: { ...formData.personalInfo, name: e.target.value }
+                       })}
+                       className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all h-12 px-5"
+                     />
+                   </div>
+                   <div className="space-y-2">
+                     <label className="text-sm font-bold text-[#1D2226] ml-1">Email Address</label>
+                     <Input
+                       placeholder="john@example.com"
+                       type="email"
+                       value={formData.personalInfo.email}
+                       onChange={(e) => setFormData({
+                         ...formData,
+                         personalInfo: { ...formData.personalInfo, email: e.target.value }
+                       })}
+                       className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all h-12 px-5"
+                     />
+                   </div>
+                 </div>
+               </CardContent>
+             </Card>
+           </div>
 
-           <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
-             <CardHeader className="border-b border-gray-50 bg-gray-50/30">
-               <CardTitle className="text-xl font-bold text-gray-900">Professional Summary</CardTitle>
+           <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
+             <CardHeader className="border-b border-gray-50 bg-gray-50/50 p-8">
+               <CardTitle className="text-xl font-extrabold text-[#1D2226] flex items-center gap-3">
+                 <div className="p-2 bg-white rounded-xl shadow-sm">
+                   <FileText className="h-5 w-5 text-[#E1306C]" />
+                 </div>
+                 Professional Summary
+               </CardTitle>
              </CardHeader>
-             <CardContent className="p-6">
+             <CardContent className="p-8">
                <Textarea
-                 placeholder="Write a brief summary..."
+                 placeholder="Write a compelling summary of your career and goals..."
                  value={formData.summary}
                  onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
                  rows={4}
-                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all resize-none"
+                 className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[120px] leading-relaxed"
                />
              </CardContent>
            </Card>
 
-           <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
-             <CardHeader className="border-b border-gray-50 bg-gray-50/30">
-               <CardTitle className="text-xl font-bold text-gray-900">Experience</CardTitle>
-             </CardHeader>
-             <CardContent className="p-6">
-               <Textarea
-                 placeholder="List your work experience..."
-                 value={formData.experience}
-                 onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-                 rows={6}
-                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all resize-none"
-               />
-             </CardContent>
-           </Card>
+           <div className="grid md:grid-cols-2 gap-8">
+             <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
+               <CardHeader className="border-b border-gray-50 bg-gray-50/50 p-8">
+                 <CardTitle className="text-xl font-extrabold text-[#1D2226] flex items-center gap-3">
+                   <div className="p-2 bg-white rounded-xl shadow-sm">
+                     <Edit className="h-5 w-5 text-[#833AB4]" />
+                   </div>
+                   Experience
+                 </CardTitle>
+               </CardHeader>
+               <CardContent className="p-8">
+                 <Textarea
+                   placeholder="Describe your work history, projects, and achievements..."
+                   value={formData.experience}
+                   onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                   rows={8}
+                   className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[200px] leading-relaxed"
+                 />
+               </CardContent>
+             </Card>
 
-           <Card className="rounded-[2rem] border-gray-100 overflow-hidden shadow-sm">
-             <CardHeader className="border-b border-gray-50 bg-gray-50/30">
-               <CardTitle className="text-xl font-bold text-gray-900">Skills</CardTitle>
-             </CardHeader>
-             <CardContent className="p-6">
-               <Textarea
-                 placeholder="List your skills..."
-                 value={formData.skills}
-                 onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-                 rows={3}
-                 className="rounded-xl border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all resize-none"
-               />
-             </CardContent>
-           </Card>
+             <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
+               <CardHeader className="border-b border-gray-50 bg-gray-50/50 p-8">
+                 <CardTitle className="text-xl font-extrabold text-[#1D2226] flex items-center gap-3">
+                   <div className="p-2 bg-white rounded-xl shadow-sm">
+                     <Plus className="h-5 w-5 text-[#0077B5]" />
+                   </div>
+                   Core Skills
+                 </CardTitle>
+               </CardHeader>
+               <CardContent className="p-8">
+                 <Textarea
+                   placeholder="List your key technical and soft skills (e.g., React, Project Management, UI/UX)..."
+                   value={formData.skills}
+                   onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
+                   rows={8}
+                   className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[200px] leading-relaxed"
+                 />
+               </CardContent>
+             </Card>
+           </div>
            
-           <div className="flex justify-end pt-4">
+           <div className="flex justify-center md:justify-end pt-6 pb-12">
               <Button 
                 onClick={handleSave} 
                 disabled={saving} 
                 size="lg"
-                className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-10 py-6 h-auto text-lg font-bold shadow-xl shadow-[#833AB4]/20 gap-3 transition-all duration-300 hover:scale-105"
+                className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-12 py-7 h-auto text-xl font-bold shadow-2xl shadow-[#833AB4]/30 gap-4 transition-all duration-300 transform hover:scale-105 active:scale-95"
               >
                 {saving ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Saving...</span>
+                  <div className="flex items-center gap-3">
+                    <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Saving Portfolio...</span>
                   </div>
                 ) : (
                   <>
-                    <FileText className="h-6 w-6" />
-                    <span>Save Resume</span>
+                    <FileText className="h-7 w-7" />
+                    <span>{editingId ? "Update Resume" : "Save to Portfolio"}</span>
                   </>
                 )}
               </Button>

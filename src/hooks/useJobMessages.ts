@@ -18,7 +18,7 @@ export const useJobMessages = (jobId: string, correspondentId: string) => {
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ['job-messages', jobId, correspondentId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
@@ -28,9 +28,13 @@ export const useJobMessages = (jobId: string, correspondentId: string) => {
         .eq('job_id', jobId)
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
         .or(`sender_id.eq.${correspondentId},receiver_id.eq.${correspondentId}`)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return [];
+        throw error;
+      }
       
       // Client-side filtering to ensure we only get messages between these two people
       // The OR query above might return messages where I am sender but receiver is someone else if not careful

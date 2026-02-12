@@ -27,10 +27,12 @@ export const ProofOfWork = ({ userId, isOwnProfile }: ProofOfWorkProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
   }, [userId]);
 
-  const fetchData = async () => {
+  const fetchData = async (signal?: AbortSignal) => {
     try {
       setLoading(true);
       // Fetch Certificates only (projects table doesn't exist in schema)
@@ -38,12 +40,17 @@ export const ProofOfWork = ({ userId, isOwnProfile }: ProofOfWorkProps) => {
         .from('certificates')
         .select('id, title, description, file_url, created_at')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(signal);
 
-      if (certsError) throw certsError;
+      if (certsError) {
+        if (certsError.code === 'ABORTED') return;
+        throw certsError;
+      }
 
       setCertificates(certsData || []);
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       console.error('Error fetching proof of work:', error);
     } finally {
       setLoading(false);

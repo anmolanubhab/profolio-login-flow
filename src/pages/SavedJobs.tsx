@@ -29,22 +29,34 @@ const SavedJobs = () => {
 
   useEffect(() => {
     if (user) {
-      fetchSavedJobsDetails();
-      fetchProfile();
+      const controller = new AbortController();
+      fetchSavedJobsDetails(controller.signal);
+      fetchProfile(controller.signal);
+      return () => controller.abort();
     }
   }, [user, savedJobIds]);
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (signal?: AbortSignal) => {
     if (!user) return;
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
-    if (profile) setProfileId(profile.id);
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .abortSignal(signal)
+        .maybeSingle();
+      
+      if (error) {
+        if (error.code === 'ABORTED') return;
+        throw error;
+      }
+      if (profile) setProfileId(profile.id);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
   };
 
-  const fetchSavedJobsDetails = async () => {
+  const fetchSavedJobsDetails = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
       if (savedJobIds.size === 0) {
@@ -62,11 +74,16 @@ const SavedJobs = () => {
           *,
           company:companies(name, logo_url)
         `)
-        .in('id', Array.from(savedJobIds));
+        .in('id', Array.from(savedJobIds))
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return;
+        throw error;
+      }
       setSavedJobs(data as Job[] || []);
     } catch (error) {
+      if ((error as any).name === 'AbortError' || (error as any).code === 'ABORTED') return;
       console.error('Error fetching saved jobs details:', error);
     } finally {
       setLoading(false);

@@ -84,7 +84,7 @@ const Feed = ({ refresh, userId }: FeedProps) => {
     }
   }, [location.hash, posts, loading]);
 
-  const fetchPosts = async (pageNumber: number, isRefresh = false) => {
+  const fetchPosts = async (pageNumber: number, isRefresh = false, signal?: AbortSignal) => {
     try {
       if (pageNumber === 0) {
         setLoading(true);
@@ -94,6 +94,8 @@ const Feed = ({ refresh, userId }: FeedProps) => {
       }
 
       const { data: { user } } = await supabase.auth.getUser();
+      if (signal && signal.aborted) return;
+      
       let currentUserProfileId: string | null = null;
       let hiddenPostIds: string[] = [];
       let blockedUserIds: string[] = [];
@@ -104,6 +106,7 @@ const Feed = ({ refresh, userId }: FeedProps) => {
           .from('profiles')
           .select('id')
           .eq('user_id', user.id)
+          .abortSignal(signal)
           .maybeSingle();
         currentUserProfileId = profile?.id || null;
         
@@ -111,20 +114,23 @@ const Feed = ({ refresh, userId }: FeedProps) => {
           const { data: hiddenData } = await supabase
             .from('hidden_posts')
             .select('post_id')
-            .eq('user_id', currentUserProfileId);
+            .eq('user_id', currentUserProfileId)
+            .abortSignal(signal);
           hiddenPostIds = hiddenData?.map((h) => h.post_id) || [];
 
           const { data: blockedData } = await supabase
             .from('blocked_users')
             .select('blocked_user_id')
-            .eq('user_id', currentUserProfileId);
+            .eq('user_id', currentUserProfileId)
+            .abortSignal(signal);
           
           if (blockedData && blockedData.length > 0) {
             const blockedProfileIds = blockedData.map((b) => b.blocked_user_id);
             const { data: blockedProfiles } = await supabase
               .from('profiles')
               .select('id, user_id')
-              .in('id', blockedProfileIds);
+              .in('id', blockedProfileIds)
+              .abortSignal(signal);
             blockedUserIds = blockedProfiles?.map((p) => p.user_id) || [];
           }
 
@@ -132,14 +138,16 @@ const Feed = ({ refresh, userId }: FeedProps) => {
             .from('snoozed_users')
             .select('snoozed_user_id')
             .eq('user_id', currentUserProfileId)
-            .gt('snoozed_until', new Date().toISOString());
+            .gt('snoozed_until', new Date().toISOString())
+            .abortSignal(signal);
           
           if (snoozedData && snoozedData.length > 0) {
             const snoozedProfileIds = snoozedData.map((s) => s.snoozed_user_id);
             const { data: snoozedProfiles } = await supabase
               .from('profiles')
               .select('id, user_id')
-              .in('id', snoozedProfileIds);
+              .in('id', snoozedProfileIds)
+              .abortSignal(signal);
             snoozedUserIds = snoozedProfiles?.map((p) => p.user_id) || [];
           }
         }
@@ -159,9 +167,13 @@ const Feed = ({ refresh, userId }: FeedProps) => {
           const { data, error: profilesError } = await supabase
             .from('profiles')
             .select('id, user_id, display_name, avatar_url, profession')
-            .in('user_id', userIds);
+            .in('user_id', userIds)
+            .abortSignal(signal);
             
-          if (profilesError) throw profilesError;
+          if (profilesError) {
+            if (profilesError.code === 'ABORTED') return;
+            throw profilesError;
+          }
           profilesData = data || [];
         }
 
@@ -187,6 +199,7 @@ const Feed = ({ refresh, userId }: FeedProps) => {
             } : null
           })) || [];
 
+        if (signal && signal.aborted) return;
         setPosts(prev => isRefresh || pageNum === 0 ? newPosts : [...prev, ...newPosts]);
         setHasMore((data?.length || 0) === POSTS_PER_PAGE);
         setPage(pageNum);
@@ -216,7 +229,8 @@ const Feed = ({ refresh, userId }: FeedProps) => {
                 profession
               )
             )
-          `);
+          `)
+          .abortSignal(signal);
 
         if (userId) {
           query = query.eq('user_id', userId);
@@ -252,7 +266,8 @@ const Feed = ({ refresh, userId }: FeedProps) => {
               *,
               post_likes (id, user_id),
               comments (count)
-            `);
+            `)
+            .abortSignal(signal);
 
           if (userId) {
             fallbackQuery = fallbackQuery.eq('user_id', userId);
@@ -274,13 +289,16 @@ const Feed = ({ refresh, userId }: FeedProps) => {
           }
 
           const { data: fallbackData, error: fallbackError } = await fallbackQuery;
-          if (fallbackError) throw fallbackError;
+          if (fallbackError) {
+            if (fallbackError.code === 'ABORTED') return;
+            throw fallbackError;
+          }
 
           // Filter out reposts in fallback mode since we can't show them correctly
           const validPosts = (fallbackData as any[]).filter(p => p.post_type !== 'repost');
           await handlePostsData(validPosts, pageNumber);
           
-          if (pageNumber === 0) {
+          if (pageNumber === 0 && !signal?.aborted) {
             toast({
               title: "Update Required",
               description: "Reposts are hidden until database update.",
@@ -288,11 +306,13 @@ const Feed = ({ refresh, userId }: FeedProps) => {
             });
           }
         } else {
+          if (error.code === 'ABORTED') return;
           throw error;
         }
       }
 
     } catch (error: any) {
+      if (error.name === 'AbortError' || error.code === 'ABORTED') return;
       console.error('Error fetching posts:', error);
       // Only set error state if we don't have posts to show (initial load)
       // If loading more fails, we just toast
@@ -306,13 +326,17 @@ const Feed = ({ refresh, userId }: FeedProps) => {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchPosts(0, true);
+    const controller = new AbortController();
+    fetchPosts(0, true, controller.signal);
+    return () => controller.abort();
   }, [refresh, userId]);
 
   useEffect(() => {

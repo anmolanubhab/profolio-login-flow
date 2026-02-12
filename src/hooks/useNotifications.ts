@@ -19,7 +19,7 @@ export const useNotifications = () => {
 
   const { data: notifications, isLoading } = useQuery({
     queryKey: ['notifications'],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
@@ -28,9 +28,13 @@ export const useNotifications = () => {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(50); // Limit to last 50
+        .limit(50)
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return [];
+        throw error;
+      }
       return data as Notification[];
     },
     // Refetch every minute to simulate real-time

@@ -16,7 +16,7 @@ export interface Resume {
 export const useResumes = () => {
   return useQuery({
     queryKey: ['resumes'],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -24,9 +24,13 @@ export const useResumes = () => {
         .from('resumes')
         .select('*')
         .eq('user_id', user.id)
-        .order('updated_at', { ascending: false });
+        .order('updated_at', { ascending: false })
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return [];
+        throw error;
+      }
       return data as Resume[];
     },
   });

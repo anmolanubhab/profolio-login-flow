@@ -7,57 +7,51 @@ type PostCardSkeletonProps = {
 const PostCardSkeleton = ({ isCompanyPost = false }: PostCardSkeletonProps) => {
   return (
     <div
-      className={
-        isCompanyPost
-          ? "bg-card mb-0 sm:mb-4 overflow-hidden"
-          : "bg-card overflow-hidden mb-0 sm:mb-4 rounded-none border-0 shadow-none sm:rounded-xl sm:border sm:border-border/50 sm:shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
-      }
+      className="bg-white overflow-hidden mb-6 rounded-[2rem] sm:rounded-[2.5rem] border border-[#E8EBEF]/60 shadow-sm animate-pulse"
     >
       {/* Header */}
-      <div className="px-4 pt-3 pb-2 flex items-start gap-3">
-        <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
-        <div className="flex-1 space-y-1.5 pt-0.5">
-          <Skeleton className="h-4 w-36" />
-          <Skeleton className="h-3 w-28" />
-          <Skeleton className="h-3 w-20" />
+      <div className="px-6 pt-6 pb-4 flex items-start gap-4">
+        <Skeleton className="h-14 w-14 rounded-[1.25rem] flex-shrink-0 bg-[#F3F6F8]" />
+        <div className="flex-1 space-y-2.5 pt-1.5">
+          <Skeleton className="h-5 w-40 bg-[#F3F6F8] rounded-full" />
+          <Skeleton className="h-4 w-32 bg-[#F3F6F8] rounded-full" />
         </div>
-        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-10 w-10 rounded-xl bg-[#F3F6F8]" />
       </div>
 
       {/* Content */}
-      <div className="px-4 pb-3 space-y-2">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-[85%]" />
-        <Skeleton className="h-4 w-1/2" />
+      <div className="px-8 pb-6 space-y-3.5">
+        <Skeleton className="h-4 w-full bg-[#F3F6F8] rounded-full" />
+        <Skeleton className="h-4 w-[92%] bg-[#F3F6F8] rounded-full" />
+        <Skeleton className="h-4 w-[65%] bg-[#F3F6F8] rounded-full" />
       </div>
 
-      {/* Media placeholder (FULL WIDTH for company post) */}
-      <div className={isCompanyPost ? "-mx-4" : ""}>
-        <Skeleton className="w-full h-56 rounded-none" />
+      {/* Media placeholder */}
+      <div className="mx-6 mb-6">
+        <Skeleton className="w-full h-80 rounded-[2rem] bg-[#F3F6F8]" />
       </div>
 
       {/* Engagement stats */}
-      <div className="px-4 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Skeleton className="h-[18px] w-[18px] rounded-full" />
-          <Skeleton className="h-[18px] w-[18px] rounded-full -ml-2" />
-          <Skeleton className="h-3 w-12 ml-1" />
+      <div className="px-8 py-5 flex items-center justify-between border-b border-[#E8EBEF]/40">
+        <div className="flex items-center gap-3">
+          <div className="flex -space-x-2.5">
+            <Skeleton className="h-7 w-7 rounded-full bg-[#F3F6F8] border-2 border-white" />
+            <Skeleton className="h-7 w-7 rounded-full bg-[#F3F6F8] border-2 border-white" />
+          </div>
+          <Skeleton className="h-4 w-20 bg-[#F3F6F8] rounded-full" />
         </div>
-        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-4 w-28 bg-[#F3F6F8] rounded-full" />
       </div>
 
       {/* Action buttons */}
-      <div className="px-1 py-0.5">
-        <div className="flex items-center">
-          <Skeleton className="flex-1 h-12 rounded-lg mx-0.5" />
-          <Skeleton className="flex-1 h-12 rounded-lg mx-0.5" />
-          <Skeleton className="flex-1 h-12 rounded-lg mx-0.5" />
-          <Skeleton className="flex-1 h-12 rounded-lg mx-0.5" />
+      <div className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Skeleton className="flex-1 h-[52px] rounded-[1.25rem] bg-[#F3F6F8]" />
+          <Skeleton className="flex-1 h-[52px] rounded-[1.25rem] bg-[#F3F6F8]" />
+          <Skeleton className="flex-1 h-[52px] rounded-[1.25rem] bg-[#F3F6F8]" />
+          <Skeleton className="flex-1 h-[52px] rounded-[1.25rem] bg-[#F3F6F8]" />
         </div>
       </div>
-
-      {/* SINGLE divider line (Profolio-style) */}
-      <hr className="border-t border-border/60" />
     </div>
   );
 };

@@ -34,7 +34,7 @@ const SavedPosts = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchSavedPosts = async () => {
+  const fetchSavedPosts = async (signal?: AbortSignal) => {
     if (!user) return;
     
     try {
@@ -45,9 +45,13 @@ const SavedPosts = () => {
       const { data: savedData, error: savedError } = await supabase
         .from('saved_posts')
         .select('post_id')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .abortSignal(signal);
 
-      if (savedError) throw savedError;
+      if (savedError) {
+        if (savedError.code === 'ABORTED') return;
+        throw savedError;
+      }
 
       const postIds = savedData?.map(item => item.post_id) || [];
 
@@ -83,9 +87,13 @@ const SavedPosts = () => {
         `)
         .in('id', postIds)
         .neq('status', 'deleted')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(signal);
 
-      if (postsError) throw postsError;
+      if (postsError) {
+        if (postsError.code === 'ABORTED') return;
+        throw postsError;
+      }
 
       // Transform data to match Post interface
       const formattedPosts: Post[] = (data || []).map((post: any) => ({
@@ -97,6 +105,7 @@ const SavedPosts = () => {
 
       setPosts(formattedPosts);
     } catch (err: any) {
+      if (err.name === 'AbortError' || err.code === 'ABORTED') return;
       console.error('Error fetching saved posts:', err);
       setError(err.message || 'Failed to load saved posts');
       toast({
@@ -110,7 +119,11 @@ const SavedPosts = () => {
   };
 
   useEffect(() => {
-    fetchSavedPosts();
+    if (user) {
+      const controller = new AbortController();
+      fetchSavedPosts(controller.signal);
+      return () => controller.abort();
+    }
   }, [user]);
 
   const handleDeletePost = (postId: string) => {
@@ -149,83 +162,102 @@ const SavedPosts = () => {
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto py-12 px-6 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="text-center md:text-left">
-                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+          <div className="max-w-5xl mx-auto py-16 px-6 relative">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
+              <div className="text-center md:text-left animate-in fade-in slide-in-from-left-8 duration-700">
+                <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tight leading-tight">
                   Saved Content
                 </h1>
-                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
-                  Access your bookmarked posts and insights anytime.
+                <p className="text-[#5E6B7E] text-lg md:text-2xl font-medium max-w-2xl mx-auto md:mx-0 leading-relaxed">
+                  Access your bookmarked posts and industry insights anytime, anywhere.
                 </p>
+              </div>
+              <div className="flex justify-center animate-in fade-in slide-in-from-right-8 duration-700">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-3xl rounded-full" />
+                  <div className="relative h-24 w-24 bg-white rounded-[2.5rem] shadow-2xl flex items-center justify-center text-[#833AB4]">
+                    <Bookmark className="h-12 w-12" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="max-w-2xl mx-auto py-12 px-6">
+        <div className="max-w-2xl mx-auto py-16 px-6">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="h-12 w-12 animate-spin text-[#833AB4] mb-4" />
-              <p className="text-gray-500 font-medium">Loading your saved collection...</p>
+            <div className="flex flex-col items-center justify-center py-24 bg-white/50 backdrop-blur-sm rounded-[3rem] border border-gray-100 animate-in fade-in duration-500">
+              <div className="h-16 w-16 border-4 border-gray-100 border-t-[#833AB4] rounded-full animate-spin mb-6 shadow-xl shadow-[#833AB4]/10" />
+              <p className="text-[#5E6B7E] font-bold text-lg animate-pulse">Retrieving your collection...</p>
             </div>
           ) : error ? (
-            <div className="bg-gray-50/50 rounded-[2rem] p-12 text-center border-2 border-dashed border-red-100">
-              <div className="bg-white h-20 w-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-                <AlertTriangle className="h-10 w-10 text-red-400" />
+            <div className="bg-gray-50/50 rounded-[3rem] p-16 text-center border-2 border-dashed border-red-100 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <div className="relative mb-8">
+                <div className="absolute inset-0 bg-red-100 blur-3xl rounded-full opacity-50" />
+                <div className="relative bg-white h-24 w-24 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl">
+                  <AlertTriangle className="h-12 w-12 text-red-400" />
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h3>
-              <p className="text-gray-500 mb-8 max-w-xs mx-auto">{error}</p>
+              <h3 className="text-2xl font-extrabold text-[#1D2226] mb-3 tracking-tight">Something went wrong</h3>
+              <p className="text-[#5E6B7E] font-medium mb-10 max-w-sm mx-auto leading-relaxed">{error}</p>
               <Button 
                 onClick={fetchSavedPosts} 
-                className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-8 py-4 h-auto font-bold transition-all"
+                className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-12 py-5 h-auto font-bold shadow-xl shadow-[#833AB4]/25 transition-all transform hover:scale-105"
               >
                 Try Again
               </Button>
             </div>
           ) : posts.length === 0 ? (
-            <div className="bg-gray-50/50 rounded-[2rem] p-12 text-center border-2 border-dashed border-gray-200">
-              <div className="bg-white h-20 w-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-                <Bookmark className="h-10 w-10 text-gray-300" />
+            <div className="bg-gray-50/30 rounded-[3rem] p-20 text-center border-2 border-dashed border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <div className="relative mb-10">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-3xl rounded-full" />
+                <div className="relative bg-white h-28 w-28 rounded-[3rem] flex items-center justify-center mx-auto shadow-2xl">
+                  <Bookmark className="h-14 w-14 text-gray-300" />
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">No saved posts</h3>
-              <p className="text-gray-500 max-w-xs mx-auto">
-                Posts you save from your feed will appear here for quick access.
+              <h3 className="text-3xl font-extrabold text-[#1D2226] mb-4 tracking-tight">Your vault is empty</h3>
+              <p className="text-[#5E6B7E] font-medium max-w-sm mx-auto text-lg leading-relaxed">
+                Start building your collection by saving insightful posts from your feed.
               </p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {posts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  id={post.id}
-                  user={{
-                    id: post.user_id,
-                    name: post.profiles?.display_name || 'Unknown',
-                    avatar: post.profiles?.avatar_url || undefined,
-                    subtitle: post.profiles?.profession || undefined
-                  }}
-                  content={post.content}
-                  image={post.image_url || undefined}
-                  mediaType={(post.media_type as 'image' | 'video') || 'image'}
-                  timestamp={post.created_at}
-                  likes={post.post_likes.length}
-                  initialIsLiked={post.post_likes.some(l => l.user_id === user?.id)}
-                  onLike={(isLiked) => handleLike(post.id, isLiked)}
-                  onDelete={() => handleDeletePost(post.id)}
-                  onHide={() => {}}
-                  postedAs={post.posted_as as 'user' | 'company'}
-                  companyId={post.company_id}
-                  companyName={post.company_name}
-                  companyLogo={post.company_logo}
-                />
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              {posts.map((post, index) => (
+                <div 
+                  key={post.id} 
+                  className="animate-in fade-in slide-in-from-bottom-4"
+                  style={{ animationDelay: `${index * 150}ms` }}
+                >
+                  <PostCard
+                    id={post.id}
+                    user={{
+                      id: post.user_id,
+                      name: post.profiles?.display_name || 'Unknown',
+                      avatar: post.profiles?.avatar_url || undefined,
+                      subtitle: post.profiles?.profession || undefined
+                    }}
+                    content={post.content}
+                    image={post.image_url || undefined}
+                    mediaType={(post.media_type as 'image' | 'video') || 'image'}
+                    timestamp={post.created_at}
+                    likes={post.post_likes.length}
+                    initialIsLiked={post.post_likes.some(l => l.user_id === user?.id)}
+                    onLike={(isLiked) => handleLike(post.id, isLiked)}
+                    onDelete={() => handleDeletePost(post.id)}
+                    onHide={() => {}}
+                    postedAs={post.posted_as as 'user' | 'company'}
+                    companyId={post.company_id}
+                    companyName={post.company_name}
+                    companyLogo={post.company_logo}
+                  />
+                </div>
               ))}
             </div>
           )}
         </div>
       </div>
     </Layout>
-  );  );
+  );
 };
 
 export default SavedPosts;

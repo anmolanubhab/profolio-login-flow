@@ -23,37 +23,35 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
 
   const { data: counts, isLoading: isLoadingCounts } = useQuery({
     queryKey: ['profile-completion-counts', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return { experience: 0, education: 0, certificates: 0, resumes: 0 };
+    queryFn: async ({ signal }) => {
+      if (!user?.id) return { certificates: 0, resumes: 0 };
 
       const getCount = async (table: string) => {
         try {
           const { count, error } = await supabase
             .from(table as any)
             .select('id', { count: 'exact', head: true })
-            .eq('user_id', user.id);
+            .eq('user_id', user.id)
+            .abortSignal(signal);
           
           if (error) {
-            // Silently fail for missing tables or permission issues
+            if (error.code === 'ABORTED') return 0;
             return 0;
           }
           return count || 0;
-        } catch {
+        } catch (err: any) {
+          if (err.name === 'AbortError') return 0;
           return 0;
         }
       };
 
       // Parallel fetch for counts with error handling
-      const [experience, education, certificates, resumes] = await Promise.all([
-        getCount('experience'),
-        getCount('education'),
+      const [certificates, resumes] = await Promise.all([
         getCount('certificates'),
         getCount('resumes')
       ]);
 
       return {
-        experience,
-        education,
         certificates,
         resumes
       };
@@ -62,7 +60,7 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
     staleTime: 1000 * 60 * 5 // 5 minutes
   });
 
-  if (!profile || !counts) {
+  if (!profile) {
     return {
       percentage: 0,
       isComplete: false,
@@ -71,6 +69,10 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
       isLoading: isLoadingCounts
     };
   }
+
+  // Get education and experience counts from profile JSON fields
+  const educationCount = Array.isArray(profile.education) ? profile.education.length : 0;
+  const experienceCount = Array.isArray(profile.experience) ? profile.experience.length : 0;
 
   // Define criteria and weights
   // Total weight should sum to 100
@@ -110,7 +112,7 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
     {
       id: 'experience',
       label: 'Work Experience',
-      isComplete: counts.experience > 0,
+      isComplete: experienceCount > 0,
       weight: 15,
       actionUrl: '/profile',
       actionLabel: 'Add experience'
@@ -118,7 +120,7 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
     {
       id: 'education',
       label: 'Education',
-      isComplete: counts.education > 0,
+      isComplete: educationCount > 0,
       weight: 10,
       actionUrl: '/profile',
       actionLabel: 'Add education'
@@ -126,7 +128,7 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
     {
       id: 'resume',
       label: 'Resume',
-      isComplete: counts.resumes > 0,
+      isComplete: (counts?.resumes || 0) > 0,
       weight: 10,
       actionUrl: '/resume',
       actionLabel: 'Upload resume'
@@ -134,7 +136,7 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
     {
       id: 'certificates',
       label: 'Certificates',
-      isComplete: counts.certificates > 0,
+      isComplete: (counts?.certificates || 0) > 0,
       weight: 10,
       actionUrl: '/certificates', // Assuming this route exists or we'll direct to profile where it might be
       actionLabel: 'Add certificate'

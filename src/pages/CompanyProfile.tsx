@@ -111,11 +111,13 @@ export default function CompanyProfile() {
 
   useEffect(() => {
     if (companyId && !isLoading) {
-      fetchJobs();
+      const controller = new AbortController();
+      fetchJobs(controller.signal);
+      return () => controller.abort();
     }
   }, [companyId, isAdmin, isLoading]);
 
-  const fetchJobs = async () => {
+  const fetchJobs = async (signal?: AbortSignal) => {
     setLoadingJobs(true);
     try {
       let query = supabase
@@ -126,7 +128,8 @@ export default function CompanyProfile() {
           applications(count)
         `)
         .eq('company_id', companyId)
-        .order('posted_at', { ascending: false });
+        .order('posted_at', { ascending: false })
+        .abortSignal(signal);
 
       // If not admin, only show open jobs
       if (!isAdmin) {
@@ -135,7 +138,10 @@ export default function CompanyProfile() {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return;
+        throw error;
+      }
       
       // Transform data to match Job interface (Supabase returns count as array of objects)
       const transformedJobs = (data || []).map((job: any) => ({
@@ -145,6 +151,7 @@ export default function CompanyProfile() {
       
       setJobs(transformedJobs);
     } catch (error) {
+      if ((error as any).name === 'AbortError' || (error as any).code === 'ABORTED') return;
       console.error('Error fetching jobs:', error);
     } finally {
       setLoadingJobs(false);

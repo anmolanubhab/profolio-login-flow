@@ -27,14 +27,18 @@ const JobApplicantsPage = () => {
   // Fetch job details for header
   const { data: job } = useQuery({
     queryKey: ['job', jobId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!jobId) return null;
       const { data, error } = await supabase
         .from('jobs')
         .select('title')
         .eq('id', jobId)
-        .single();
-      if (error) throw error;
+        .abortSignal(signal)
+        .maybeSingle();
+      if (error) {
+        if (error.code === 'ABORTED') return null;
+        throw error;
+      }
       return data;
     },
     enabled: !!jobId

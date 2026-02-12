@@ -9,16 +9,20 @@ export const useJobApplication = () => {
 
   const { data: appliedJobIds, isLoading: isLoadingApplications } = useQuery({
     queryKey: ['applied-jobs'],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return new Set<string>();
 
       const { data, error } = await supabase
         .from('job_applications')
         .select('job_id')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return new Set<string>();
+        throw error;
+      }
       return new Set(data.map(app => app.job_id));
     },
     initialData: new Set<string>(),

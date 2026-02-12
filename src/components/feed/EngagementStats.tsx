@@ -20,20 +20,20 @@ const EngagementStats = ({ likes, comments, reposts = 0, onCommentsClick }: Enga
   };
   
   return (
-    <div className="px-4 py-2.5 flex items-center justify-between text-[13px] text-muted-foreground">
+    <div className="px-6 py-4 flex items-center justify-between text-[13px] font-bold text-[#5E6B7E] border-b border-[#E8EBEF]/40">
       {/* Reaction icons with count */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         {likes > 0 && (
-          <div className="flex items-center gap-1.5 group cursor-pointer">
-            <div className="flex -space-x-1.5">
-              <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full bg-primary text-white ring-2 ring-card">
-                <ThumbsUp className="w-2.5 h-2.5" fill="currentColor" />
+          <div className="flex items-center gap-3 group cursor-pointer">
+            <div className="flex -space-x-2.5">
+              <span className="inline-flex items-center justify-center w-[24px] h-[24px] rounded-full bg-gradient-to-br from-[#0077B5] to-[#0077B5]/80 text-white ring-2 ring-white shadow-md z-10 transition-transform group-hover:scale-110">
+                <ThumbsUp className="w-3.5 h-3.5" fill="currentColor" strokeWidth={3} />
               </span>
-              <span className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full bg-red-500 text-white ring-2 ring-card">
-                <Heart className="w-2.5 h-2.5" fill="currentColor" />
+              <span className="inline-flex items-center justify-center w-[24px] h-[24px] rounded-full bg-gradient-to-br from-[#E1306C] to-[#E1306C]/80 text-white ring-2 ring-white shadow-md z-0 transition-transform group-hover:scale-110 group-hover:z-20">
+                <Heart className="w-3.5 h-3.5" fill="currentColor" strokeWidth={3} />
               </span>
             </div>
-            <span className="group-hover:text-primary group-hover:underline transition-colors">
+            <span className="group-hover:text-[#833AB4] transition-colors font-black tracking-tight">
               {formatCount(likes)}
             </span>
           </div>
@@ -41,20 +41,20 @@ const EngagementStats = ({ likes, comments, reposts = 0, onCommentsClick }: Enga
       </div>
       
       {/* Comments and reposts */}
-      <div className="flex items-center gap-2 text-muted-foreground/80">
+      <div className="flex items-center gap-3 text-[#5E6B7E]/90 font-bold">
         {comments > 0 && (
           <button 
             onClick={onCommentsClick}
-            className="hover:text-primary hover:underline transition-colors"
+            className="hover:text-[#833AB4] hover:underline underline-offset-4 transition-all"
           >
             {formatCount(comments)} {comments === 1 ? 'comment' : 'comments'}
           </button>
         )}
         {comments > 0 && reposts > 0 && (
-          <span className="text-muted-foreground/50">•</span>
+          <span className="text-[#E8EBEF] font-black">•</span>
         )}
         {reposts > 0 && (
-          <span className="hover:text-primary hover:underline cursor-pointer transition-colors">
+          <span className="hover:text-[#833AB4] hover:underline underline-offset-4 cursor-pointer transition-all">
             {formatCount(reposts)} {reposts === 1 ? 'repost' : 'reposts'}
           </span>
         )}

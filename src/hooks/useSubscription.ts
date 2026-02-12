@@ -32,16 +32,24 @@ export const useSubscription = () => {
 
   return useQuery({
     queryKey: ['subscription', user?.id],
-    queryFn: async (): Promise<SubscriptionDetails> => {
+    queryFn: async ({ signal }): Promise<SubscriptionDetails> => {
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
         .from('profiles')
         .select('subscription_plan, subscription_status')
         .eq('id', user.id)
-        .single();
+        .abortSignal(signal)
+        .maybeSingle();
 
       if (error) {
+        if (error.code === 'ABORTED') {
+          return {
+            plan: 'free',
+            status: 'active',
+            features: PLAN_FEATURES.free,
+          };
+        }
         console.error('Error fetching subscription:', error);
         // Default to free on error
         return {

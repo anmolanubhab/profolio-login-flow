@@ -18,7 +18,7 @@ export interface Conversation {
 export const useJobConversations = () => {
   const { data: conversations, isLoading } = useQuery({
     queryKey: ['job-conversations'],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
@@ -32,9 +32,13 @@ export const useJobConversations = () => {
           receiver:profiles!job_messages_receiver_id_fkey(full_name, avatar_url)
         `)
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return [];
+        throw error;
+      }
 
       // Group by Job + Correspondent
       const grouped = new Map<string, Conversation>();

@@ -30,8 +30,10 @@ import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { useQueryClient } from '@tanstack/react-query';
 import { Bookmark } from 'lucide-react';
 
+import { useAuth } from '@/contexts/AuthContext';
+
 const Jobs = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const [profileId, setProfileId] = useState<string>('');
   const [filters, setFilters] = useState<JobFiltersState>({
     search: '',
@@ -56,26 +58,36 @@ const Jobs = () => {
   const { jobs } = useJobFeed();
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/');
-        return;
-      }
-      setUser(user);
-      
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (profile) {
-        setProfileId(profile.id);
+    if (!user) return;
+
+    const controller = new AbortController();
+    
+    const getProfile = async () => {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .abortSignal(controller.signal)
+          .maybeSingle();
+        
+        if (error) {
+          if (error.code === 'ABORTED') return;
+          throw error;
+        }
+
+        if (profile) {
+          setProfileId(profile.id);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
       }
     };
-    getUser();
-  }, [navigate]);
+
+    getProfile();
+
+    return () => controller.abort();
+  }, [user]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -87,14 +99,14 @@ const Jobs = () => {
     setShowApplyDialog(true);
     // Also increment view on apply intent
     if (job.posted_by !== profileId) {
-      supabase.rpc('increment_job_view', { job_id: job.id });
+      (supabase.rpc as any)('increment_job_view', { job_id: job.id });
     }
   };
 
   const handleViewDetails = (job: any) => {
     setSelectedJob(job);
     if (job.posted_by !== profileId) {
-      supabase.rpc('increment_job_view', { job_id: job.id });
+      (supabase.rpc as any)('increment_job_view', { job_id: job.id });
     }
   };
 
@@ -294,9 +306,9 @@ const Jobs = () => {
                      <Button 
                        className="flex-1"
                        onClick={() => setShowApplyDialog(true)}
-                       disabled={appliedJobs.has(selectedJob.id)}
+                       disabled={appliedJobIds.has(selectedJob.id)}
                      >
-                       {appliedJobs.has(selectedJob.id) ? 'Already Applied' : 'Apply for this Job'}
+                       {appliedJobIds.has(selectedJob.id) ? 'Already Applied' : 'Apply for this Job'}
                      </Button>
                    )}
                  </div>

@@ -55,6 +55,7 @@ import {
   Trash2,
   MoreHorizontal,
   Globe,
+  Loader2,
 } from 'lucide-react';
 
 interface PostOptionsMenuProps {
@@ -109,21 +110,28 @@ export const PostOptionsMenu = ({
   // Fetch initial state when menu opens
   useEffect(() => {
     if (open && currentUserProfileId) {
-      checkPostState();
+      const controller = new AbortController();
+      checkPostState(controller.signal);
+      return () => controller.abort();
     }
   }, [open, currentUserProfileId, postId]);
 
-  const checkPostState = async () => {
+  const checkPostState = async (signal?: AbortSignal) => {
     if (!currentUserProfileId) return;
     setIsLoadingState(true);
     try {
       // Check if saved
-      const { data: savedData } = await supabase
+      const { data: savedData, error: savedError } = await supabase
         .from('saved_posts')
         .select('id')
         .eq('post_id', postId)
         .eq('user_id', currentUserProfileId)
+        .abortSignal(signal)
         .maybeSingle();
+      
+      if (savedError && savedError.code !== 'ABORTED') {
+        throw savedError;
+      }
       
       setIsSaved(!!savedData);
 
@@ -134,12 +142,16 @@ export const PostOptionsMenu = ({
         .select('id')
         .eq('post_id', postId)
         .eq('user_id', currentUserProfileId)
+        .abortSignal(signal)
         .maybeSingle();
       
       if (!notifError) {
         setIsNotificationsEnabled(!!notifData);
+      } else if (notifError.code === 'ABORTED') {
+        return;
       }
     } catch (error) {
+      if ((error as any).name === 'AbortError' || (error as any).code === 'ABORTED') return;
       console.error('Error checking post state:', error);
     } finally {
       setIsLoadingState(false);
@@ -474,7 +486,6 @@ export const PostOptionsMenu = ({
       toast({ 
         title: 'Post link copied',
         description: 'Link copied to clipboard',
-        icon: <Link2 className="h-4 w-4" /> 
       });
       closeMenu();
     } catch (err) {
@@ -702,21 +713,22 @@ export const PostOptionsMenu = ({
       {isMobile ? (
         <>
           <button 
-            className="menu-button hover:bg-secondary transition-colors rounded-full p-2"
+            className="menu-button hover:bg-gradient-to-r hover:from-[#0077B5]/10 hover:to-[#833AB4]/10 transition-all duration-300 rounded-full p-2.5 active:scale-90 group"
             onClick={(e) => {
               e.stopPropagation();
               setOpen(true);
             }}
             aria-label="Post options"
           >
-            <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
+            <MoreHorizontal className="h-5 w-5 text-[#5E6B7E] group-hover:text-[#833AB4] transition-colors" strokeWidth={2.5} />
           </button>
           <Sheet open={open} onOpenChange={setOpen}>
-            <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-xl">
-              <SheetHeader className="pb-2 text-left">
-                <SheetTitle className="text-base">Post Options</SheetTitle>
+            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-[2.5rem] border-0 shadow-2xl p-0 outline-none">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+              <SheetHeader className="px-8 pt-10 pb-4 text-left border-b border-[#E8EBEF]/60">
+                <SheetTitle className="text-2xl font-black text-[#1D2226] tracking-tight">Post Options</SheetTitle>
               </SheetHeader>
-              <div className="space-y-1 pb-4">
+              <div className="px-4 py-6 space-y-1">
                 {menuItems}
               </div>
             </SheetContent>
@@ -726,96 +738,92 @@ export const PostOptionsMenu = ({
         <DropdownMenu open={open} onOpenChange={setOpen}>
           <DropdownMenuTrigger asChild>
             <button 
-              className="menu-button hover:bg-secondary transition-colors rounded-full p-2"
+              className="menu-button hover:bg-gradient-to-r hover:from-[#0077B5]/10 hover:to-[#833AB4]/10 transition-all duration-300 rounded-full p-2.5 active:scale-90 group"
               aria-label="Post options"
             >
-              <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
+              <MoreHorizontal className="h-5 w-5 text-[#5E6B7E] group-hover:text-[#833AB4] transition-colors" strokeWidth={2.5} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent 
             align="end" 
-            className="w-64 max-h-[70vh] overflow-y-auto z-50 bg-popover"
-            sideOffset={5}
+            className="w-80 max-h-[70vh] overflow-y-auto z-50 bg-white rounded-[2rem] border-0 shadow-2xl p-3 animate-in zoom-in-95 duration-200 outline-none"
+            sideOffset={12}
           >
-            {/* Desktop Menu Items */}
-            <DropdownMenuItem onClick={handleWhySeeingThis}>
-              <Info className="h-4 w-4 mr-2" />
-              Why am I seeing this?
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleWhoCanSeeThis}>
-              <Globe className="h-4 w-4 mr-2" />
-              Who can see this post?
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleMarkInterested}>
-              <ThumbsUp className="h-4 w-4 mr-2" />
-              Interested
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleMarkNotInterested}>
-              <ThumbsDown className="h-4 w-4 mr-2" />
-              Not Interested
-            </DropdownMenuItem>
-            
-            <DropdownMenuSeparator />
-            
-            <DropdownMenuItem onClick={handleSavePost}>
-              {isSaved ? <BookmarkCheck className="h-4 w-4 mr-2 text-primary" /> : <BookmarkPlus className="h-4 w-4 mr-2" />}
-              {isSaved ? "Saved" : "Save Post"}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleHidePost}>
-              <EyeOff className="h-4 w-4 mr-2" />
-              Hide Post
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { closeMenu(); setReportDialogOpen(true); }}>
-              <Flag className="h-4 w-4 mr-2" />
-              Report Post
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleToggleNotifications}>
-              {isNotificationsEnabled ? <BellOff className="h-4 w-4 mr-2" /> : <Bell className="h-4 w-4 mr-2" />}
-              {isNotificationsEnabled ? "Turn Off Notifications" : "Turn On Notifications"}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleCopyLink}>
-              <Link2 className="h-4 w-4 mr-2" />
-              Copy Link
-            </DropdownMenuItem>
-            
-            {!isOwnPost && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSnoozeUser}>
-                  <Clock className="h-4 w-4 mr-2" />
-                  Snooze {postUserName} for 30 days
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleHideAllFromUser}>
-                  <EyeOff className="h-4 w-4 mr-2" />
-                  Hide all from {postUserName}
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={handleBlockUser}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <UserX className="h-4 w-4 mr-2" />
-                  Block {postUserName}
-                </DropdownMenuItem>
-              </>
-            )}
-            
-            {isOwnPost && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => { closeMenu(); setDeleteDialogOpen(true); }}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Post
-                </DropdownMenuItem>
-              </>
-            )}
-            
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleManageFeed}>
-              Manage your Feed
-            </DropdownMenuItem>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+            <div className="pt-2 pb-1">
+              <DropdownMenuItem onClick={handleWhySeeingThis} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                <Info className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4] transition-all" strokeWidth={2.5} />
+                Why am I seeing this?
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleWhoCanSeeThis} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                <Globe className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4] transition-all" strokeWidth={2.5} />
+                Who can see this post?
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleMarkInterested} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                <ThumbsUp className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4] transition-all" strokeWidth={2.5} />
+                Interested
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleMarkNotInterested} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                <ThumbsDown className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4] transition-all" strokeWidth={2.5} />
+                Not Interested
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator className="my-2 bg-[#E8EBEF]/60 mx-2" />
+              
+              <DropdownMenuItem onClick={handleSavePost} className={`flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold cursor-pointer transition-all duration-300 group ${isSaved ? "text-[#833AB4] bg-[#833AB4]/5" : "text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226]"}`}>
+                {isSaved ? <BookmarkCheck className="h-5 w-5 text-[#833AB4] group-hover:scale-110" strokeWidth={2.5} /> : <BookmarkPlus className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4]" strokeWidth={2.5} />}
+                {isSaved ? "Saved" : "Save Post"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleHidePost} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                <EyeOff className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4] transition-all" strokeWidth={2.5} />
+                Hide Post
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { closeMenu(); setReportDialogOpen(true); }} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                <Flag className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4] transition-all" strokeWidth={2.5} />
+                Report Post
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleToggleNotifications} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                {isNotificationsEnabled ? <BellOff className="h-5 w-5 text-[#833AB4] group-hover:scale-110" strokeWidth={2.5} /> : <Bell className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4]" strokeWidth={2.5} />}
+                {isNotificationsEnabled ? "Turn Off Notifications" : "Turn On Notifications"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleCopyLink} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                <Link2 className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4] transition-all" strokeWidth={2.5} />
+                Copy Link
+              </DropdownMenuItem>
+              
+              {!isOwnPost && (
+                <>
+                  <DropdownMenuSeparator className="my-2 bg-[#E8EBEF]/60 mx-2" />
+                  <DropdownMenuItem onClick={handleSnoozeUser} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                    <Clock className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4] transition-all" strokeWidth={2.5} />
+                    Snooze {postUserName} for 30 days
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleHideAllFromUser} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                    <EyeOff className="h-5 w-5 text-[#5E6B7E] group-hover:scale-110 group-hover:text-[#833AB4] transition-all" strokeWidth={2.5} />
+                    Hide all from {postUserName}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleBlockUser} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer transition-all duration-300 group">
+                    <UserX className="h-5 w-5 text-red-600 group-hover:scale-110 transition-all" strokeWidth={2.5} />
+                    Block {postUserName}
+                  </DropdownMenuItem>
+                </>
+              )}
+              
+              {isOwnPost && (
+                <>
+                  <DropdownMenuSeparator className="my-2 bg-[#E8EBEF]/60 mx-2" />
+                  <DropdownMenuItem onClick={() => { closeMenu(); setDeleteDialogOpen(true); }} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer transition-all duration-300 group">
+                    <Trash2 className="h-5 w-5 text-red-600 group-hover:scale-110 transition-all" strokeWidth={2.5} />
+                    Delete Post
+                  </DropdownMenuItem>
+                </>
+              )}
+              
+              <DropdownMenuSeparator className="my-2 bg-[#E8EBEF]/60 mx-2" />
+              <DropdownMenuItem onClick={handleManageFeed} className="flex items-center gap-3 px-4 py-3.5 rounded-[1.25rem] font-bold text-[#5E6B7E] focus:bg-gradient-to-r focus:from-[#0077B5]/5 focus:to-[#833AB4]/5 focus:text-[#1D2226] cursor-pointer transition-all duration-300 group">
+                Manage your Feed
+              </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
@@ -840,28 +848,32 @@ export const PostOptionsMenu = ({
       />
 
       <Dialog open={whoCanSeeDialogOpen} onOpenChange={setWhoCanSeeDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Who can see this post?</DialogTitle>
+        <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-2xl animate-in zoom-in-95 duration-300">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+          <DialogHeader className="px-8 pt-8 pb-2">
+            <DialogTitle className="text-2xl font-bold text-[#1D2226]">Who can see this post?</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-start gap-3">
-              <div className="bg-muted p-2 rounded-full mt-0.5">
-                <Globe className="h-5 w-5 text-muted-foreground" />
+          <div className="space-y-6 px-8 py-6">
+            <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-[1.5rem] border border-[#E8EBEF]/60">
+              <div className="bg-white p-3 rounded-2xl shadow-sm text-[#0077B5]">
+                <Globe className="h-6 w-6" strokeWidth={2.5} />
               </div>
               <div className="space-y-1">
-                <h4 className="font-medium">Anyone</h4>
-                <p className="text-sm text-muted-foreground">
+                <h4 className="font-bold text-[#1D2226]">Anyone</h4>
+                <p className="text-[14px] text-[#5E6B7E] font-medium leading-relaxed">
                   Anyone on or off Profolio can see this post.
                 </p>
               </div>
             </div>
-            <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground">
+            <div className="bg-[#833AB4]/5 p-5 rounded-[1.25rem] text-[14px] text-[#833AB4] font-bold leading-relaxed border border-[#833AB4]/10">
               Visible to the public, including search engines and people without a Profolio account.
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={() => setWhoCanSeeDialogOpen(false)}>
+          <DialogFooter className="px-8 pb-8 pt-2">
+            <Button 
+              onClick={() => setWhoCanSeeDialogOpen(false)}
+              className="w-full bg-gradient-to-r from-[#0077B5] to-[#833AB4] hover:from-[#0077B5]/90 hover:to-[#833AB4]/90 text-white font-bold h-12 rounded-2xl shadow-lg transition-all duration-300 transform active:scale-95"
+            >
               Got it
             </Button>
           </DialogFooter>
@@ -869,24 +881,25 @@ export const PostOptionsMenu = ({
       </Dialog>
 
       <Dialog open={whySeeingDialogOpen} onOpenChange={setWhySeeingDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Why am I seeing this?</DialogTitle>
+        <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-2xl animate-in zoom-in-95 duration-300">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+          <DialogHeader className="px-8 pt-8 pb-2">
+            <DialogTitle className="text-2xl font-bold text-[#1D2226]">Why am I seeing this?</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-start gap-3">
-              <div className="bg-blue-100 p-2 rounded-full text-blue-600 mt-0.5">
-                <Info className="h-5 w-5" />
+          <div className="space-y-6 px-8 py-6">
+            <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-[1.5rem] border border-[#E8EBEF]/60">
+              <div className="bg-white p-3 rounded-2xl shadow-sm text-[#0077B5]">
+                <Info className="h-6 w-6" strokeWidth={2.5} />
               </div>
               <div className="space-y-1">
-                <h4 className="font-medium">
+                <h4 className="font-bold text-[#1D2226]">
                   {isPromoted 
                     ? "Promoted Content" 
                     : isCompanyPost 
                       ? "From a Company" 
                       : "In your network"}
                 </h4>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-[14px] text-[#5E6B7E] font-medium leading-relaxed">
                   {isPromoted 
                     ? "This post is promoted to reach a wider audience."
                     : isCompanyPost
@@ -895,12 +908,15 @@ export const PostOptionsMenu = ({
                 </p>
               </div>
             </div>
-            <div className="bg-muted/50 p-4 rounded-lg text-sm text-muted-foreground">
+            <div className="bg-[#0077B5]/5 p-5 rounded-[1.25rem] text-[14px] text-[#0077B5] font-bold leading-relaxed border border-[#0077B5]/10">
               Your feed is personalized based on your connections, interests, and activity.
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={() => setWhySeeingDialogOpen(false)}>
+          <DialogFooter className="px-8 pb-8 pt-2">
+            <Button 
+              onClick={() => setWhySeeingDialogOpen(false)}
+              className="w-full bg-gradient-to-r from-[#0077B5] to-[#833AB4] hover:from-[#0077B5]/90 hover:to-[#833AB4]/90 text-white font-bold h-12 rounded-2xl shadow-lg transition-all duration-300 transform active:scale-95"
+            >
               Got it
             </Button>
           </DialogFooter>
@@ -929,16 +945,16 @@ const MenuItem = ({
   <button
     onClick={onClick}
     disabled={loading}
-    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted rounded-lg transition-colors text-left disabled:opacity-50 disabled:pointer-events-none ${
-      destructive ? 'text-destructive hover:bg-destructive/10' : ''
+    className={`w-full flex items-center gap-4 px-5 py-4 hover:bg-gradient-to-r hover:from-[#0077B5]/5 hover:to-[#833AB4]/5 rounded-[1.25rem] transition-all duration-300 text-left disabled:opacity-50 disabled:pointer-events-none group ${
+      destructive ? 'text-red-600 hover:from-red-50 hover:to-red-50' : 'text-[#5E6B7E]'
     } ${className}`}
   >
     {loading ? (
       <Loader2 className="h-5 w-5 flex-shrink-0 animate-spin" />
     ) : (
-      Icon && <Icon className="h-5 w-5 flex-shrink-0" />
+      Icon && <Icon className={`h-5 w-5 flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:text-[#833AB4] ${destructive ? 'text-red-600 group-hover:text-red-700' : 'text-[#5E6B7E]'}`} strokeWidth={2.5} />
     )}
-    <span className="text-sm">{children}</span>
+    <span className="text-[15px] font-bold group-hover:text-[#1D2226] transition-colors">{children}</span>
   </button>
 );
 
@@ -955,21 +971,27 @@ const DeleteConfirmDialog = ({
   isDeleting: boolean;
 }) => (
   <AlertDialog open={open} onOpenChange={onOpenChange}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Delete Post</AlertDialogTitle>
-        <AlertDialogDescription>
-          Are you sure you want to delete this post? This action cannot be undone.
+    <AlertDialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-2xl animate-in zoom-in-95 duration-300">
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#E1306C] to-[#833AB4]" />
+      <AlertDialogHeader className="px-8 pt-8 pb-2">
+        <AlertDialogTitle className="text-2xl font-black text-[#1D2226] tracking-tight">Delete Post?</AlertDialogTitle>
+        <AlertDialogDescription className="text-[16px] text-[#5E6B7E] font-medium leading-relaxed mt-2">
+          This action cannot be undone. This will permanently remove your voice from the feed and our community servers.
         </AlertDialogDescription>
       </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+      <AlertDialogFooter className="px-8 pb-8 pt-6 gap-3">
+        <AlertDialogCancel 
+          disabled={isDeleting}
+          className="flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-[12px] text-[#5E6B7E] border-[#E8EBEF] hover:bg-[#F3F6F8] transition-all"
+        >
+          Cancel
+        </AlertDialogCancel>
         <AlertDialogAction
           onClick={onConfirm}
           disabled={isDeleting}
-          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          className="flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-[12px] bg-gradient-to-r from-[#E1306C] to-[#833AB4] text-white hover:opacity-90 shadow-lg transition-all duration-300 transform active:scale-95"
         >
-          {isDeleting ? 'Deleting...' : 'Delete'}
+          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete Permanently'}
         </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
@@ -997,63 +1019,58 @@ const ReportDialog = ({
   isSubmitting: boolean;
 }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Report Post</DialogTitle>
-        <DialogDescription>
-          Why are you reporting this post?
+    <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-2xl animate-in zoom-in-95 duration-300">
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+      <DialogHeader className="px-8 pt-8 pb-2 border-b border-[#E8EBEF]/60">
+        <DialogTitle className="text-2xl font-black text-[#1D2226] tracking-tight">Report Post</DialogTitle>
+        <DialogDescription className="text-[15px] text-[#5E6B7E] font-medium mt-1">
+          Help us understand what's wrong with this post.
         </DialogDescription>
       </DialogHeader>
-      <div className="py-4">
-        <RadioGroup value={reportReason} onValueChange={setReportReason} className="space-y-3">
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="spam" id="r-spam" />
-            <Label htmlFor="r-spam">Spam</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="harassment" id="r-harassment" />
-            <Label htmlFor="r-harassment">Harassment</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="fake_info" id="r-fake" />
-            <Label htmlFor="r-fake">Fake Information</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="inappropriate" id="r-inappropriate" />
-            <Label htmlFor="r-inappropriate">Inappropriate Content</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value="other" id="r-other" />
-            <Label htmlFor="r-other">Other</Label>
-          </div>
+      <div className="p-8 space-y-6">
+        <RadioGroup value={reportReason} onValueChange={setReportReason} className="gap-4">
+          {[
+            { value: 'spam', label: 'Spam' },
+            { value: 'harassment', label: 'Harassment' },
+            { value: 'fake_info', label: 'Fake Information' },
+            { value: 'inappropriate', label: 'Inappropriate Content' },
+            { value: 'other', label: 'Other' },
+          ].map((reason) => (
+            <div key={reason.value} className="flex items-center space-x-3 group cursor-pointer">
+              <RadioGroupItem value={reason.value} id={`r-${reason.value}`} className="border-2 border-[#E8EBEF] text-[#833AB4] focus:ring-[#833AB4]" />
+              <Label htmlFor={`r-${reason.value}`} className="text-[16px] font-bold text-[#1D2226] cursor-pointer group-hover:text-[#833AB4] transition-colors">{reason.label}</Label>
+            </div>
+          ))}
         </RadioGroup>
         
         {reportReason === 'other' && (
-          <div className="mt-4 animate-in fade-in slide-in-from-top-2">
-            <Label htmlFor="custom-reason" className="mb-2 block text-sm">Please specify</Label>
+          <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+            <Label htmlFor="custom-reason" className="text-[14px] font-black uppercase tracking-widest text-[#5E6B7E] mb-2 block">Reason Details</Label>
             <Textarea
               id="custom-reason"
               placeholder="Tell us more about the issue..."
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
-              className="min-h-[80px]"
+              className="min-h-[100px] rounded-2xl border-[#E8EBEF] focus:border-[#833AB4] focus:ring-[#833AB4] font-medium resize-none"
             />
           </div>
         )}
       </div>
-      <DialogFooter>
+      <DialogFooter className="px-8 pb-8 pt-0 gap-3">
         <Button
           variant="outline"
           onClick={() => onOpenChange(false)}
           disabled={isSubmitting}
+          className="flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-[12px] text-[#5E6B7E] border-[#E8EBEF] hover:bg-[#F3F6F8] transition-all"
         >
           Cancel
         </Button>
         <Button
           onClick={onSubmit}
           disabled={isSubmitting || (reportReason === 'other' && !customReason.trim())}
+          className="flex-1 h-12 rounded-xl font-black uppercase tracking-widest text-[12px] bg-gradient-to-r from-[#0077B5] to-[#833AB4] text-white hover:opacity-90 shadow-lg transition-all transform active:scale-95"
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Report'}
+          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Submit Report'}
         </Button>
       </DialogFooter>
     </DialogContent>

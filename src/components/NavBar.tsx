@@ -56,7 +56,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
           <div className="flex items-center gap-2 flex-shrink-0">
             <MobileNavDrawer />
             <Avatar className="h-8 w-8 cursor-pointer border border-border/50" onClick={() => navigate('/profile')}>
-              <AvatarImage src={avatarUrl || user?.user_metadata?.avatar_url} />
+              <AvatarImage src={avatarUrl || user?.user_metadata?.avatar_url} referrerPolicy="no-referrer" />
               <AvatarFallback className="text-xs">{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
             <h1 className="text-[24px] leading-none text-foreground select-none ml-1" style={{ fontFamily: '"Grand Hotel", cursive' }}>

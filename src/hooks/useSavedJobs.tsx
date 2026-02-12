@@ -11,15 +11,17 @@ export const useSavedJobs = () => {
 
   const { data: savedJobIds, isLoading } = useQuery({
     queryKey: ['saved-jobs', user?.id],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!user?.id) return new Set<string>();
       
       const { data, error } = await supabase
         .from('saved_jobs')
         .select('job_id')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .abortSignal(signal);
 
       if (error) {
+        if (error.code === 'ABORTED') return new Set<string>();
         console.error('Error fetching saved jobs:', error);
         throw error;
       }

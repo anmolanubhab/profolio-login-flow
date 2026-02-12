@@ -27,22 +27,36 @@ const JobInsightsPage = () => {
   const [isLoadingJob, setIsLoadingJob] = useState(true);
 
   useEffect(() => {
-    const fetchJobDetails = async () => {
+    const controller = new AbortController();
+    const fetchJobDetails = async (signal?: AbortSignal) => {
       if (!jobId) return;
       
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('title')
-        .eq('id', jobId)
-        .single();
-        
-      if (data) {
-        setJobTitle(data.title);
+      try {
+        const { data, error } = await supabase
+          .from('jobs')
+          .select('title')
+          .eq('id', jobId)
+          .abortSignal(signal)
+          .maybeSingle();
+          
+        if (error) {
+          if (error.code === 'ABORTED') return;
+          throw error;
+        }
+
+        if (data) {
+          setJobTitle(data.title);
+        }
+      } catch (err) {
+        if ((err as any).name === 'AbortError' || (err as any).code === 'ABORTED') return;
+        console.error('Error fetching job details:', err);
+      } finally {
+        setIsLoadingJob(false);
       }
-      setIsLoadingJob(false);
     };
 
-    fetchJobDetails();
+    fetchJobDetails(controller.signal);
+    return () => controller.abort();
   }, [jobId]);
 
   if (error) {

@@ -11,6 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Search, UserPlus, Eye } from 'lucide-react';
 
+import { useAuth } from '@/contexts/AuthContext';
+
 interface Profile {
   id: string;
   user_id: string;
@@ -23,7 +25,7 @@ interface Profile {
 }
 
 const Network = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,21 +34,10 @@ const Network = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/');
-        return;
-      }
-      setUser(user);
-    };
-
-    getUser();
-  }, [navigate]);
-
-  useEffect(() => {
     if (user) {
-      fetchProfiles();
+      const controller = new AbortController();
+      fetchProfiles(controller.signal);
+      return () => controller.abort();
     }
   }, [user]);
 
@@ -64,15 +55,19 @@ const Network = () => {
     }
   }, [searchQuery, profiles]);
 
-  const fetchProfiles = async () => {
+  const fetchProfiles = async (signal?: AbortSignal) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .neq('user_id', user?.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return;
+        throw error;
+      }
 
       // Filter out private profiles unless connected
       const visibleProfiles = data?.filter(profile => 
@@ -83,6 +78,7 @@ const Network = () => {
       setProfiles(visibleProfiles);
       setFilteredProfiles(visibleProfiles);
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       toast({
         title: "Error",
         description: error.message,

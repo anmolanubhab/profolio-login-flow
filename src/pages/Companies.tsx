@@ -11,7 +11,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Building2, MapPin, Globe, Users, Calendar, Edit, Trash2, Plus, Briefcase } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
+import { useAuth } from '@/contexts/AuthContext';
+
 export default function Companies() {
+  const { user } = useAuth();
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState<string | null>(null);
@@ -22,34 +25,48 @@ export default function Companies() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (user) {
+      const controller = new AbortController();
+      fetchProfile(controller.signal);
+      return () => controller.abort();
+    } else {
+      navigate('/');
+    }
+  }, [user]);
 
   useEffect(() => {
     if (profileId) {
-      fetchCompanies();
+      const controller = new AbortController();
+      fetchCompanies(controller.signal);
+      return () => controller.abort();
     }
   }, [profileId]);
 
-  const fetchProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate('/');
-      return;
-    }
+  const fetchProfile = async (signal?: AbortSignal) => {
+    if (!user) return;
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single();
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .abortSignal(signal)
+        .maybeSingle();
 
-    if (profile) {
-      setProfileId(profile.id);
+      if (error) {
+        if (error.code === 'ABORTED') return;
+        throw error;
+      }
+
+      if (profile) {
+        setProfileId(profile.id);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
     }
   };
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = async (signal?: AbortSignal) => {
     if (!profileId) return;
     
     setLoading(true);
@@ -58,11 +75,16 @@ export default function Companies() {
         .from('companies')
         .select('*')
         .eq('owner_id', profileId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return;
+        throw error;
+      }
       setCompanies(data || []);
     } catch (error) {
+      if ((error as any).name === 'AbortError' || (error as any).code === 'ABORTED') return;
       console.error('Error fetching companies:', error);
       toast({
         title: 'Error',

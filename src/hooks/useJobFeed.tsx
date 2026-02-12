@@ -42,15 +42,19 @@ export const useJobFeed = () => {
 
   const { data: preferences, isLoading: loadingPrefs } = useQuery({
     queryKey: ['job-preferences', user?.id],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!user?.id) return null;
       const { data, error } = await supabase
         .from('profiles')
         .select('preferences')
         .eq('user_id', user.id)
+        .abortSignal(signal)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return null;
+        throw error;
+      }
       return (data?.preferences as any)?.job_preferences as JobPreferences | undefined;
     },
     enabled: !!user?.id,
@@ -58,7 +62,7 @@ export const useJobFeed = () => {
 
   const { data: jobs, isLoading: loadingJobs } = useQuery({
     queryKey: ['jobs-feed'],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       // Fetch active jobs with company details
       const { data, error } = await supabase
         .from('jobs')
@@ -67,9 +71,13 @@ export const useJobFeed = () => {
           company:companies(name, logo_url)
         `)
         .eq('status', 'active')
-        .order('posted_at', { ascending: false });
+        .order('posted_at', { ascending: false })
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return [];
+        throw error;
+      }
       return data as Job[];
     },
   });

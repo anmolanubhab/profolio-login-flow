@@ -18,6 +18,7 @@ import {
   Briefcase
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -71,8 +72,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const handleSignOut = async (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleSignOut = async () => {
     if (isSigningOut) return;
     
     setIsSigningOut(true);
@@ -144,7 +144,7 @@ const Settings = () => {
           {/* Profile Section */}
           <div className="flex items-center gap-3 px-6 py-8">
             <Avatar className="h-16 w-16 border-2 border-white shadow-sm">
-              <AvatarImage src={avatarUrl || undefined} alt={displayName} />
+              <AvatarImage src={avatarUrl || undefined} alt={displayName} referrerPolicy="no-referrer" />
               <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 text-xl font-bold">
                 {displayName.charAt(0).toUpperCase()}
               </AvatarFallback>

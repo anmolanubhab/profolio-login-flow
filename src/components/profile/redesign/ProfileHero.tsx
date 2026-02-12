@@ -98,10 +98,10 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
         {/* Avatar - Overlapping Cover */}
         <div className="relative -mt-12 mb-3">
           <div className="inline-block relative">
-            <Avatar className="h-24 w-24 md:h-32 md:w-32 border-[4px] border-white shadow-sm bg-white">
-              <AvatarImage src={avatarUrl} alt={displayName} />
-              <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600">
-                {displayName.charAt(0)}
+            <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-white shadow-xl bg-white">
+              <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" referrerPolicy="no-referrer" />
+              <AvatarFallback className="text-2xl md:text-4xl bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 font-bold">
+                {displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             {/* Online Status Indicator */}
