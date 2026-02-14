@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { X, Image as ImageIcon, Video, Clock, Sparkles, Plus, Globe, ChevronDown } from 'lucide-react';
+import { X, Image as ImageIcon, Video, Clock, Sparkles, Plus, Globe, ChevronDown, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
 
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm'];
@@ -275,35 +276,37 @@ const AddPost = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto overscroll-y-contain bg-gray-50/30">
-        <div className="max-w-3xl mx-auto p-8 min-h-full">
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-gray-200/50 border border-gray-100/50 min-h-[400px] flex flex-col">
-            <Textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="What's on your mind? Share an update, photo, or insight with your professional network..."
-              className="w-full flex-1 border-none focus-visible:ring-0 resize-none text-xl p-0 placeholder:text-gray-300 leading-relaxed bg-transparent min-h-[200px]"
-              style={{ boxShadow: 'none' }}
-            />
+        <div className="max-w-3xl mx-auto py-8 px-0 sm:px-4 min-h-full">
+          <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden min-h-[400px] flex flex-col">
+            <CardContent className="px-4 py-6 sm:px-8 sm:pb-8 flex-1 flex flex-col">
+              <Textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="What's on your mind? Share an update, photo, or insight with your professional network..."
+                className="w-full flex-1 border-none focus-visible:ring-0 resize-none text-xl p-0 placeholder:text-gray-300 leading-relaxed bg-transparent min-h-[200px]"
+                style={{ boxShadow: 'none' }}
+              />
 
-            {/* Media Previews */}
-            {(imagePreview || videoPreview) && (
-              <div className="mt-8 relative rounded-[2rem] overflow-hidden bg-gray-50 border-2 border-gray-100 group">
-                {imagePreview && (
-                  <img src={imagePreview} alt="Preview" className="w-full h-auto max-h-[500px] object-contain" />
-                )}
-                {videoPreview && (
-                  <video src={videoPreview} controls className="w-full h-auto max-h-[500px]" />
-                )}
-                <button
-                  onClick={selectedImage ? removeImage : removeVideo}
-                  className="absolute top-4 right-4 p-2.5 bg-black/50 hover:bg-red-500 rounded-full text-white transition-all duration-300 shadow-lg backdrop-blur-md opacity-0 group-hover:opacity-100"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-            )}
-          </div>
+              {/* Media Previews */}
+              {(imagePreview || videoPreview) && (
+                <div className="mt-8 relative rounded-[2rem] overflow-hidden bg-gray-50 border-2 border-gray-100 group">
+                  {imagePreview && (
+                    <img src={imagePreview} alt="Preview" className="w-full h-auto max-h-[500px] object-contain" />
+                  )}
+                  {videoPreview && (
+                    <video src={videoPreview} controls className="w-full h-auto max-h-[500px]" />
+                  )}
+                  <button
+                    onClick={selectedImage ? removeImage : removeVideo}
+                    className="absolute top-4 right-4 p-2.5 bg-black/50 hover:bg-red-500 rounded-full text-white transition-all duration-300 shadow-lg backdrop-blur-md opacity-0 group-hover:opacity-100"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 

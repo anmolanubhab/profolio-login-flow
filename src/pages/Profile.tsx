@@ -99,7 +99,7 @@ const Profile = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto px-0 sm:px-4">
           <ProfileHeader userId={user.id} />
           {/* Only render tabs if we have a profile ID, otherwise show a loader or empty state */}
           {profileId ? (

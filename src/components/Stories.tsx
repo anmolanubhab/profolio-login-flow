@@ -391,10 +391,10 @@ const Stories = () => {
   return (
     <>
       {/* Stories Row */}
-      <div className="w-full mb-2">
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0">
+      <div className="w-full mb-4 sm:mb-6">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mx-0 px-4 sm:px-0 lg:mx-0 lg:px-0">
           {/* Create Story Card - Facebook Style */}
-          <div className="flex-shrink-0 relative w-[21vw] sm:w-[100px] aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer group shadow-sm border border-[#E8EBEF]/60 bg-white transition-all duration-300 hover:scale-[1.02] hover:shadow-md" onClick={() => setShowUpload(true)}>
+          <div className="flex-shrink-0 relative w-[21vw] sm:w-[100px] aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer group shadow-none sm:shadow-sm border-0 sm:border border-[#E8EBEF]/60 bg-white transition-all duration-300 hover:scale-[1.02] hover:shadow-md" onClick={() => setShowUpload(true)}>
             {/* Top Image Section - 70% height */}
             <div className="h-[70%] w-full relative bg-[#F8FAFB]">
               {currentUserProfile?.avatar_url ? (
@@ -429,7 +429,7 @@ const Stories = () => {
             return (
               <div 
                 key={userId} 
-                className="flex-shrink-0 relative w-[21vw] sm:w-[100px] aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer group shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md"
+                className="flex-shrink-0 relative w-[21vw] sm:w-[100px] aspect-[9/16] rounded-2xl overflow-hidden cursor-pointer group shadow-none sm:shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md"
                 onClick={() => handleStoryClick(data.stories)}
               >
                 {/* Background Media */}
@@ -545,6 +545,9 @@ const Stories = () => {
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
         >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Story Viewer</DialogTitle>
+          </DialogHeader>
           {currentStory && (
             <div 
               className="relative w-full h-full flex flex-col"

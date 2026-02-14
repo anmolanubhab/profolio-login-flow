@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +25,7 @@ interface Post {
     profession: string | null;
   } | null;
   post_likes: { id: string; user_id: string }[];
+  comments?: { count: number }[];
 }
 
 const SavedPosts = () => {
@@ -34,35 +35,13 @@ const SavedPosts = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchSavedPosts = async (signal?: AbortSignal) => {
+  const fetchSavedPosts = useCallback(async (signal?: AbortSignal) => {
     if (!user) return;
-    
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch saved post IDs first
-      const { data: savedData, error: savedError } = await supabase
-        .from('saved_posts')
-        .select('post_id')
-        .eq('user_id', user.id)
-        .abortSignal(signal);
-
-      if (savedError) {
-        if (savedError.code === 'ABORTED') return;
-        throw savedError;
-      }
-
-      const postIds = savedData?.map(item => item.post_id) || [];
-
-      if (postIds.length === 0) {
-        setPosts([]);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch the actual posts
-      const { data, error: postsError } = await supabase
+      const { data, error: qError } = await supabase
         .from('posts')
         .select(`
           id,
@@ -75,7 +54,7 @@ const SavedPosts = () => {
           company_id,
           company_name,
           company_logo,
-          profiles:user_id (
+          profiles:profiles!posts_profiles_fk (
             display_name,
             avatar_url,
             profession
@@ -83,31 +62,68 @@ const SavedPosts = () => {
           post_likes (
             id,
             user_id
-          )
+          ),
+          comments (
+            count
+          ),
+          saved_posts!inner ( user_id )
         `)
-        .in('id', postIds)
+        .eq('saved_posts.user_id', user.id)
         .neq('status', 'deleted')
         .order('created_at', { ascending: false })
         .abortSignal(signal);
 
-      if (postsError) {
-        if (postsError.code === 'ABORTED') return;
-        throw postsError;
+      if (qError) {
+        const code = (qError as { code?: string } | null)?.code;
+        if (code === 'ABORTED') return;
+        throw qError;
       }
 
-      // Transform data to match Post interface
-      const formattedPosts: Post[] = (data || []).map((post: any) => ({
-        ...post,
-        posted_as: post.posted_as || 'user',
-        profiles: post.profiles || { display_name: 'Unknown', avatar_url: null, profession: null },
-        post_likes: post.post_likes || []
+      type Row = {
+        id: string;
+        content: string;
+        image_url: string | null;
+        media_type: string | null;
+        created_at: string;
+        user_id: string;
+        posted_as: string | null;
+        company_id: string | null;
+        company_name: string | null;
+        company_logo: string | null;
+        profiles: Post['profiles'];
+        post_likes: Post['post_likes'];
+        comments?: { count: number }[];
+      };
+
+      const rows: Row[] = (data ?? []) as Row[];
+      const formatted: Post[] = rows.map((p) => ({
+        id: p.id,
+        content: p.content,
+        image_url: p.image_url,
+        media_type: p.media_type,
+        created_at: p.created_at,
+        user_id: p.user_id,
+        posted_as: p.posted_as || 'user',
+        company_id: p.company_id,
+        company_name: p.company_name,
+        company_logo: p.company_logo,
+        profiles: p.profiles || { display_name: 'Unknown', avatar_url: null, profession: null },
+        post_likes: p.post_likes || [],
+        comments: p.comments || [],
       }));
 
-      setPosts(formattedPosts);
-    } catch (err: any) {
-      if (err.name === 'AbortError' || err.code === 'ABORTED') return;
+      setPosts(formatted);
+    } catch (err: unknown) {
+      const rec = (err as Record<string, unknown>) || {};
+      const isAbort =
+        rec?.name === 'AbortError' || rec?.code === 'ABORTED';
+      if (isAbort) return;
       console.error('Error fetching saved posts:', err);
-      setError(err.message || 'Failed to load saved posts');
+      const message =
+        typeof rec?.message === 'string'
+          ? (rec.message as string)
+          : 'Failed to load saved posts';
+      setError(message);
       toast({
         title: "Error",
         description: "Failed to load saved posts. Please try again.",
@@ -116,15 +132,14 @@ const SavedPosts = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
 
   useEffect(() => {
-    if (user) {
-      const controller = new AbortController();
-      fetchSavedPosts(controller.signal);
-      return () => controller.abort();
-    }
-  }, [user]);
+    if (!user) return;
+    const controller = new AbortController();
+    fetchSavedPosts(controller.signal);
+    return () => controller.abort();
+  }, [user, fetchSavedPosts]);
 
   const handleDeletePost = (postId: string) => {
     setPosts(prev => prev.filter(p => p.id !== postId));
@@ -240,6 +255,7 @@ const SavedPosts = () => {
                     image={post.image_url || undefined}
                     mediaType={(post.media_type as 'image' | 'video') || 'image'}
                     timestamp={post.created_at}
+                comments={Array.isArray(post.comments) ? (post.comments[0]?.count ?? 0) : 0}
                     likes={post.post_likes.length}
                     initialIsLiked={post.post_likes.some(l => l.user_id === user?.id)}
                     onLike={(isLiked) => handleLike(post.id, isLiked)}

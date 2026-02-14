@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
 interface ImageCarouselProps {
@@ -113,6 +113,9 @@ const ImageCarousel = ({ images, alt = 'Post content' }: ImageCarouselProps) => 
         {/* Fullscreen Dialog */}
         <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
           <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/98 border-none rounded-[2.5rem] overflow-hidden animate-in zoom-in-95 duration-300 outline-none">
+            <DialogHeader className="sr-only">
+              <DialogTitle>{alt}</DialogTitle>
+            </DialogHeader>
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] z-50" />
             <Button
               variant="ghost"
@@ -182,6 +185,9 @@ const ImageCarousel = ({ images, alt = 'Post content' }: ImageCarouselProps) => 
         {/* Fullscreen Carousel Dialog */}
         <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
           <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/98 border-none rounded-[2.5rem] overflow-hidden animate-in zoom-in-95 duration-300 outline-none">
+            <DialogHeader className="sr-only">
+              <DialogTitle>{alt} - Image {currentIndex + 1} of {images.length}</DialogTitle>
+            </DialogHeader>
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] z-50" />
             <Button
               variant="ghost"
@@ -338,6 +344,9 @@ const ImageCarousel = ({ images, alt = 'Post content' }: ImageCarouselProps) => 
       {/* Fullscreen Dialog */}
       <Dialog open={fullscreenOpen} onOpenChange={setFullscreenOpen}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/98 border-none rounded-[2.5rem] overflow-hidden animate-in zoom-in-95 duration-300 outline-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{alt} - Image {currentIndex + 1} of {images.length}</DialogTitle>
+          </DialogHeader>
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] z-50" />
           <Button
             variant="ghost"

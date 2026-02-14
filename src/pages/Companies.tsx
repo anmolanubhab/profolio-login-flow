@@ -106,11 +106,16 @@ export default function Companies() {
 
     try {
       // Check if company has any jobs
-      const { data: jobs } = await supabase
+      const { data: jobs, error: jobsError } = await supabase
         .from('jobs')
         .select('id')
         .eq('company_id', deletingCompanyId)
         .limit(1);
+
+      if (jobsError) {
+        if (jobsError.code === 'ABORTED') return;
+        throw jobsError;
+      }
 
       if (jobs && jobs.length > 0) {
         toast({
@@ -155,7 +160,7 @@ export default function Companies() {
     <Layout>
       <div className="relative w-full overflow-hidden mb-8 border-b border-gray-100">
         <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-        <div className="max-w-6xl mx-auto py-12 px-6 relative">
+        <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 relative">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
             <div className="text-center lg:text-left">
               <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
@@ -181,19 +186,19 @@ export default function Companies() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto pb-12 px-4">
+      <div className="max-w-6xl mx-auto pb-12 px-0 sm:px-4">
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-4 sm:px-0">
             {[1, 2].map((i) => (
-              <Skeleton key={i} className="h-64" />
+              <Skeleton key={i} className="h-64 rounded-none sm:rounded-[2rem]" />
             ))}
           </div>
         ) : companies.length === 0 ? (
-          <Card className="border-4 border-dashed border-gray-100 rounded-[3rem] bg-white/50 backdrop-blur-sm overflow-hidden group">
-            <CardContent className="flex flex-col items-center justify-center py-32 text-center relative">
+          <Card className="border-4 border-dashed border-gray-100 rounded-none sm:rounded-[2rem] bg-white/50 backdrop-blur-sm overflow-hidden group shadow-none sm:shadow-card">
+            <CardContent className="flex flex-col items-center justify-center py-16 sm:py-32 text-center relative px-4 sm:px-8">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
               <div className="relative z-10">
-                <div className="w-32 h-32 bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl group-hover:scale-110 transition-transform duration-500 border-8 border-white">
+                <div className="w-32 h-32 bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] rounded-[2rem] flex items-center justify-center mb-8 shadow-2xl group-hover:scale-110 transition-transform duration-500 border-8 border-white">
                   <Building2 className="w-16 h-16 text-[#0077B5] opacity-20 group-hover:opacity-40 transition-opacity" />
                 </div>
                 <h3 className="text-3xl md:text-4xl font-black text-[#1D2226] mb-4 tracking-tight">No Companies Yet</h3>
@@ -211,9 +216,9 @@ export default function Companies() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-0 sm:px-0">
             {companies.map((company) => (
-              <Card key={company.id} className="group overflow-hidden border-none shadow-lg hover:shadow-2xl transition-all duration-500 rounded-3xl bg-white/90 backdrop-blur-md flex flex-col hover:-translate-y-1">
+              <Card key={company.id} className="group overflow-hidden border-0 sm:border border-gray-100 shadow-none sm:shadow-card hover:shadow-2xl transition-all duration-500 rounded-none sm:rounded-[2rem] bg-white/90 backdrop-blur-md flex flex-col hover:-translate-y-1">
                 {/* Cover Banner */}
                 <div className="h-32 w-full bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] relative shrink-0 overflow-hidden">
                   <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors duration-500" />
@@ -241,7 +246,7 @@ export default function Companies() {
                 </div>
 
                 <CardContent className="p-0 relative flex-1">
-                  <div className="px-8 pb-8">
+                  <div className="px-4 py-6 sm:px-8 sm:pb-8">
                     {/* Header: Logo + Info Layout */}
                     <div className="flex flex-col sm:flex-row gap-6 -mt-14 mb-6 relative z-10">
                       {/* Logo Container */}

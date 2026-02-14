@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, MessageCircle, UserPlus, Award, Check, X, ThumbsUp, MessageSquare, Share2, Eye, Briefcase, Star } from 'lucide-react';
+import { Bell, MessageCircle, UserPlus, Award, Check, X, ThumbsUp, MessageSquare, Share2, Eye, Briefcase, Star, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -388,7 +388,7 @@ const Notifications = () => {
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-[#0077B5]/10 via-transparent to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-[0.03] animate-gradient-shift" />
-          <div className="max-w-5xl mx-auto py-20 px-6 relative">
+          <div className="max-w-5xl mx-auto py-20 px-4 sm:px-6 relative">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="text-center md:text-left animate-in fade-in slide-in-from-left-8 duration-700">
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#0077B5]/10 to-[#E1306C]/10 text-[#833AB4] text-sm font-bold mb-6 border border-[#833AB4]/10">
@@ -406,12 +406,12 @@ const Notifications = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto py-16 px-6">
+        <div className="max-w-4xl mx-auto py-16 px-0 sm:px-6">
           <div className="space-y-16">
             {/* Friend Requests Section */}
             {friendRequests.length > 0 && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="flex items-center justify-between px-2">
+                <div className="flex items-center justify-between px-4 sm:px-2">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-2xl bg-[#0077B5]/10 text-[#0077B5]">
                       <UserPlus className="h-6 w-6" />
@@ -426,10 +426,10 @@ const Notifications = () => {
                   {friendRequests.map((request, index) => (
                     <Card 
                       key={request.id} 
-                      className="group rounded-[2.5rem] border-gray-100 bg-white hover:shadow-2xl transition-all duration-500 overflow-hidden animate-in fade-in slide-in-from-bottom-4"
+                      className="group rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card hover:shadow-2xl transition-all duration-500 overflow-hidden animate-in fade-in slide-in-from-bottom-4"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
-                      <CardContent className="p-8">
+                      <CardContent className="px-4 py-6 sm:p-8">
                         <div className="flex flex-col sm:flex-row items-center gap-6">
                           <div className="relative">
                             <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-2xl rounded-full group-hover:opacity-40 transition-opacity" />
@@ -485,7 +485,7 @@ const Notifications = () => {
 
             {/* Other Notifications Section */}
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700" style={{ animationDelay: '200ms' }}>
-              <div className="flex items-center justify-between px-2">
+              <div className="flex items-center justify-between px-4 sm:px-2">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-2xl bg-[#833AB4]/10 text-[#833AB4]">
                     <Bell className="h-6 w-6" />
@@ -508,14 +508,14 @@ const Notifications = () => {
                     return (
                       <Card 
                         key={notification.id} 
-                        className={`cursor-pointer group relative hover:shadow-2xl transition-all duration-500 rounded-[2.5rem] border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 ${!isRead ? 'bg-gradient-to-r from-[#0077B5]/5 via-white to-white' : 'bg-white'}`}
+                        className={`cursor-pointer group relative hover:shadow-2xl transition-all duration-500 rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-card overflow-hidden animate-in fade-in slide-in-from-bottom-4 ${!isRead ? 'bg-gradient-to-r from-[#0077B5]/5 via-white to-white' : 'bg-white'}`}
                         style={{ animationDelay: `${(index * 50) + 300}ms` }}
                         onClick={() => handleNotificationClick(notification)}
                       >
                         {!isRead && (
                           <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
                         )}
-                        <CardContent className="p-8">
+                        <CardContent className="px-4 py-6 sm:p-8">
                           <div className="flex items-center gap-6">
                             <div className="relative shrink-0">
                               <div className={`absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-0 group-hover:opacity-20 blur-xl rounded-full transition-opacity`} />
@@ -556,7 +556,7 @@ const Notifications = () => {
                   })}
                 </div>
               ) : friendRequests.length === 0 ? (
-                <div className="bg-gray-50/30 rounded-[3rem] p-24 text-center border-2 border-dashed border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="bg-gray-50/30 rounded-none sm:rounded-[3rem] p-12 sm:p-24 text-center border-0 sm:border-2 border-dashed border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700">
                   <div className="relative mb-10">
                     <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-3xl rounded-full" />
                     <div className="relative bg-white h-28 w-28 rounded-[3rem] flex items-center justify-center mx-auto shadow-2xl">

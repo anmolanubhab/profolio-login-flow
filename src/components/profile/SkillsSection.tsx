@@ -272,8 +272,8 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6">
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+        <CardContent className="px-4 py-6 sm:p-8">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-muted rounded w-1/4"></div>
             <div className="flex flex-wrap gap-2">
@@ -293,8 +293,8 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
 
       {/* Add Skill Input */}
       {isOwnProfile && (
-        <Card className="border-primary/20">
-          <CardContent className="p-6">
+        <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-primary/20 bg-white shadow-none sm:shadow-card overflow-hidden">
+          <CardContent className="px-4 py-6 sm:p-8">
             <div className="flex gap-2">
               <div className="flex-1">
                 <Input
@@ -344,8 +344,8 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
 
       {/* Skill Suggestions */}
       {isOwnProfile && (
-        <Card>
-          <CardContent className="p-6">
+        <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+          <CardContent className="px-4 py-6 sm:p-8">
             <h3 className="text-lg font-medium mb-3">Suggested Skills</h3>
             <div className="flex flex-wrap gap-2">
               {[

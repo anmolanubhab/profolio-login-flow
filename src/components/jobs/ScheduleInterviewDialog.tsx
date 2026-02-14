@@ -81,10 +81,47 @@ export const ScheduleInterviewDialog = ({
 
     setIsSubmitting(true);
 
+    const controller = new AbortController();
     try {
       // Combine date and time
       const scheduledAt = new Date(values.date);
       const [hours, minutes] = values.time.split(':').map(Number);
+      scheduledAt.setHours(hours, minutes, 0, 0);
+
+      const { error } = await supabase.from('interviews').insert({
+        title: values.title,
+        description: values.description || null,
+        scheduled_at: scheduledAt.toISOString(),
+        duration_minutes: values.duration_minutes,
+        meeting_link: values.meeting_link || null,
+        interviewer_id: user.id,
+        interviewee_id: intervieweeId,
+        status: 'scheduled',
+      }).abortSignal(controller.signal);
+
+      if (error) {
+        if (error.code === 'ABORTED' || error.message?.includes('abort')) return;
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Interview scheduled successfully.",
+      });
+      
+      onOpenChange(false);
+      form.reset();
+    } catch (error: any) {
+      if (error.name === 'AbortError') return;
+      console.error('Error scheduling interview:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to schedule interview.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    });
       scheduledAt.setHours(hours, minutes, 0, 0);
 
       const { error } = await supabase.from('interviews').insert({

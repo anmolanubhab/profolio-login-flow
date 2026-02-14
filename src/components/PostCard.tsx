@@ -60,7 +60,7 @@ const PostCard = ({
   mediaType = 'image', 
   timestamp, 
   likes, 
-  comments: initialCommentCount = 0,
+  comments: initialCommentCount,
   onLike, 
   initialIsLiked = false, 
   isPromoted = false,
@@ -89,19 +89,20 @@ const PostCard = ({
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    setCommentCount(initialCommentCount);
+    if (typeof initialCommentCount === 'number') {
+      setCommentCount(initialCommentCount);
+    }
   }, [initialCommentCount]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    
-    // Fetch initial comment count
-    fetchCommentCount(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, []);
+    if (typeof initialCommentCount !== 'number') {
+      const controller = new AbortController();
+      fetchCommentCount(controller.signal);
+      return () => {
+        controller.abort();
+      };
+    }
+  }, [id, initialCommentCount]);
 
   useEffect(() => {
     setIsLiked(initialIsLiked);
@@ -391,7 +392,7 @@ const PostCard = ({
   return (
     <article 
       className="bg-white overflow-hidden
-        rounded-[2rem] sm:rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 group/card" 
+        rounded-none sm:rounded-[2rem] border-0 sm:border sm:border-gray-100 shadow-none sm:shadow-card hover:shadow-card-hover transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 group/card mx-0 mb-4 sm:mb-6" 
       id={`post-${id}`}
     >
       <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
@@ -418,14 +419,14 @@ const PostCard = ({
 
       {/* Shared Post (if this is a repost) */}
       {postType === 'repost' && originalPost && (
-        <div className="px-6 mb-4">
+        <div className="px-0 sm:px-8 mb-4">
           <SharedPost post={originalPost} />
         </div>
       )}
 
       {/* Post Media */}
       {image && (
-        <div className="mx-6 mb-4 rounded-[2rem] overflow-hidden shadow-lg border border-gray-100 group/media transition-transform duration-500">
+        <div className="mx-0 sm:mx-8 mb-4 rounded-none sm:rounded-2xl overflow-hidden shadow-none sm:shadow-md border-0 sm:border border-gray-100 group/media transition-transform duration-500">
           <PostMedia src={image} mediaType={mediaType} />
         </div>
       )}
@@ -438,17 +439,17 @@ const PostCard = ({
       />
 
       {/* Action Buttons */}
-      <div className="border-t border-[#E8EBEF]/60">
-        <div className="flex items-center px-2 py-1 gap-1">
+      <div className="border-t border-gray-50">
+        <div className="flex items-center px-2 py-1.5 gap-1">
           <button
             onClick={handleLike}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 min-h-[52px] rounded-[1.5rem] text-[14px] font-bold transition-all duration-300 transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#833AB4]/30 ${
+            className={`flex-1 flex items-center justify-center gap-2 py-3 min-h-[48px] rounded-xl text-sm font-bold transition-all duration-300 transform active:scale-95 focus:outline-none ${
               isLiked 
-                ? 'bg-gradient-to-r from-[#0077B5]/10 to-[#E1306C]/10 text-[#833AB4]' 
-                : 'text-[#5E6B7E] hover:bg-gray-50 hover:text-[#1D2226]'
+                ? 'bg-primary/5 text-primary' 
+                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
             }`}
           >
-            <svg className={`w-5 h-5 transition-all duration-300 ${isLiked ? 'fill-[#833AB4] text-[#833AB4] scale-110' : 'group-hover:scale-110'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg className={`w-5 h-5 transition-all duration-300 ${isLiked ? 'fill-primary text-primary scale-110' : 'group-hover:scale-110'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" />
             </svg>
             <span className="hidden sm:inline">Like</span>
@@ -456,7 +457,7 @@ const PostCard = ({
           
           <button
             onClick={openComments}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 min-h-[52px] rounded-[1.5rem] text-[14px] font-bold transition-all duration-300 transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#833AB4]/30 text-[#5E6B7E] hover:bg-gray-50 hover:text-[#1D2226]"
+            className="flex-1 flex items-center justify-center gap-2 py-3 min-h-[48px] rounded-xl text-sm font-bold transition-all duration-300 transform active:scale-95 focus:outline-none text-gray-500 hover:bg-gray-50 hover:text-gray-900"
           >
             <MessageSquare className="w-5 h-5 group-hover:scale-110 transition-transform" strokeWidth={2.5} />
             <span className="hidden sm:inline">Comment</span>
@@ -464,7 +465,7 @@ const PostCard = ({
           
           <button
             onClick={handleRepost}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 min-h-[52px] rounded-[1.5rem] text-[14px] font-bold transition-all duration-300 transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#833AB4]/30 text-[#5E6B7E] hover:bg-gray-50 hover:text-[#1D2226]"
+            className="flex-1 flex items-center justify-center gap-2 py-3 min-h-[48px] rounded-xl text-sm font-bold transition-all duration-300 transform active:scale-95 focus:outline-none text-gray-500 hover:bg-gray-50 hover:text-gray-900"
           >
             <svg className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
@@ -476,7 +477,7 @@ const PostCard = ({
           {isMobile && navigator.share ? (
             <button 
               onClick={handleShareClick}
-              className="flex-1 flex items-center justify-center gap-2 py-3.5 min-h-[52px] rounded-[1.5rem] text-[14px] font-bold transition-all duration-300 transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#833AB4]/30 text-[#5E6B7E] hover:bg-gray-50 hover:text-[#1D2226]"
+              className="flex-1 flex items-center justify-center gap-2 py-3 min-h-[48px] rounded-xl text-sm font-bold transition-all duration-300 transform active:scale-95 focus:outline-none text-gray-500 hover:bg-gray-50 hover:text-gray-900"
             >
               <Send className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" strokeWidth={2.5} />
               <span className="hidden sm:inline">Send</span>
@@ -484,32 +485,32 @@ const PostCard = ({
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex-1 flex items-center justify-center gap-2 py-3.5 min-h-[52px] rounded-[1.5rem] text-[14px] font-bold transition-all duration-300 transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#833AB4]/30 text-[#5E6B7E] hover:bg-gray-50 hover:text-[#1D2226]">
+                <button className="flex-1 flex items-center justify-center gap-2 py-3 min-h-[48px] rounded-xl text-sm font-bold transition-all duration-300 transform active:scale-95 focus:outline-none text-gray-500 hover:bg-gray-50 hover:text-gray-900">
                   <Send className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" strokeWidth={2.5} />
                   <span className="hidden sm:inline">Send</span>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 p-2 rounded-[1.5rem] shadow-2xl border-[#E8EBEF]/60 animate-in fade-in zoom-in-95 duration-200">
-                <DropdownMenuItem onClick={shareOnWhatsApp} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer font-bold text-[#5E6B7E] hover:text-[#1D2226] transition-colors">
+              <DropdownMenuContent align="end" className="w-64 p-2 rounded-2xl shadow-xl border-gray-100">
+                <DropdownMenuItem onClick={shareOnWhatsApp} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer font-bold text-gray-500 hover:text-gray-900 transition-colors">
                   <div className="p-2 rounded-lg bg-green-50 text-green-600">
                     <MessageCircle className="h-5 w-5" />
                   </div>
                   <span>Share on WhatsApp</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={shareOnFacebook} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer font-bold text-[#5E6B7E] hover:text-[#1D2226] transition-colors">
+                <DropdownMenuItem onClick={shareOnFacebook} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer font-bold text-gray-500 hover:text-gray-900 transition-colors">
                   <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
                     <Facebook className="h-5 w-5" />
                   </div>
                   <span>Share on Facebook</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={shareOnTwitter} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer font-bold text-[#5E6B7E] hover:text-[#1D2226] transition-colors">
+                <DropdownMenuItem onClick={shareOnTwitter} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer font-bold text-gray-500 hover:text-gray-900 transition-colors">
                   <div className="p-2 rounded-lg bg-sky-50 text-sky-600">
                     <Twitter className="h-5 w-5" />
                   </div>
                   <span>Share on Twitter</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={copyLink} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer font-bold text-[#5E6B7E] hover:text-[#1D2226] transition-colors">
-                  <div className="p-2 rounded-lg bg-gray-100 text-gray-600">
+                <DropdownMenuItem onClick={copyLink} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 cursor-pointer font-bold text-gray-500 hover:text-gray-900 transition-colors">
+                  <div className="p-2 rounded-lg bg-gray-50 text-gray-600">
                     <Copy className="h-5 w-5" />
                   </div>
                   <span>Copy Link</span>

@@ -241,8 +241,8 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6">
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+        <CardContent className="px-4 py-6 sm:p-8">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-muted rounded w-3/4"></div>
             <div className="h-4 bg-muted rounded w-1/2"></div>
@@ -266,8 +266,8 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
 
       {/* Add/Edit Form */}
       {isOwnProfile && (isAdding || editingId) && (
-        <Card className="border-primary/20">
-          <CardContent className="p-6">
+        <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-primary/20 bg-white shadow-none sm:shadow-card overflow-hidden">
+          <CardContent className="px-4 py-6 sm:p-8">
             <div className="grid gap-4">
               <Input
                 placeholder="Institution Name"
@@ -337,8 +337,8 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
       {/* Education List */}
       <div className="space-y-4">
         {educations.map((education) => (
-          <Card key={education.id} className="shadow-card">
-            <CardContent className="p-6">
+          <Card key={education.id} className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+            <CardContent className="px-4 py-6 sm:p-8">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg text-foreground">
@@ -396,8 +396,8 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
         ))}
 
         {educations.length === 0 && !isAdding && (
-          <Card>
-            <CardContent className="p-6 text-center">
+          <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+            <CardContent className="px-4 py-6 sm:p-8 text-center">
               <p className="text-muted-foreground">
                 No education history added yet. Click "Add Education" to get started.
               </p>

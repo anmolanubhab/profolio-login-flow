@@ -45,45 +45,47 @@ const JobMessagesPage = () => {
     if (jobId && correspondentId && selectedConversation) {
       return (
         <Layout user={user} onSignOut={handleSignOut}>
-        <div className="flex flex-col h-[calc(100vh-8rem)]">
-          <div className="flex items-center gap-2 p-4 border-b">
-            <Button variant="ghost" size="icon" onClick={handleBack}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={selectedConversation.correspondentAvatar} />
-                <AvatarFallback>{selectedConversation.correspondentName.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div className="overflow-hidden">
-                <h3 className="font-medium text-sm truncate">{selectedConversation.correspondentName}</h3>
-                <p className="text-xs text-muted-foreground truncate">{selectedConversation.jobTitle}</p>
+          <div className="flex flex-col h-[calc(100vh-8rem)] bg-white">
+            <div className="flex items-center gap-2 p-4 border-b">
+              <Button variant="ghost" size="icon" onClick={handleBack}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={selectedConversation.correspondentAvatar} />
+                  <AvatarFallback>{selectedConversation.correspondentName.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="overflow-hidden">
+                  <h3 className="font-medium text-sm truncate">{selectedConversation.correspondentName}</h3>
+                  <p className="text-xs text-muted-foreground truncate">{selectedConversation.jobTitle}</p>
+                </div>
               </div>
             </div>
+            <JobChat 
+              jobId={jobId} 
+              correspondentId={correspondentId}
+              correspondentName={selectedConversation.correspondentName}
+              correspondentAvatar={selectedConversation.correspondentAvatar}
+              jobTitle={selectedConversation.jobTitle}
+              className="flex-1 border-0 rounded-none"
+            />
           </div>
-          <JobChat 
-            jobId={jobId} 
-            correspondentId={correspondentId}
-            correspondentName={selectedConversation.correspondentName}
-            correspondentAvatar={selectedConversation.correspondentAvatar}
-            jobTitle={selectedConversation.jobTitle}
-            className="flex-1 border-0 rounded-none"
-          />
-        </div>
         </Layout>
       );
     }
 
     return (
       <Layout user={user} onSignOut={handleSignOut}>
-      <div className="container py-4 space-y-4">
-        <h1 className="text-2xl font-bold px-2">Messages</h1>
-        <ConversationList 
-          conversations={conversations} 
-          isLoading={isLoading} 
-          onSelect={handleSelect} 
-        />
-      </div>
+        <div className="w-full bg-white pb-20 min-h-screen">
+          <div className="w-full py-4 space-y-4 px-0 sm:px-4">
+            <h1 className="text-2xl font-bold px-4">Messages</h1>
+            <ConversationList 
+              conversations={conversations} 
+              isLoading={isLoading} 
+              onSelect={handleSelect} 
+            />
+          </div>
+        </div>
       </Layout>
     );
   }
@@ -95,7 +97,7 @@ const JobMessagesPage = () => {
       {/* Universal Page Hero Section */}
       <div className="relative w-full overflow-hidden border-b border-gray-100 shrink-0">
         <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-        <div className="max-w-6xl mx-auto py-8 px-6 relative">
+        <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 relative">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="text-center md:text-left">
               <h1 className="text-2xl md:text-4xl font-extrabold text-[#1D2226] mb-1 tracking-tight">
@@ -109,8 +111,8 @@ const JobMessagesPage = () => {
         </div>
       </div>
 
-      <div className="flex-1 max-w-6xl w-full mx-auto p-4 md:p-6 overflow-hidden">
-        <div className="grid grid-cols-12 h-full border border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-xl shadow-gray-100/50">
+      <div className="flex-1 max-w-6xl w-full mx-auto p-0 sm:p-4 md:p-6 overflow-hidden">
+        <div className="grid grid-cols-12 h-full border-0 sm:border border-gray-100 rounded-none sm:rounded-[2rem] overflow-hidden bg-white shadow-none sm:shadow-xl sm:shadow-gray-100/50">
           {/* Sidebar List */}
           <div className="col-span-4 border-r border-gray-50 flex flex-col bg-gray-50/30">
             <div className="p-6 border-b border-gray-50 bg-white/50 backdrop-blur">

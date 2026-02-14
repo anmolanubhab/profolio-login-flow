@@ -261,6 +261,9 @@ export const PostJobDialog = ({
     <>
       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
         <DialogContent className="sm:max-w-md">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Upgrade to Recruiter Pro</DialogTitle>
+          </DialogHeader>
           <UpgradeAlert 
             title="Feature Your Job" 
             description="Get 3x more views by pinning your job to the top of search results. Upgrade to Recruiter Pro to unlock this feature."

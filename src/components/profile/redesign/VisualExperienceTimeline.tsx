@@ -65,7 +65,7 @@ export const VisualExperienceTimeline = ({
             </div>
 
             {/* Content Card */}
-            <Card className="p-5 border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-200 bg-white/80 backdrop-blur-sm">
+            <Card className="px-4 py-6 sm:p-8 rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-sm hover:shadow-md transition-shadow duration-200 bg-white/80 backdrop-blur-sm">
               <div className="flex justify-between items-start gap-4">
                 <div className="flex-1">
                   <div className="flex flex-col md:flex-row md:items-center gap-2 mb-1">

@@ -114,7 +114,7 @@ const Network = () => {
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto py-12 px-6 relative">
+          <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 relative">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="text-center md:text-left">
                 <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
@@ -128,9 +128,9 @@ const Network = () => {
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto py-8 px-4">
-          <Card className="mb-10 bg-white shadow-xl shadow-gray-100/50 border border-gray-100 rounded-[2rem] overflow-hidden">
-            <CardHeader className="p-8">
+        <div className="max-w-6xl mx-auto py-8 px-0 sm:px-4">
+          <Card className="mb-10 bg-white rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-card overflow-hidden">
+            <CardHeader className="p-4 sm:p-8">
               <div className="relative group">
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#833AB4] transition-colors" />
                 <Input
@@ -145,7 +145,7 @@ const Network = () => {
           </Card>
 
           {filteredProfiles.length === 0 ? (
-            <Card className="p-20 text-center bg-white border-none shadow-sm rounded-[3rem]">
+            <Card className="p-12 sm:p-20 text-center bg-white rounded-none sm:rounded-[2rem] border-0 sm:border shadow-none sm:shadow-card">
               <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Search className="h-10 w-10 text-gray-300" />
               </div>
@@ -154,13 +154,13 @@ const Network = () => {
               </p>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               {filteredProfiles.map((profile) => (
-                <Card key={profile.id} className="group bg-white border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden flex flex-col">
+                <Card key={profile.id} className="group bg-white rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-card hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 overflow-hidden flex flex-col">
                   <div className="h-24 bg-gradient-to-r from-[#0077B5]/10 via-[#833AB4]/10 to-[#E1306C]/10 relative overflow-hidden">
                     <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] animate-gradient-shift" />
                   </div>
-                  <CardContent className="pt-0 px-8 pb-8 flex-1 flex flex-col items-center text-center relative">
+                  <CardContent className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 flex flex-col items-center text-center relative">
                     <div className="relative -mt-12 mb-6">
                       <Avatar className="h-24 w-24 border-4 border-white shadow-xl group-hover:scale-105 transition-transform duration-500">
                         <AvatarImage src={profile.avatar_url} className="object-cover" />

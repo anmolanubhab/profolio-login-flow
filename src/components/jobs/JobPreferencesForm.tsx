@@ -146,14 +146,14 @@ export const JobPreferencesForm = () => {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+        <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
           <CardTitle>Job Preferences</CardTitle>
           <CardDescription>
             Customize your job feed and alerts. These settings help us find the right opportunities for you.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-8">
+        <CardContent className="px-4 py-6 sm:px-8 sm:pb-8 space-y-8">
           
           {/* Roles */}
           <div className="space-y-3">

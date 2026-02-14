@@ -196,8 +196,8 @@ export const UserApplicationsCard = () => {
   return (
     <div className="space-y-4">
       {applications.map((application) => (
-        <Card key={application.id} className="hover:shadow-md transition-shadow">
-          <CardHeader>
+        <Card key={application.id} className="hover:shadow-md transition-shadow rounded-none sm:rounded-[1.5rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-md">
+          <CardHeader className="px-4 sm:px-6">
             <div className="flex items-start justify-between">
               <div className="flex gap-4">
                 {application.job?.companies?.logo_url ? (
@@ -222,7 +222,7 @@ export const UserApplicationsCard = () => {
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-4">
               <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />

@@ -53,7 +53,7 @@ export function useCompany(companyId?: string) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
 
-  const fetchCompany = useCallback(async () => {
+  const fetchCompany = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) {
       setIsLoading(false);
       return;
@@ -66,60 +66,85 @@ export function useCompany(companyId?: string) {
         .from('companies')
         .select('*')
         .eq('id', companyId)
+        .abortSignal(signal)
         .single();
 
-      if (companyError) throw companyError;
+      if (companyError) {
+        if (companyError.code === 'ABORTED') return;
+        throw companyError;
+      }
       setCompany(companyData);
 
       // Get profile ID if logged in
       if (user) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('id')
           .eq('user_id', user.id)
-          .single();
+          .abortSignal(signal)
+          .maybeSingle();
+
+        if (profileError && profileError.code !== 'ABORTED') {
+          console.error('Error fetching profile:', profileError);
+        }
 
         if (profile) {
           setProfileId(profile.id);
 
           // Check if user is admin of this company
-          const { data: membership } = await supabase
+          const { data: membership, error: membershipError } = await supabase
             .from('company_members')
             .select('role')
             .eq('company_id', companyId)
             .eq('user_id', profile.id)
-            .single();
+            .abortSignal(signal)
+            .maybeSingle();
+
+          if (membershipError && membershipError.code !== 'ABORTED') {
+            console.error('Error fetching membership:', membershipError);
+          }
 
           setIsAdmin(!!membership || companyData?.owner_id === profile.id);
 
           // Check if user is following
-          const { data: following } = await supabase
+          const { data: following, error: followingError } = await supabase
             .from('company_followers')
             .select('id')
             .eq('company_id', companyId)
             .eq('user_id', profile.id)
-            .single();
+            .abortSignal(signal)
+            .maybeSingle();
+
+          if (followingError && followingError.code !== 'ABORTED') {
+            console.error('Error fetching following status:', followingError);
+          }
 
           setIsFollowing(!!following);
         }
       }
 
       // Fetch follower count
-      const { count } = await supabase
+      const { count, error: countError } = await supabase
         .from('company_followers')
         .select('*', { count: 'exact', head: true })
-        .eq('company_id', companyId);
+        .eq('company_id', companyId)
+        .abortSignal(signal);
+
+      if (countError && countError.code !== 'ABORTED') {
+        console.error('Error fetching follower count:', countError);
+      }
 
       setFollowerCount(count || 0);
 
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'ABORTED' || error.name === 'AbortError') return;
       console.error('Error fetching company:', error);
     } finally {
       setIsLoading(false);
     }
   }, [companyId, user]);
 
-  const fetchMembers = useCallback(async () => {
+  const fetchMembers = useCallback(async (signal?: AbortSignal) => {
     if (!companyId || !isAdmin) return;
 
     try {
@@ -132,17 +157,26 @@ export function useCompany(companyId?: string) {
           role,
           created_at
         `)
-        .eq('company_id', companyId);
+        .eq('company_id', companyId)
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return;
+        throw error;
+      }
 
       // Fetch profile details for each member
       if (data && data.length > 0) {
         const memberIds = data.map(m => m.user_id);
-        const { data: profiles } = await supabase
+        const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('id, display_name, avatar_url, profession')
-          .in('id', memberIds);
+          .in('id', memberIds)
+          .abortSignal(signal);
+
+        if (profilesError && profilesError.code !== 'ABORTED') {
+          console.error('Error fetching member profiles:', profilesError);
+        }
 
         const membersWithProfiles = data.map(member => ({
           ...member,
@@ -153,18 +187,23 @@ export function useCompany(companyId?: string) {
       } else {
         setMembers([]);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'ABORTED' || error.name === 'AbortError') return;
       console.error('Error fetching members:', error);
     }
   }, [companyId, isAdmin]);
 
   useEffect(() => {
-    fetchCompany();
+    const controller = new AbortController();
+    fetchCompany(controller.signal);
+    return () => controller.abort();
   }, [fetchCompany]);
 
   useEffect(() => {
     if (isAdmin) {
-      fetchMembers();
+      const controller = new AbortController();
+      fetchMembers(controller.signal);
+      return () => controller.abort();
     }
   }, [isAdmin, fetchMembers]);
 
@@ -289,7 +328,7 @@ export function useCompanyInvitations() {
   const [invitations, setInvitations] = useState<CompanyInvitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchInvitations = useCallback(async () => {
+  const fetchInvitations = useCallback(async (signal?: AbortSignal) => {
     if (!user?.email) {
       setIsLoading(false);
       setInvitations([]);
@@ -312,9 +351,11 @@ export function useCompanyInvitations() {
         `)
         .eq('email', user.email)
         .eq('status', 'pending')
-        .gt('expires_at', new Date().toISOString());
+        .gt('expires_at', new Date().toISOString())
+        .abortSignal(signal);
 
       if (error) {
+        if (error.code === 'ABORTED') return;
         // Suppress permission denied errors (42501) which happen if RLS is strict or table permissions are missing
         if (error.code !== '42501') {
           console.error('Error fetching invitations:', error);
@@ -326,10 +367,15 @@ export function useCompanyInvitations() {
       if (data && data.length > 0) {
         // Fetch company details for each invitation
         const companyIds = [...new Set(data.map(inv => inv.company_id))];
-        const { data: companies } = await supabase
+        const { data: companies, error: companiesError } = await supabase
           .from('companies')
           .select('*')
-          .in('id', companyIds);
+          .in('id', companyIds)
+          .abortSignal(signal);
+
+        if (companiesError && companiesError.code !== 'ABORTED') {
+          console.error('Error fetching companies for invitations:', companiesError);
+        }
 
         const invitationsWithCompanies: CompanyInvitation[] = data.map(inv => ({
           id: inv.id,
@@ -346,7 +392,8 @@ export function useCompanyInvitations() {
       } else {
         setInvitations([]);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'ABORTED' || error.name === 'AbortError') return;
       console.error('Error fetching invitations:', error);
       setInvitations([]);
     } finally {
@@ -355,7 +402,9 @@ export function useCompanyInvitations() {
   }, [user?.email]);
 
   useEffect(() => {
-    fetchInvitations();
+    const controller = new AbortController();
+    fetchInvitations(controller.signal);
+    return () => controller.abort();
   }, [fetchInvitations]);
 
   const acceptInvitation = async (invitationId: string, token: string) => {

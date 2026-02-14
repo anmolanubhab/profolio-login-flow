@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,7 @@ const CertificateVault = () => {
   const { toast } = useToast();
 
   const fetchCertificates = async (signal?: AbortSignal) => {
+    setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || (signal && signal.aborted)) return;
@@ -48,8 +50,8 @@ const CertificateVault = () => {
         throw error;
       }
       setCertificates(data || []);
-    } catch (error) {
-      if (error.name === 'AbortError') return;
+    } catch (error: any) {
+      if (error.name === 'AbortError' || error.code === 'ABORTED') return;
       console.error('Error fetching certificates:', error);
       toast({
         title: "Error loading certificates",

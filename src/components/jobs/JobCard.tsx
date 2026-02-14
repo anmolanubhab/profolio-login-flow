@@ -64,20 +64,16 @@ export const JobCard = ({ job, onApply, onViewDetails, onEdit, onDelete, onToggl
   const isOwner = currentUserId && job.posted_by === currentUserId;
   
   return (
-    <Card className={`hover:shadow-lg transition-all duration-200 border-border/50 hover:border-primary/20 group relative overflow-hidden ${job.is_featured ? 'ring-1 ring-amber-400/30 bg-amber-50/10' : ''}`}>
-      {/* Badges moved to absolute position inside CardHeader, but for mobile/layout reasons keep them here if needed? 
-          Actually, the previous implementation had Recommended badge here. I removed it in the previous replace and put it in CardHeader. 
-          Let's make sure I didn't leave the old one. 
-          The old one was:
-          {job.matchReasons && job.matchReasons.length > 0 && (
-            <div className="absolute top-0 right-0 p-2">...</div>
-          )}
-          I need to remove that block.
-      */}
+    <Card className={cn(
+      "hover:shadow-lg transition-all duration-200 group relative overflow-hidden",
+      "rounded-none sm:rounded-[2rem] shadow-none sm:shadow-lg",
+      "border-0 sm:border border-gray-100 bg-white",
+      job.is_featured ? 'ring-1 ring-amber-400/30 bg-amber-50/10' : ''
+    )}>
       
-      <CardHeader className="pb-3">
+      <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
         <div className="flex items-start gap-4">
-          <div className="absolute top-0 right-0 p-2 flex flex-col gap-1 items-end z-10">
+          <div className="absolute top-0 right-0 p-4 flex flex-col gap-1 items-end z-10">
              {job.is_featured && (
                <Badge variant="default" className="bg-amber-500 hover:bg-amber-600 text-white gap-1 shadow-sm border-amber-600/20">
                 <Sparkles className="w-3 h-3 fill-white" />
@@ -184,17 +180,17 @@ export const JobCard = ({ job, onApply, onViewDetails, onEdit, onDelete, onToggl
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3 pb-3">
-        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+      <CardContent className="px-4 py-6 sm:px-8 sm:pb-8 space-y-4">
+        <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
           {job.description}
         </p>
         
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary" className="flex items-center gap-1 text-xs font-normal">
+          <Badge variant="secondary" className="flex items-center gap-1 text-xs font-normal bg-gray-100 text-gray-700">
             <MapPin className="w-3 h-3" />
             {job.location}
           </Badge>
-          <Badge variant="secondary" className="flex items-center gap-1 text-xs font-normal">
+          <Badge variant="secondary" className="flex items-center gap-1 text-xs font-normal bg-gray-100 text-gray-700">
             <Briefcase className="w-3 h-3" />
             {job.employment_type}
           </Badge>
@@ -204,11 +200,11 @@ export const JobCard = ({ job, onApply, onViewDetails, onEdit, onDelete, onToggl
             </Badge>
           )}
           {job.experience_level && (
-            <Badge variant="outline" className="text-xs font-normal capitalize">
+            <Badge variant="outline" className="text-xs font-normal capitalize border-gray-200 text-gray-600">
               {job.experience_level}
             </Badge>
           )}
-          <Badge variant="outline" className="flex items-center gap-1 text-xs font-normal text-muted-foreground">
+          <Badge variant="outline" className="flex items-center gap-1 text-xs font-normal text-gray-500 border-gray-100">
             <Calendar className="w-3 h-3" />
             {formatDistanceToNow(new Date(job.posted_at), { addSuffix: true })}
           </Badge>
@@ -223,13 +219,13 @@ export const JobCard = ({ job, onApply, onViewDetails, onEdit, onDelete, onToggl
 
         {job.matchReasons && job.matchReasons.length > 0 && (
           <div className="pt-1">
-            <p className="text-xs text-muted-foreground italic">
+            <p className="text-xs text-gray-500 italic">
               Matches your {job.matchReasons.join(', ').toLowerCase()}
             </p>
           </div>
         )}
       </CardContent>
-      <CardFooter className="gap-2 pt-0">
+      <CardFooter className="px-4 pb-6 sm:px-8 sm:pb-8 gap-3 pt-0">
         <Button 
           onClick={() => onViewDetails(job)}
           variant="outline"

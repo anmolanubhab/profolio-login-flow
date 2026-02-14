@@ -31,7 +31,7 @@ const SharedPost = ({ post }: SharedPostProps) => {
   const subtitle = isCompany ? 'Company' : post.profiles?.profession;
 
   return (
-    <div className="mx-4 mt-2 mb-4 border border-[#E8EBEF] rounded-[1.5rem] overflow-hidden bg-gray-50/30 hover:bg-gray-50/50 transition-colors duration-300">
+    <div className="mx-0 sm:mx-4 mt-2 mb-4 border-0 sm:border border-[#E8EBEF] rounded-none sm:rounded-[1.5rem] overflow-hidden bg-gray-50/30 hover:bg-gray-50/50 transition-colors duration-300">
       {/* Header */}
       <div className="p-4 flex items-center gap-3">
         <Avatar className={`h-10 w-10 ring-2 ring-white shadow-sm transition-all duration-300 ${isCompany ? 'rounded-xl' : 'rounded-[0.9rem]'}`}>

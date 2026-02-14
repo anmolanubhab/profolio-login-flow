@@ -120,70 +120,81 @@ export const CompanyMembersCard = ({
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+        <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+          <CardTitle className="flex items-center gap-2 text-gray-900">
             <Users className="w-5 h-5 text-primary" />
             Team Members ({members.length})
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
           {members.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No team members yet.</p>
-              {isAdmin && <p className="text-sm">Invite team members to help manage this company.</p>}
+            <div className="text-center py-16 text-gray-500 border-2 border-dashed border-gray-100 rounded-[2rem] bg-gray-50/30">
+              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm mx-auto mb-4">
+                <Users className="w-8 h-8 text-gray-300" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No team members yet</h3>
+              <p className="max-w-[260px] mx-auto">
+                {isAdmin ? 'Invite team members to help manage this company.' : 'No team members are listed for this company.'}
+              </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {members.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                  className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 hover:border-primary/20 hover:bg-primary/[0.02] transition-all duration-300 group"
                 >
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-12 w-12 border-2 border-white shadow-sm">
                       <AvatarImage src={member.profile?.avatar_url || ''} />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-gray-100 text-gray-600 font-semibold">
                         {member.profile?.display_name?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-foreground">
+                      <p className="font-bold text-gray-900">
                         {member.profile?.display_name || 'Unknown User'}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-gray-500">
                         {member.profile?.profession || 'Team Member'}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     {getRoleBadge(member.role, member.user_id)}
                     
                     {isAdmin && member.user_id !== ownerId && member.user_id !== currentUserId && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="w-4 h-4" />
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreVertical className="w-4 h-4 text-gray-500" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="w-56 p-1.5 rounded-xl shadow-lg border-gray-100">
                           {member.role === 'content_admin' && (
-                            <DropdownMenuItem onClick={() => handleRoleChange(member.id, 'super_admin')}>
-                              <ShieldCheck className="w-4 h-4 mr-2" />
+                            <DropdownMenuItem 
+                              className="rounded-lg py-2.5 cursor-pointer"
+                              onClick={() => handleRoleChange(member.id, 'super_admin')}
+                            >
+                              <ShieldCheck className="w-4 h-4 mr-2 text-gray-500" />
                               Promote to Super Admin
                             </DropdownMenuItem>
                           )}
                           {member.role === 'super_admin' && (
-                            <DropdownMenuItem onClick={() => handleRoleChange(member.id, 'content_admin')}>
-                              <ShieldAlert className="w-4 h-4 mr-2" />
+                            <DropdownMenuItem 
+                              className="rounded-lg py-2.5 cursor-pointer"
+                              onClick={() => handleRoleChange(member.id, 'content_admin')}
+                            >
+                              <ShieldAlert className="w-4 h-4 mr-2 text-gray-500" />
                               Demote to Content Admin
                             </DropdownMenuItem>
                           )}
+                          <div className="h-px bg-gray-50 my-1" />
                           <DropdownMenuItem 
                             onClick={() => setRemovingMemberId(member.id)}
-                            className="text-destructive focus:text-destructive"
+                            className="text-destructive focus:text-destructive focus:bg-destructive/5 rounded-lg py-2.5 cursor-pointer font-medium"
                           >
                             <UserMinus className="w-4 h-4 mr-2" />
                             Remove from Company

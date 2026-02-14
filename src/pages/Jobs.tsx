@@ -159,13 +159,13 @@ const Jobs = () => {
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto py-12 px-6 relative">
+          <div className="max-w-4xl mx-auto py-20 px-4 sm:px-6 relative">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="text-center md:text-left">
-                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+                <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tighter">
                   Find Your Next Opportunity
                 </h1>
-                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
+                <p className="text-[#5E6B7E] text-lg md:text-2xl font-medium max-w-2xl mx-auto md:mx-0 leading-relaxed">
                   Discover jobs that match your skills and interests.
                 </p>
               </div>
@@ -181,8 +181,8 @@ const Jobs = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto py-8 px-4">
-          <div className="mb-8 flex flex-wrap items-center gap-3">
+        <div className="max-w-4xl mx-auto py-8 px-0 sm:px-4">
+          <div className="mb-8 flex flex-wrap items-center gap-3 px-4 sm:px-2">
             <Button 
               variant="outline" 
               className="rounded-full font-semibold relative p-[1px] overflow-hidden group border-none h-10"
@@ -210,8 +210,8 @@ const Jobs = () => {
             </Button>
           </div>
 
-          <Card className="mb-10 bg-white shadow-xl shadow-gray-100/50 border border-gray-100 rounded-[2rem] overflow-hidden">
-            <CardContent className="p-8">
+          <Card className="mb-10 bg-white shadow-none sm:shadow-card border-0 sm:border border-gray-100 rounded-none sm:rounded-[2rem] overflow-hidden">
+            <CardContent className="px-4 py-6 sm:p-8">
               <JobFilters
                 filters={filters}
                 onFiltersChange={setFilters}
@@ -245,6 +245,9 @@ const Jobs = () => {
         {/* Job Details Dialog */}
         <Dialog open={!!selectedJob && !showApplyDialog} onOpenChange={() => setSelectedJob(null)}>
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Job Details</DialogTitle>
+            </DialogHeader>
             {selectedJob && (
               <div className="space-y-6">
                  <div>

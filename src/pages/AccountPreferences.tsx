@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PreferenceRow, PreferenceToggle, SectionTitle, SectionSeparator } from "@/components/settings/PreferenceComponents";
 import { VisibilitySelector } from "@/components/settings/VisibilitySelector";
 import { Layout } from "@/components/Layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface VisibilitySettings {
   profile: 'everyone' | 'connections' | 'recruiters' | 'only_me';
@@ -230,178 +231,234 @@ const AccountPreferences = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="bg-background min-h-screen">
-        <div className="px-4 py-6">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Account preferences
-          </h1>
+      <div className="bg-white min-h-screen">
+        {/* Universal Page Hero Section */}
+        <div className="relative w-full overflow-hidden border-b border-gray-100">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
+          <div className="max-w-4xl mx-auto py-12 px-6 relative">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="text-center md:text-left">
+                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+                  Account Preferences
+                </h1>
+                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
+                  Manage your account settings, language, and privacy preferences.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <div className="max-w-4xl mx-auto py-8 px-0 sm:px-4 space-y-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-6">
+              {/* SECTION 1: Account Information */}
+              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+                  <div className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-gray-700" />
+                    <CardTitle className="text-lg font-bold text-gray-900">Account Information</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <PreferenceRow 
+                    label="Email address" 
+                    rightValue={user?.email || ""} 
+                    onClick={() => handleNotImplemented("Email address")} 
+                  />
+                  <PreferenceRow 
+                    label="Phone number" 
+                    rightValue={profile?.phone || "Not provided"} 
+                    onClick={() => handleNotImplemented("Phone number")} 
+                  />
+                  <PreferenceRow 
+                    label="Password" 
+                    rightValue="••••••••" 
+                    onClick={() => navigate('/settings/security')} 
+                  />
+                </CardContent>
+              </Card>
+
+              {/* SECTION 2: Localization */}
+              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-5 w-5 text-gray-700" />
+                    <CardTitle className="text-lg font-bold text-gray-900">Display & Localization</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <VisibilitySelector
+                    title="Language"
+                    description="Select your preferred language"
+                    value={localizationSettings.language}
+                    options={LANGUAGE_OPTIONS}
+                    onChange={(val) => handleLocalizationChange('language', val)}
+                    disabled={isUpdating}
+                  />
+                  <VisibilitySelector
+                    title="Region / Country"
+                    description="Select your region"
+                    value={localizationSettings.region}
+                    options={REGION_OPTIONS}
+                    onChange={(val) => handleLocalizationChange('region', val)}
+                    disabled={isUpdating}
+                  />
+                  <PreferenceRow 
+                    label="Time zone" 
+                    rightValue={preferences.timezone || "Pacific Time"} 
+                    subLabel="Auto-detected"
+                    onClick={() => handleNotImplemented("Time zone")} 
+                  />
+                </CardContent>
+              </Card>
+
+              {/* SECTION 3: Content Preferences */}
+              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+                  <div className="flex items-center gap-2">
+                    <MonitorPlay className="h-5 w-5 text-gray-700" />
+                    <CardTitle className="text-lg font-bold text-gray-900">Content Preferences</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <PreferenceRow 
+                    label="Autoplay videos" 
+                    rightValue={autoplay} 
+                    onClick={() => handleNotImplemented("Autoplay videos")} 
+                  />
+                  <PreferenceToggle 
+                    label="Sound effects" 
+                    subLabel="Play sounds for notifications and actions"
+                    checked={soundEffects}
+                    onCheckedChange={handleToggleSound}
+                    disabled={isUpdating}
+                  />
+                  <PreferenceRow 
+                    label="Feed preferences" 
+                    rightValue={feedPreferences} 
+                    onClick={() => handleNotImplemented("Feed preferences")} 
+                  />
+                </CardContent>
+              </Card>
+
+              {/* SECTION 4: Notifications */}
+              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-gray-700" />
+                    <CardTitle className="text-lg font-bold text-gray-900">Notifications</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <PreferenceToggle 
+                    label="Job alerts" 
+                    subLabel="Get notified about new job matches"
+                    checked={notificationSettings.job_alerts}
+                    onCheckedChange={(val) => handleNotificationChange('job_alerts', val)}
+                    disabled={isUpdating}
+                  />
+                  <PreferenceToggle 
+                    label="Profile views" 
+                    subLabel="Notify me when someone views my profile"
+                    checked={notificationSettings.profile_views}
+                    onCheckedChange={(val) => handleNotificationChange('profile_views', val)}
+                    disabled={isUpdating}
+                  />
+                  <PreferenceToggle 
+                    label="Messages" 
+                    subLabel="Notify me about new messages"
+                    checked={notificationSettings.messages}
+                    onCheckedChange={(val) => handleNotificationChange('messages', val)}
+                    disabled={isUpdating}
+                  />
+                  <VisibilitySelector
+                    title="Email frequency"
+                    description="How often you want to receive emails"
+                    value={notificationSettings.email_frequency}
+                    options={EMAIL_FREQUENCY_OPTIONS}
+                    onChange={(val) => handleNotificationChange('email_frequency', val)}
+                    disabled={isUpdating}
+                  />
+                  <PreferenceToggle 
+                    label="Push notifications" 
+                    subLabel="Receive alerts on your device"
+                    checked={pushNotifications}
+                    onCheckedChange={handleTogglePush}
+                    disabled={isUpdating}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* SECTION 5: Profile Visibility */}
+              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+                  <div className="flex items-center gap-2">
+                    <Eye className="h-5 w-5 text-gray-700" />
+                    <CardTitle className="text-lg font-bold text-gray-900">Profile Visibility</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <VisibilitySelector
+                    title="Profile visibility"
+                    description="Control who can see your profile"
+                    value={visibilitySettings.profile}
+                    options={PROFILE_VISIBILITY_OPTIONS}
+                    onChange={(val) => handleVisibilityChange('profile', val)}
+                    disabled={isUpdating}
+                  />
+                  <VisibilitySelector
+                    title="Job activity"
+                    description="Manage who sees your job activity"
+                    value={visibilitySettings.job_activity}
+                    options={JOB_ACTIVITY_OPTIONS}
+                    onChange={(val) => handleVisibilityChange('job_activity', val)}
+                    disabled={isUpdating}
+                  />
+                  <VisibilitySelector
+                    title="Email visibility"
+                    description="Choose who can see your email address"
+                    value={visibilitySettings.email}
+                    options={EMAIL_VISIBILITY_OPTIONS}
+                    onChange={(val) => handleVisibilityChange('email', val)}
+                    disabled={isUpdating}
+                  />
+                  <PreferenceRow 
+                    label="Story viewing" 
+                    rightValue={storyViewing} 
+                    onClick={() => handleNotImplemented("Story viewing")} 
+                  />
+                </CardContent>
+              </Card>
+
+              {/* SECTION 6: Account Actions */}
+              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5 text-gray-700" />
+                    <CardTitle className="text-lg font-bold text-gray-900">Account Actions</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <PreferenceRow 
+                    label="Hibernate account" 
+                    subLabel="Temporary deactivate your account"
+                    onClick={() => handleNotImplemented("Hibernate account")} 
+                  />
+                  <PreferenceRow 
+                    label="Close account" 
+                    subLabel="Permanently delete your account"
+                    onClick={() => handleNotImplemented("Close account")} 
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="flex flex-col">
-          {/* SECTION 1: Account Information */}
-          <SectionTitle title="Account Information" icon={User} />
-          <PreferenceRow 
-            label="Phone numbers" 
-            onClick={() => handleNotImplemented("Phone numbers")} 
-          />
-          <PreferenceRow 
-            label="Email addresses" 
-            onClick={() => handleNotImplemented("Email addresses")} 
-          />
-          <PreferenceRow 
-            label="Verifications" 
-            onClick={() => handleNotImplemented("Verifications")} 
-          />
-
-          <SectionSeparator />
-
-          {/* SECTION 2: Language & Region */}
-          <SectionTitle title="Language & Region" icon={Globe} />
-          <VisibilitySelector
-            title="App language"
-            description="Select your preferred language"
-            value={localizationSettings.language}
-            options={LANGUAGE_OPTIONS}
-            onChange={(val) => handleLocalizationChange('language', val)}
-            disabled={isUpdating}
-          />
-          <VisibilitySelector
-            title="Region / Country"
-            description="Select your region"
-            value={localizationSettings.region}
-            options={REGION_OPTIONS}
-            onChange={(val) => handleLocalizationChange('region', val)}
-            disabled={isUpdating}
-          />
-          <PreferenceRow 
-            label="Time zone" 
-            rightValue={preferences.timezone || "Pacific Time"} 
-            subLabel="Auto-detected"
-            onClick={() => handleNotImplemented("Time zone")} 
-          />
-
-          <SectionSeparator />
-
-          {/* SECTION 3: Content Preferences */}
-          <SectionTitle title="Content Preferences" icon={MonitorPlay} />
-          <PreferenceRow 
-            label="Autoplay videos" 
-            rightValue={autoplay} 
-            onClick={() => handleNotImplemented("Autoplay settings")} 
-          />
-          <PreferenceToggle 
-            label="Sound effects" 
-            subLabel="In-app sounds"
-            checked={soundEffects}
-            onCheckedChange={handleToggleSound}
-            disabled={isUpdating}
-          />
-          <PreferenceRow 
-            label="Feed preferences" 
-            rightValue={feedPreferences} 
-            subLabel="What you see in your feed"
-            onClick={() => handleNotImplemented("Feed preferences")} 
-          />
-
-          <SectionSeparator />
-
-          {/* SECTION 4: Notifications */}
-          <SectionTitle title="Notifications" icon={Bell} />
-          <VisibilitySelector
-            title="Email frequency"
-            description="How often you receive emails"
-            value={notificationSettings.email_frequency}
-            options={EMAIL_FREQUENCY_OPTIONS}
-            onChange={(val) => handleNotificationChange('email_frequency', val)}
-            disabled={isUpdating}
-          />
-          <PreferenceToggle
-            label="Job alerts"
-            subLabel="Get notified about new jobs"
-            checked={notificationSettings.job_alerts}
-            onCheckedChange={(checked) => handleNotificationChange('job_alerts', checked)}
-            disabled={isUpdating}
-          />
-          <PreferenceToggle
-            label="Profile views"
-            subLabel="See who viewed your profile"
-            checked={notificationSettings.profile_views}
-            onCheckedChange={(checked) => handleNotificationChange('profile_views', checked)}
-            disabled={isUpdating}
-          />
-          <PreferenceToggle
-            label="Messages"
-            subLabel="Direct messages and recruiter outreach"
-            checked={notificationSettings.messages}
-            onCheckedChange={(checked) => handleNotificationChange('messages', checked)}
-            disabled={isUpdating}
-          />
-          <PreferenceToggle 
-            label="Push notifications" 
-            checked={pushNotifications}
-            onCheckedChange={handleTogglePush}
-            disabled={isUpdating}
-          />
-
-          <SectionSeparator />
-
-          {/* SECTION 5: Profile Visibility */}
-          <SectionTitle title="Profile Visibility" icon={Eye} />
-          
-          <VisibilitySelector
-            title="Profile visibility"
-            description="Control who can see your profile"
-            value={visibilitySettings.profile}
-            options={PROFILE_VISIBILITY_OPTIONS}
-            onChange={(val) => handleVisibilityChange('profile', val)}
-            disabled={isUpdating}
-          />
-
-          <VisibilitySelector
-            title="Job activity"
-            description="Manage who sees your job activity"
-            value={visibilitySettings.job_activity}
-            options={JOB_ACTIVITY_OPTIONS}
-            onChange={(val) => handleVisibilityChange('job_activity', val)}
-            disabled={isUpdating}
-          />
-
-          <VisibilitySelector
-            title="Email visibility"
-            description="Choose who can see your email address"
-            value={visibilitySettings.email}
-            options={EMAIL_VISIBILITY_OPTIONS}
-            onChange={(val) => handleVisibilityChange('email', val)}
-            disabled={isUpdating}
-          />
-
-          <PreferenceRow 
-            label="Story viewing" 
-            rightValue={storyViewing} 
-            onClick={() => handleNotImplemented("Story viewing")} 
-          />
-
-          <SectionSeparator />
-
-          {/* SECTION 6: Account Actions */}
-          <SectionTitle title="Account Actions" icon={ShieldAlert} />
-          <PreferenceRow 
-            label="Hibernate account" 
-            subLabel="Temporary deactivate your account"
-            onClick={() => handleNotImplemented("Hibernate account")} 
-          />
-          <PreferenceRow 
-            label="Close account" 
-            subLabel="Permanently delete your account"
-            onClick={() => handleNotImplemented("Close account")} 
-          />
-        </div>
-      )}
       </div>
     </Layout>
   );

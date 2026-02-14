@@ -75,7 +75,7 @@ const Connect = () => {
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-6xl mx-auto py-12 px-6 relative">
+          <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 relative">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="text-center md:text-left">
                 <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
@@ -99,7 +99,7 @@ const Connect = () => {
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto py-12 px-6">
+        <div className="max-w-6xl mx-auto py-8 sm:py-12 px-0 sm:px-6">
           <Tabs defaultValue="chat" className="w-full">
             <div className="flex justify-center mb-10">
               <TabsList className="bg-gray-100/50 p-1.5 rounded-2xl h-auto">

@@ -317,8 +317,9 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
 
   if (loading) {
     return (
-      <Card className="p-6 mb-6 bg-gradient-card shadow-card">
-        <div className="animate-pulse flex space-x-4">
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card mb-6 overflow-hidden">
+        <CardContent className="px-4 py-6 sm:p-8">
+          <div className="animate-pulse flex space-x-4">
           <div className="rounded-full bg-muted h-24 w-24"></div>
           <div className="flex-1 space-y-2 py-1">
             <div className="h-4 bg-muted rounded w-3/4"></div>
@@ -326,15 +327,16 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
             <div className="h-4 bg-muted rounded w-5/6"></div>
           </div>
         </div>
-      </Card>
-    );
-  }
+      </CardContent>
+    </Card>
+  );
+}
 
   if (!isEditing && profile) {
     return (
       <ProfileHero 
         profile={profile} 
-        isOwnProfile={true} 
+        isOwnProfile={user?.id === userId} 
         onEdit={() => setIsEditing(true)} 
         skillsCount={skillsCount}
       />
@@ -342,8 +344,8 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
   }
 
   return (
-    <Card className="mb-6 bg-gradient-card shadow-card border-0">
-      <CardHeader className="pb-4">
+    <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card mb-6 overflow-hidden">
+      <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold text-foreground">Edit Profile</h2>
           <div className="flex gap-2">
@@ -370,7 +372,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 px-4 py-6 sm:px-8 sm:pb-8">
         {/* Cover Photo Section */}
         <div className="relative h-32 md:h-40 w-full rounded-xl overflow-hidden bg-muted group">
           {coverPreview ? (

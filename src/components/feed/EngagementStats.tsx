@@ -20,7 +20,7 @@ const EngagementStats = ({ likes, comments, reposts = 0, onCommentsClick }: Enga
   };
   
   return (
-    <div className="px-6 py-4 flex items-center justify-between text-[13px] font-bold text-[#5E6B7E] border-b border-[#E8EBEF]/40">
+    <div className="px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between text-[13px] font-bold text-[#5E6B7E] border-b border-[#E8EBEF]/40">
       {/* Reaction icons with count */}
       <div className="flex items-center gap-2">
         {likes > 0 && (

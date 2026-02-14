@@ -449,92 +449,95 @@ const PublicProfile = () => {
 
   return (
     <Layout user={currentUser!} onSignOut={handleSignOut}>
-      <div className="container mx-auto max-w-4xl">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/dashboard')}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Dashboard
-        </Button>
+      <div className="w-full bg-white pb-20 min-h-screen">
+        <div className="max-w-4xl mx-auto px-0 sm:px-4 pt-6">
+          <div className="px-4 sm:px-0">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/dashboard')}
+              className="mb-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </div>
 
-        <Card className="mb-6 bg-gradient-card shadow-card border-0">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <h2 className="text-xl font-semibold text-foreground">Profile</h2>
-              <div className="flex flex-wrap gap-2">
-                {connectionStatus === 'none' && (
-                  <Button
-                    size="sm"
-                    onClick={handleSendRequest}
-                    className="bg-primary hover:bg-primary/90"
-                  >
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Connect
-                  </Button>
-                )}
-                {connectionStatus === 'pending_sent' && (
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" disabled>
-                      <Clock className="h-4 w-4 mr-2" />
-                      Request Sent
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={handleCancelRequest}
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-                {connectionStatus === 'pending_received' && (
-                  <div className="flex gap-2">
-                    <Button 
+          <Card className="mb-6 bg-gradient-card shadow-none sm:shadow-card border-0 sm:border border-gray-100 rounded-none sm:rounded-[2rem] overflow-hidden">
+            <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h2 className="text-xl font-semibold text-foreground">Profile</h2>
+                <div className="flex flex-wrap gap-2">
+                  {connectionStatus === 'none' && (
+                    <Button
                       size="sm"
-                      onClick={handleAcceptRequest}
+                      onClick={handleSendRequest}
                       className="bg-primary hover:bg-primary/90"
                     >
-                      <UserCheck className="h-4 w-4 mr-2" />
-                      Accept Request
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Connect
                     </Button>
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      Pending
-                    </Badge>
-                  </div>
-                )}
-                {connectionStatus === 'accepted' && (
-                  <Button size="sm" variant="outline" disabled>
-                    <UserCheck className="h-4 w-4 mr-2" />
-                    Connected
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant={isFollowing ? "outline" : "default"}
-                  onClick={handleFollow}
-                >
-                  {isFollowing ? (
-                    <>
-                      <UserMinus className="h-4 w-4 mr-2" />
-                      Unfollow
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="h-4 w-4 mr-2" />
-                      Follow
-                    </>
                   )}
-                </Button>
+                  {connectionStatus === 'pending_sent' && (
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" disabled>
+                        <Clock className="h-4 w-4 mr-2" />
+                        Request Sent
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={handleCancelRequest}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                  {connectionStatus === 'pending_received' && (
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm"
+                        onClick={handleAcceptRequest}
+                        className="bg-primary hover:bg-primary/90"
+                      >
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Accept Request
+                      </Button>
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Pending
+                      </Badge>
+                    </div>
+                  )}
+                  {connectionStatus === 'accepted' && (
+                    <Button size="sm" variant="outline" disabled>
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Connected
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant={isFollowing ? "outline" : "default"}
+                    onClick={handleFollow}
+                  >
+                    {isFollowing ? (
+                      <>
+                        <UserMinus className="h-4 w-4 mr-2" />
+                        Unfollow
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Follow
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardHeader>
+            </CardHeader>
 
-          <CardContent className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-6">
+            <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
+              <div className="flex flex-col md:flex-row gap-6">
               <div className="flex flex-col items-center space-y-2">
                 <Avatar className="h-28 w-28 md:h-32 md:w-32 border-4 border-background shadow-elegant">
                   <AvatarImage src={profile?.avatar_url} />

@@ -62,10 +62,9 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
   });
 
   useEffect(() => {
-    fetchInterviews();
-  }, [user.id]);
+    const controller = new AbortController();
+    fetchInterviews(controller.signal);
 
-  useEffect(() => {
     // Set up real-time subscription for interviews
     const channel = supabase
       .channel('interviews-changes')
@@ -77,25 +76,30 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
           table: 'interviews'
         },
         () => {
-          fetchInterviews();
+          fetchInterviews(controller.signal);
         }
       )
       .subscribe();
 
     return () => {
+      controller.abort();
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user.id]);
 
-  const fetchInterviews = async () => {
+  const fetchInterviews = async (signal?: AbortSignal) => {
     try {
       const { data, error } = await supabase
         .from('interviews')
         .select('*')
         .or(`interviewer_id.eq.${user.id},interviewee_id.eq.${user.id}`)
-        .order('scheduled_at', { ascending: true });
+        .order('scheduled_at', { ascending: true })
+        .abortSignal(signal || new AbortController().signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED' || error.message?.includes('abort')) return;
+        throw error;
+      }
 
       // Get profiles for participants
       const interviewsWithProfiles = await Promise.all(
@@ -119,6 +123,7 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
 
       setInterviews(interviewsWithProfiles);
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       toast({
         title: "Error",
         description: "Failed to fetch interviews",
@@ -139,6 +144,7 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
       return;
     }
 
+    const controller = new AbortController();
     try {
       const { error } = await supabase
         .from('interviews')
@@ -146,9 +152,13 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
           ...newInterview,
           interviewer_id: user.id,
           meeting_link: `https://meet.jit.si/profolio-${Date.now()}` // Simple meeting link
-        });
+        })
+        .abortSignal(controller.signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED' || error.message?.includes('abort')) return;
+        throw error;
+      }
 
       setNewInterview({
         title: '',
@@ -165,6 +175,7 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
         description: "Interview scheduled successfully",
       });
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       toast({
         title: "Error",
         description: "Failed to schedule interview",
@@ -174,13 +185,18 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
   };
 
   const updateInterviewStatus = async (interviewId: string, status: string) => {
+    const controller = new AbortController();
     try {
       const { error } = await supabase
         .from('interviews')
         .update({ status })
-        .eq('id', interviewId);
+        .eq('id', interviewId)
+        .abortSignal(controller.signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED' || error.message?.includes('abort')) return;
+        throw error;
+      }
 
       fetchInterviews();
       toast({
@@ -188,6 +204,7 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
         description: `Interview ${status}`,
       });
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       toast({
         title: "Error",
         description: "Failed to update interview status",
@@ -197,13 +214,18 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
   };
 
   const updateInterviewNotes = async (interviewId: string, notes: string) => {
+    const controller = new AbortController();
     try {
       const { error } = await supabase
         .from('interviews')
         .update({ notes })
-        .eq('id', interviewId);
+        .eq('id', interviewId)
+        .abortSignal(controller.signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED' || error.message?.includes('abort')) return;
+        throw error;
+      }
 
       fetchInterviews();
       toast({
@@ -211,6 +233,7 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
         description: "Notes updated successfully",
       });
     } catch (error: any) {
+      if (error.name === 'AbortError') return;
       toast({
         title: "Error",
         description: "Failed to update notes",
@@ -245,9 +268,9 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-none sm:rounded-[2rem] shadow-none sm:shadow-sm border-0 sm:border border-gray-100">
         <div>
           <h2 className="text-2xl font-bold text-[#1D2226] tracking-tight">Your Interviews</h2>
           <p className="text-[#5E6B7E] text-sm font-medium mt-1">Manage and attend your scheduled video interviews.</p>
@@ -340,11 +363,11 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
       </div>
 
       {/* Interviews List */}
-      <div className="grid gap-6">
+      <div className="grid gap-4 sm:gap-6">
         {interviews.map((interview, index) => (
           <Card 
             key={interview.id} 
-            className="group hover:shadow-xl transition-all duration-500 border-none shadow-sm rounded-[2rem] overflow-hidden animate-in fade-in slide-in-from-bottom-4"
+            className="group hover:shadow-xl transition-all duration-500 border-0 sm:border-none shadow-none sm:shadow-sm rounded-none sm:rounded-[2rem] overflow-hidden animate-in fade-in slide-in-from-bottom-4"
             style={{ animationDelay: `${index * 100}ms` }}
           >
             <CardContent className="p-0">

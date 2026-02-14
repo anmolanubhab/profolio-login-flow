@@ -126,13 +126,13 @@ const Settings = () => {
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto py-12 px-6 relative">
+          <div className="max-w-4xl mx-auto py-20 px-4 sm:px-6 relative">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="text-center md:text-left">
-                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+                <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tighter">
                   Settings
                 </h1>
-                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
+                <p className="text-[#5E6B7E] text-lg md:text-2xl font-medium max-w-2xl mx-auto md:mx-0 leading-relaxed">
                   Manage your account preferences and security settings.
                 </p>
               </div>
@@ -142,7 +142,7 @@ const Settings = () => {
 
         <div className="max-w-4xl mx-auto">
           {/* Profile Section */}
-          <div className="flex items-center gap-3 px-6 py-8">
+          <div className="flex items-center gap-3 px-4 sm:px-6 py-8">
             <Avatar className="h-16 w-16 border-2 border-white shadow-sm">
               <AvatarImage src={avatarUrl || undefined} alt={displayName} referrerPolicy="no-referrer" />
               <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 text-xl font-bold">
@@ -156,13 +156,13 @@ const Settings = () => {
           </div>
 
           {/* Main Settings List */}
-          <div className="px-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+          <div className="px-0 sm:px-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 sm:p-6">
               {mainSettings.map((item, index) => (
                 <button
                   key={item.label}
                   onClick={item.onClick}
-                  className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 bg-white hover:border-transparent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group text-left"
+                  className="flex items-center gap-4 p-4 rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white hover:border-transparent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group text-left"
                 >
                   <div className="h-12 w-12 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-gradient-to-br group-hover:from-[#0077B5]/10 group-hover:to-[#E1306C]/10 transition-colors">
                     <item.icon className="h-6 w-6 text-gray-600 group-hover:text-[#833AB4] transition-colors" />
@@ -174,12 +174,12 @@ const Settings = () => {
           </div>
 
           {/* Divider */}
-          <div className="px-6 py-4">
+          <div className="px-4 sm:px-6 py-4">
             <Separator className="bg-gray-100" />
           </div>
 
           {/* Secondary Links */}
-          <div className="px-6 pb-8">
+          <div className="px-4 sm:px-6 pb-8">
             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 px-2">Resources</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {secondaryLinks.map((link) => (
@@ -195,7 +195,7 @@ const Settings = () => {
           </div>
 
           {/* Sign Out */}
-          <div className="px-6 pb-12">
+          <div className="px-4 sm:px-6 pb-12">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="w-full md:w-auto px-8 rounded-full font-semibold relative p-[1px] overflow-hidden group border-none h-12">

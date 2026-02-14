@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,8 +11,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bookmark } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
 
 const SavedJobs = () => {
   const { user, signOut } = useAuth();
@@ -25,7 +22,11 @@ const SavedJobs = () => {
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [profileId, setProfileId] = useState<string>('');
+  const [isIncrementingView, setIsIncrementingView] = useState(false);
   const { toast } = useToast();
+
+  // Track viewed jobs in current session to prevent duplicate increments
+  const [viewedJobsInSession] = useState(() => new Set<string>());
 
   useEffect(() => {
     if (user) {
@@ -65,9 +66,6 @@ const SavedJobs = () => {
         return;
       }
 
-      // Fetch job details for saved IDs
-      // We can't use useJobFeed directly efficiently here as it fetches all/recommended
-      // So we fetch directly from supabase
       const { data, error } = await supabase
         .from('jobs')
         .select(`
@@ -85,25 +83,68 @@ const SavedJobs = () => {
     } catch (error) {
       if ((error as any).name === 'AbortError' || (error as any).code === 'ABORTED') return;
       console.error('Error fetching saved jobs details:', error);
+      toast({
+        title: "Error loading saved jobs",
+        description: "Please try refreshing the page",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApplyClick = (job: Job) => {
-    setSelectedJob(job);
-    setShowApplyDialog(true);
-    if (job.posted_by !== profileId) {
-      supabase.rpc('increment_job_view', { job_id: job.id });
+  // ✅ FIXED: Single unified function with proper error handling
+  const handleJobInteraction = async (job: Job) => {
+    try {
+      // Set selected job and show dialog first (immediate feedback)
+      setSelectedJob(job);
+      setShowApplyDialog(true);
+
+      // Don't increment view for own jobs
+      if (job.posted_by === profileId) {
+        return;
+      }
+
+      // Prevent duplicate view increments in same session
+      if (viewedJobsInSession.has(job.id)) {
+        return;
+      }
+
+      // Prevent race conditions from rapid clicks
+      if (isIncrementingView) {
+        return;
+      }
+
+      setIsIncrementingView(true);
+
+      // Increment view count with error handling
+      const { error } = await supabase.rpc('increment_job_view', { 
+        job_id: job.id 
+      });
+
+      if (error) {
+        console.error('Failed to increment job view:', error);
+        // Don't show error to user - this is background operation
+        // But log it for debugging
+      } else {
+        // Mark as viewed in this session
+        viewedJobsInSession.add(job.id);
+      }
+    } catch (error) {
+      console.error('Error in job interaction:', error);
+      // Don't block user flow - just log the error
+    } finally {
+      setIsIncrementingView(false);
     }
   };
 
+  // ✅ FIXED: Simplified wrapper functions
+  const handleApplyClick = (job: Job) => {
+    handleJobInteraction(job);
+  };
+
   const handleViewDetails = (job: Job) => {
-    setSelectedJob(job);
-    setShowApplyDialog(true);
-    if (job.posted_by !== profileId) {
-      supabase.rpc('increment_job_view', { job_id: job.id });
-    }
+    handleJobInteraction(job);
   };
 
   const handleSignOut = async () => {
@@ -113,41 +154,79 @@ const SavedJobs = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="container mx-auto max-w-5xl py-6 px-4">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex items-center gap-2">
-            <Bookmark className="h-6 w-6 text-primary fill-current" />
-            <h1 className="text-2xl font-bold">Saved Jobs</h1>
+      <div className="min-h-screen bg-white">
+        {/* Universal Page Hero Section */}
+        <div className="relative w-full overflow-hidden border-b border-gray-100">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
+          <div className="max-w-4xl mx-auto py-20 px-4 sm:px-6 relative">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="text-center md:text-left">
+                <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tighter">
+                  Saved Opportunities
+                </h1>
+                <p className="text-[#5E6B7E] text-lg md:text-2xl font-medium max-w-2xl mx-auto md:mx-0 leading-relaxed">
+                  Your curated list of professional roles and future career moves.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {loading || loadingSaved ? (
-          <div className="text-center py-12 text-muted-foreground">Loading saved jobs...</div>
-        ) : savedJobs.length === 0 ? (
-          <div className="text-center py-12 border rounded-xl bg-muted/30">
-            <Bookmark className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No saved jobs</h3>
-            <p className="text-muted-foreground mb-6">Jobs you save will appear here.</p>
-            <Button onClick={() => navigate('/jobs')}>Browse Jobs</Button>
+        <div className="max-w-4xl mx-auto py-8 px-0 sm:px-4">
+          <div className="mb-8 flex items-center gap-4 px-4 sm:px-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/jobs')}
+              className="rounded-full hover:bg-gray-100"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Jobs
+            </Button>
           </div>
-        ) : (
-          <JobsFeed
-            jobs={savedJobs} // Pass explicit jobs
-            onApply={handleApplyClick}
-            onViewDetails={handleViewDetails}
-            onToggleSave={toggleSave}
-            appliedJobIds={appliedJobIds}
-            savedJobIds={savedJobIds}
-            userProfileId={profileId}
-          />
-        )}
 
-        <ApplyJobDialog 
-          job={selectedJob} 
-          open={showApplyDialog} 
-          onOpenChange={setShowApplyDialog} 
-        />
+          {loading || loadingSaved ? (
+            <div className="text-center py-20 animate-pulse">
+              <div className="h-12 w-12 border-4 border-gray-100 border-t-[#833AB4] rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-[#5E6B7E] font-medium">Retrieving your saved jobs...</p>
+            </div>
+          ) : savedJobs.length === 0 ? (
+            <div className="bg-gray-50/50 rounded-none sm:rounded-[2rem] p-16 text-center border-0 sm:border-2 border-dashed border-gray-200 mx-4 sm:mx-0">
+              <div className="bg-white h-20 w-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <Bookmark className="h-10 w-10 text-gray-300" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No saved jobs yet</h3>
+              <p className="text-gray-500 max-w-xs mx-auto mb-8">
+                Start exploring opportunities and save the ones that catch your eye.
+              </p>
+              <Button 
+                onClick={() => navigate('/jobs')}
+                className="rounded-full px-8 bg-gradient-to-r from-[#0077B5] to-[#833AB4] hover:opacity-90 border-none"
+              >
+                Browse Jobs
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <JobsFeed
+                jobs={savedJobs}
+                onApply={handleApplyClick}
+                onViewDetails={handleViewDetails}
+                onToggleSave={toggleSave}
+                appliedJobIds={appliedJobIds}
+                savedJobIds={savedJobIds}
+                userProfileId={profileId}
+              />
+            </div>
+          )}
+        </div>
       </div>
+
+      <ApplyJobDialog 
+        job={selectedJob} 
+        open={showApplyDialog} 
+        onOpenChange={setShowApplyDialog} 
+      />
     </Layout>
   );
 };

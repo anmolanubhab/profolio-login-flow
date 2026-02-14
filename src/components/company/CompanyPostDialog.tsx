@@ -102,6 +102,7 @@ export const CompanyPostDialog = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const signal = new AbortController().signal;
       let mediaUrl: string | null = null;
 
       // Upload media if present
@@ -139,7 +140,8 @@ export const CompanyPostDialog = ({
           company_name: selectedCompany.name,
           company_logo: selectedCompany.logo_url,
           status: 'published'
-        });
+        })
+        .abortSignal(signal);
 
       if (postError) throw postError;
       setUploadProgress(100);
@@ -155,6 +157,7 @@ export const CompanyPostDialog = ({
       onOpenChange(false);
       onPostCreated?.();
     } catch (error: any) {
+      if (error.name === 'AbortError' || error.message?.includes('aborted')) return;
       console.error('Error creating company post:', error);
       toast({
         title: 'Error',

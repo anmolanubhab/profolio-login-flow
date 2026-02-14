@@ -123,8 +123,8 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6">
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+        <CardContent className="px-4 py-6 sm:p-8">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-muted rounded w-1/4"></div>
             <div className="space-y-3">
@@ -148,11 +148,11 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
         )}
       </div>
 
-      <Card className="shadow-card">
-        <CardHeader>
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+        <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
           <CardTitle className="text-lg">Contact Information</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 px-4 py-6 sm:px-8 sm:pb-8">
           {/* Phone */}
           <div className="space-y-3">
             <Label className="flex items-center gap-2">
@@ -175,11 +175,11 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
         </CardContent>
       </Card>
 
-      <Card className="shadow-card">
-        <CardHeader>
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+        <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
           <CardTitle className="text-lg">Social Profiles</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-4 py-6 sm:px-8 sm:pb-8">
           {isEditing ? (
             <div className="space-y-4">
               <div>

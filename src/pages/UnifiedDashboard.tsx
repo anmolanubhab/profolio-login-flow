@@ -13,8 +13,8 @@ const UnifiedDashboard = () => {
   if (!user) return null;
   return <Layout user={user} onSignOut={signOut}>
       {/* Desktop Alignment Wrapper: Matches NavBar centering logic */}
-      <div className="w-full items-center justify-start flex flex-col gap-0 lg:px-0">
-        <div className="w-full max-w-2xl space-y-4 sm:space-y-6 mx-0 bg-primary-foreground pl-0">
+      <div className="w-full items-center justify-start flex flex-col gap-0 px-0">
+        <div className="w-full max-w-full sm:max-w-2xl space-y-0 sm:space-y-6 mx-0 bg-primary-foreground pl-0">
           
           <ProfileCompletionCard />
           

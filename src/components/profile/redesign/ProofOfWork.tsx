@@ -58,8 +58,8 @@ export const ProofOfWork = ({ userId, isOwnProfile }: ProofOfWorkProps) => {
   };
 
   const CertificateCard = ({ cert }: { cert: Certificate }) => (
-    <Card className="group hover:shadow-md transition-all duration-200 border-gray-100">
-      <CardContent className="p-4 flex items-start gap-4">
+    <Card className="group hover:shadow-md transition-all duration-200 border-0 sm:border border-gray-100 rounded-none sm:rounded-[2rem] bg-white shadow-none sm:shadow-sm overflow-hidden">
+      <CardContent className="px-4 py-6 sm:p-8 flex items-start gap-4">
         <div className="h-12 w-12 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
           <Award className="h-6 w-6" />
         </div>

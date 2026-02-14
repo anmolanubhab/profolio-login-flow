@@ -429,7 +429,7 @@ const Feed = ({ refresh, userId }: FeedProps) => {
   }
 
   return (
-    <div className="space-y-0 sm:space-y-3 -mx-4 sm:mx-0">
+    <div className="space-y-0 sm:space-y-3 mx-0">
       {posts.map((post) => (
         <PostCard
           key={post.id}
@@ -444,6 +444,7 @@ const Feed = ({ refresh, userId }: FeedProps) => {
           image={post.image_url || undefined}
           mediaType={(post.media_type as 'image' | 'video') || 'image'}
           timestamp={post.created_at}
+          comments={Array.isArray(post.comments) ? (post.comments[0]?.count ?? 0) : 0}
           likes={post.post_likes.length}
           initialIsLiked={currentUserId ? post.post_likes.some((l) => l.user_id === currentUserId) : false}
           onLike={(isLiked) => handleLike(post.id, isLiked)}

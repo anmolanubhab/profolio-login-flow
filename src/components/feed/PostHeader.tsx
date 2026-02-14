@@ -79,7 +79,7 @@ const PostHeader = ({
     : user.subtitle;
 
   return (
-    <div className="px-8 pt-8 pb-4 flex items-start gap-5 animate-in fade-in slide-in-from-top-2 duration-500">
+    <div className="px-4 sm:px-8 pt-6 sm:pt-8 pb-3 sm:pb-4 flex items-start gap-3 sm:gap-5 animate-in fade-in slide-in-from-top-2 duration-500">
       {/* Avatar */}
       <div 
         className="cursor-pointer flex-shrink-0 group/avatar relative"

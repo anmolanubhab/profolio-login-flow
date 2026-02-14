@@ -82,7 +82,7 @@ export const ProfileCompletionCard = () => {
 
   return (
     <Card className={cn(
-      "w-full bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100 shadow-sm mb-6 relative group transition-all duration-300",
+      "w-full bg-gradient-to-r from-blue-50/50 to-indigo-50/50 border-0 sm:border border-gray-100 shadow-none sm:shadow-card mb-4 sm:mb-6 rounded-none sm:rounded-[2rem] relative group transition-all duration-300",
       isExiting ? "opacity-0 -translate-y-4 pointer-events-none" : "animate-in fade-in slide-in-from-top-4"
     )}>
       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -106,7 +106,7 @@ export const ProfileCompletionCard = () => {
         </DropdownMenu>
       </div>
 
-      <CardHeader className="pb-2">
+      <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold flex items-center gap-2 text-blue-900">
             <Sparkles className="h-5 w-5 text-blue-600" />
@@ -117,7 +117,7 @@ export const ProfileCompletionCard = () => {
           </span>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="px-4 py-6 sm:px-8 sm:pb-8 space-y-4">
         <Progress value={percentage} className="h-2 bg-blue-200" />
         
         <div className="space-y-3">

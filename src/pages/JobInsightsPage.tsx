@@ -83,36 +83,43 @@ const JobInsightsPage = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-    <div className="container mx-auto max-w-5xl py-6 px-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-foreground">Job Insights</h1>
-          <div className="flex items-center gap-2">
-             {isLoadingJob ? (
-               <Skeleton className="h-6 w-48" />
-             ) : (
-               <p className="text-base text-muted-foreground">
-                 Performance metrics for <span className="font-medium text-foreground">{jobTitle}</span>
-               </p>
-             )}
+    <div className="w-full bg-white pb-20 min-h-screen">
+      {/* Universal Page Hero Section */}
+      <div className="relative w-full overflow-hidden border-b border-gray-100">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
+        <div className="max-w-5xl mx-auto py-12 px-6 relative">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div className="text-center md:text-left">
+              <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+                Job Insights
+              </h1>
+              <div className="flex flex-col md:flex-row items-center gap-3 justify-center md:justify-start">
+                {isLoadingJob ? (
+                  <Skeleton className="h-6 w-48" />
+                ) : (
+                  <p className="text-[#5E6B7E] text-base md:text-xl font-medium">
+                    Performance metrics for <span className="font-bold text-[#1D2226]">{jobTitle}</span>
+                  </p>
+                )}
+                <Badge variant="outline" className="h-7 gap-1.5 pl-2 pr-3 bg-white/50 backdrop-blur-sm border-green-200 text-green-700">
+                  <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                  Live Updates
+                </Badge>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="h-8 gap-1 pl-2 pr-3">
-             <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-             Live Updates
-          </Badge>
         </div>
       </div>
 
-      {isAnalyticsLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="max-w-5xl mx-auto py-8 px-0 sm:px-4 space-y-8 animate-in fade-in duration-500">
+        {isAnalyticsLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 px-4 sm:px-0">
            {[1, 2, 3, 4].map((i) => (
-             <Card key={i}>
-               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+             <Card key={i} className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card">
+               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 sm:px-6">
                  <CardTitle className="text-sm font-medium"><Skeleton className="h-4 w-24" /></CardTitle>
                </CardHeader>
-               <CardContent>
+               <CardContent className="px-4 sm:px-6 pb-4">
                  <Skeleton className="h-8 w-16 mb-2" />
                  <Skeleton className="h-3 w-32" />
                </CardContent>
@@ -123,12 +130,12 @@ const JobInsightsPage = () => {
         <div className="space-y-8">
           {/* Key Metrics Grid */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card className="hover:shadow-md transition-shadow rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 py-6 sm:px-8 sm:pt-8 sm:pb-2">
                 <CardTitle className="text-sm font-medium">Total Views</CardTitle>
                 <Eye className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
                 <div className="text-2xl font-bold">{analytics?.views || 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Unique page visits
@@ -136,12 +143,12 @@ const JobInsightsPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card className="hover:shadow-md transition-shadow rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 py-6 sm:px-8 sm:pt-8 sm:pb-2">
                 <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
                 <div className="text-2xl font-bold">{analytics?.total_applications || 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {analytics?.views ? Math.round(((analytics.total_applications || 0) / analytics.views) * 100) : 0}% conversion rate
@@ -149,12 +156,12 @@ const JobInsightsPage = () => {
               </CardContent>
             </Card>
 
-            <Card className="hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card className="hover:shadow-md transition-shadow rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 px-4 py-6 sm:px-8 sm:pt-8 sm:pb-2">
                 <CardTitle className="text-sm font-medium">Messages Sent</CardTitle>
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
                 <div className="text-2xl font-bold">{analytics?.messages_sent || 0}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Outreach messages
@@ -165,15 +172,15 @@ const JobInsightsPage = () => {
 
           {/* Pipeline Status */}
           <div className="grid gap-4 md:grid-cols-2">
-             <Card className="col-span-1">
-               <CardHeader>
+             <Card className="col-span-1 rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+               <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
                  <CardTitle className="flex items-center gap-2">
                    <BarChart3 className="h-5 w-5" />
                    Application Pipeline
                  </CardTitle>
                  <CardDescription>Current status distribution of candidates</CardDescription>
                </CardHeader>
-               <CardContent>
+               <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
                  <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
@@ -228,14 +235,14 @@ const JobInsightsPage = () => {
                </CardContent>
              </Card>
 
-             <Card className="col-span-1 bg-gradient-to-br from-primary/5 to-transparent border-primary/10">
-               <CardHeader>
+             <Card className="col-span-1 bg-gradient-to-br from-primary/5 to-transparent border-0 sm:border border-primary/10 rounded-none sm:rounded-[2rem] shadow-none sm:shadow-card overflow-hidden">
+               <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
                  <CardTitle className="flex items-center gap-2">
                    <TrendingUp className="h-5 w-5 text-primary" />
                    Performance Tips
                  </CardTitle>
                </CardHeader>
-               <CardContent className="space-y-4">
+               <CardContent className="space-y-4 px-4 py-6 sm:px-8 sm:pb-8">
                  <div className="flex gap-3 items-start">
                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                      <span className="text-xs font-bold text-primary">1</span>
@@ -266,30 +273,32 @@ const JobInsightsPage = () => {
 
           {/* Extended History - Pro Feature */}
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
+            <h2 className="text-xl font-semibold flex items-center gap-2 px-4 sm:px-0">
               <History className="h-5 w-5" />
               30-Day History
             </h2>
             
             {subscription?.features.canViewExtendedAnalytics ? (
-              <Card>
-                <CardHeader>
+              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
                   <CardTitle className="text-sm font-medium">Views & Applications Over Time</CardTitle>
                   <CardDescription>Performance trend for the last 30 days</CardDescription>
                 </CardHeader>
-                <CardContent className="h-[200px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-md m-6 border border-dashed">
-                  Chart visualization coming soon
+                <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
+                  <div className="h-[200px] flex items-center justify-center text-muted-foreground bg-muted/20 rounded-xl border border-dashed">
+                    Chart visualization coming soon
+                  </div>
                 </CardContent>
               </Card>
             ) : (
               <div className="relative">
-                <Card className="blur-[2px] opacity-60 pointer-events-none select-none">
-                  <CardHeader>
+                <Card className="blur-[2px] opacity-60 pointer-events-none select-none rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+                  <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
                     <CardTitle className="text-sm font-medium">Views & Applications Over Time</CardTitle>
                     <CardDescription>Performance trend for the last 30 days</CardDescription>
                   </CardHeader>
-                  <CardContent className="h-[200px] flex items-end gap-2 px-6 pb-2 items-center justify-center">
-                    <div className="w-full h-full bg-muted/20 rounded-md" />
+                  <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
+                    <div className="h-[200px] w-full bg-muted/20 rounded-xl" />
                   </CardContent>
                 </Card>
                 <div className="absolute inset-0 flex items-center justify-center p-6">
@@ -305,6 +314,7 @@ const JobInsightsPage = () => {
           </div>
         </div>
       )}
+    </div>
     </div>
     </Layout>
   );

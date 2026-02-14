@@ -22,9 +22,9 @@ const PostMedia = ({ src, mediaType, alt = 'Post content', isCompact = false }: 
 
   if (hasError) {
     return (
-      <div className={cn(isCompact ? "mx-4 mb-4" : "mx-6 mb-6")}>
+      <div className={cn(isCompact ? "mx-4 mb-4" : "mx-0 sm:mx-6 mb-4 sm:mb-6")}>
         <div className={cn(
-          "w-full h-64 bg-[#F3F6F8] rounded-[2rem] flex flex-col items-center justify-center text-[#5E6B7E] text-sm gap-4 border border-[#E8EBEF]/60",
+          "w-full h-64 bg-[#F3F6F8] rounded-none sm:rounded-[2rem] flex flex-col items-center justify-center text-[#5E6B7E] text-sm gap-4 border-0 sm:border sm:border-[#E8EBEF]/60",
           isCompact && "h-48 rounded-[1.5rem]"
         )}>
           <div className="p-4 bg-white rounded-2xl shadow-sm">
@@ -40,9 +40,9 @@ const PostMedia = ({ src, mediaType, alt = 'Post content', isCompact = false }: 
 
   if (mediaType === 'video') {
     return (
-      <div className={cn(isCompact ? "mx-4 mb-4" : "mx-6 mb-6")}>
+      <div className={cn(isCompact ? "mx-4 mb-4" : "mx-0 sm:mx-6 mb-4 sm:mb-6")}>
         <div className={cn(
-          "relative w-full bg-[#1D2226] rounded-[2rem] flex items-center justify-center overflow-hidden group/video shadow-lg",
+          "relative w-full bg-[#1D2226] rounded-none sm:rounded-[2rem] flex items-center justify-center overflow-hidden group/video shadow-none sm:shadow-lg",
           isCompact && "rounded-[1.5rem]"
         )}>
           <video
@@ -70,9 +70,9 @@ const PostMedia = ({ src, mediaType, alt = 'Post content', isCompact = false }: 
   }
 
   return (
-    <div className={cn(isCompact ? "mx-4 mb-4" : "mx-6 mb-6")}>
+    <div className={cn(isCompact ? "mx-4 mb-4" : "mx-0 sm:mx-6 mb-4 sm:mb-6")}>
       <div className={cn(
-        "relative w-full rounded-[2rem] overflow-hidden flex items-center justify-center bg-[#F3F6F8]/50 group/media border border-[#E8EBEF]/40 shadow-sm",
+        "relative w-full rounded-none sm:rounded-[2rem] overflow-hidden flex items-center justify-center bg-[#F3F6F8]/50 group/media border-0 sm:border sm:border-[#E8EBEF]/40 shadow-none sm:shadow-sm",
         isCompact && "rounded-[1.5rem]"
       )}>
         {isLoading && (

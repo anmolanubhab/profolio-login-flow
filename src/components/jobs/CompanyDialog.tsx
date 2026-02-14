@@ -143,6 +143,8 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      const signal = new AbortController().signal;
+
       // Upload logo first (only if new file selected)
       const newLogoUrl = await uploadLogo(user.id);
 
@@ -195,6 +197,7 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
           .update(updateData)
           .eq('id', editCompany.id)
           .select()
+          .abortSignal(signal)
           .single();
       } else {
         // INSERT - include all fields including owner_id
@@ -216,6 +219,7 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
           .from('companies')
           .insert(insertData)
           .select()
+          .abortSignal(signal)
           .single();
       }
 
@@ -229,6 +233,7 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
       onCompanyCreated(result.data);
       onOpenChange(false);
     } catch (error: any) {
+      if (error.name === 'AbortError' || error.message?.includes('aborted')) return;
       toast({
         title: 'Error',
         description: error.message,

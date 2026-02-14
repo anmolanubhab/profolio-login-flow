@@ -59,7 +59,7 @@ const PostContent = ({ content, maxLength = 280, className, isCompact = false }:
 
   return (
     <div className={cn(
-      isCompact ? "px-4 pb-3" : "px-8 pb-6",
+      isCompact ? "px-4 pb-3" : "px-4 sm:px-8 pb-4 sm:pb-6",
       "group/content",
       className
     )}>

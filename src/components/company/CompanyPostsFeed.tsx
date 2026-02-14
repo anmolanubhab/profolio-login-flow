@@ -22,6 +22,7 @@ interface Post {
     profession: string | null;
   };
   likes: { user_id: string }[];
+  comments_count?: number;
 }
 
 interface CompanyPostsFeedProps {
@@ -35,8 +36,10 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchPosts();
+    const controller = new AbortController();
+    fetchPosts(controller.signal);
     fetchCurrentUser();
+    return () => controller.abort();
   }, [companyId]);
 
   const fetchCurrentUser = async () => {
@@ -44,7 +47,7 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
     setCurrentUserId(user?.id || null);
   };
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (signal?: AbortSignal) => {
     try {
       const { data, error } = await supabase
         .from('posts')
@@ -66,14 +69,21 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
           ),
           post_likes (
             user_id
+          ),
+          comments (
+            count
           )
         `)
         .eq('company_id', companyId)
         .eq('status', 'published')
         .neq('status', 'deleted')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .abortSignal(signal);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'ABORTED') return;
+        throw error;
+      }
 
       const formattedPosts = (data || []).map((post: any) => ({
         id: post.id,
@@ -87,7 +97,8 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
         company_name: post.company_name,
         company_logo: post.company_logo,
         author: post.profiles || { display_name: null, avatar_url: null, profession: null },
-        likes: post.post_likes || []
+        likes: post.post_likes || [],
+        comments_count: Array.isArray(post.comments) ? (post.comments[0]?.count ?? 0) : 0
       }));
 
       setPosts(formattedPosts);
@@ -134,9 +145,16 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <Card key={i}>
-            <CardContent className="p-4">
-              <Skeleton className="h-20 w-full" />
+          <Card key={i} className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+            <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
+              <div className="flex items-center gap-4 mb-4">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+              <Skeleton className="h-24 w-full rounded-2xl" />
             </CardContent>
           </Card>
         ))}
@@ -146,12 +164,14 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
 
   if (posts.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-          <h3 className="font-medium text-foreground mb-1">No posts yet</h3>
-          <p className="text-sm text-muted-foreground">
-            {companyName || 'This company'} hasn't shared any posts yet.
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+        <CardContent className="px-4 py-16 sm:px-8 sm:pb-8 text-center border-2 border-dashed border-gray-100 rounded-[2rem] bg-gray-50/30 m-4 sm:m-8">
+          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm mx-auto mb-4">
+            <FileText className="w-8 h-8 text-gray-300" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">No posts yet</h3>
+          <p className="text-gray-500 max-w-[260px] mx-auto">
+            {companyName || 'This company'} hasn't shared any updates or posts yet.
           </p>
         </CardContent>
       </Card>
@@ -174,6 +194,7 @@ export const CompanyPostsFeed = ({ companyId, companyName }: CompanyPostsFeedPro
           image={post.image_url || undefined}
           mediaType={post.media_type === 'video' ? 'video' : 'image'}
           timestamp={post.created_at}
+          comments={post.comments_count}
           likes={post.likes.length}
           initialIsLiked={post.likes.some(like => like.user_id === currentUserId)}
           onLike={(isLiked) => handleLike(post.id)}

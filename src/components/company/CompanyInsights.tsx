@@ -22,20 +22,26 @@ export const CompanyInsights = ({ companyId, companyName }: CompanyInsightsProps
 
   useEffect(() => {
     if (companyId) {
-      fetchInsights();
+      const controller = new AbortController();
+      fetchInsights(controller.signal);
+      return () => controller.abort();
     }
   }, [companyId]);
 
-  const fetchInsights = async () => {
+  const fetchInsights = async (signal?: AbortSignal) => {
     try {
       // Get company posts
       const { data: posts, error: postsError } = await supabase
         .from('posts')
         .select('id')
         .eq('company_id', companyId)
-        .eq('posted_as', 'company');
+        .eq('posted_as', 'company')
+        .abortSignal(signal);
 
-      if (postsError) throw postsError;
+      if (postsError) {
+        if (postsError.code === 'ABORTED') return;
+        throw postsError;
+      }
 
       const postIds = posts?.map(p => p.id) || [];
       const totalPosts = postIds.length;
@@ -45,17 +51,29 @@ export const CompanyInsights = ({ companyId, companyName }: CompanyInsightsProps
 
       if (postIds.length > 0) {
         // Get likes count
-        const { count: likesCount } = await supabase
+        const { count: likesCount, error: likesError } = await supabase
           .from('post_likes')
           .select('*', { count: 'exact', head: true })
-          .in('post_id', postIds);
+          .in('post_id', postIds)
+          .abortSignal(signal);
+        
+        if (likesError) {
+          if (likesError.code === 'ABORTED') return;
+          throw likesError;
+        }
         totalLikes = likesCount || 0;
 
         // Get comments count
-        const { count: commentsCount } = await supabase
+        const { count: commentsCount, error: commentsError } = await supabase
           .from('comments')
           .select('*', { count: 'exact', head: true })
-          .in('post_id', postIds);
+          .in('post_id', postIds)
+          .abortSignal(signal);
+
+        if (commentsError) {
+          if (commentsError.code === 'ABORTED') return;
+          throw commentsError;
+        }
         totalComments = commentsCount || 0;
       }
 
@@ -77,14 +95,14 @@ export const CompanyInsights = ({ companyId, companyName }: CompanyInsightsProps
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+        <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
           <Skeleton className="h-6 w-40" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-20" />
+              <Skeleton key={i} className="h-24 rounded-2xl" />
             ))}
           </div>
         </CardContent>
@@ -102,51 +120,51 @@ export const CompanyInsights = ({ companyId, companyName }: CompanyInsightsProps
       value: insights.totalPosts,
       icon: Building2,
       color: 'text-blue-600',
-      bgColor: 'bg-blue-100'
+      bgColor: 'bg-blue-50'
     },
     {
       label: 'Likes',
       value: insights.totalLikes,
       icon: ThumbsUp,
       color: 'text-pink-600',
-      bgColor: 'bg-pink-100'
+      bgColor: 'bg-pink-50'
     },
     {
       label: 'Comments',
       value: insights.totalComments,
       icon: MessageCircle,
       color: 'text-green-600',
-      bgColor: 'bg-green-100'
+      bgColor: 'bg-green-50'
     },
     {
       label: 'Est. Views',
       value: insights.recentViews,
       icon: Eye,
       color: 'text-purple-600',
-      bgColor: 'bg-purple-100'
+      bgColor: 'bg-purple-50'
     }
   ];
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
+    <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+      <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+        <CardTitle className="flex items-center gap-2 text-gray-900">
           <TrendingUp className="w-5 h-5 text-primary" />
           {companyName ? `${companyName} Insights` : 'Company Insights'}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {stats.map((stat) => (
             <div 
               key={stat.label}
-              className="p-4 rounded-xl border border-border bg-card hover:shadow-md transition-shadow"
+              className="p-5 rounded-2xl border border-gray-100 bg-white hover:border-primary/20 hover:bg-primary/[0.01] transition-all duration-300"
             >
-              <div className={`w-10 h-10 rounded-lg ${stat.bgColor} flex items-center justify-center mb-3`}>
+              <div className={`w-10 h-10 rounded-xl ${stat.bgColor} flex items-center justify-center mb-4`}>
                 <stat.icon className={`w-5 h-5 ${stat.color}`} />
               </div>
-              <p className="text-2xl font-bold text-foreground">{stat.value.toLocaleString()}</p>
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
+              <p className="text-2xl font-bold text-gray-900">{stat.value.toLocaleString()}</p>
+              <p className="text-sm font-medium text-gray-500">{stat.label}</p>
             </div>
           ))}
         </div>

@@ -241,8 +241,8 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6">
+      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+        <CardContent className="px-4 py-6 sm:p-8">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-muted rounded w-3/4"></div>
             <div className="h-4 bg-muted rounded w-1/2"></div>
@@ -266,8 +266,8 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
 
       {/* Add/Edit Form */}
       {isOwnProfile && (isAdding || editingId) && (
-        <Card className="border-primary/20">
-          <CardContent className="p-6">
+        <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-primary/20 bg-white shadow-none sm:shadow-card overflow-hidden">
+          <CardContent className="px-4 py-6 sm:p-8">
             <div className="grid gap-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input

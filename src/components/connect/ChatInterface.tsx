@@ -365,9 +365,9 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-380px)] min-h-[600px]">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 sm:gap-8 h-[calc(100vh-380px)] min-h-[600px]">
       {/* Conversations List */}
-      <Card className="lg:col-span-1 flex flex-col rounded-[2rem] border-gray-100 shadow-xl shadow-gray-100/50 overflow-hidden">
+      <Card className="lg:col-span-1 flex flex-col rounded-none sm:rounded-[2rem] border-0 sm:border-gray-100 shadow-none sm:shadow-xl sm:shadow-gray-100/50 overflow-hidden">
         <CardHeader className="pb-3 flex-shrink-0 px-6 pt-6">
           <div className="flex items-center justify-between mb-4">
             <CardTitle className="text-xl font-bold text-gray-900">Messages</CardTitle>
@@ -506,7 +506,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
       </Card>
 
       {/* Chat Window */}
-      <Card className="lg:col-span-2 flex flex-col rounded-[2rem] border-gray-100 shadow-xl shadow-gray-100/50 overflow-hidden bg-gray-50/30">
+      <Card className="lg:col-span-2 flex flex-col rounded-none sm:rounded-[2rem] border-0 sm:border-gray-100 shadow-none sm:shadow-xl sm:shadow-gray-100/50 overflow-hidden bg-gray-50/30">
         {selectedConversation ? (
           <>
             <CardHeader className="pb-4 flex-shrink-0 border-b border-gray-100 bg-white px-8 pt-6">
