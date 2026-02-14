@@ -41,6 +41,13 @@ const JobApplicants = lazy(() => import("./pages/JobApplicantsPage"));
 const JobMessages = lazy(() => import("./pages/JobMessagesPage"));
 const JobInsights = lazy(() => import("./pages/JobInsightsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const HelpCenter = lazy(() => import("./pages/resources/HelpCenter"));
+const PrivacyPolicy = lazy(() => import("./pages/resources/PrivacyPolicy"));
+const CommunityPolicies = lazy(() => import("./pages/resources/CommunityPolicies"));
+const Accessibility = lazy(() => import("./pages/resources/Accessibility"));
+const UserAgreement = lazy(() => import("./pages/resources/UserAgreement"));
+const EULA = lazy(() => import("./pages/resources/EULA"));
+const RecommendationTransparency = lazy(() => import("./pages/resources/RecommendationTransparency"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +79,13 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/resources/help" element={<HelpCenter />} />
+              <Route path="/resources/privacy" element={<PrivacyPolicy />} />
+              <Route path="/resources/community-policies" element={<CommunityPolicies />} />
+              <Route path="/resources/accessibility" element={<Accessibility />} />
+              <Route path="/resources/user-agreement" element={<UserAgreement />} />
+              <Route path="/resources/eula" element={<EULA />} />
+              <Route path="/resources/recommendation-transparency" element={<RecommendationTransparency />} />
               
               {/* Unified Dashboard - Context-based UI for all users */}
               <Route path="/dashboard" element={

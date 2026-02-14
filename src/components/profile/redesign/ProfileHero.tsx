@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Edit3, Share2, Shield, MapPin, CheckCircle, Briefcase, 
   Download, UserPlus, MessageSquare, Award, Globe, Building2
@@ -8,6 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useCompanyAdmin } from '@/hooks/use-company-admin';
+import { OpenToOpportunitiesDialog } from '../OpenToOpportunitiesDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProfileHeroProps {
   profile: any;
@@ -18,6 +21,9 @@ interface ProfileHeroProps {
 
 export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: ProfileHeroProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [opentoOpen, setOpentoOpen] = useState(false);
+  const { hasCompanies } = useCompanyAdmin();
+  const { user } = useAuth();
 
   // Calculate real stats
   const experienceCount = Array.isArray(profile?.experience) ? profile.experience.length : 0;
@@ -42,6 +48,16 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
   const profession = profile?.profession || 'Professional Role';
   const location = profile?.location || 'Location';
   const bio = profile?.bio || '';
+  const dialogUserId = (profile && (profile as any).user_id) || user?.id;
+
+  const openToWork: boolean = !!profile?.open_to_work;
+  const visibility: 'public' | 'recruiters' | 'private' = profile?.open_to_work_visibility || 'recruiters';
+  const isRecruiterViewer = hasCompanies;
+  const canShowOpenBadge =
+    openToWork &&
+    (visibility === 'public' ||
+     (visibility === 'recruiters' && (isRecruiterViewer || isOwnProfile)) ||
+     (isOwnProfile));
 
   return (
     <div className="w-full bg-white mb-0">
@@ -119,6 +135,12 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
               <CheckCircle className="h-3 w-3 fill-blue-500 text-white" />
               <span className="text-[10px] font-bold tracking-wide uppercase">Verified</span>
             </Badge>
+            {/* Compact inline badge for mobile */}
+            {canShowOpenBadge && (
+              <Badge variant="secondary" className="md:hidden bg-green-100 text-green-700 border-transparent gap-1 rounded-md px-1.5 py-0 h-5">
+                <span className="text-[10px] font-bold">🟢 Open to Opportunities</span>
+              </Badge>
+            )}
           </div>
           
           <p className="text-base md:text-lg text-gray-900 font-medium leading-snug">
@@ -144,13 +166,23 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
         </div>
 
         {/* Primary Action Button (Rainbow Gradient) */}
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           {isOwnProfile ? (
-            <Button 
-              className="w-full md:max-w-md h-10 rounded-full font-semibold shadow-sm text-white border-none transition-all hover:opacity-90 active:scale-[0.98] bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]"
+            <>
+            <Button
+              onClick={() => setOpentoOpen(true)} 
+              className="w-full md:max-w-md h-10 rounded-full font-semibold shadow-sm text-white border-none transition-all hover:opacity-90 active:scale-[0.98]"
+              style={{ background: 'linear-gradient(90deg, #ff4d4d, #ff9900, #ffee00, #00cc66, #3399ff, #9933ff)', borderRadius: 12 }}
             >
               Open to Opportunities
             </Button>
+            {/* Right-aligned badge for web */}
+            {canShowOpenBadge && (
+              <Badge variant="secondary" className="hidden md:inline-flex bg-green-100 text-green-700 border-transparent gap-1 rounded-md px-2 py-1">
+                🟢 Open to Opportunities
+              </Badge>
+            )}
+            </>
           ) : (
             <div className="flex gap-3 w-full md:max-w-md">
               <Button className="flex-1 rounded-full font-semibold text-white border-none transition-all hover:opacity-90 active:scale-[0.98] bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]">
@@ -170,6 +202,13 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
             </div>
           )}
         </div>
+        {isOwnProfile && (
+          <OpenToOpportunitiesDialog
+            userId={dialogUserId}
+            open={opentoOpen}
+            onOpenChange={setOpentoOpen}
+          />
+        )}
 
         {/* Inline Stats Dashboard */}
         <div className="flex items-center justify-between md:justify-start md:gap-12 py-4 border-t border-b border-gray-100 mb-6">

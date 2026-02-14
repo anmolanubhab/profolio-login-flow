@@ -17,6 +17,7 @@ import {
   Loader2,
   Briefcase
 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -110,14 +111,14 @@ const Settings = () => {
   ];
 
   // Secondary links
-  const secondaryLinks = [
-    "Help Center",
-    "Professional Community Policies",
-    "Privacy Policy",
-    "Accessibility",
-    "Recommendation Transparency",
-    "User Agreement",
-    "End User License Agreement",
+  const secondaryLinks: { label: string; path: string }[] = [
+    { label: "Help Center", path: "/resources/help" },
+    { label: "Professional Community Policies", path: "/resources/community-policies" },
+    { label: "Privacy Policy", path: "/resources/privacy" },
+    { label: "Accessibility", path: "/resources/accessibility" },
+    { label: "Recommendation Transparency", path: "/resources/recommendation-transparency" },
+    { label: "User Agreement", path: "/resources/user-agreement" },
+    { label: "End User License Agreement", path: "/resources/eula" },
   ];
 
   return (
@@ -182,13 +183,14 @@ const Settings = () => {
           <div className="px-4 sm:px-6 pb-8">
             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 px-2">Resources</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {secondaryLinks.map((link) => (
+              {secondaryLinks.map(({ label, path }) => (
                 <button
-                  key={link}
-                  onClick={() => {}}
-                  className="text-left px-4 py-3 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
+                  key={label}
+                  onClick={() => navigate(path)}
+                  className="flex items-center justify-between p-4 rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white hover:border-transparent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group text-left"
                 >
-                  {link}
+                  <span className="text-sm font-medium text-[#1D2226]">{label}</span>
+                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-[#833AB4] transition-colors" />
                 </button>
               ))}
             </div>

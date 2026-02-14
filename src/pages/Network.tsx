@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Search, UserPlus, Eye } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { useCompanyAdmin } from '@/hooks/use-company-admin';
 
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -29,9 +31,11 @@ const Network = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [openOnly, setOpenOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { hasCompanies } = useCompanyAdmin();
 
   useEffect(() => {
     if (user) {
@@ -42,24 +46,29 @@ const Network = () => {
   }, [user]);
 
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredProfiles(profiles);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = profiles.filter(profile => 
-        profile.display_name?.toLowerCase().includes(query) ||
-        profile.profession?.toLowerCase().includes(query) ||
-        profile.location?.toLowerCase().includes(query)
-      );
-      setFilteredProfiles(filtered);
+    const query = searchQuery.trim().toLowerCase();
+    let base = [...profiles];
+    if (openOnly) {
+      base = base.filter(p => (p as any).open_to_work === true && (
+        (p as any).open_to_work_visibility === 'public' ||
+        ((p as any).open_to_work_visibility === 'recruiters' && hasCompanies)
+      ));
     }
-  }, [searchQuery, profiles]);
+    if (query) {
+      base = base.filter(p =>
+        p.display_name?.toLowerCase().includes(query) ||
+        p.profession?.toLowerCase().includes(query) ||
+        p.location?.toLowerCase().includes(query)
+      );
+    }
+    setFilteredProfiles(base);
+  }, [searchQuery, profiles, openOnly, hasCompanies]);
 
   const fetchProfiles = async (signal?: AbortSignal) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, user_id, display_name, bio, profession, location, avatar_url, profile_visibility, open_to_work, open_to_work_visibility')
         .neq('user_id', user?.id)
         .order('created_at', { ascending: false })
         .abortSignal(signal);
@@ -141,6 +150,12 @@ const Network = () => {
                   className="pl-12 h-14 bg-gray-50/50 border-gray-100 rounded-2xl focus:border-[#833AB4]/30 focus:ring-[#833AB4]/10 transition-all text-lg"
                 />
               </div>
+              {hasCompanies && (
+                <div className="mt-4 flex items-center justify-end gap-3">
+                  <span className="text-sm text-muted-foreground">Show candidates open to opportunities</span>
+                  <Switch checked={openOnly} onCheckedChange={setOpenOnly} />
+                </div>
+              )}
             </CardHeader>
           </Card>
 
