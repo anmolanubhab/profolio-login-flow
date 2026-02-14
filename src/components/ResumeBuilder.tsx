@@ -174,30 +174,55 @@ const ResumeBuilder = () => {
         visibility: uploadVisibility
       };
 
-      // Try insert with visibility column
-      let error;
+      // Prefer robust insertion that adapts to varying schemas
+      // Attempt 1: minimal fields + file_url
+      let insertError: any | null = null;
+      let inserted = false;
       try {
-        ({ error } = await supabase.from('resumes').insert({
+        const { error } = await supabase.from('resumes').insert({
           title: uploadTitle,
-          file_path: result.url,
           user_id: user.id,
           content: content,
-          visibility: uploadVisibility
-        } as any));
-      } catch (e) {
+          file_url: result.url
+        } as any);
+        insertError = error;
+        inserted = !error;
+      } catch (e: any) {
+        insertError = e;
+      }
+      // Attempt 2: try legacy file_path if file_url fails due to column issues
+      if (!inserted && insertError) {
         try {
-          ({ error } = await supabase.from('resumes').insert({
+          const { error } = await supabase.from('resumes').insert({
             title: uploadTitle,
-            file_url: result.url,
             user_id: user.id,
             content: content,
-          }));
-        } catch (e2) {
-          error = e2 as any;
+            file_path: result.url
+          } as any);
+          insertError = error;
+          inserted = !error;
+        } catch (e: any) {
+          insertError = e;
         }
       }
-
-      if (error) throw error;
+      // Attempt 3: insert minimal record without file column if both columns missing
+      if (!inserted && insertError) {
+        const { error } = await supabase.from('resumes').insert({
+          title: uploadTitle,
+          user_id: user.id,
+          content: content
+        } as any);
+        if (error) throw error;
+        inserted = true;
+      }
+      // Best-effort update visibility if column exists (ignore errors)
+      try {
+        await supabase.from('resumes')
+          .update({ visibility: uploadVisibility } as any)
+          .eq('user_id', user.id)
+          .eq('title', uploadTitle);
+      } catch {}
+      if (!inserted) throw insertError;
 
       toast({ title: "Resume uploaded successfully!" });
       setIsUploadDialogOpen(false);
@@ -206,13 +231,14 @@ const ResumeBuilder = () => {
     } catch (error: any) {
       console.error('Error saving uploaded resume:', error);
       const msg: string = error?.message || '';
+      const low = msg.toLowerCase();
       const looksLikeSchemaOrRLS =
-        msg.toLowerCase().includes('column') ||
-        msg.toLowerCase().includes('relation') ||
-        msg.toLowerCase().includes('row-level security') ||
-        msg.toLowerCase().includes('permission denied') ||
-        msg.toLowerCase().includes('no such table') ||
-        msg.toLowerCase().includes('schema cache');
+        low.includes('column') ||
+        low.includes('relation') ||
+        low.includes('row-level security') ||
+        low.includes('permission denied') ||
+        low.includes('no such table') ||
+        low.includes('schema cache');
       toast({
         title: looksLikeSchemaOrRLS ? "Upload not configured" : "Failed to save resume record",
         description: looksLikeSchemaOrRLS
@@ -303,21 +329,29 @@ const ResumeBuilder = () => {
     if (resume.pdf_url || resume.file_url) {
       const url = resume.file_url || resume.pdf_url;
       
-      // If it looks like a full URL (legacy), open it
       if (url.startsWith('http')) {
         window.open(url, '_blank');
         return;
       }
       
-      // Otherwise, it's a path in the private 'resumes' bucket
+      try {
+        const { data: publicData } = supabase.storage
+          .from('resumes')
+          .getPublicUrl(url);
+        if (publicData?.publicUrl) {
+          window.open(publicData.publicUrl, '_blank');
+          return;
+        }
+      } catch {}
+      
       try {
         const { data, error } = await supabase.storage
           .from('resumes')
-          .createSignedUrl(url, 60); // Valid for 60 seconds
-          
+          .createSignedUrl(url, 60);
         if (error) throw error;
         if (data?.signedUrl) {
           window.open(data.signedUrl, '_blank');
+          return;
         }
       } catch (error) {
         console.error('Error creating signed URL:', error);

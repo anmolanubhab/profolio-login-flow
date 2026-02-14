@@ -7,18 +7,7 @@
     <meta name="description" content="Professional portfolio platform for students and employers" />
     <meta name="author" content="Profolio" />
     
-    <!-- Preconnect to critical origins for faster resource loading -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://cdn.gpteng.co" crossorigin />
-    
-    <!-- Load Google Fonts asynchronously using requestIdleCallback to break chain -->
-    <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
-    </noscript>
-    <script>
-      (function(){var l=function(){var e=document.createElement('link');e.rel='stylesheet';e.href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';document.head.appendChild(e)};if('requestIdleCallback'in window){requestIdleCallback(l)}else{setTimeout(l,1)}})();
-    </script>
+    <!-- Removed external Google Fonts to avoid DNS/network errors in low-connectivity environments -->
 
     <!-- Critical CSS inlined for faster FCP/LCP -->
     <style>

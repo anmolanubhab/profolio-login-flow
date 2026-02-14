@@ -120,26 +120,50 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
         });
         setCoverPreview((data as any).cover_url || (data as any).photo_url || '');
       } else {
-        // Create a new profile if it doesn't exist
+        // Create a new profile if it doesn't exist (handle duplicate race)
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
           .insert({ user_id: userId })
           .select()
           .single();
 
-        if (createError) throw createError;
-
-        setProfile(newProfile as any);
-        setEditData({
-          display_name: '',
-          bio: '',
-          profession: '',
-          location: '',
-          phone: '',
-          website: '',
-          profile_visibility: 'public',
-        });
-        setCoverPreview('');
+        if (createError) {
+          if ((createError as any).code === '23505') {
+            // Duplicate - fetch existing
+            const { data: existing, error: fetchErr } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', userId)
+              .maybeSingle();
+            if (!fetchErr && existing) {
+              setProfile(existing as any);
+              setEditData({
+                display_name: (existing as any).display_name || '',
+                bio: (existing as any).bio || '',
+                profession: (existing as any).profession || '',
+                location: (existing as any).location || '',
+                phone: (existing as any).phone || '',
+                website: (existing as any).website || '',
+                profile_visibility: (existing as any).profile_visibility || 'public',
+              });
+              setCoverPreview((existing as any).cover_url || (existing as any).photo_url || '');
+            }
+          } else {
+            throw createError;
+          }
+        } else if (newProfile) {
+          setProfile(newProfile as any);
+          setEditData({
+            display_name: '',
+            bio: '',
+            profession: '',
+            location: '',
+            phone: '',
+            website: '',
+            profile_visibility: 'public',
+          });
+          setCoverPreview('');
+        }
       }
     } catch (error: any) {
       toast({
