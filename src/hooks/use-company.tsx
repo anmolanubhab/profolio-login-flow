@@ -355,7 +355,12 @@ export function useCompanyInvitations() {
         .abortSignal(signal);
 
       if (error) {
-        if (error.code === 'ABORTED') return;
+        if (
+          error.code === 'ABORTED' ||
+          (error as any).name === 'AbortError' ||
+          (error as any).code === 20 ||
+          (error as any).code === '20'
+        ) return;
         // Suppress permission denied errors (42501) which happen if RLS is strict or table permissions are missing
         if (error.code !== '42501') {
           console.error('Error fetching invitations:', error);
@@ -393,7 +398,12 @@ export function useCompanyInvitations() {
         setInvitations([]);
       }
     } catch (error: any) {
-      if (error.code === 'ABORTED' || error.name === 'AbortError') return;
+      if (
+        error.code === 'ABORTED' ||
+        error.name === 'AbortError' ||
+        error.code === 20 ||
+        error.code === '20'
+      ) return;
       console.error('Error fetching invitations:', error);
       setInvitations([]);
     } finally {

@@ -24,7 +24,7 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
   const { data: counts, isLoading: isLoadingCounts } = useQuery({
     queryKey: ['profile-completion-counts', user?.id],
     queryFn: async ({ signal }) => {
-      if (!user?.id) return { certificates: 0, resumes: 0 };
+      if (!user?.id) return { certificates: 0, resumes: 0, skills: 0, education: 0 };
 
       const getCount = async (table: string) => {
         try {
@@ -46,14 +46,18 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
       };
 
       // Parallel fetch for counts with error handling
-      const [certificates, resumes] = await Promise.all([
+      const [certificates, resumes, skills, education] = await Promise.all([
         getCount('certificates'),
-        getCount('resumes')
+        getCount('resumes'),
+        getCount('user_skills'),
+        getCount('user_education')
       ]);
 
       return {
         certificates,
-        resumes
+        resumes,
+        skills,
+        education
       };
     },
     enabled: !!user?.id,
@@ -70,8 +74,7 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
     };
   }
 
-  // Get education and experience counts from profile JSON fields
-  const educationCount = Array.isArray(profile.education) ? profile.education.length : 0;
+  // Get experience counts from profile JSON fields
   const experienceCount = Array.isArray(profile.experience) ? profile.experience.length : 0;
 
   // Define criteria and weights
@@ -104,7 +107,7 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
     {
       id: 'skills',
       label: 'Skills',
-      isComplete: !!(profile.skills && profile.skills.length > 0),
+      isComplete: (counts?.skills || 0) > 0 || !!(profile.skills && profile.skills.length > 0),
       weight: 15,
       actionUrl: '/profile',
       actionLabel: 'Add skills'
@@ -120,7 +123,7 @@ export const useProfileCompletion = (): ProfileCompletion & { isLoading: boolean
     {
       id: 'education',
       label: 'Education',
-      isComplete: educationCount > 0,
+      isComplete: (counts?.education || 0) > 0 || (Array.isArray(profile.education) ? profile.education.length : 0) > 0,
       weight: 10,
       actionUrl: '/profile',
       actionLabel: 'Add education'

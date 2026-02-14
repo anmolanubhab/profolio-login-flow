@@ -17,6 +17,10 @@ import { PreferenceRow, PreferenceToggle, SectionTitle, SectionSeparator } from 
 import { VisibilitySelector } from "@/components/settings/VisibilitySelector";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React from "react";
+import { UpdateEmailDrawer } from "@/components/settings/UpdateEmailDrawer";
+import { UpdatePhoneDrawer } from "@/components/settings/UpdatePhoneDrawer";
+import { UpdatePasswordDrawer } from "@/components/settings/UpdatePasswordDrawer";
 
 interface VisibilitySettings {
   profile: 'everyone' | 'connections' | 'recruiters' | 'only_me';
@@ -93,6 +97,9 @@ const AccountPreferences = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [emailOpen, setEmailOpen] = React.useState(false);
+  const [phoneOpen, setPhoneOpen] = React.useState(false);
+  const [passwordOpen, setPasswordOpen] = React.useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -268,17 +275,17 @@ const AccountPreferences = () => {
                   <PreferenceRow 
                     label="Email address" 
                     rightValue={user?.email || ""} 
-                    onClick={() => handleNotImplemented("Email address")} 
+                    onClick={() => setEmailOpen(true)} 
                   />
                   <PreferenceRow 
                     label="Phone number" 
                     rightValue={profile?.phone || "Not provided"} 
-                    onClick={() => handleNotImplemented("Phone number")} 
+                    onClick={() => setPhoneOpen(true)} 
                   />
                   <PreferenceRow 
                     label="Password" 
                     rightValue="••••••••" 
-                    onClick={() => navigate('/settings/security')} 
+                    onClick={() => setPasswordOpen(true)} 
                   />
                 </CardContent>
               </Card>
@@ -460,6 +467,9 @@ const AccountPreferences = () => {
           )}
         </div>
       </div>
+      <UpdateEmailDrawer open={emailOpen} onOpenChange={setEmailOpen} />
+      <UpdatePhoneDrawer open={phoneOpen} onOpenChange={setPhoneOpen} currentPhone={profile?.phone} />
+      <UpdatePasswordDrawer open={passwordOpen} onOpenChange={setPasswordOpen} />
     </Layout>
   );
 };

@@ -1,66 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HelpCircle, ChevronRight } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Layout } from "@/components/Layout";
-
-interface PreferenceRowProps {
-  label: string;
-  rightValue?: string;
-  onClick?: () => void;
-  hasArrow?: boolean;
-}
-
-const PreferenceRow = ({ label, rightValue, onClick, hasArrow = true }: PreferenceRowProps) => (
-  <button
-    onClick={onClick}
-    className="w-full flex items-center justify-between px-4 py-4 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100 last:border-0"
-  >
-    <span className="text-base font-normal text-gray-900 text-left flex-1 pr-4">{label}</span>
-    <div className="flex items-center gap-2 shrink-0">
-      {rightValue && (
-        <span className="text-sm text-gray-500 font-normal truncate max-w-[150px] sm:max-w-xs">
-          {rightValue}
-        </span>
-      )}
-      {hasArrow && <ChevronRight className="h-5 w-5 text-gray-500" strokeWidth={1.5} />}
-    </div>
-  </button>
-);
-
-interface PreferenceToggleProps {
-  label: string;
-  subLabel?: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  disabled?: boolean;
-}
-
-const PreferenceToggle = ({ label, subLabel, checked, onCheckedChange, disabled }: PreferenceToggleProps) => (
-  <div className="w-full flex items-center justify-between px-4 py-4 bg-white border-b border-gray-100">
-    <div className="flex flex-col items-start flex-1 mr-4">
-      <span className="text-base font-normal text-gray-900 text-left">{label}</span>
-      {subLabel && (
-        <span className="text-sm text-gray-500 font-normal text-left mt-0.5">{subLabel}</span>
-      )}
-    </div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
-  </div>
-);
-
-const SectionTitle = ({ title }: { title: string }) => (
-  <div className="px-4 py-4 bg-white">
-    <h2 className="text-lg font-bold text-gray-900 leading-tight">{title}</h2>
-  </div>
-);
-
-const SectionSeparator = () => (
-  <div className="h-2 bg-[#F3F2EF] w-full border-t border-b border-gray-200/50" />
-);
+import { VisibilitySelector } from "@/components/settings/VisibilitySelector";
+import { PreferenceRow, PreferenceToggle, SectionSeparator, SectionTitle } from "@/components/settings/PreferenceComponents";
 
 interface VisibilityPreferences {
   profile_viewing?: string;
@@ -79,6 +25,9 @@ const Visibility = () => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
   const queryClient = useQueryClient();
+  const [local, setLocal] = useState<any | null>(null);
+  const timersRef = useRef<Record<string, number>>({});
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   const handleSignOut = async () => {
     await signOut();
@@ -105,62 +54,55 @@ const Visibility = () => {
     enabled: !!user?.id,
   });
 
-  // Update visibility mutation
-  const updateVisibilityMutation = useMutation({
-    mutationFn: async (updates: { profile_visibility?: string; preferences?: VisibilityPreferences }) => {
-      if (!user?.id) throw new Error("Not authenticated");
-      
-      const updateData: any = {};
-      
-      if (updates.profile_visibility) {
-        updateData.profile_visibility = updates.profile_visibility;
-      }
-      
-      if (updates.preferences) {
-        const currentPrefs = (profile?.preferences as VisibilityPreferences) || {};
-        updateData.preferences = { ...currentPrefs, ...updates.preferences };
-      }
-
-      const { error } = await supabase
-        .from("profiles")
-        .update(updateData)
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile-visibility", user?.id] });
-      toast({
-        title: "Settings saved",
-        description: "Your visibility preferences have been updated.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update visibility settings.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const prefs = (profile?.preferences as VisibilityPreferences) || {};
-  const isUpdating = updateVisibilityMutation.isPending;
+  useEffect(() => {
+    if (profile) setLocal(profile);
+  }, [profile]);
+  
+  const prefs = ((local?.preferences ?? profile?.preferences) as VisibilityPreferences) || {};
+  const isUpdating = Object.values(saving).some(Boolean);
   
   // Default values
-  const pageVisitVisibility = prefs.page_visit_visibility ?? true;
-  const connectionsVisible = prefs.connections_visible ?? true;
-  const shareJobChanges = prefs.share_job_changes ?? true;
-  const newsNotify = prefs.news_notify_connections ?? true;
-  const mentionedByOthers = prefs.mentioned_by_others ?? true;
-  const profileVisibility = profile?.profile_visibility || "public";
+  const profileViewVisibility = local?.profile_view_visibility ?? "public";
+  const emailVisibility = local?.email_visibility ?? "only_me";
+  const connectionsVisibility = local?.connections_visibility ?? "connections";
+  const followingVisibility = local?.following_visibility ?? "anyone";
+  const lastnameVisibility = local?.lastname_visibility ?? "connections";
+  const discoveryByEmail = local?.discovery_by_email ?? true;
+  const discoveryByPhone = local?.discovery_by_phone ?? true;
+  const activeStatusVisibility = local?.active_status_visibility ?? "connections";
+  const shareJobChanges = local?.notify_job_changes ?? true;
+  const newsNotify = local?.notify_news ?? true;
+  const mentionedByOthers = local?.allow_mentions ?? true;
+  const allowFollowers = local?.allow_followers ?? true;
+  const followerVisibility = local?.follower_visibility ?? "everyone";
 
-  const handleToggle = (key: string, value: boolean) => {
-    updateVisibilityMutation.mutate({ preferences: { [key]: value } });
-  };
+  const setSavingFor = (key: string, val: boolean) =>
+    setSaving(prev => ({ ...prev, [key]: val }));
 
-  const handleProfileVisibilityChange = (visibility: string) => {
-    updateVisibilityMutation.mutate({ profile_visibility: visibility });
+  const updateColumn = (column: string, value: any) => {
+    if (!user?.id) return;
+    const prev = local?.[column];
+    setLocal((l: any) => ({ ...(l || {}), [column]: value }));
+    setSavingFor(column, true);
+    const existing = timersRef.current[column];
+    if (existing) window.clearTimeout(existing);
+    timersRef.current[column] = window.setTimeout(async () => {
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ [column]: value } as any)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["profile-visibility", user?.id] });
+        toast({ title: "Visibility settings updated" });
+      } catch (e: any) {
+        // rollback
+        setLocal((l: any) => ({ ...(l || {}), [column]: prev }));
+        toast({ title: "Error", description: e.message || "Failed to update setting.", variant: "destructive" });
+      } finally {
+        setSavingFor(column, false);
+      }
+    }, 400);
   };
 
   const handleNotImplemented = (feature: string) => {
@@ -189,77 +131,138 @@ const Visibility = () => {
           {/* SECTION 1: Visibility of your profile & network */}
           <SectionTitle title="Visibility of your profile & network" />
           
-          <PreferenceRow 
-            label="Profile viewing options" 
-            rightValue={profileVisibility === "public" ? "Public" : profileVisibility === "connections_only" ? "Connections only" : "Private"} 
-            onClick={() => {
-              const next = profileVisibility === "public" ? "connections_only" : profileVisibility === "connections_only" ? "private" : "public";
-              handleProfileVisibilityChange(next);
-            }}
+          <VisibilitySelector
+            title="Profile viewing options"
+            description="Choose who can see your profile when they visit"
+            value={profileViewVisibility}
+            options={[
+              { value: "public", label: "Public" },
+              { value: "connections", label: "Connections only" },
+              { value: "private", label: "Private" },
+            ]}
+            onChange={(val) => updateColumn("profile_view_visibility", val)}
+            disabled={saving["profile_view_visibility"] === true}
           />
-          <PreferenceToggle 
-            label="Profile viewing options"
-            subLabel="Choose whether you're visible when viewing other profiles"
-            checked={pageVisitVisibility}
-            onCheckedChange={(val) => handleToggle("page_visit_visibility", val)}
-            disabled={isUpdating}
+          <VisibilitySelector
+            title="Who can see or download your email address"
+            value={emailVisibility}
+            options={[
+              { value: "only_me", label: "Only me" },
+              { value: "connections", label: "Connections" },
+              { value: "public", label: "Public" },
+            ]}
+            onChange={(val) => updateColumn("email_visibility", val)}
+            disabled={saving["email_visibility"] === true}
           />
-          <PreferenceRow label="Edit your public profile" />
-          <PreferenceRow label="Who can see or download your email address" />
-          <PreferenceToggle 
-            label="Connections"
-            subLabel="Choose who can see your connections"
-            checked={connectionsVisible}
-            onCheckedChange={(val) => handleToggle("connections_visible", val)}
-            disabled={isUpdating}
+          <VisibilitySelector
+            title="Who can see your connections"
+            value={connectionsVisibility}
+            options={[
+              { value: "only_me", label: "Only me" },
+              { value: "connections", label: "Connections" },
+              { value: "public", label: "Public" },
+            ]}
+            onChange={(val) => updateColumn("connections_visibility", val)}
+            disabled={saving["connections_visibility"] === true}
           />
-          <PreferenceRow 
-            label="Who can see members you follow" 
-            rightValue="Anyone on Profolio" 
+          <VisibilitySelector
+            title="Who can see members you follow"
+            value={followingVisibility}
+            options={[
+              { value: "only_me", label: "Only me" },
+              { value: "connections", label: "Connections" },
+              { value: "anyone", label: "Anyone on Profolio" },
+            ]}
+            onChange={(val) => updateColumn("following_visibility", val)}
+            disabled={saving["following_visibility"] === true}
           />
-          <PreferenceRow label="Who can see your last name" />
-          <PreferenceRow label="Profile discovery and visibility off Profolio" />
-          <PreferenceRow 
-            label="Profile discovery using email address" 
-            rightValue="Anyone" 
+          <VisibilitySelector
+            title="Who can see your last name"
+            value={lastnameVisibility}
+            options={[
+              { value: "only_me", label: "Only me" },
+              { value: "connections", label: "Connections" },
+              { value: "public", label: "Public" },
+            ]}
+            onChange={(val) => updateColumn("lastname_visibility", val)}
+            disabled={saving["lastname_visibility"] === true}
           />
-          <PreferenceRow 
-            label="Profile discovery using phone number" 
-            rightValue="Everyone" 
+          <PreferenceToggle
+            label="Profile discovery using email address"
+            checked={!!discoveryByEmail}
+            onCheckedChange={(val) => updateColumn("discovery_by_email", val)}
+            disabled={saving["discovery_by_email"] === true}
+            isSaving={saving["discovery_by_email"]}
           />
-          <PreferenceRow label="Blocked members" />
+          <PreferenceToggle
+            label="Profile discovery using phone number"
+            checked={!!discoveryByPhone}
+            onCheckedChange={(val) => updateColumn("discovery_by_phone", val)}
+            disabled={saving["discovery_by_phone"] === true}
+            isSaving={saving["discovery_by_phone"]}
+          />
+          <PreferenceRow label="Blocked members" hasArrow />
 
           <SectionSeparator />
 
           {/* SECTION 2: Visibility of your activity */}
           <SectionTitle title="Visibility of your activity" />
           
-          <PreferenceRow 
-            label="Manage active status" 
-            rightValue="Your connections" 
+          <VisibilitySelector
+            title="Manage active status"
+            description="Control who sees when you're active"
+            value={activeStatusVisibility}
+            options={[
+              { value: "no_one", label: "No one" },
+              { value: "connections", label: "Connections" },
+              { value: "everyone", label: "Everyone" },
+            ]}
+            onChange={(val) => updateColumn("active_status_visibility", val)}
+            disabled={saving["active_status_visibility"] === true}
           />
           <PreferenceToggle 
             label="Share job changes" 
             subLabel="Notify connections when you start a new job"
             checked={shareJobChanges}
-            onCheckedChange={(val) => handleToggle("share_job_changes", val)}
-            disabled={isUpdating}
+            onCheckedChange={(val) => updateColumn("notify_job_changes", val)}
+            disabled={saving["notify_job_changes"] === true}
+            isSaving={saving["notify_job_changes"]}
           />
           <PreferenceToggle 
             label="News notify connections" 
             subLabel="Notify connections when you're in the news"
             checked={newsNotify}
-            onCheckedChange={(val) => handleToggle("news_notify_connections", val)}
-            disabled={isUpdating}
+            onCheckedChange={(val) => updateColumn("notify_news", val)}
+            disabled={saving["notify_news"] === true}
+            isSaving={saving["notify_news"]}
           />
           <PreferenceToggle 
             label="Mentions by others" 
             subLabel="Allow others to mention you in posts"
             checked={mentionedByOthers}
-            onCheckedChange={(val) => handleToggle("mentioned_by_others", val)}
-            disabled={isUpdating}
+            onCheckedChange={(val) => updateColumn("allow_mentions", val)}
+            disabled={saving["allow_mentions"] === true}
+            isSaving={saving["allow_mentions"]}
           />
-          <PreferenceRow label="Followers" />
+          <SectionTitle title="Followers" />
+          <PreferenceToggle
+            label="Allow followers"
+            checked={!!allowFollowers}
+            onCheckedChange={(val) => updateColumn("allow_followers", val)}
+            disabled={saving["allow_followers"] === true}
+            isSaving={saving["allow_followers"]}
+          />
+          <VisibilitySelector
+            title="Follower visibility"
+            description="Who can follow you"
+            value={followerVisibility}
+            options={[
+              { value: "everyone", label: "Everyone can follow" },
+              { value: "connections", label: "Only connections can follow" },
+            ]}
+            onChange={(val) => updateColumn("follower_visibility", val)}
+            disabled={!allowFollowers || saving["follower_visibility"] === true}
+          />
         </div>
       )}
       </div>

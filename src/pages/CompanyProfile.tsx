@@ -119,6 +119,8 @@ export default function CompanyProfile() {
   }, [companyId, isAdmin, isLoading]);
 
   const fetchJobs = async (signal?: AbortSignal) => {
+    if (!companyId) return;
+    
     setLoadingJobs(true);
     try {
       let query = supabase
@@ -129,8 +131,12 @@ export default function CompanyProfile() {
           applications(count)
         `)
         .eq('company_id', companyId)
-        .order('posted_at', { ascending: false })
-        .abortSignal(signal);
+        .order('posted_at', { ascending: false });
+
+      // Add abort signal if provided
+      if (signal) {
+        query = query.abortSignal(signal);
+      }
 
       // If not admin, only show open jobs
       if (!isAdmin) {
@@ -140,7 +146,7 @@ export default function CompanyProfile() {
       const { data, error } = await query;
 
       if (error) {
-        if (error.code === 'ABORTED') return;
+        if (error.code === 'ABORTED' || (error as any).name === 'AbortError') return;
         throw error;
       }
       
@@ -154,6 +160,11 @@ export default function CompanyProfile() {
     } catch (error) {
       if ((error as any).name === 'AbortError' || (error as any).code === 'ABORTED') return;
       console.error('Error fetching jobs:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load jobs. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoadingJobs(false);
     }
@@ -421,258 +432,257 @@ export default function CompanyProfile() {
                   <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">{company.description}</p>
                 </div>
               )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Tabs for Content */}
-        <div className="px-0 sm:px-0">
-          <Tabs defaultValue={defaultTab} className="space-y-4">
-            <div className="px-4 sm:px-0">
-              <TabsList className="grid w-full grid-cols-4 bg-gray-100/50 p-1 rounded-2xl">
-                <TabsTrigger value="posts" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <FileText className="w-4 h-4" />
-                  <span className="hidden sm:inline">Posts</span>
-                </TabsTrigger>
-                <TabsTrigger value="about" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <Heart className="w-4 h-4" />
-                  <span className="hidden sm:inline">About</span>
-                </TabsTrigger>
-                <TabsTrigger value="team" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <Users className="w-4 h-4" />
-                  <span className="hidden sm:inline">Team</span>
-                </TabsTrigger>
-                <TabsTrigger value="jobs" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                  <Briefcase className="w-4 h-4" />
-                  <span className="hidden sm:inline">Jobs ({jobs.length})</span>
-                </TabsTrigger>
-              </TabsList>
-            </div>
+          {/* Tabs for Content */}
+          <div className="px-0 sm:px-0">
+            <Tabs defaultValue={defaultTab} className="space-y-4">
+              <div className="px-4 sm:px-0">
+                <TabsList className="grid w-full grid-cols-4 bg-gray-100/50 p-1 rounded-2xl">
+                  <TabsTrigger value="posts" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <FileText className="w-4 h-4" />
+                    <span className="hidden sm:inline">Posts</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="about" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <Heart className="w-4 h-4" />
+                    <span className="hidden sm:inline">About</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="team" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <Users className="w-4 h-4" />
+                    <span className="hidden sm:inline">Team</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="jobs" className="flex items-center gap-2 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                    <Briefcase className="w-4 h-4" />
+                    <span className="hidden sm:inline">Jobs ({jobs.length})</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-            {/* Posts Tab */}
-            <TabsContent value="posts" className="mt-4 focus-visible:outline-none">
-              <CompanyPostsFeed companyId={companyId!} companyName={company.name} />
-            </TabsContent>
+              {/* Posts Tab */}
+              <TabsContent value="posts" className="mt-4 focus-visible:outline-none">
+                <CompanyPostsFeed companyId={companyId!} companyName={company.name} />
+              </TabsContent>
 
-            {/* About Tab */}
-            <TabsContent value="about" className="space-y-4 sm:space-y-6 mt-4 focus-visible:outline-none">
-              {isAdmin && companyId && (
-                <CompanyInsights companyId={companyId} companyName={company.name} />
-              )}
-              {(company.culture || (company.values && company.values.length > 0)) ? (
+              {/* About Tab */}
+              <TabsContent value="about" className="space-y-4 sm:space-y-6 mt-4 focus-visible:outline-none">
+                {isAdmin && companyId && (
+                  <CompanyInsights companyId={companyId} companyName={company.name} />
+                )}
+                {(company.culture || (company.values && company.values.length > 0)) ? (
+                  <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+                    <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+                      <CardTitle className="flex items-center gap-2 text-gray-900">
+                        <Heart className="w-5 h-5 text-primary" />
+                        Culture & Values
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 py-6 sm:px-8 sm:pb-8 space-y-6">
+                      {company.culture && (
+                        <div>
+                          <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                            <Target className="w-4 h-4 text-gray-500" />
+                            Our Culture
+                          </h3>
+                          <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">{company.culture}</p>
+                        </div>
+                      )}
+                      
+                      {company.values && company.values.length > 0 && (
+                        <div>
+                          <h3 className="font-semibold text-gray-900 mb-3">Our Values</h3>
+                          <div className="flex flex-wrap gap-2">
+                            {company.values.map((value, index) => (
+                              <Badge key={index} variant="outline" className="text-sm py-1.5 px-4 bg-gray-50/50 border-gray-100 text-gray-700">
+                                {value}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+                    <CardContent className="px-4 py-12 sm:px-8 sm:pb-8 text-center">
+                      <Heart className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p className="text-gray-500">No culture information available yet.</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Team Tab */}
+              <TabsContent value="team" className="mt-4 focus-visible:outline-none">
+                <CompanyMembersCard
+                  members={members}
+                  isAdmin={isAdmin}
+                  ownerId={company.owner_id}
+                  onRemoveMember={removeMember}
+                  onUpdateRole={updateMemberRole}
+                  currentUserId={profileId || undefined}
+                />
+              </TabsContent>
+
+              {/* Jobs Tab */}
+              <TabsContent value="jobs" className="mt-4 focus-visible:outline-none">
                 <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
                   <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
                     <CardTitle className="flex items-center gap-2 text-gray-900">
-                      <Heart className="w-5 h-5 text-primary" />
-                      Culture & Values
+                      <Briefcase className="w-5 h-5 text-primary" />
+                      {isAdmin ? 'Manage Jobs' : `Open Positions (${jobs.length})`}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="px-4 py-6 sm:px-8 sm:pb-8 space-y-6">
-                    {company.culture && (
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                          <Target className="w-4 h-4 text-gray-500" />
-                          Our Culture
-                        </h3>
-                        <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">{company.culture}</p>
+                  <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
+                    {loadingJobs ? (
+                      <div className="space-y-4">
+                        {[1, 2, 3].map((i) => (
+                          <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+                        ))}
                       </div>
-                    )}
-                    
-                    {company.values && company.values.length > 0 && (
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-3">Our Values</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {company.values.map((value, index) => (
-                            <Badge key={index} variant="outline" className="text-sm py-1.5 px-4 bg-gray-50/50 border-gray-100 text-gray-700">
-                              {value}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-                  <CardContent className="px-4 py-12 sm:px-8 sm:pb-8 text-center">
-                    <Heart className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p className="text-gray-500">No culture information available yet.</p>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            {/* Team Tab */}
-            <TabsContent value="team" className="mt-4 focus-visible:outline-none">
-              <CompanyMembersCard
-                members={members}
-                isAdmin={isAdmin}
-                ownerId={company.owner_id}
-                onRemoveMember={removeMember}
-                onUpdateRole={updateMemberRole}
-                currentUserId={profileId || undefined}
-              />
-            </TabsContent>
-
-            {/* Jobs Tab */}
-            <TabsContent value="jobs" className="mt-4 focus-visible:outline-none">
-              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
-                  <CardTitle className="flex items-center gap-2 text-gray-900">
-                    <Briefcase className="w-5 h-5 text-primary" />
-                    {isAdmin ? 'Manage Jobs' : `Open Positions (${jobs.length})`}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
-                {loadingJobs ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-32 w-full rounded-2xl" />
-                    ))}
-                  </div>
-                ) : jobs.length > 0 ? (
-                  <div className="space-y-4">
-                    {jobs.map((job) => (
-                      <div
-                        key={job.id}
-                        className="flex flex-col sm:flex-row gap-4 p-5 rounded-2xl border border-gray-100 hover:border-primary/20 hover:bg-primary/[0.02] transition-all duration-300 group"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <Link to={`/jobs?job=${job.id}`} className="font-bold text-gray-900 hover:text-primary hover:underline transition-colors truncate block text-lg">
-                                  {job.title}
-                                </Link>
+                    ) : jobs.length > 0 ? (
+                      <div className="space-y-4">
+                        {jobs.map((job) => (
+                          <div
+                            key={job.id}
+                            className="flex flex-col sm:flex-row gap-4 p-5 rounded-2xl border border-gray-100 hover:border-primary/20 hover:bg-primary/[0.02] transition-all duration-300 group"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <Link to={`/jobs?job=${job.id}`} className="font-bold text-gray-900 hover:text-primary hover:underline transition-colors text-lg">
+                                      {job.title}
+                                    </Link>
+                                    {isAdmin && (
+                                      <Badge variant={job.status === 'open' ? 'default' : 'secondary'} className={cn(
+                                        "capitalize rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+                                        job.status === 'open' ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-gray-100 text-gray-600 hover:bg-gray-100"
+                                      )}>
+                                        {job.status}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-500">
+                                    {job.location && (
+                                      <span className="flex items-center gap-1.5">
+                                        <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                                        {job.location}
+                                      </span>
+                                    )}
+                                    {job.employment_type && (
+                                      <span className="flex items-center gap-1.5">
+                                        <Briefcase className="w-3.5 h-3.5 text-gray-400" />
+                                        {job.employment_type}
+                                      </span>
+                                    )}
+                                    {isAdmin && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="p-0 h-auto font-semibold text-primary hover:text-primary/80 hover:bg-transparent"
+                                        onClick={() => {
+                                          setSelectedJobForApplicants(job);
+                                          setApplicantsDialogOpen(true);
+                                        }}
+                                      >
+                                        <Users className="w-4 h-4 mr-1.5" />
+                                        {job.applications[0]?.count || 0} Applicants
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                                
                                 {isAdmin && (
-                                  <Badge variant={job.status === 'open' ? 'default' : 'secondary'} className={cn(
-                                    "capitalize rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
-                                    job.status === 'open' ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-gray-100 text-gray-600 hover:bg-gray-100"
-                                  )}>
-                                    {job.status}
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-gray-500">
-                                {job.location && (
-                                  <span className="flex items-center gap-1.5">
-                                    <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                                    {job.location}
-                                  </span>
-                                )}
-                                {job.employment_type && (
-                                  <span className="flex items-center gap-1.5">
-                                    <Briefcase className="w-3.5 h-3.5 text-gray-400" />
-                                    {job.employment_type}
-                                  </span>
-                                )}
-                                {isAdmin && (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="p-0 h-auto font-semibold text-primary hover:text-primary/80 hover:bg-transparent"
-                                    onClick={() => {
-                                      setSelectedJobForApplicants(job);
-                                      setApplicantsDialogOpen(true);
-                                    }}
-                                  >
-                                    <Users className="w-4 h-4 mr-1.5" />
-                                    {job.applications[0]?.count || 0} Applicants
-                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                        <MoreHorizontal className="w-4 h-4 text-gray-500" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-48 p-1.5 rounded-xl shadow-lg border-gray-100">
+                                      <DropdownMenuItem 
+                                        className="rounded-lg py-2 cursor-pointer"
+                                        onClick={() => {
+                                          setSelectedJobForApplicants(job);
+                                          setApplicantsDialogOpen(true);
+                                        }}
+                                      >
+                                        <Users className="w-4 h-4 mr-2 text-gray-500" />
+                                        View Applicants
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem asChild className="rounded-lg py-2 cursor-pointer">
+                                        <Link to={`/jobs/${job.id}/insights`} className="w-full flex items-center">
+                                          <BarChart2 className="w-4 h-4 mr-2 text-gray-500" />
+                                          View Insights
+                                        </Link>
+                                      </DropdownMenuItem>
+                                      <div className="h-px bg-gray-50 my-1" />
+                                      <DropdownMenuItem 
+                                        className="rounded-lg py-2 cursor-pointer"
+                                        onClick={() => {
+                                          setEditingJob(job);
+                                          setPostJobDialogOpen(true);
+                                        }}
+                                      >
+                                        <Pencil className="w-4 h-4 mr-2 text-gray-500" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        className="rounded-lg py-2 cursor-pointer"
+                                        onClick={() => handleToggleStatus(job)}
+                                      >
+                                        {job.status === 'open' ? (
+                                          <>
+                                            <Archive className="w-4 h-4 mr-2 text-gray-500" />
+                                            Close Job
+                                          </>
+                                        ) : (
+                                          <>
+                                            <RotateCcw className="w-4 h-4 mr-2 text-gray-500" />
+                                            Reopen Job
+                                          </>
+                                        )}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        className="rounded-lg py-2 cursor-pointer"
+                                        onClick={() => handleRepost(job)}
+                                      >
+                                        <RefreshCw className="w-4 h-4 mr-2 text-gray-500" />
+                                        Repost
+                                      </DropdownMenuItem>
+                                      <div className="h-px bg-gray-50 my-1" />
+                                      <DropdownMenuItem 
+                                        className="text-destructive focus:text-destructive focus:bg-destructive/5 rounded-lg py-2 cursor-pointer font-medium"
+                                        onClick={() => setJobToDelete(job.id)}
+                                      >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 )}
                               </div>
                             </div>
-                            
-                            {isAdmin && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <MoreHorizontal className="w-4 h-4 text-gray-500" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48 p-1.5 rounded-xl shadow-lg border-gray-100">
-                                  <DropdownMenuItem 
-                                    className="rounded-lg py-2 cursor-pointer"
-                                    onClick={() => {
-                                      setSelectedJobForApplicants(job);
-                                      setApplicantsDialogOpen(true);
-                                    }}
-                                  >
-                                    <Users className="w-4 h-4 mr-2 text-gray-500" />
-                                    View Applicants
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem asChild className="rounded-lg py-2 cursor-pointer">
-                                    <Link to={`/jobs/${job.id}/insights`} className="w-full flex items-center">
-                                      <BarChart2 className="w-4 h-4 mr-2 text-gray-500" />
-                                      View Insights
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <div className="h-px bg-gray-50 my-1" />
-                                  <DropdownMenuItem 
-                                    className="rounded-lg py-2 cursor-pointer"
-                                    onClick={() => {
-                                      setEditingJob(job);
-                                      setPostJobDialogOpen(true);
-                                    }}
-                                  >
-                                    <Pencil className="w-4 h-4 mr-2 text-gray-500" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="rounded-lg py-2 cursor-pointer"
-                                    onClick={() => handleToggleStatus(job)}
-                                  >
-                                    {job.status === 'open' ? (
-                                      <>
-                                        <Archive className="w-4 h-4 mr-2 text-gray-500" />
-                                        Close Job
-                                      </>
-                                    ) : (
-                                      <>
-                                        <RotateCcw className="w-4 h-4 mr-2 text-gray-500" />
-                                        Reopen Job
-                                      </>
-                                    )}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="rounded-lg py-2 cursor-pointer"
-                                    onClick={() => handleRepost(job)}
-                                  >
-                                    <RefreshCw className="w-4 h-4 mr-2 text-gray-500" />
-                                    Repost
-                                  </DropdownMenuItem>
-                                  <div className="h-px bg-gray-50 my-1" />
-                                  <DropdownMenuItem 
-                                    className="text-destructive focus:text-destructive focus:bg-destructive/5 rounded-lg py-2 cursor-pointer font-medium"
-                                    onClick={() => setJobToDelete(job.id)}
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-100 rounded-[2rem] bg-gray-50/30">
-                    <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm mb-4">
-                      <Briefcase className="w-8 h-8 text-gray-300" />
-                    </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">No jobs posted yet</h3>
-                    <p className="text-gray-500 max-w-[260px] mx-auto">
-                      This company hasn't listed any open positions at the moment.
-                    </p>
-                  </div>
-                )} 
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-gray-100 rounded-[2rem] bg-gray-50/30">
+                        <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-sm mb-4">
+                          <Briefcase className="w-8 h-8 text-gray-300" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">No jobs posted yet</h3>
+                        <p className="text-gray-500 max-w-[260px] mx-auto">
+                          This company hasn't listed any open positions at the moment.
+                        </p>
+                      </div>
+                    )} 
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
 

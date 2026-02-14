@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, HelpCircle, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,6 +7,12 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/Layout";
+import { PasskeysDrawer } from "@/components/settings/PasskeysDrawer";
+import { SessionsDrawer } from "@/components/settings/SessionsDrawer";
+import { TwoFactorDrawer } from "@/components/settings/TwoFactorDrawer";
+import { EmailAddressesDrawer } from "@/components/settings/EmailAddressesDrawer";
+import { PhoneNumbersDrawer } from "@/components/settings/PhoneNumbersDrawer";
+import { UpdatePasswordDrawer } from "@/components/settings/UpdatePasswordDrawer";
 
 interface PreferenceRowProps {
   label: string;
@@ -83,6 +89,14 @@ const SignInSecurity = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [changingPassword, setChangingPassword] = useState(false);
+  const [passkeysOpen, setPasskeysOpen] = useState(false);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [twoFactorOpen, setTwoFactorOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const timersRef = useRef<Record<string, number>>({});
 
   const handleSignOut = async () => {
     await signOut();
@@ -111,36 +125,37 @@ const SignInSecurity = () => {
     enabled: !!user?.id,
   });
 
-  // Update security preferences
-  const updateSecurityMutation = useMutation({
-    mutationFn: async (newPrefs: SecurityPreferences) => {
-      if (!user?.id) throw new Error("Not authenticated");
-      
-      const currentPrefs = (profile?.preferences as SecurityPreferences) || {};
-      const updatedPrefs = { ...currentPrefs, ...newPrefs };
+  const setSavingFor = (key: string, val: boolean) =>
+    setSaving(prev => ({ ...prev, [key]: val }));
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({ preferences: updatedPrefs })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile-security", user?.id] });
-      toast({
-        title: "Settings saved",
-        description: "Your security settings have been updated.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update security settings.",
-        variant: "destructive",
-      });
-    },
-  });
+  const updateColumn = (column: string, value: any) => {
+    if (!user?.id) return;
+    const prev = (profile as any)?.[column];
+    setSavingFor(column, true);
+    const existing = timersRef.current[column];
+    if (existing) window.clearTimeout(existing);
+    timersRef.current[column] = window.setTimeout(async () => {
+      try {
+        const { error } = await supabase.from("profiles").update({ [column]: value } as any).eq("user_id", user.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["profile-security", user?.id] });
+        toast({ title: "Security settings updated successfully" });
+        if (column === "remember_devices" && value === false) {
+          try {
+            const signOutAny = (supabase.auth as any).signOut;
+            if (typeof signOutAny === "function") await signOutAny({ scope: "others" });
+          } catch {}
+        }
+      } catch (e: any) {
+        toast({ title: "Error", description: e.message || "Failed to update", variant: "destructive" });
+        try {
+          await supabase.from("profiles").update({ [column]: prev } as any).eq("user_id", user.id);
+        } catch {}
+      } finally {
+        setSavingFor(column, false);
+      }
+    }, 400);
+  };
 
   const handleChangePassword = async () => {
     if (!user?.email) {
@@ -175,9 +190,10 @@ const SignInSecurity = () => {
     }
   };
 
-  const prefs = (profile?.preferences as SecurityPreferences) || {};
-  const twoFactorEnabled = prefs.two_factor_enabled ?? false;
-  const appLockEnabled = prefs.app_lock_enabled ?? false;
+  const twoFactorEnabled = (profile as any)?.two_factor_enabled ?? false;
+  const twoFactorType = (profile as any)?.two_factor_type ?? null;
+  const appLockEnabled = (profile as any)?.app_lock_enabled ?? false;
+  const rememberBrowser = (profile as any)?.remember_browser ?? true;
 
   const handleNotImplemented = (feature: string) => {
     toast({
@@ -207,53 +223,68 @@ const SignInSecurity = () => {
           <PreferenceRow 
             label="Email addresses" 
             rightValue={user?.email || "user@email.com"} 
-            onClick={() => handleNotImplemented("Email management")}
+            onClick={() => setEmailOpen(true)}
           />
           <PreferenceRow 
             label="Phone numbers" 
-            onClick={() => handleNotImplemented("Phone numbers")}
+            onClick={() => setPhoneOpen(true)}
           />
           <PreferenceRow 
             label="Change password" 
-            onClick={handleChangePassword}
-            hasArrow={!changingPassword}
-            loading={changingPassword}
+            onClick={() => setPasswordOpen(true)}
           />
           <PreferenceRow 
             label="Passkeys" 
-            onClick={() => handleNotImplemented("Passkeys")}
+            onClick={() => setPasskeysOpen(true)}
           />
           <PreferenceRow 
             label="Where you're signed in" 
-            onClick={() => handleNotImplemented("Active sessions")}
+            onClick={() => setSessionsOpen(true)}
           />
-          <PreferenceRow 
-            label="Devices that remember your password" 
-            onClick={() => handleNotImplemented("Remembered devices")}
-          />
+          <div className="bg-white">
+            <PreferenceToggle
+              label="Devices that remember your password"
+              subLabel="Allow this browser to stay signed in"
+              checked={!!rememberBrowser}
+              onCheckedChange={(val) => updateColumn("remember_browser", val)}
+              disabled={!!saving["remember_browser"]}
+            />
+          </div>
           <PreferenceToggle
             label="Two-factor authentication"
             subLabel="Add an extra layer of security"
             checked={twoFactorEnabled}
             onCheckedChange={(val) => {
-              if (val) {
-                handleNotImplemented("Two-factor authentication setup");
-              } else {
-                updateSecurityMutation.mutate({ two_factor_enabled: false });
-              }
+              if (val) setTwoFactorOpen(true);
+              else updateColumn("two_factor_enabled", false);
             }}
-            disabled={updateSecurityMutation.isPending}
+            disabled={!!saving["two_factor_enabled"]}
           />
           <PreferenceToggle
             label="App lock"
             subLabel="Require authentication to open the app"
             checked={appLockEnabled}
-            onCheckedChange={(val) => updateSecurityMutation.mutate({ app_lock_enabled: val })}
-            disabled={updateSecurityMutation.isPending}
+            onCheckedChange={(val) => updateColumn("app_lock_enabled", val)}
+            disabled={!!saving["app_lock_enabled"]}
           />
         </div>
       )}
       </div>
+      <EmailAddressesDrawer open={emailOpen} onOpenChange={setEmailOpen} />
+      <PhoneNumbersDrawer open={phoneOpen} onOpenChange={setPhoneOpen} currentPhone={(profile as any)?.phone} />
+      <UpdatePasswordDrawer
+        open={passwordOpen}
+        onOpenChange={setPasswordOpen}
+        onSuccess={async () => {
+          try {
+            const signOutAny = (supabase.auth as any).signOut;
+            if (typeof signOutAny === "function") await signOutAny({ scope: "others" });
+          } catch {}
+        }}
+      />
+      <PasskeysDrawer open={passkeysOpen} onOpenChange={setPasskeysOpen} />
+      <SessionsDrawer open={sessionsOpen} onOpenChange={setSessionsOpen} />
+      <TwoFactorDrawer open={twoFactorOpen} onOpenChange={setTwoFactorOpen} />
     </Layout>
   );
 };

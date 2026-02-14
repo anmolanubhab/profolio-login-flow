@@ -87,11 +87,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setRole(null);
-    setProfile(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (error: any) {
+      // Ignore expected abort/network cancellation errors
+      const code = error?.code ?? error?.name;
+      const message = error?.message ?? '';
+      if (
+        code === 'ABORTED' ||
+        code === 20 ||
+        code === '20' ||
+        message.includes('net::ERR_ABORTED')
+      ) {
+        // no-op
+      } else {
+        // Silently swallow to avoid noisy logs per project rules
+      }
+    } finally {
+      setUser(null);
+      setSession(null);
+      setRole(null);
+      setProfile(null);
+    }
   };
 
   useEffect(() => {

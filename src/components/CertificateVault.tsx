@@ -46,12 +46,22 @@ const CertificateVault = () => {
         .abortSignal(signal);
 
       if (error) {
-        if (error.code === 'ABORTED') return;
+        if (
+          error.code === 'ABORTED' ||
+          (error as any).name === 'AbortError' ||
+          (error as any).code === 20 ||
+          (error as any).code === '20'
+        ) return;
         throw error;
       }
       setCertificates(data || []);
     } catch (error: any) {
-      if (error.name === 'AbortError' || error.code === 'ABORTED') return;
+      if (
+        error.name === 'AbortError' ||
+        error.code === 'ABORTED' ||
+        error.code === 20 ||
+        error.code === '20'
+      ) return;
       console.error('Error fetching certificates:', error);
       toast({
         title: "Error loading certificates",

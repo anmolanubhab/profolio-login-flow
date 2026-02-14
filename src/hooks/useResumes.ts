@@ -28,7 +28,12 @@ export const useResumes = () => {
         .abortSignal(signal);
 
       if (error) {
-        if (error.code === 'ABORTED') return [];
+        if (
+          error.code === 'ABORTED' ||
+          (error as any).name === 'AbortError' ||
+          (error as any).code === 20 ||
+          (error as any).code === '20'
+        ) return [];
         throw error;
       }
       return data as Resume[];

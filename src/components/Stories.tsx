@@ -109,11 +109,22 @@ const Stories = () => {
         .maybeSingle();
       
       if (error) {
-        if (error.code === 'ABORTED') return;
+        if (
+          error.code === 'ABORTED' ||
+          (error as any).name === 'AbortError' ||
+          (error as any).code === 20 ||
+          (error as any).code === '20'
+        ) return;
         throw error;
       }
       setCurrentUserProfile(data);
     } catch (error) {
+      if (
+        (error as any).name === 'AbortError' ||
+        (error as any).code === 'ABORTED' ||
+        (error as any).code === 20 ||
+        (error as any).code === '20'
+      ) return;
       console.error('Error fetching user profile:', error);
     }
   };
@@ -129,7 +140,6 @@ const Stories = () => {
           media_type,
           created_at,
           expires_at,
-          caption,
           profile:profiles!stories_user_id_fkey(display_name, avatar_url)
         `)
         .gt('expires_at', new Date().toISOString())
@@ -137,12 +147,53 @@ const Stories = () => {
         .abortSignal(signal);
 
       if (error) {
-        if (error.code === 'ABORTED') return;
+        if (
+          error.code === 'ABORTED' ||
+          (error as any).name === 'AbortError' ||
+          (error as any).code === 20 ||
+          (error as any).code === '20'
+        ) return;
+        if (error.code === 'PGRST200' || (error as any).message?.includes('Could not find a relationship')) {
+          const { data: basic, error: basicErr } = await supabase
+            .from('stories')
+            .select('id, user_id, media_url, media_type, created_at, expires_at')
+            .gt('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false })
+            .abortSignal(signal);
+          if (basicErr) {
+            if (
+              (basicErr as any).code === 'ABORTED' ||
+              (basicErr as any).name === 'AbortError' ||
+              (basicErr as any).code === 20 ||
+              (basicErr as any).code === '20'
+            ) return;
+            throw basicErr;
+          }
+          const arr = (basic || []) as any[];
+          const ids = Array.from(new Set(arr.map(s => s.user_id))).filter(Boolean);
+          let profilesMap = new Map<string, any>();
+          if (ids.length > 0) {
+            const { data: profs } = await supabase
+              .from('profiles')
+              .select('user_id, display_name, avatar_url')
+              .in('user_id', ids)
+              .abortSignal(signal);
+            (profs || []).forEach((p: any) => profilesMap.set(p.user_id, { display_name: p.display_name, avatar_url: p.avatar_url }));
+          }
+          const merged = arr.map(s => ({ ...s, profile: profilesMap.get(s.user_id) || null }));
+          setStories(merged);
+          return;
+        }
         throw error;
       }
       setStories(data as any || []);
     } catch (error) {
-      if ((error as any).name === 'AbortError' || (error as any).code === 'ABORTED') return;
+      if (
+        (error as any).name === 'AbortError' ||
+        (error as any).code === 'ABORTED' ||
+        (error as any).code === 20 ||
+        (error as any).code === '20'
+      ) return;
       console.error('Error fetching stories:', error);
     }
   };
