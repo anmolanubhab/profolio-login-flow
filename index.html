@@ -20,6 +20,16 @@
       /* LCP optimization - show text immediately with fallback font */
       h1,h2,.text-5xl,.text-6xl{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700}
     </style>
+    <script>
+      (function () {
+        if (!('onLine' in navigator) || !navigator.onLine) return;
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap';
+        link.onerror = function(){ /* silent fail to avoid noisy logs */ };
+        document.head.appendChild(link);
+      })();
+    </script>
 
     <meta property="og:title" content="Profolio - Your Future, Verified" />
     <meta property="og:description" content="Professional portfolio platform for students and employers" />

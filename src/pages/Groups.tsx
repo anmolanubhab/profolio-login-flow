@@ -184,7 +184,7 @@ const Groups = () => {
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
           <div className="max-w-5xl mx-auto py-16 px-6 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
+            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-8 md:gap-10">
               <div className="text-center md:text-left animate-in fade-in slide-in-from-left-8 duration-700">
                 <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tight leading-tight">
                   Communities
@@ -193,7 +193,7 @@ const Groups = () => {
                   Connect with like-minded professionals in focused groups and accelerate your career.
                 </p>
               </div>
-              <div className="flex justify-center animate-in fade-in slide-in-from-right-8 duration-700">
+              <div className="flex w-full md:w-auto justify-center animate-in fade-in slide-in-from-right-8 duration-700">
                 <Button onClick={() => setCreateOpen(true)} className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-10 py-7 h-auto text-xl font-bold shadow-2xl shadow-[#833AB4]/30 gap-4 transition-all duration-300 transform hover:scale-105 active:scale-95">
                   <Plus className="h-7 w-7" />
                   Create Group

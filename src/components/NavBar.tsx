@@ -50,7 +50,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
               <AvatarImage src={avatarUrl || user?.user_metadata?.avatar_url} referrerPolicy="no-referrer" />
               <AvatarFallback className="text-xs">{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
-            <h1 className="text-[24px] leading-none text-foreground select-none ml-1">
+            <h1 className="brand-font text-[24px] leading-none text-foreground select-none ml-1">
               Profolio
             </h1>
           </div>
