@@ -41,36 +41,58 @@ const SavedPosts = () => {
       setLoading(true);
       setError(null);
 
+      // Fetch current profile ID (profiles.id) for the authenticated user (auth.uid())
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .abortSignal(signal);
+
+      if (profileError) {
+        const code = (profileError as { code?: string } | null)?.code;
+        if (code === 'ABORTED') return;
+        throw profileError;
+      }
+
+      const profileId = profile?.id;
+      if (!profileId) {
+        setPosts([]);
+        setLoading(false);
+        return;
+      }
+
+      // Single optimized query: saved_posts -> posts (includes profiles, likes, comments count)
       const { data, error: qError } = await supabase
-        .from('posts')
+        .from('saved_posts')
         .select(`
-          id,
-          content,
-          image_url,
-          media_type,
-          created_at,
-          user_id,
-          posted_as,
-          company_id,
-          company_name,
-          company_logo,
-          profiles:profiles!posts_profiles_fk (
-            display_name,
-            avatar_url,
-            profession
-          ),
-          post_likes (
+          post:posts (
             id,
-            user_id
-          ),
-          comments (
-            count
-          ),
-          saved_posts!inner ( user_id )
+            content,
+            image_url,
+            media_type,
+            created_at,
+            user_id,
+            posted_as,
+            company_id,
+            company_name,
+            company_logo,
+            profiles:profiles!posts_profiles_fk (
+              display_name,
+              avatar_url,
+              profession
+            ),
+            post_likes (
+              id,
+              user_id
+            ),
+            comments (
+              count
+            )
+          )
         `)
-        .eq('saved_posts.user_id', user.id)
-        .neq('status', 'deleted')
-        .order('created_at', { ascending: false })
+        .eq('user_id', profileId)
+        .order('created_at', { ascending: false, foreignTable: 'posts' })
         .abortSignal(signal);
 
       if (qError) {
@@ -79,38 +101,25 @@ const SavedPosts = () => {
         throw qError;
       }
 
-      type Row = {
-        id: string;
-        content: string;
-        image_url: string | null;
-        media_type: string | null;
-        created_at: string;
-        user_id: string;
-        posted_as: string | null;
-        company_id: string | null;
-        company_name: string | null;
-        company_logo: string | null;
-        profiles: Post['profiles'];
-        post_likes: Post['post_likes'];
-        comments?: { count: number }[];
-      };
-
-      const rows: Row[] = (data ?? []) as Row[];
-      const formatted: Post[] = rows.map((p) => ({
-        id: p.id,
-        content: p.content,
-        image_url: p.image_url,
-        media_type: p.media_type,
-        created_at: p.created_at,
-        user_id: p.user_id,
-        posted_as: p.posted_as || 'user',
-        company_id: p.company_id,
-        company_name: p.company_name,
-        company_logo: p.company_logo,
-        profiles: p.profiles || { display_name: 'Unknown', avatar_url: null, profession: null },
-        post_likes: p.post_likes || [],
-        comments: p.comments || [],
-      }));
+      const rows = (data ?? []) as Array<{ post: any | null }>;
+      const formatted: Post[] = rows
+        .map((row) => row.post)
+        .filter((p): p is any => !!p)
+        .map((p) => ({
+          id: p.id,
+          content: p.content,
+          image_url: p.image_url,
+          media_type: p.media_type,
+          created_at: p.created_at,
+          user_id: p.user_id,
+          posted_as: p.posted_as || 'user',
+          company_id: p.company_id,
+          company_name: p.company_name,
+          company_logo: p.company_logo,
+          profiles: p.profiles || { display_name: 'Unknown', avatar_url: null, profession: null },
+          post_likes: p.post_likes || [],
+          comments: p.comments || [],
+        }));
 
       setPosts(formatted);
     } catch (err: unknown) {

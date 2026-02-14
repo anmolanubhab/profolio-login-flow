@@ -673,6 +673,7 @@ export default function CompanyProfile() {
           </Tabs>
         </div>
 
+        </div>
       </div>
 
       {/* Company Post Dialog */}

@@ -624,6 +624,7 @@ const PublicProfile = () => {
           <ProfileTabs userId={profile.user_id} profileId={profile.id} isOwnProfile={false} />
         )}
       </div>
+      </div>
     </Layout>
   );
 };
