@@ -32,23 +32,36 @@ const Profile = () => {
       if (!profile && !creatingProfile) {
         setCreatingProfile(true);
         try {
-          // If profile doesn't exist, create it immediately to prevent blank screens
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
             .insert({ user_id: user.id })
             .select('id')
             .single();
-            
-          if (newProfile) {
+
+          if (newProfile?.id) {
             setProfileId(newProfile.id);
-            await refreshProfile(); // Sync with context
+            await refreshProfile();
           } else if (createError) {
-            console.error('Error creating profile:', createError);
-            toast({
-              title: "Profile Error",
-              description: "Could not initialize profile. Please refresh.",
-              variant: "destructive",
-            });
+            if ((createError as any).code === '23505') {
+              const { data: existing, error: fetchErr } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('user_id', user.id)
+                .single();
+              if (existing?.id) {
+                setProfileId(existing.id);
+                await refreshProfile();
+              } else if (fetchErr) {
+                console.error('Profile fetch after duplicate failed:', fetchErr);
+              }
+            } else {
+              console.error('Error creating profile:', createError);
+              toast({
+                title: "Profile Error",
+                description: "Could not initialize profile. Please refresh.",
+                variant: "destructive",
+              });
+            }
           }
         } catch (error) {
           console.error('Error in profile initialization:', error);
@@ -85,7 +98,7 @@ const Profile = () => {
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto py-12 px-6 relative">
+          <div className="w-full py-12 relative">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="text-center md:text-left">
                 <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
@@ -99,7 +112,7 @@ const Profile = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto px-0 sm:px-4">
+        <div className="w-full">
           <ProfileHeader userId={user.id} />
           {/* Only render tabs if we have a profile ID, otherwise show a loader or empty state */}
           {profileId ? (

@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useRef, useState } from "react"
-import { SidebarProvider } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "./AppSidebar"
 import NavBar from "./NavBar"
 import BottomNavigation from "./BottomNavigation"
@@ -72,24 +72,14 @@ function LayoutContent({ children, user, onSignOut }: LayoutProps) {
 
   return (
     <>
-      {/* Fixed top navbar */}
       <NavBar user={user} onSignOut={onSignOut} visible={showHeader} />
 
-      {/* Sidebar (desktop only) */}
-      {!isMobile && (
-        <div className="hidden lg:block">
-          <AppSidebar />
-        </div>
-      )}
-
-      {/* Main content */}
-      <div className="layout content flex-1 min-w-0 transition-all duration-300 ease-out">
-        <main className="feed pb-24 w-full max-w-full">
+      <main className="flex-1 lg:flex lg:justify-center pb-24 w-full">
+        <div className="w-full max-w-6xl px-6">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
 
-      {/* Bottom Navigation (mobile only) */}
       {isMobile && <BottomNavigation visible={showBottomNav} />}
       <Dialog open={lockOpen} onOpenChange={(o) => setLockOpen(o)}>
         <DialogContent>
@@ -109,7 +99,10 @@ function LayoutContent({ children, user, onSignOut }: LayoutProps) {
 export function Layout(props: LayoutProps) {
   return (
     <SidebarProvider>
-      <LayoutContent {...props} />
+      <AppSidebar />
+      <SidebarInset>
+        <LayoutContent {...props} />
+      </SidebarInset>
     </SidebarProvider>
   )
 }
