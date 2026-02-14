@@ -185,12 +185,16 @@ const ResumeBuilder = () => {
           visibility: uploadVisibility
         } as any));
       } catch (e) {
-        ({ error } = await supabase.from('resumes').insert({
-          title: uploadTitle,
-          file_url: result.url,
-          user_id: user.id,
-          content: content,
-        }));
+        try {
+          ({ error } = await supabase.from('resumes').insert({
+            title: uploadTitle,
+            file_url: result.url,
+            user_id: user.id,
+            content: content,
+          }));
+        } catch (e2) {
+          error = e2 as any;
+        }
       }
 
       if (error) throw error;
@@ -199,9 +203,23 @@ const ResumeBuilder = () => {
       setIsUploadDialogOpen(false);
       setUploadTitle('');
       loadResumes();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving uploaded resume:', error);
-      toast({ title: "Failed to save resume record", variant: "destructive" });
+      const msg: string = error?.message || '';
+      const looksLikeSchemaOrRLS =
+        msg.toLowerCase().includes('column') ||
+        msg.toLowerCase().includes('relation') ||
+        msg.toLowerCase().includes('row-level security') ||
+        msg.toLowerCase().includes('permission denied') ||
+        msg.toLowerCase().includes('no such table') ||
+        msg.toLowerCase().includes('schema cache');
+      toast({
+        title: looksLikeSchemaOrRLS ? "Upload not configured" : "Failed to save resume record",
+        description: looksLikeSchemaOrRLS
+          ? "Please apply the resumes table & storage policies, then retry."
+          : undefined,
+        variant: "destructive"
+      });
     }
   };
 
