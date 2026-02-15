@@ -126,7 +126,7 @@ function LayoutContent({ children, user, onSignOut }: LayoutProps) {
       )}
       
       <main className="flex flex-col flex-1 w-full pb-24 overflow-x-hidden">
-        <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 lg:max-w-6xl overflow-x-hidden lg:justify-center">
+        <div className="flex flex-col w-full mt-2 px-4 sm:px-6 lg:px-8 lg:max-w-6xl overflow-x-hidden lg:justify-center">
           {children}
         </div>
       </main>

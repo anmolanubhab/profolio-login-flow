@@ -122,7 +122,6 @@ All colors MUST be HSL.
     background-image: var(--bg-gradient);
     background-attachment: fixed;
     background-size: cover;
-    padding-top: var(--nav-height);
   }
 
   #root {
