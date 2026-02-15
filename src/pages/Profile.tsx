@@ -32,23 +32,36 @@ const Profile = () => {
       if (!profile && !creatingProfile) {
         setCreatingProfile(true);
         try {
-          // If profile doesn't exist, create it immediately to prevent blank screens
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
             .insert({ user_id: user.id })
             .select('id')
             .single();
-            
-          if (newProfile) {
+
+          if (newProfile?.id) {
             setProfileId(newProfile.id);
-            await refreshProfile(); // Sync with context
+            await refreshProfile();
           } else if (createError) {
-            console.error('Error creating profile:', createError);
-            toast({
-              title: "Profile Error",
-              description: "Could not initialize profile. Please refresh.",
-              variant: "destructive",
-            });
+            if ((createError as any).code === '23505') {
+              const { data: existing, error: fetchErr } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('user_id', user.id)
+                .single();
+              if (existing?.id) {
+                setProfileId(existing.id);
+                await refreshProfile();
+              } else if (fetchErr) {
+                console.error('Profile fetch after duplicate failed:', fetchErr);
+              }
+            } else {
+              console.error('Error creating profile:', createError);
+              toast({
+                title: "Profile Error",
+                description: "Could not initialize profile. Please refresh.",
+                variant: "destructive",
+              });
+            }
           }
         } catch (error) {
           console.error('Error in profile initialization:', error);

@@ -117,12 +117,8 @@ All colors MUST be HSL.
   }
 
   /* Prevent horizontal overflow on mobile */
-  html, body {
-    @apply w-full max-w-full overflow-x-hidden;
-  }
-
   body {
-    @apply bg-background text-foreground;
+    @apply w-full max-w-full min-h-screen overflow-x-hidden bg-background text-foreground text-sm md:text-base;
     background-image: var(--bg-gradient);
     background-attachment: fixed;
     background-size: cover;
@@ -133,6 +129,22 @@ All colors MUST be HSL.
     @apply w-full max-w-full overflow-x-hidden;
   }
 
+  h1 {
+    @apply text-xl md:text-2xl font-semibold leading-tight;
+  }
+
+  h2 {
+    @apply text-lg md:text-xl font-semibold;
+  }
+
+  h3 {
+    @apply text-base md:text-lg font-medium;
+  }
+
+  p {
+    @apply text-sm md:text-base leading-relaxed;
+  }
+
   /* Ensure images don't overflow */
   img {
     @apply max-w-full h-auto;
@@ -140,6 +152,10 @@ All colors MUST be HSL.
 }
 
 @layer components {
+  .brand-font {
+    font-family: 'Grand Hotel', cursive;
+    font-weight: 400;
+  }
   /* Layout */
   .layout {
     @apply max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl mx-0 sm:mx-auto px-0 sm:px-6 lg:px-8;
@@ -254,6 +270,10 @@ All colors MUST be HSL.
   }
   .profolio-action-btn:hover {
     background-color: hsl(var(--secondary));
+
+  .rainbow-gradient {
+    @apply bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 to-blue-600;
+  }
     color: hsl(var(--foreground));
   }
   .profolio-action-btn:active {

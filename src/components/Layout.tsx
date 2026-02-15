@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useRef, useState } from "react"
-import { SidebarProvider } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "./AppSidebar"
 import NavBar from "./NavBar"
 import BottomNavigation from "./BottomNavigation"
@@ -27,6 +27,10 @@ function LayoutContent({ children, user, onSignOut }: LayoutProps) {
   const [lockOpen, setLockOpen] = useState(false);
   const [password, setPassword] = useState("");
   const timerRef = useRef<number | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const originalFetchRef = useRef<typeof window.fetch | null>(null);
+  const lastAttemptRef = useRef<number>(0);
+  const backoffMsRef = useRef<number>(15000); // 15s minimum between attempts while offline
 
   useEffect(() => {
     const mark = () => localStorage.setItem("pf_last_active", Date.now().toString());
@@ -39,6 +43,47 @@ function LayoutContent({ children, user, onSignOut }: LayoutProps) {
       window.removeEventListener("mousemove", onActivity);
       window.removeEventListener("keydown", onActivity);
       window.removeEventListener("visibilitychange", onActivity);
+    };
+  }, []);
+
+  // Network status + fetch throttle when offline
+  useEffect(() => {
+    const onOnline = () => {
+      setIsOnline(true);
+      lastAttemptRef.current = 0;
+      backoffMsRef.current = 15000;
+    };
+    const onOffline = () => {
+      setIsOnline(false);
+    };
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    setIsOnline(navigator.onLine);
+
+    if (!originalFetchRef.current && typeof window !== 'undefined') {
+      originalFetchRef.current = window.fetch.bind(window);
+      window.fetch = async (...args: Parameters<typeof fetch>) => {
+        const now = Date.now();
+        if (!navigator.onLine) {
+          if (now - lastAttemptRef.current < backoffMsRef.current) {
+            return Promise.reject(new Error('Offline (throttled)'));
+          }
+          lastAttemptRef.current = now;
+          // Exponential backoff up to 60s
+          backoffMsRef.current = Math.min(backoffMsRef.current * 1.5, 60000);
+          return Promise.reject(new Error('Offline'));
+        }
+        return originalFetchRef.current!(...args);
+      };
+    }
+
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+      if (originalFetchRef.current) {
+        window.fetch = originalFetchRef.current;
+        originalFetchRef.current = null;
+      }
     };
   }, []);
 
@@ -72,24 +117,20 @@ function LayoutContent({ children, user, onSignOut }: LayoutProps) {
 
   return (
     <>
-      {/* Fixed top navbar */}
       <NavBar user={user} onSignOut={onSignOut} visible={showHeader} />
 
-      {/* Sidebar (desktop only) */}
-      {!isMobile && (
-        <div className="hidden lg:block">
-          <AppSidebar />
+      {!isOnline && (
+        <div className="w-full bg-amber-500/90 text-white text-sm py-2 px-4 text-center">
+          You are offline. Retrying when connection restores…
         </div>
       )}
-
-      {/* Main content */}
-      <div className="layout content flex-1 min-w-0 transition-all duration-300 ease-out">
-        <main className="feed pb-24 w-full max-w-full">
+      
+      <main className="flex flex-col flex-1 w-full pb-24 overflow-x-hidden">
+        <div className="flex flex-col w-full px-4 sm:px-6 lg:px-8 lg:max-w-6xl overflow-x-hidden lg:justify-center">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
 
-      {/* Bottom Navigation (mobile only) */}
       {isMobile && <BottomNavigation visible={showBottomNav} />}
       <Dialog open={lockOpen} onOpenChange={(o) => setLockOpen(o)}>
         <DialogContent>
@@ -109,7 +150,10 @@ function LayoutContent({ children, user, onSignOut }: LayoutProps) {
 export function Layout(props: LayoutProps) {
   return (
     <SidebarProvider>
-      <LayoutContent {...props} />
+      <AppSidebar />
+      <SidebarInset>
+        <LayoutContent {...props} />
+      </SidebarInset>
     </SidebarProvider>
   )
 }

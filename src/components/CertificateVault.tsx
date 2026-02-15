@@ -93,35 +93,37 @@ const CertificateVault = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Try insert with visibility
-      let error;
-      try {
-        ({ error } = await supabase
-          .from('certificates')
-          .insert({
-            title: title.trim(),
-            description: description.trim() || null,
-            file_url: result.url,
-            file_name: result.fileName,
-            file_size: result.fileSize,
-            user_id: user.id,
-            visibility: visibility
-          } as any));
-      } catch (e) {
-        // Fallback for missing column
-        ({ error } = await supabase
-          .from('certificates')
-          .insert({
-            title: title.trim(),
-            description: description.trim() || null,
-            file_url: result.url,
-            file_name: result.fileName,
-            file_size: result.fileSize,
-            user_id: user.id,
-          }));
-      }
+      const basePayload = {
+        title: title.trim(),
+        description: description.trim() || null,
+        file_url: result.url,
+        file_name: result.fileName,
+        file_size: result.fileSize,
+        user_id: user.id,
+      };
 
-      if (error) throw error;
+      const payloadWithVisibility = {
+        ...basePayload,
+        visibility,
+      } as any;
+
+      const firstInsert = await supabase
+        .from('certificates')
+        .insert(payloadWithVisibility);
+
+      if (firstInsert.error) {
+        const message = firstInsert.error.message || '';
+        if (message.includes('visibility') && message.includes('column')) {
+          const fallbackInsert = await supabase
+            .from('certificates')
+            .insert(basePayload as any);
+          if (fallbackInsert.error) {
+            throw fallbackInsert.error;
+          }
+        } else {
+          throw firstInsert.error;
+        }
+      }
 
       toast({
         title: "Certificate uploaded!",

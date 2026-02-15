@@ -368,7 +368,7 @@ const PostCard = ({
         user_id: currentUser.id,
         post_type: 'repost',
         original_post_id: targetPostId,
-        posted_as: 'user', // Default to user for now
+        posted_as: 'user',
       });
 
       if (error) throw error;
@@ -376,8 +376,22 @@ const PostCard = ({
       toast({ title: 'Success', description: 'Post reposted successfully' });
       // Ideally trigger a feed refresh here
     } catch (error: any) {
+      const msg: string = error?.message || '';
+      const needsMigration =
+        msg.includes("original_post_id") ||
+        msg.includes("post_type") ||
+        msg.toLowerCase().includes("schema cache") ||
+        msg.toLowerCase().includes("relationship");
+      if (needsMigration) {
+        toast({
+          title: 'Repost unavailable',
+          description: 'Repost feature needs DB migration. Please refresh after enabling.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: 'Error', description: msg || 'Failed to repost', variant: 'destructive' });
+      }
       console.error('Error reposting:', error);
-      toast({ title: 'Error', description: error.message || 'Failed to repost', variant: 'destructive' });
     }
   };
 

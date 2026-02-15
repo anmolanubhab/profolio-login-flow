@@ -25,10 +25,6 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
 
   return (
     <>
-      <style>
-        {`@import url('https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap');`}
-      </style>
-      
       <nav 
         style={{ 
           "--nav-left-offset": offset 
@@ -37,17 +33,12 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
           visible ? 'translate-y-0' : '-translate-y-full'
         }`}
       >
-        {/* DESKTOP LAYOUT (lg:flex) - Single Row */}
-        <div className="hidden lg:flex items-center justify-between w-full h-16 px-6">
-          <div className="w-10" /> {/* Spacer */}
-          
-          {/* Search Bar - Inline, centered, balanced width */}
-          <div className="w-full max-w-2xl">
-            <SearchBar />
+        <div className="hidden lg:block w-full h-16">
+          <div className="h-full w-full max-w-6xl mx-auto px-6 flex items-center">
+            <div className="w-full max-w-2xl">
+              <SearchBar />
+            </div>
           </div>
-          
-          {/* Right Spacer to balance the layout (matches left spacer) */}
-          <div className="w-10" />
         </div>
 
         {/* MOBILE LAYOUT (lg:hidden) - Single Row: [Menu] [Profile] [Logo] [Notif] [Search] */}
@@ -59,7 +50,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
               <AvatarImage src={avatarUrl || user?.user_metadata?.avatar_url} referrerPolicy="no-referrer" />
               <AvatarFallback className="text-xs">{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
             </Avatar>
-            <h1 className="text-[24px] leading-none text-foreground select-none ml-1" style={{ fontFamily: '"Grand Hotel", cursive' }}>
+            <h1 className="brand-font text-[24px] leading-none text-foreground select-none ml-1">
               Profolio
             </h1>
           </div>

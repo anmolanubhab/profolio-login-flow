@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Edit3, Share2, Shield, MapPin, CheckCircle, Briefcase, 
   Download, UserPlus, MessageSquare, Award, Globe, Building2
@@ -8,6 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useCompanyAdmin } from '@/hooks/use-company-admin';
+import { OpenToOpportunitiesDialog } from '../OpenToOpportunitiesDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Mail, Phone, Globe as GlobeIcon, Linkedin, Github, Twitter } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProfileHeroProps {
   profile: any;
@@ -18,9 +24,44 @@ interface ProfileHeroProps {
 
 export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: ProfileHeroProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [opentoOpen, setOpentoOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+  const { hasCompanies } = useCompanyAdmin();
+  const { user } = useAuth();
+  const isOwner = !!(user?.id && profile?.user_id === user.id);
+  const [isConnected, setIsConnected] = useState(false);
 
   // Calculate real stats
   const experienceCount = Array.isArray(profile?.experience) ? profile.experience.length : 0;
+  
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        if (!user?.id || !profile?.id || isOwner) {
+          setIsConnected(false);
+          return;
+        }
+        const { data: myProfile, error: myErr } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+        if (myErr || !myProfile) {
+          setIsConnected(false);
+          return;
+        }
+        const { data: connection } = await supabase
+          .from('connections')
+          .select('*')
+          .or(`and(user_id.eq.${myProfile.id},connection_id.eq.${profile.id}),and(user_id.eq.${profile.id},connection_id.eq.${myProfile.id})`)
+          .maybeSingle();
+        setIsConnected(!!connection && connection.status === 'accepted');
+      } catch {
+        setIsConnected(false);
+      }
+    };
+    checkConnection();
+  }, [user?.id, profile?.id, isOwner]);
   
   const formatAvailability = (status: string) => {
     if (!status) return 'Not Set';
@@ -42,6 +83,16 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
   const profession = profile?.profession || 'Professional Role';
   const location = profile?.location || 'Location';
   const bio = profile?.bio || '';
+  const dialogUserId = (profile && (profile as any).user_id) || user?.id;
+
+  const openToWork: boolean = !!profile?.open_to_work;
+  const visibility: 'public' | 'recruiters' | 'private' = profile?.open_to_work_visibility || 'recruiters';
+  const isRecruiterViewer = hasCompanies;
+  const canShowOpenBadge =
+    openToWork &&
+    (visibility === 'public' ||
+     (visibility === 'recruiters' && (isRecruiterViewer || isOwnProfile)) ||
+     (isOwnProfile));
 
   return (
     <div className="w-full bg-white mb-0">
@@ -119,6 +170,12 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
               <CheckCircle className="h-3 w-3 fill-blue-500 text-white" />
               <span className="text-[10px] font-bold tracking-wide uppercase">Verified</span>
             </Badge>
+            {/* Compact inline badge for mobile */}
+            {canShowOpenBadge && (
+              <Badge variant="secondary" className="md:hidden bg-green-100 text-green-700 border-transparent gap-1 rounded-md px-1.5 py-0 h-5">
+                <span className="text-[10px] font-bold">🟢 Open to Opportunities</span>
+              </Badge>
+            )}
           </div>
           
           <p className="text-base md:text-lg text-gray-900 font-medium leading-snug">
@@ -136,21 +193,35 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
               <span>Open to remote</span>
             </div>
             <span className="text-gray-300 hidden md:inline">•</span>
-            <div className="flex items-center gap-1 text-blue-600 font-medium cursor-pointer hover:underline">
+            <button
+              type="button"
+              onClick={() => setContactOpen(true)}
+              className="flex items-center gap-1 text-blue-600 font-medium cursor-pointer hover:underline"
+            >
               <Globe className="h-3.5 w-3.5" />
               <span>Contact info</span>
-            </div>
+            </button>
           </div>
         </div>
 
         {/* Primary Action Button (Rainbow Gradient) */}
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           {isOwnProfile ? (
-            <Button 
-              className="w-full md:max-w-md h-10 rounded-full font-semibold shadow-sm text-white border-none transition-all hover:opacity-90 active:scale-[0.98] bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]"
+            <>
+            <Button
+              onClick={() => setOpentoOpen(true)} 
+              className="w-full md:max-w-md h-10 rounded-full font-semibold shadow-sm text-white border-none transition-all hover:opacity-90 active:scale-[0.98]"
+              style={{ background: 'linear-gradient(90deg, #ff4d4d, #ff9900, #ffee00, #00cc66, #3399ff, #9933ff)', borderRadius: 12 }}
             >
               Open to Opportunities
             </Button>
+            {/* Right-aligned badge for web */}
+            {canShowOpenBadge && (
+              <Badge variant="secondary" className="hidden md:inline-flex bg-green-100 text-green-700 border-transparent gap-1 rounded-md px-2 py-1">
+                🟢 Open to Opportunities
+              </Badge>
+            )}
+            </>
           ) : (
             <div className="flex gap-3 w-full md:max-w-md">
               <Button className="flex-1 rounded-full font-semibold text-white border-none transition-all hover:opacity-90 active:scale-[0.98] bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]">
@@ -170,6 +241,13 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
             </div>
           )}
         </div>
+        {isOwnProfile && (
+          <OpenToOpportunitiesDialog
+            userId={dialogUserId}
+            open={opentoOpen}
+            onOpenChange={setOpentoOpen}
+          />
+        )}
 
         {/* Inline Stats Dashboard */}
         <div className="flex items-center justify-between md:justify-start md:gap-12 py-4 border-t border-b border-gray-100 mb-6">
@@ -204,6 +282,114 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
           </div>
         )}
       </div>
+      <Dialog open={contactOpen} onOpenChange={setContactOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Contact Information</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {(() => {
+              const emailVis = profile?.email_visibility || 'only_me';
+              const canSeeEmail = isOwner || emailVis === 'public' || (emailVis === 'connections' && isConnected);
+              const emailVal = profile?.email || user?.email;
+              return canSeeEmail && emailVal ? (
+              <div className="flex items-center gap-3">
+                <Mail className="h-4 w-4 text-gray-500" />
+                <a
+                  href={`mailto:${emailVal}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  {emailVal}
+                </a>
+              </div>
+              ) : null;
+            })()}
+            {(() => {
+              const phoneVis = profile?.phone_visibility || 'public';
+              const canSeePhone = isOwner || phoneVis === 'public' || (phoneVis === 'connections' && isConnected);
+              return canSeePhone && profile?.phone ? (
+              <div className="flex items-center gap-3">
+                <Phone className="h-4 w-4 text-gray-500" />
+                <a href={`tel:${profile.phone}`} className="text-sm text-primary hover:underline">
+                  {profile.phone}
+                </a>
+              </div>
+              ) : null;
+            })()}
+            {(() => {
+              const websiteVis = profile?.website_visibility || 'public';
+              const canSeeWebsite = isOwner || websiteVis === 'public' || (websiteVis === 'connections' && isConnected);
+              return canSeeWebsite && profile?.website ? (
+              <div className="flex items-center gap-3">
+                <GlobeIcon className="h-4 w-4 text-gray-500" />
+                <a
+                  href={profile.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline break-all"
+                >
+                  {profile.website}
+                </a>
+              </div>
+              ) : null;
+            })()}
+            {(() => {
+              const socialVis = profile?.social_visibility || 'public';
+              const canSeeSocial = isOwner || socialVis === 'public' || (socialVis === 'connections' && isConnected);
+              return canSeeSocial && profile?.linkedin_url ? (
+              <div className="flex items-center gap-3">
+                <Linkedin className="h-4 w-4 text-gray-500" />
+                <a
+                  href={profile.linkedin_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline break-all"
+                >
+                  {profile.linkedin_url}
+                </a>
+              </div>
+              ) : null;
+            })()}
+            {(() => {
+              const socialVis = profile?.social_visibility || 'public';
+              const canSeeSocial = isOwner || socialVis === 'public' || (socialVis === 'connections' && isConnected);
+              return canSeeSocial && profile?.github_url ? (
+              <div className="flex items-center gap-3">
+                <Github className="h-4 w-4 text-gray-500" />
+                <a
+                  href={profile.github_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline break-all"
+                >
+                  {profile.github_url}
+                </a>
+              </div>
+              ) : null;
+            })()}
+            {(() => {
+              const socialVis = profile?.social_visibility || 'public';
+              const canSeeSocial = isOwner || socialVis === 'public' || (socialVis === 'connections' && isConnected);
+              return canSeeSocial && profile?.twitter_url ? (
+              <div className="flex items-center gap-3">
+                <Twitter className="h-4 w-4 text-gray-500" />
+                <a
+                  href={profile.twitter_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline break-all"
+                >
+                  {profile.twitter_url}
+                </a>
+              </div>
+              ) : null;
+            })()}
+            {!profile?.phone && !profile?.website && !profile?.linkedin_url && !profile?.github_url && !profile?.twitter_url && !profile?.email && !user?.email && (
+              <p className="text-sm text-muted-foreground">No contact information provided.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

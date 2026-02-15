@@ -75,8 +75,8 @@ const Connect = () => {
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="max-w-6xl mx-auto pt-4 pb-10 px-4 sm:px-6 relative">
+            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
               <div className="text-center md:text-left">
                 <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
                   Connect
@@ -85,7 +85,7 @@ const Connect = () => {
                   Stay in touch with your network and coordinate interviews.
                 </p>
               </div>
-              <div className="flex justify-center md:justify-end">
+              <div className="flex w-full md:w-auto justify-center md:justify-end">
                 <Button 
                   variant="outline" 
                   onClick={() => navigate('/dashboard')}

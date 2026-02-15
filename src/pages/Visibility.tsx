@@ -75,6 +75,9 @@ const Visibility = () => {
   const mentionedByOthers = local?.allow_mentions ?? true;
   const allowFollowers = local?.allow_followers ?? true;
   const followerVisibility = local?.follower_visibility ?? "everyone";
+  const phoneVisibility = local?.phone_visibility ?? "public";
+  const websiteVisibility = local?.website_visibility ?? "public";
+  const socialVisibility = local?.social_visibility ?? "public";
 
   const setSavingFor = (key: string, val: boolean) =>
     setSaving(prev => ({ ...prev, [key]: val }));
@@ -153,6 +156,39 @@ const Visibility = () => {
             ]}
             onChange={(val) => updateColumn("email_visibility", val)}
             disabled={saving["email_visibility"] === true}
+          />
+          <VisibilitySelector
+            title="Who can see your phone number"
+            value={phoneVisibility}
+            options={[
+              { value: "only_me", label: "Only me" },
+              { value: "connections", label: "Connections" },
+              { value: "public", label: "Public" },
+            ]}
+            onChange={(val) => updateColumn("phone_visibility", val)}
+            disabled={saving["phone_visibility"] === true}
+          />
+          <VisibilitySelector
+            title="Who can see your website"
+            value={websiteVisibility}
+            options={[
+              { value: "only_me", label: "Only me" },
+              { value: "connections", label: "Connections" },
+              { value: "public", label: "Public" },
+            ]}
+            onChange={(val) => updateColumn("website_visibility", val)}
+            disabled={saving["website_visibility"] === true}
+          />
+          <VisibilitySelector
+            title="Who can see your social links"
+            value={socialVisibility}
+            options={[
+              { value: "only_me", label: "Only me" },
+              { value: "connections", label: "Connections" },
+              { value: "public", label: "Public" },
+            ]}
+            onChange={(val) => updateColumn("social_visibility", val)}
+            disabled={saving["social_visibility"] === true}
           />
           <VisibilitySelector
             title="Who can see your connections"

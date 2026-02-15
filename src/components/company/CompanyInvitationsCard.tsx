@@ -81,13 +81,13 @@ export const CompanyInvitationsCard = () => {
   if (isLoading) {
     return (
       <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-gradient-to-r from-primary/5 to-primary/10 shadow-none sm:shadow-card mb-4 sm:mb-6 overflow-hidden">
-        <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
-          <CardTitle className="flex items-center gap-2 text-base">
+        <CardHeader className="px-4 py-5 sm:px-8 sm:pt-7 sm:pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg md:text-xl font-extrabold tracking-tight">
             <Mail className="w-4 h-4 text-primary" />
             Company Invitations
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
+        <CardContent className="px-4 py-5 sm:px-8 sm:pb-7">
           <div className="space-y-3">
             <Skeleton className="h-20" />
           </div>
@@ -103,13 +103,13 @@ export const CompanyInvitationsCard = () => {
   return (
     <>
       <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-gradient-to-r from-primary/5 to-primary/10 shadow-none sm:shadow-card mb-4 sm:mb-6 overflow-hidden">
-        <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
-          <CardTitle className="flex items-center gap-2 text-base">
+        <CardHeader className="px-4 py-5 sm:px-8 sm:pt-7 sm:pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg md:text-xl font-extrabold tracking-tight">
             <Mail className="w-4 h-4 text-primary" />
             Company Invitations ({invitations.length})
           </CardTitle>
         </CardHeader>
-        <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
+        <CardContent className="px-4 py-5 sm:px-8 sm:pb-7">
           <div className="space-y-3">
             {invitations.map((invitation) => (
               <div

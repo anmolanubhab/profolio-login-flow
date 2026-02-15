@@ -96,11 +96,16 @@ const SidebarProvider = React.forwardRef<HTMLDivElement, React.ComponentProps<"d
   }), [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]);
   return <SidebarContext.Provider value={contextValue}>
         <TooltipProvider delayDuration={0}>
-          <div style={{
+          <div
+      style={{
         "--sidebar-width": SIDEBAR_WIDTH,
         "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
         ...style
-      } as React.CSSProperties} className={cn("group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar px-[36px] pl-0 pr-0", className)} ref={ref} {...props}>
+      } as React.CSSProperties}
+      className={cn("group/sidebar-wrapper flex flex-col w-full min-h-screen overflow-x-hidden has-[[data-variant=inset]]:bg-sidebar px-[36px] pl-0 pr-0 lg:flex-row", className)}
+      ref={ref}
+      {...props}
+    >
             {children}
           </div>
         </TooltipProvider>
@@ -183,7 +188,18 @@ const SidebarInset = React.forwardRef<HTMLDivElement, React.ComponentProps<"main
   className,
   ...props
 }, ref) => {
-  return <main ref={ref} className={cn("relative flex min-h-svh flex-1 flex-col bg-background", "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow", className)} {...props} />;
+  return (
+    <main
+      ref={ref}
+      className={cn(
+        "flex flex-col w-full min-h-screen bg-background",
+        "relative flex-1",
+        "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
+        className
+      )}
+      {...props}
+    />
+  );
 });
 SidebarInset.displayName = "SidebarInset";
 const SidebarInput = React.forwardRef<React.ElementRef<typeof Input>, React.ComponentProps<typeof Input>>(({

@@ -31,9 +31,17 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => {
-  const hasTitle = React.Children.toArray(children).some(
-    (child) => React.isValidElement(child) && (child.type === (DialogTitle as any))
-  )
+  const hasDialogTitle = (nodes: React.ReactNode): boolean => {
+    const arr = React.Children.toArray(nodes)
+    for (const node of arr) {
+      if (React.isValidElement(node)) {
+        if (node.type === (DialogTitle as any)) return true
+        if (node.props?.children && hasDialogTitle(node.props.children)) return true
+      }
+    }
+    return false
+  }
+  const hasTitle = hasDialogTitle(children)
   return (
     <DialogPortal>
       <DialogOverlay />

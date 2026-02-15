@@ -108,9 +108,8 @@ export async function secureUpload({
       return { success: false, error: uploadError.message };
     }
 
-    // For private buckets (certificates, resumes), store the file path instead of public URL
-    // Public URL won't work for private buckets
-    const isPrivateBucket = bucket === 'certificates' || bucket === 'resumes';
+    // Treat 'certificates' as private. 'resumes' is public per current configuration.
+    const isPrivateBucket = bucket === 'certificates';
     
     if (isPrivateBucket) {
       return {

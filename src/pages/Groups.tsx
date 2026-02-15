@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Users, Plus, Search } from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAuth } from "@/contexts/AuthContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 // Placeholder data - will be replaced with real data when backend is ready
 const mockGroups = [
@@ -114,12 +116,64 @@ const Groups = () => {
   const { user, signOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("my-groups");
+  const [myGroups, setMyGroups] = useState<typeof mockGroups>([]);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDesc, setNewDesc] = useState("");
 
-  const filteredMyGroups = mockGroups.filter(group =>
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("pf_groups_my");
+      if (raw) {
+        setMyGroups(JSON.parse(raw));
+      } else {
+        setMyGroups([]);
+      }
+    } catch {
+      setMyGroups([]);
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("pf_groups_my", JSON.stringify(myGroups));
+    } catch {}
+  }, [myGroups]);
+
+  const join = (g: (typeof mockGroups)[number]) => {
+    if (!myGroups.find(x => x.id === g.id)) {
+      setMyGroups(prev => [{ ...g }, ...prev]);
+      setActiveTab("my-groups");
+    }
+  };
+  const leave = (id: string) => {
+    setMyGroups(prev => prev.filter(g => g.id !== id));
+  };
+  const isJoined = (id: string) => myGroups.some(g => g.id === id);
+
+  const onCreate = () => {
+    if (!newName.trim()) return;
+    const id = Date.now().toString();
+    const g = {
+      id,
+      name: newName.trim(),
+      description: newDesc.trim() || "Community group",
+      memberCount: 1,
+      imageUrl: null,
+    };
+    setMyGroups(prev => [g, ...prev]);
+    setCreateOpen(false);
+    setNewName("");
+    setNewDesc("");
+    setActiveTab("my-groups");
+  };
+
+  const filteredMyGroups = myGroups.filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredDiscoverGroups = discoverGroups.filter(group =>
+  const filteredDiscoverGroups = discoverGroups
+    .filter(g => !isJoined(g.id))
+    .filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -130,7 +184,7 @@ const Groups = () => {
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
           <div className="max-w-5xl mx-auto py-16 px-6 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
+            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-8 md:gap-10">
               <div className="text-center md:text-left animate-in fade-in slide-in-from-left-8 duration-700">
                 <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tight leading-tight">
                   Communities
@@ -139,8 +193,8 @@ const Groups = () => {
                   Connect with like-minded professionals in focused groups and accelerate your career.
                 </p>
               </div>
-              <div className="flex justify-center animate-in fade-in slide-in-from-right-8 duration-700">
-                <Button className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-10 py-7 h-auto text-xl font-bold shadow-2xl shadow-[#833AB4]/30 gap-4 transition-all duration-300 transform hover:scale-105 active:scale-95">
+              <div className="flex w-full md:w-auto justify-center animate-in fade-in slide-in-from-right-8 duration-700">
+                <Button onClick={() => setCreateOpen(true)} className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-10 py-7 h-auto text-xl font-bold shadow-2xl shadow-[#833AB4]/30 gap-4 transition-all duration-300 transform hover:scale-105 active:scale-95">
                   <Plus className="h-7 w-7" />
                   Create Group
                 </Button>
@@ -186,8 +240,15 @@ const Groups = () => {
               <TabsContent value="my-groups" className="space-y-6 focus-visible:outline-none focus-visible:ring-0">
                 {filteredMyGroups.length > 0 ? (
                   <div className="grid gap-6">
-                    {filteredMyGroups.map((group, index) => (
-                      <GroupCard key={group.id} group={group} isJoined />
+                    {filteredMyGroups.map((group) => (
+                      <div key={group.id} className="relative">
+                        <GroupCard group={group} isJoined />
+                        <div className="absolute top-6 right-8">
+                          <Button variant="outline" className="rounded-full" onClick={() => leave(group.id)}>
+                            Leave
+                          </Button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 ) : (
@@ -216,7 +277,14 @@ const Groups = () => {
                 {filteredDiscoverGroups.length > 0 ? (
                   <div className="grid gap-6">
                     {filteredDiscoverGroups.map(group => (
-                      <GroupCard key={group.id} group={group} />
+                      <div key={group.id} className="relative">
+                        <GroupCard group={group} />
+                        <div className="absolute top-6 right-8">
+                          <Button className="rounded-full" onClick={() => join(group)}>
+                            Join
+                          </Button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 ) : (
@@ -237,6 +305,27 @@ const Groups = () => {
             </Tabs>
           </div>
         </div>
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create a Group</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="gname">Name</Label>
+                <Input id="gname" value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g., Frontend Engineers" />
+              </div>
+              <div>
+                <Label htmlFor="gdesc">Description</Label>
+                <Input id="gdesc" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="What is this group about?" />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                <Button onClick={onCreate} className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white">Create</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

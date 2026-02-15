@@ -21,7 +21,7 @@ export default function BottomNavigation({ visible = true }: BottomNavigationPro
         visible ? "translate-y-0" : "translate-y-full"
       )}
     >
-      <div className="grid grid-cols-5 h-16 px-1 max-w-lg mx-auto relative">
+      <div className="grid grid-cols-5 h-16 px-1 w-full relative">
         {mainNavItems.map((item) => {
           if (item.variant === 'rainbow') {
             return (
@@ -46,14 +46,36 @@ export default function BottomNavigation({ visible = true }: BottomNavigationPro
               key={item.url}
               to={item.url}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 rounded-lg transition-colors w-full h-full",
+                "group flex flex-col items-center justify-center gap-1 w-full h-full transition-all duration-200 ease-out",
                 isActive
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "text-foreground scale-[0.98]"
+                  : "text-muted-foreground hover:text-foreground hover:scale-[1.02]"
               )}
             >
-              <item.icon className={cn("h-5 w-5", isActive && "fill-primary/20")} />
-              <span className="text-[10px] font-medium">{item.title}</span>
+              <div
+                className={cn(
+                  "flex items-center justify-center transition-all",
+                  isActive
+                    ? "w-12 h-12 rounded-[14px] bg-card shadow-sm"
+                    : "h-9 w-9 rounded-xl bg-transparent group-hover:bg-muted/60"
+                )}
+              >
+                <item.icon
+                  className={cn(
+                    "h-5 w-5 transition-colors",
+                    isActive ? "text-primary" : "text-current"
+                  )}
+                  strokeWidth={isActive ? 2.4 : 2}
+                />
+              </div>
+              <span
+                className={cn(
+                  "text-[10px] font-medium transition-colors",
+                  isActive ? "text-white" : "text-current"
+                )}
+              >
+                {item.title}
+              </span>
             </NavLink>
           )
         })}

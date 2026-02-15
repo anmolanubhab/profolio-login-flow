@@ -150,7 +150,7 @@ export const ProfileCompletionCard = () => {
     }
     setSavingSkill(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('user_skills')
         .insert({
           user_id: user.id,
@@ -197,7 +197,7 @@ export const ProfileCompletionCard = () => {
         end_year: eduIsCurrent ? null : (eduEndYear ? parseInt(eduEndYear, 10) || null : null),
         is_current: !!eduIsCurrent
       };
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('user_education')
         .insert(payload);
       if (error) throw error;
@@ -245,10 +245,10 @@ export const ProfileCompletionCard = () => {
         </DropdownMenu>
       </div>
 
-      <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
+      <CardHeader className="px-4 py-5 sm:px-8 sm:pt-7 sm:pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold flex items-center gap-2 text-blue-900">
-            <Sparkles className="h-5 w-5 text-blue-600" />
+          <CardTitle className="text-xl md:text-2xl font-extrabold flex items-center gap-2 text-blue-900 tracking-tight">
+            <Sparkles className="h-6 w-6 text-blue-600" />
             Profile Strength: {percentage}%
           </CardTitle>
           <div className="flex flex-col items-end">
@@ -263,7 +263,7 @@ export const ProfileCompletionCard = () => {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 py-6 sm:px-8 sm:pb-8 space-y-4">
+      <CardContent className="px-4 py-5 sm:px-8 sm:pb-7 space-y-4">
         <Progress value={percentage} className="h-2 bg-blue-200" />
         
         <div className="space-y-3">
