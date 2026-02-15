@@ -82,23 +82,6 @@ const Profile = () => {
   return (
     <Layout user={user} onSignOut={handleSignOut}>
       <div className="w-full bg-white pb-20 min-h-screen">
-        {/* Universal Page Hero Section */}
-        <div className="relative w-full overflow-hidden border-b border-gray-100">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto py-12 px-6 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="text-center md:text-left">
-                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
-                  My Profile
-                </h1>
-                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
-                  Manage your professional identity and showcase your career achievements.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="max-w-4xl mx-auto px-0 sm:px-4">
           <ProfileHeader userId={user.id} />
           {/* Only render tabs if we have a profile ID, otherwise show a loader or empty state */}
