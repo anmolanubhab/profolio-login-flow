@@ -98,8 +98,8 @@ const Profile = () => {
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="w-full py-12 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="max-w-4xl mx-auto pt-2 pb-8 px-4 sm:px-6 relative">
+            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
               <div className="text-center md:text-left">
                 <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
                   My Profile

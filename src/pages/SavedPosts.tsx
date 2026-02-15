@@ -43,12 +43,12 @@ const SavedPosts = () => {
       setError(null);
 
       // Fetch current profile ID (profiles.id) for the authenticated user (auth.uid())
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await (supabase as any)
         .from('profiles')
         .select('id')
         .eq('user_id', user.id)
-        .maybeSingle()
-        .abortSignal(signal!);
+        .abortSignal(signal!)
+        .maybeSingle();
 
       if (profileError) {
         const code = (profileError as any)?.code;
@@ -65,7 +65,7 @@ const SavedPosts = () => {
       }
 
       // Single optimized query: saved_posts -> posts (includes profiles, likes, comments count)
-      const { data, error: qError } = await supabase
+      const { data, error: qError } = await (supabase as any)
         .from('saved_posts')
         .select(`
           post:posts (
@@ -191,7 +191,7 @@ const SavedPosts = () => {
     <Layout>
       {/* Universal Page Hero Section */}
       <div className="bg-gradient-to-br from-blue-50 via-white to-purple-50 border-b">
-        <div className="max-w-5xl mx-auto px-4 py-12 text-center">
+        <div className="max-w-5xl mx-auto px-4 pt-6 pb-12 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
             <Bookmark className="w-8 h-8 text-blue-600" />
           </div>
@@ -224,11 +224,7 @@ const SavedPosts = () => {
         </div>
       ) : posts.length === 0 ? (
         <div className="py-16">
-          <EmptyFeedState
-            icon={Bookmark}
-            title="Your vault is empty"
-            description="Start building your collection by saving insightful posts from your feed."
-          />
+          <EmptyFeedState />
         </div>
       ) : (
         <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
@@ -236,21 +232,22 @@ const SavedPosts = () => {
             <PostCard
               key={`${post.id}-${index}`}
               id={post.id}
+              user={{
+                name: post.profiles?.display_name || 'Unknown',
+                avatar: post.profiles?.avatar_url || undefined,
+                subtitle: post.profiles?.profession || undefined
+              }}
               content={post.content}
-              imageUrl={post.image_url}
-              mediaType={post.media_type}
-              createdAt={post.created_at}
-              userId={post.user_id}
-              displayName={post.profiles?.display_name || 'Unknown'}
-              avatarUrl={post.profiles?.avatar_url}
-              profession={post.profiles?.profession}
-              likesCount={post.post_likes.length}
-              commentsCount={post.comments?.[0]?.count || 0}
-              isLiked={post.post_likes.some(l => l.user_id === user?.id)}
+              image={post.image_url || undefined}
+              mediaType={post.media_type === 'video' ? 'video' : 'image'}
+              timestamp={post.created_at}
+              likes={post.post_likes.length}
+              comments={post.comments?.[0]?.count}
+              initialIsLiked={post.post_likes.some(l => l.user_id === user?.id)}
               onLike={(isLiked) => handleLike(post.id, isLiked)}
               onDelete={() => handleDeletePost(post.id)}
               onHide={() => {}}
-              postedAs={post.posted_as as 'user' | 'company'}
+              postedAs={(post.posted_as as 'user' | 'company') || 'user'}
               companyId={post.company_id}
               companyName={post.company_name}
               companyLogo={post.company_logo}

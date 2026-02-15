@@ -97,8 +97,8 @@ const JobMessagesPage = () => {
       {/* Universal Page Hero Section */}
       <div className="relative w-full overflow-hidden border-b border-gray-100 shrink-0">
         <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-        <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 relative">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto pt-3 pb-8 px-4 sm:px-6 relative">
+          <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-4">
             <div className="text-center md:text-left">
               <h1 className="text-2xl md:text-4xl font-extrabold text-[#1D2226] mb-1 tracking-tight">
                 Messages

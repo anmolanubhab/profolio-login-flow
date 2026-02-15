@@ -44,8 +44,8 @@ const MyJobs = () => {
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto py-20 px-4 sm:px-6 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="max-w-4xl mx-auto pt-6 pb-12 px-4 sm:px-6 relative">
+            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
               <div className="text-center md:text-left">
                 <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tighter">
                   My Job Journey

@@ -66,7 +66,7 @@ const Network = () => {
 
   const fetchProfiles = async (signal?: AbortSignal) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('profiles')
         .select('id, user_id, display_name, bio, profession, location, avatar_url, profile_visibility, open_to_work, open_to_work_visibility')
         .neq('user_id', user?.id)
@@ -123,8 +123,8 @@ const Network = () => {
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="max-w-4xl mx-auto pt-4 pb-10 px-4 sm:px-6 relative">
+            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
               <div className="text-center md:text-left">
                 <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
                   Discover People
