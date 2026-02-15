@@ -116,6 +116,10 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    font-size: 75%;
+  }
+
   /* Prevent horizontal overflow on mobile */
   body {
     @apply w-full max-w-full min-h-screen overflow-x-hidden bg-background text-foreground text-sm md:text-base;
