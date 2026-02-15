@@ -21,7 +21,7 @@ export default function BottomNavigation({ visible = true }: BottomNavigationPro
         visible ? "translate-y-0" : "translate-y-full"
       )}
     >
-      <div className="grid grid-cols-5 h-16 px-1 max-w-lg mx-auto relative">
+      <div className="grid grid-cols-5 h-16 px-1 w-full relative">
         {mainNavItems.map((item) => {
           if (item.variant === 'rainbow') {
             return (
