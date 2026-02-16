@@ -10,7 +10,7 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10MB
 
 export interface SecureUploadOptions {
-  bucket: 'avatars' | 'post-images' | 'certificates' | 'resumes' | 'stories';
+  bucket: 'avatars' | 'post-images' | 'certificates' | 'resumes' | 'stories' | 'group-logos';
   file: File;
   userId: string;
   allowedTypes?: string[];
@@ -68,6 +68,7 @@ export async function secureUpload({
       case 'avatars':
       case 'post-images':
       case 'stories':
+      case 'group-logos':
         defaultAllowedTypes = ALLOWED_IMAGE_TYPES;
         defaultMaxSize = MAX_IMAGE_SIZE;
         break;
@@ -96,13 +97,29 @@ export async function secureUpload({
     const secureFilename = generateSecureFilename(file.name);
     const filePath = `${userId}/${secureFilename}`;
 
-    // Upload to storage
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
+    // Upload to storage, with graceful fallback for missing buckets
+    let activeBucket = bucket;
+    let { error: uploadError } = await supabase.storage
+      .from(activeBucket)
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false // Prevent overwriting
       });
+
+    // If target bucket doesn't exist (common on fresh projects), fall back to 'avatars'
+    if (uploadError && activeBucket === 'group-logos') {
+      const msg = uploadError.message?.toLowerCase() || '';
+      if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('bucket')) {
+        activeBucket = 'avatars';
+        const retry = await supabase.storage
+          .from(activeBucket)
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+        uploadError = retry.error || null as any;
+      }
+    }
 
     if (uploadError) {
       return { success: false, error: uploadError.message };
@@ -121,7 +138,7 @@ export async function secureUpload({
 
     // Get public URL for public buckets
     const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
+      .from(activeBucket)
       .getPublicUrl(filePath);
 
     // Add cache busting timestamp

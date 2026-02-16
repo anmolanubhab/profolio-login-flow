@@ -21,7 +21,9 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isPosting, setIsPosting] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,8 +149,8 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
           
           <button
             onClick={() => {
-              const textarea = document.getElementById('post-textarea');
-              if (textarea) textarea.focus();
+              setIsExpanded(true);
+              setTimeout(() => textareaRef.current?.focus(), 0);
             }}
             className="flex-1 h-12 px-4 text-left text-muted-foreground text-sm border border-border rounded-full hover:bg-secondary/50 transition-colors"
           >
@@ -157,10 +159,10 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
         </div>
 
         {/* Expanded input area when focused or has content */}
-        {(postContent || selectedImage) && (
+        {(isExpanded || postContent || selectedImage) && (
           <div className="mt-4">
             <Textarea
-              id="post-textarea"
+              ref={textareaRef}
               placeholder="What do you want to talk about?"
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
