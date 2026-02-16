@@ -95,7 +95,6 @@ const Profile = () => {
   return (
     <Layout user={user} onSignOut={handleSignOut}>
       <div className="w-full bg-white pb-20 min-h-screen">
-<<<<<<< HEAD
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
@@ -114,9 +113,6 @@ const Profile = () => {
         </div>
 
         <div className="w-full">
-=======
-        <div className="max-w-4xl mx-auto px-0 sm:px-4">
->>>>>>> 744c4dbe439678f3b17f23975b50b5cfb15d9cc1
           <ProfileHeader userId={user.id} />
           {/* Only render tabs if we have a profile ID, otherwise show a loader or empty state */}
           {profileId ? (
