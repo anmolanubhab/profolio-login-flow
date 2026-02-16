@@ -145,7 +145,7 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
       </div>
 
       {/* Profile Content */}
-      <div className="px-4 md:px-6 pb-6 relative max-w-4xl mx-auto">
+      <div className="px-4 md:px-6 pb-6 relative w-full lg:max-w-4xl lg:mx-auto">
         {/* Avatar - Overlapping Cover */}
         <div className="relative -mt-12 mb-3">
           <div className="inline-block relative">

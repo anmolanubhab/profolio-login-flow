@@ -16,7 +16,7 @@ const ProfileTabs = ({ userId, profileId, isOwnProfile = false }: ProfileTabsPro
   return (
     <Tabs defaultValue="posts" className="w-full">
       <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-100 w-full px-4 sm:px-0">
-        <div className="max-w-4xl mx-auto">
+        <div className="w-full lg:max-w-4xl lg:mx-auto">
           <TabsList className="flex w-full justify-start overflow-x-auto h-auto p-0 bg-transparent gap-6 md:gap-8 no-scrollbar">
             <TabsTrigger 
               value="posts"
@@ -58,7 +58,7 @@ const ProfileTabs = ({ userId, profileId, isOwnProfile = false }: ProfileTabsPro
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-0 sm:px-6 py-6">
+      <div className="w-full lg:max-w-4xl lg:mx-auto px-4 sm:px-6 py-6">
         <TabsContent value="posts" className="mt-0">
           <Feed userId={userId} />
         </TabsContent>

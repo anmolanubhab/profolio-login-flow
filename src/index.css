@@ -139,6 +139,15 @@ All colors MUST be HSL.
   }
 }
 
+/* Extra safety clamp for small screens in landscape and portrait */
+@media (max-width: 1024px) {
+  html, body, #root {
+    width: 100vw;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+}
+
 @layer components {
   .brand-font {
     font-family: 'Grand Hotel', cursive;
