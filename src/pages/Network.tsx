@@ -87,7 +87,14 @@ const Network = () => {
       setProfiles(visibleProfiles);
       setFilteredProfiles(visibleProfiles);
     } catch (error: any) {
-      if (error.name === 'AbortError') return;
+      if (
+        error?.name === 'AbortError' ||
+        typeof error?.message === 'string' &&
+          (error.message.includes('AbortError') ||
+           error.message.includes('signal is aborted'))
+      ) {
+        return;
+      }
       toast({
         title: "Error",
         description: error.message,

@@ -116,21 +116,36 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
-  /* Prevent horizontal overflow on mobile */
-  html, body {
-    @apply w-full max-w-full overflow-x-hidden;
+  html {
+    font-size: 75%;
   }
 
+  /* Prevent horizontal overflow on mobile */
   body {
-    @apply bg-background text-foreground;
+    @apply w-full max-w-full min-h-screen overflow-x-hidden bg-background text-foreground text-sm md:text-base;
     background-image: var(--bg-gradient);
     background-attachment: fixed;
     background-size: cover;
-    padding-top: var(--nav-height);
   }
 
   #root {
     @apply w-full max-w-full overflow-x-hidden;
+  }
+
+  h1 {
+    @apply text-xl md:text-2xl font-semibold leading-tight;
+  }
+
+  h2 {
+    @apply text-lg md:text-xl font-semibold;
+  }
+
+  h3 {
+    @apply text-base md:text-lg font-medium;
+  }
+
+  p {
+    @apply text-sm md:text-base leading-relaxed;
   }
 
   /* Ensure images don't overflow */
@@ -244,7 +259,7 @@ All colors MUST be HSL.
   }
   .sidebar-nav { @apply flex flex-col gap-1; }
   .sidebar-item {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm;
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-[16px];
     color: hsl(var(--sidebar-foreground));
     transition: var(--transition-smooth);
   }
@@ -267,6 +282,10 @@ All colors MUST be HSL.
   }
   .profolio-action-btn:hover {
     background-color: hsl(var(--secondary));
+
+  .rainbow-gradient {
+    @apply bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 to-blue-600;
+  }
     color: hsl(var(--foreground));
   }
   .profolio-action-btn:active {

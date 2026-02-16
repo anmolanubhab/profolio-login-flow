@@ -134,7 +134,7 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   };
 
   return (
-    <Card className="bg-white rounded-none sm:rounded-[2.5rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-xl sm:shadow-gray-100/50 mb-4 sm:mb-6 overflow-hidden">
+    <Card className="bg-white border border-border rounded-xl shadow-sm overflow-hidden">
       <CardContent className="p-4 sm:p-6">
         {/* Post Input Area */}
         <div className="flex gap-3">

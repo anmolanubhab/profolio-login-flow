@@ -70,8 +70,9 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-      <Toaster />
-      <BrowserRouter>
+        <div className="w-full min-h-screen overflow-x-hidden text-sm md:text-base text-foreground bg-background">
+          <Toaster />
+          <BrowserRouter>
         <AuthProvider>
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -211,7 +212,8 @@ const App = () => (
           </Suspense>
         </AuthProvider>
       </BrowserRouter>
-    </TooltipProvider>
+        </div>
+      </TooltipProvider>
   </QueryClientProvider>
   </ErrorBoundary>
 );

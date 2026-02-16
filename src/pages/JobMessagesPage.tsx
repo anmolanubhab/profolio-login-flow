@@ -78,7 +78,7 @@ const JobMessagesPage = () => {
       <Layout user={user} onSignOut={handleSignOut}>
         <div className="w-full bg-white pb-20 min-h-screen">
           <div className="w-full py-4 space-y-4 px-0 sm:px-4">
-            <h1 className="text-2xl font-bold px-4">Messages</h1>
+            <h1 className="text-2xl font-bold px-4">Job Chat</h1>
             <ConversationList 
               conversations={conversations} 
               isLoading={isLoading} 
@@ -97,12 +97,12 @@ const JobMessagesPage = () => {
       {/* Universal Page Hero Section */}
       <div className="relative w-full overflow-hidden border-b border-gray-100 shrink-0">
         <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-        <div className="max-w-6xl mx-auto pt-3 pb-8 px-4 sm:px-6 relative">
-          <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-4">
-            <div className="text-center md:text-left">
-              <h1 className="text-2xl md:text-4xl font-extrabold text-[#1D2226] mb-1 tracking-tight">
-                Messages
-              </h1>
+          <div className="max-w-6xl mx-auto pt-3 pb-8 px-4 sm:px-6 relative">
+            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-4">
+              <div className="text-center md:text-left">
+                <h1 className="text-2xl md:text-4xl font-extrabold text-[#1D2226] mb-1 tracking-tight">
+                  Job Chat
+                </h1>
               <p className="text-[#5E6B7E] text-sm md:text-base font-medium">
                 Connect with recruiters and hiring managers.
               </p>

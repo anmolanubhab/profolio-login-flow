@@ -32,7 +32,7 @@ export const mainNavItems: NavigationItem[] = [
 
 // Additional navigation items for the Sidebar/Menu
 export const secondaryNavItems: NavigationItem[] = [
-  { title: "Messages", url: "/connect", icon: MessageCircle },
+  { title: "Connect", url: "/connect", icon: MessageCircle },
   { title: "Profile", url: "/profile", icon: User },
   { title: "Certificates", url: "/certificates", icon: Award },
   { title: "Resume", url: "/resume", icon: FileText },

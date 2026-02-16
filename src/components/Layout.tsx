@@ -19,8 +19,11 @@ interface LayoutProps {
   onSignOut?: () => void
 }
 
-function LayoutContent({ children, user, onSignOut }: LayoutProps) {
-  const { showHeader, showBottomNav } = useScrollDirection(15);
+interface LayoutContentProps extends LayoutProps {
+  showBottomNav: boolean
+}
+
+function LayoutContent({ children, user, onSignOut, showBottomNav }: LayoutContentProps) {
   const isMobile = useIsMobile();
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -117,8 +120,6 @@ function LayoutContent({ children, user, onSignOut }: LayoutProps) {
 
   return (
     <>
-      <NavBar user={user} onSignOut={onSignOut} visible={showHeader} />
-
       {!isOnline && (
         <div className="w-full bg-amber-500/90 text-white text-sm py-2 px-4 text-center">
           You are offline. Retrying when connection restores…
@@ -149,11 +150,30 @@ function LayoutContent({ children, user, onSignOut }: LayoutProps) {
 
 export function Layout(props: LayoutProps) {
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <LayoutContent {...props} />
-      </SidebarInset>
-    </SidebarProvider>
+    <div className="min-h-screen flex flex-col">
+      <LayoutHeader {...props} />
+      <LayoutShell {...props} />
+    </div>
   )
+}
+
+function LayoutHeader({ user, onSignOut }: LayoutProps) {
+  const { showHeader } = useScrollDirection(15);
+  return (
+    <NavBar user={user} onSignOut={onSignOut} visible={showHeader} />
+  );
+}
+
+function LayoutShell(props: LayoutProps) {
+  const { showBottomNav } = useScrollDirection(15);
+  return (
+    <SidebarProvider>
+      <div className="flex flex-1">
+        <AppSidebar />
+        <SidebarInset>
+          <LayoutContent {...props} showBottomNav={showBottomNav} />
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
+  );
 }

@@ -46,27 +46,24 @@ export default function BottomNavigation({ visible = true }: BottomNavigationPro
               key={item.url}
               to={item.url}
               className={cn(
-                "group flex flex-col items-center justify-center gap-1 rounded-lg w-full h-full transition-all duration-200 ease-out",
+                "group flex flex-col items-center justify-center gap-1 w-full h-full transition-all duration-200 ease-out",
                 isActive
-                  ? "text-white shadow-md scale-[0.98]"
+                  ? "text-foreground scale-[0.98]"
                   : "text-muted-foreground hover:text-foreground hover:scale-[1.02]"
               )}
-              style={isActive ? {
-                background: 'linear-gradient(135deg, #6A11CB 0%, #2575FC 30%, #00C6FF 60%, #00E676 100%)'
-              } : undefined}
             >
               <div
                 className={cn(
-                  "h-9 w-9 rounded-xl flex items-center justify-center transition-all",
+                  "flex items-center justify-center transition-all",
                   isActive
-                    ? "bg-white/10"
-                    : "bg-transparent group-hover:bg-muted/60"
+                    ? "w-12 h-12 rounded-[14px] bg-card shadow-sm"
+                    : "h-9 w-9 rounded-xl bg-transparent group-hover:bg-muted/60"
                 )}
               >
                 <item.icon
                   className={cn(
                     "h-5 w-5 transition-colors",
-                    isActive ? "text-white" : "text-current"
+                    isActive ? "text-primary" : "text-current"
                   )}
                   strokeWidth={isActive ? 2.4 : 2}
                 />
