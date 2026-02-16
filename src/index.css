@@ -250,7 +250,7 @@ All colors MUST be HSL.
   }
   .sidebar-nav { @apply flex flex-col gap-1; }
   .sidebar-item {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm;
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-[16px];
     color: hsl(var(--sidebar-foreground));
     transition: var(--transition-smooth);
   }
