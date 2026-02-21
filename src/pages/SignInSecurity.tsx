@@ -13,6 +13,7 @@ import { TwoFactorDrawer } from "@/components/settings/TwoFactorDrawer";
 import { EmailAddressesDrawer } from "@/components/settings/EmailAddressesDrawer";
 import { PhoneNumbersDrawer } from "@/components/settings/PhoneNumbersDrawer";
 import { UpdatePasswordDrawer } from "@/components/settings/UpdatePasswordDrawer";
+import { Button } from "@/components/ui/button";
 
 interface PreferenceRowProps {
   label: string;
@@ -204,11 +205,29 @@ const SignInSecurity = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="bg-background min-h-screen">
-        <div className="px-4 py-6">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Sign in & security
-          </h1>
+      <div
+        className="min-h-screen"
+        style={{ background: "radial-gradient(circle at top left, #c7d2fe, #e9d5ff, #bfdbfe)" }}
+      >
+        {/* Hero */}
+        <div className="relative w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-500 rounded-b-3xl py-16 px-8 backdrop-blur-xl bg-white/10 overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <Button
+                  variant="ghost"
+                  className="bg-white rounded-full shadow-md hover:bg-indigo-50 hover:scale-105 transition h-9 px-4"
+                  onClick={() => navigate('/settings')}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2 text-indigo-600" />
+                  Back
+                </Button>
+                <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight mt-4">
+                  Sign in & security
+                </h1>
+              </div>
+            </div>
+          </div>
         </div>
 
       {isLoading ? (
@@ -216,32 +235,31 @@ const SignInSecurity = () => {
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       ) : (
-        <div className="flex flex-col pb-8">
+        <div className="flex flex-col pb-8 max-w-6xl mx-auto px-6">
           {/* SECTION: Account access */}
-          <SectionTitle title="Account access" />
-          
-          <PreferenceRow 
-            label="Email addresses" 
-            rightValue={user?.email || "user@email.com"} 
-            onClick={() => setEmailOpen(true)}
-          />
-          <PreferenceRow 
-            label="Phone numbers" 
-            onClick={() => setPhoneOpen(true)}
-          />
-          <PreferenceRow 
-            label="Change password" 
-            onClick={() => setPasswordOpen(true)}
-          />
-          <PreferenceRow 
-            label="Passkeys" 
-            onClick={() => setPasskeysOpen(true)}
-          />
-          <PreferenceRow 
-            label="Where you're signed in" 
-            onClick={() => setSessionsOpen(true)}
-          />
-          <div className="bg-white">
+          <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg overflow-hidden mb-6">
+            <SectionTitle title="Account access" />
+            <PreferenceRow 
+              label="Email addresses" 
+              rightValue={user?.email || "user@email.com"} 
+              onClick={() => setEmailOpen(true)}
+            />
+            <PreferenceRow 
+              label="Phone numbers" 
+              onClick={() => setPhoneOpen(true)}
+            />
+            <PreferenceRow 
+              label="Change password" 
+              onClick={() => setPasswordOpen(true)}
+            />
+            <PreferenceRow 
+              label="Passkeys" 
+              onClick={() => setPasskeysOpen(true)}
+            />
+            <PreferenceRow 
+              label="Where you're signed in" 
+              onClick={() => setSessionsOpen(true)}
+            />
             <PreferenceToggle
               label="Devices that remember your password"
               subLabel="Allow this browser to stay signed in"
@@ -250,23 +268,26 @@ const SignInSecurity = () => {
               disabled={!!saving["remember_browser"]}
             />
           </div>
-          <PreferenceToggle
-            label="Two-factor authentication"
-            subLabel="Add an extra layer of security"
-            checked={twoFactorEnabled}
-            onCheckedChange={(val) => {
-              if (val) setTwoFactorOpen(true);
-              else updateColumn("two_factor_enabled", false);
-            }}
-            disabled={!!saving["two_factor_enabled"]}
-          />
-          <PreferenceToggle
-            label="App lock"
-            subLabel="Require authentication to open the app"
-            checked={appLockEnabled}
-            onCheckedChange={(val) => updateColumn("app_lock_enabled", val)}
-            disabled={!!saving["app_lock_enabled"]}
-          />
+          <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg overflow-hidden">
+            <SectionTitle title="Security options" />
+            <PreferenceToggle
+              label="Two-factor authentication"
+              subLabel="Add an extra layer of security"
+              checked={twoFactorEnabled}
+              onCheckedChange={(val) => {
+                if (val) setTwoFactorOpen(true);
+                else updateColumn("two_factor_enabled", false);
+              }}
+              disabled={!!saving["two_factor_enabled"]}
+            />
+            <PreferenceToggle
+              label="App lock"
+              subLabel="Require authentication to open the app"
+              checked={appLockEnabled}
+              onCheckedChange={(val) => updateColumn("app_lock_enabled", val)}
+              disabled={!!saving["app_lock_enabled"]}
+            />
+          </div>
         </div>
       )}
       </div>

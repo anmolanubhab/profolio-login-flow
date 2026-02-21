@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Layout } from "@/components/Layout";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { VisibilitySelector } from "@/components/settings/VisibilitySelector";
 import { PreferenceRow, PreferenceToggle, SectionSeparator, SectionTitle } from "@/components/settings/PreferenceComponents";
 
@@ -117,12 +119,29 @@ const Visibility = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="bg-background min-h-screen pt-4">
-        {/* Title */}
-        <div className="px-4 pb-4">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Visibility
-          </h1>
+      <div
+        className="min-h-screen"
+        style={{ background: "radial-gradient(circle at top left, #c7d2fe, #e9d5ff, #bfdbfe)" }}
+      >
+        {/* Hero */}
+        <div className="relative w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-500 rounded-b-3xl py-16 px-8 backdrop-blur-xl bg-white/10 overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <Button
+                  variant="ghost"
+                  className="bg-white rounded-full shadow-md hover:bg-indigo-50 hover:scale-105 transition h-9 px-4"
+                  onClick={() => navigate('/settings')}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2 text-indigo-600" />
+                  Back
+                </Button>
+                <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight mt-4">
+                  Visibility
+                </h1>
+              </div>
+            </div>
+          </div>
         </div>
 
       {isLoading ? (
@@ -130,175 +149,179 @@ const Visibility = () => {
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       ) : (
-        <div className="flex flex-col pb-8">
+        <div className="flex flex-col pb-8 max-w-6xl mx-auto px-6">
           {/* SECTION 1: Visibility of your profile & network */}
-          <SectionTitle title="Visibility of your profile & network" />
+          <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg overflow-hidden">
+            <SectionTitle title="Visibility of your profile & network" />
+            
+            <VisibilitySelector
+              title="Profile viewing options"
+              description="Choose who can see your profile when they visit"
+              value={profileViewVisibility}
+              options={[
+                { value: "public", label: "Public" },
+                { value: "connections", label: "Connections only" },
+                { value: "private", label: "Private" },
+              ]}
+              onChange={(val) => updateColumn("profile_view_visibility", val)}
+              disabled={saving["profile_view_visibility"] === true}
+            />
+            <VisibilitySelector
+              title="Who can see or download your email address"
+              value={emailVisibility}
+              options={[
+                { value: "only_me", label: "Only me" },
+                { value: "connections", label: "Connections" },
+                { value: "public", label: "Public" },
+              ]}
+              onChange={(val) => updateColumn("email_visibility", val)}
+              disabled={saving["email_visibility"] === true}
+            />
+            <VisibilitySelector
+              title="Who can see your phone number"
+              value={phoneVisibility}
+              options={[
+                { value: "only_me", label: "Only me" },
+                { value: "connections", label: "Connections" },
+                { value: "public", label: "Public" },
+              ]}
+              onChange={(val) => updateColumn("phone_visibility", val)}
+              disabled={saving["phone_visibility"] === true}
+            />
+            <VisibilitySelector
+              title="Who can see your website"
+              value={websiteVisibility}
+              options={[
+                { value: "only_me", label: "Only me" },
+                { value: "connections", label: "Connections" },
+                { value: "public", label: "Public" },
+              ]}
+              onChange={(val) => updateColumn("website_visibility", val)}
+              disabled={saving["website_visibility"] === true}
+            />
+            <VisibilitySelector
+              title="Who can see your social links"
+              value={socialVisibility}
+              options={[
+                { value: "only_me", label: "Only me" },
+                { value: "connections", label: "Connections" },
+                { value: "public", label: "Public" },
+              ]}
+              onChange={(val) => updateColumn("social_visibility", val)}
+              disabled={saving["social_visibility"] === true}
+            />
+            <VisibilitySelector
+              title="Who can see your connections"
+              value={connectionsVisibility}
+              options={[
+                { value: "only_me", label: "Only me" },
+                { value: "connections", label: "Connections" },
+                { value: "public", label: "Public" },
+              ]}
+              onChange={(val) => updateColumn("connections_visibility", val)}
+              disabled={saving["connections_visibility"] === true}
+            />
+            <VisibilitySelector
+              title="Who can see members you follow"
+              value={followingVisibility}
+              options={[
+                { value: "only_me", label: "Only me" },
+                { value: "connections", label: "Connections" },
+                { value: "anyone", label: "Anyone on Profolio" },
+              ]}
+              onChange={(val) => updateColumn("following_visibility", val)}
+              disabled={saving["following_visibility"] === true}
+            />
+            <VisibilitySelector
+              title="Who can see your last name"
+              value={lastnameVisibility}
+              options={[
+                { value: "only_me", label: "Only me" },
+                { value: "connections", label: "Connections" },
+                { value: "public", label: "Public" },
+              ]}
+              onChange={(val) => updateColumn("lastname_visibility", val)}
+              disabled={saving["lastname_visibility"] === true}
+            />
+            <PreferenceToggle
+              label="Profile discovery using email address"
+              checked={!!discoveryByEmail}
+              onCheckedChange={(val) => updateColumn("discovery_by_email", val)}
+              disabled={saving["discovery_by_email"] === true}
+              isSaving={saving["discovery_by_email"]}
+            />
+            <PreferenceToggle
+              label="Profile discovery using phone number"
+              checked={!!discoveryByPhone}
+              onCheckedChange={(val) => updateColumn("discovery_by_phone", val)}
+              disabled={saving["discovery_by_phone"] === true}
+              isSaving={saving["discovery_by_phone"]}
+            />
+            <PreferenceRow label="Blocked members" hasArrow />
+          </div>
           
-          <VisibilitySelector
-            title="Profile viewing options"
-            description="Choose who can see your profile when they visit"
-            value={profileViewVisibility}
-            options={[
-              { value: "public", label: "Public" },
-              { value: "connections", label: "Connections only" },
-              { value: "private", label: "Private" },
-            ]}
-            onChange={(val) => updateColumn("profile_view_visibility", val)}
-            disabled={saving["profile_view_visibility"] === true}
-          />
-          <VisibilitySelector
-            title="Who can see or download your email address"
-            value={emailVisibility}
-            options={[
-              { value: "only_me", label: "Only me" },
-              { value: "connections", label: "Connections" },
-              { value: "public", label: "Public" },
-            ]}
-            onChange={(val) => updateColumn("email_visibility", val)}
-            disabled={saving["email_visibility"] === true}
-          />
-          <VisibilitySelector
-            title="Who can see your phone number"
-            value={phoneVisibility}
-            options={[
-              { value: "only_me", label: "Only me" },
-              { value: "connections", label: "Connections" },
-              { value: "public", label: "Public" },
-            ]}
-            onChange={(val) => updateColumn("phone_visibility", val)}
-            disabled={saving["phone_visibility"] === true}
-          />
-          <VisibilitySelector
-            title="Who can see your website"
-            value={websiteVisibility}
-            options={[
-              { value: "only_me", label: "Only me" },
-              { value: "connections", label: "Connections" },
-              { value: "public", label: "Public" },
-            ]}
-            onChange={(val) => updateColumn("website_visibility", val)}
-            disabled={saving["website_visibility"] === true}
-          />
-          <VisibilitySelector
-            title="Who can see your social links"
-            value={socialVisibility}
-            options={[
-              { value: "only_me", label: "Only me" },
-              { value: "connections", label: "Connections" },
-              { value: "public", label: "Public" },
-            ]}
-            onChange={(val) => updateColumn("social_visibility", val)}
-            disabled={saving["social_visibility"] === true}
-          />
-          <VisibilitySelector
-            title="Who can see your connections"
-            value={connectionsVisibility}
-            options={[
-              { value: "only_me", label: "Only me" },
-              { value: "connections", label: "Connections" },
-              { value: "public", label: "Public" },
-            ]}
-            onChange={(val) => updateColumn("connections_visibility", val)}
-            disabled={saving["connections_visibility"] === true}
-          />
-          <VisibilitySelector
-            title="Who can see members you follow"
-            value={followingVisibility}
-            options={[
-              { value: "only_me", label: "Only me" },
-              { value: "connections", label: "Connections" },
-              { value: "anyone", label: "Anyone on Profolio" },
-            ]}
-            onChange={(val) => updateColumn("following_visibility", val)}
-            disabled={saving["following_visibility"] === true}
-          />
-          <VisibilitySelector
-            title="Who can see your last name"
-            value={lastnameVisibility}
-            options={[
-              { value: "only_me", label: "Only me" },
-              { value: "connections", label: "Connections" },
-              { value: "public", label: "Public" },
-            ]}
-            onChange={(val) => updateColumn("lastname_visibility", val)}
-            disabled={saving["lastname_visibility"] === true}
-          />
-          <PreferenceToggle
-            label="Profile discovery using email address"
-            checked={!!discoveryByEmail}
-            onCheckedChange={(val) => updateColumn("discovery_by_email", val)}
-            disabled={saving["discovery_by_email"] === true}
-            isSaving={saving["discovery_by_email"]}
-          />
-          <PreferenceToggle
-            label="Profile discovery using phone number"
-            checked={!!discoveryByPhone}
-            onCheckedChange={(val) => updateColumn("discovery_by_phone", val)}
-            disabled={saving["discovery_by_phone"] === true}
-            isSaving={saving["discovery_by_phone"]}
-          />
-          <PreferenceRow label="Blocked members" hasArrow />
-
           <SectionSeparator />
-
-          {/* SECTION 2: Visibility of your activity */}
-          <SectionTitle title="Visibility of your activity" />
           
-          <VisibilitySelector
-            title="Manage active status"
-            description="Control who sees when you're active"
-            value={activeStatusVisibility}
-            options={[
-              { value: "no_one", label: "No one" },
-              { value: "connections", label: "Connections" },
-              { value: "everyone", label: "Everyone" },
-            ]}
-            onChange={(val) => updateColumn("active_status_visibility", val)}
-            disabled={saving["active_status_visibility"] === true}
-          />
-          <PreferenceToggle 
-            label="Share job changes" 
-            subLabel="Notify connections when you start a new job"
-            checked={shareJobChanges}
-            onCheckedChange={(val) => updateColumn("notify_job_changes", val)}
-            disabled={saving["notify_job_changes"] === true}
-            isSaving={saving["notify_job_changes"]}
-          />
-          <PreferenceToggle 
-            label="News notify connections" 
-            subLabel="Notify connections when you're in the news"
-            checked={newsNotify}
-            onCheckedChange={(val) => updateColumn("notify_news", val)}
-            disabled={saving["notify_news"] === true}
-            isSaving={saving["notify_news"]}
-          />
-          <PreferenceToggle 
-            label="Mentions by others" 
-            subLabel="Allow others to mention you in posts"
-            checked={mentionedByOthers}
-            onCheckedChange={(val) => updateColumn("allow_mentions", val)}
-            disabled={saving["allow_mentions"] === true}
-            isSaving={saving["allow_mentions"]}
-          />
-          <SectionTitle title="Followers" />
-          <PreferenceToggle
-            label="Allow followers"
-            checked={!!allowFollowers}
-            onCheckedChange={(val) => updateColumn("allow_followers", val)}
-            disabled={saving["allow_followers"] === true}
-            isSaving={saving["allow_followers"]}
-          />
-          <VisibilitySelector
-            title="Follower visibility"
-            description="Who can follow you"
-            value={followerVisibility}
-            options={[
-              { value: "everyone", label: "Everyone can follow" },
-              { value: "connections", label: "Only connections can follow" },
-            ]}
-            onChange={(val) => updateColumn("follower_visibility", val)}
-            disabled={!allowFollowers || saving["follower_visibility"] === true}
-          />
+          {/* SECTION 2: Visibility of your activity */}
+          <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg overflow-hidden">
+            <SectionTitle title="Visibility of your activity" />
+            
+            <VisibilitySelector
+              title="Manage active status"
+              description="Control who sees when you're active"
+              value={activeStatusVisibility}
+              options={[
+                { value: "no_one", label: "No one" },
+                { value: "connections", label: "Connections" },
+                { value: "everyone", label: "Everyone" },
+              ]}
+              onChange={(val) => updateColumn("active_status_visibility", val)}
+              disabled={saving["active_status_visibility"] === true}
+            />
+            <PreferenceToggle 
+              label="Share job changes" 
+              subLabel="Notify connections when you start a new job"
+              checked={shareJobChanges}
+              onCheckedChange={(val) => updateColumn("notify_job_changes", val)}
+              disabled={saving["notify_job_changes"] === true}
+              isSaving={saving["notify_job_changes"]}
+            />
+            <PreferenceToggle 
+              label="News notify connections" 
+              subLabel="Notify connections when you're in the news"
+              checked={newsNotify}
+              onCheckedChange={(val) => updateColumn("notify_news", val)}
+              disabled={saving["notify_news"] === true}
+              isSaving={saving["notify_news"]}
+            />
+            <PreferenceToggle 
+              label="Mentions by others" 
+              subLabel="Allow others to mention you in posts"
+              checked={mentionedByOthers}
+              onCheckedChange={(val) => updateColumn("allow_mentions", val)}
+              disabled={saving["allow_mentions"] === true}
+              isSaving={saving["allow_mentions"]}
+            />
+            <SectionTitle title="Followers" />
+            <PreferenceToggle
+              label="Allow followers"
+              checked={!!allowFollowers}
+              onCheckedChange={(val) => updateColumn("allow_followers", val)}
+              disabled={saving["allow_followers"] === true}
+              isSaving={saving["allow_followers"]}
+            />
+            <VisibilitySelector
+              title="Follower visibility"
+              description="Who can follow you"
+              value={followerVisibility}
+              options={[
+                { value: "everyone", label: "Everyone can follow" },
+                { value: "connections", label: "Only connections can follow" },
+              ]}
+              onChange={(val) => updateColumn("follower_visibility", val)}
+              disabled={!allowFollowers || saving["follower_visibility"] === true}
+            />
+          </div>
         </div>
       )}
       </div>

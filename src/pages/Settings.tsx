@@ -101,13 +101,13 @@ const Settings = () => {
 
   // Main settings options
   const mainSettings = [
-    { icon: User, label: "Account preferences", onClick: () => navigate("/settings/account") },
-    { icon: Briefcase, label: "Job preferences", onClick: () => navigate("/jobs/preferences") },
-    { icon: Lock, label: "Sign in & security", onClick: () => navigate("/settings/security") },
-    { icon: Eye, label: "Visibility", onClick: () => navigate("/settings/visibility") },
-    { icon: Shield, label: "Data privacy", onClick: () => navigate("/settings/privacy") },
-    { icon: FileText, label: "Advertising data", onClick: () => navigate("/settings/advertising-data") },
-    { icon: Bell, label: "Notifications", onClick: () => navigate("/settings/notifications") },
+    { icon: User, label: "Account preferences", description: "Manage email, phone number, & more", onClick: () => navigate("/settings/account") },
+    { icon: Briefcase, label: "Job preferences", description: "Set desired job roles and locations", onClick: () => navigate("/jobs/preferences") },
+    { icon: Lock, label: "Sign in & security", description: "Set two-factor authentication and passwords", onClick: () => navigate("/settings/security") },
+    { icon: Eye, label: "Visibility", description: "Control how others see your profile & activity", onClick: () => navigate("/settings/visibility") },
+    { icon: Shield, label: "Data privacy", description: "Manage your data visibility and sharing settings", onClick: () => navigate("/settings/privacy") },
+    { icon: FileText, label: "Advertising data", description: "Manage how your data is used for ads", onClick: () => navigate("/settings/advertising-data") },
+    { icon: Bell, label: "Notifications", description: "Choose what alerts you receive", onClick: () => navigate("/settings/notifications") },
   ];
 
   // Secondary links
@@ -123,81 +123,92 @@ const Settings = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="min-h-screen bg-white">
-        {/* Universal Page Hero Section */}
-        <div className="relative w-full overflow-hidden border-b border-gray-100">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto py-20 px-4 sm:px-6 relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="text-center md:text-left">
-                <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tighter">
-                  Settings
-                </h1>
-                <p className="text-[#5E6B7E] text-lg md:text-2xl font-medium max-w-2xl mx-auto md:mx-0 leading-relaxed">
-                  Manage your account preferences and security settings.
-                </p>
+      <div
+        className="min-h-screen"
+        style={{ background: "radial-gradient(circle at top left, #c7d2fe, #e9d5ff, #bfdbfe)" }}
+      >
+        {/* Hero */}
+        <div className="relative w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-500 rounded-b-3xl py-16 px-8 backdrop-blur-xl bg-white/10 overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-white text-4xl md:text-6xl font-extrabold tracking-tighter">Settings</h1>
+                <p className="text-white/80 text-base md:text-xl mt-2">Manage your account preferences and security settings.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto">
-          {/* Profile Section */}
-          <div className="flex items-center gap-3 px-4 sm:px-6 py-8">
-            <Avatar className="h-16 w-16 border-2 border-white shadow-sm">
+        <div className="max-w-6xl mx-auto px-6">
+          {/* Profile Card */}
+          <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg p-6 mt-8 flex items-center gap-4">
+            <Avatar className="h-16 w-16 ring-2 ring-white/70 shadow-sm">
               <AvatarImage src={avatarUrl || undefined} alt={displayName} referrerPolicy="no-referrer" />
               <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 text-xl font-bold">
                 {displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="flex-1">
               <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
               <p className="text-sm text-gray-500">Professional Account</p>
             </div>
+            <Button 
+              variant="outline" 
+              className="rounded-full h-10 px-4"
+              onClick={() => navigate('/profile')}
+            >
+              View profile
+            </Button>
           </div>
 
           {/* Main Settings List */}
-          <div className="px-0 sm:px-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 sm:p-6">
-              {mainSettings.map((item, index) => (
+          <div className="mt-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {mainSettings.map((item) => (
                 <button
                   key={item.label}
                   onClick={item.onClick}
-                  className="flex items-center gap-4 p-4 rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white hover:border-transparent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group text-left"
+                  className="flex items-center justify-between p-6 bg-white/70 backdrop-blur-md rounded-2xl shadow-md hover:shadow-lg transition text-left"
                 >
-                  <div className="h-12 w-12 rounded-xl bg-gray-50 flex items-center justify-center group-hover:bg-gradient-to-br group-hover:from-[#0077B5]/10 group-hover:to-[#E1306C]/10 transition-colors">
-                    <item.icon className="h-6 w-6 text-gray-600 group-hover:text-[#833AB4] transition-colors" />
+                  <div className="flex items-start gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-white/60 flex items-center justify-center ring-1 ring-white/50">
+                      <item.icon className="w-6 h-6 text-indigo-500" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800">{item.label}</h3>
+                      <p className="text-sm text-gray-500 mt-1">{(item as any).description}</p>
+                    </div>
                   </div>
-                  <span className="text-base font-semibold text-gray-900">{item.label}</span>
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
                 </button>
               ))}
             </div>
           </div>
 
           {/* Divider */}
-          <div className="px-4 sm:px-6 py-4">
-            <Separator className="bg-gray-100" />
+          <div className="py-6">
+            <Separator className="bg-white/60" />
           </div>
 
           {/* Secondary Links */}
-          <div className="px-4 sm:px-6 pb-8">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 px-2">Resources</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="pb-12">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 px-2">Resources</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {secondaryLinks.map(({ label, path }) => (
                 <button
                   key={label}
                   onClick={() => navigate(path)}
-                  className="flex items-center justify-between p-4 rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white hover:border-transparent hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group text-left"
+                  className="flex items-center justify-between p-5 rounded-2xl bg-white/70 backdrop-blur-md shadow-lg hover:shadow-2xl transition group text-left"
                 >
                   <span className="text-sm font-medium text-[#1D2226]">{label}</span>
-                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-[#833AB4] transition-colors" />
+                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-indigo-600 transition-colors" />
                 </button>
               ))}
             </div>
           </div>
 
           {/* Sign Out */}
-          <div className="px-4 sm:px-6 pb-12">
+          <div className="pb-12">
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="w-full md:w-auto px-8 rounded-full font-semibold relative p-[1px] overflow-hidden group border-none h-12">

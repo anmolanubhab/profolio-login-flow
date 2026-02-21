@@ -102,7 +102,7 @@ const SidebarProvider = React.forwardRef<HTMLDivElement, React.ComponentProps<"d
         "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
         ...style
       } as React.CSSProperties}
-      className={cn("group/sidebar-wrapper flex flex-col w-full min-h-screen overflow-x-hidden has-[[data-variant=inset]]:bg-sidebar px-[36px] pl-0 pr-0 lg:flex-row", className)}
+      className={cn("group/sidebar-wrapper flex flex-col w-full min-h-screen overflow-x-hidden has-[[data-variant=inset]]:bg-transparent px-[36px] pl-0 pr-0 lg:flex-row", className)}
       ref={ref}
       {...props}
     >
@@ -198,7 +198,7 @@ const SidebarInset = React.forwardRef<HTMLDivElement, React.ComponentProps<"main
     <main
       ref={ref}
       className={cn(
-        "flex flex-col w-full min-h-screen bg-background",
+        "flex flex-col w-full min-h-screen bg-transparent",
         "relative flex-1",
         "peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
         className

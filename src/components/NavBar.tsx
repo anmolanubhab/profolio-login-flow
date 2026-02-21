@@ -58,7 +58,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
                 {({ isActive }) => (
                   <>
                     <Home className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                    <span className={`mt-1 text-[11px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                    <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                       Home
                     </span>
                     {isActive && (
@@ -75,7 +75,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
                 {({ isActive }) => (
                   <>
                     <Users className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                    <span className={`mt-1 text-[11px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                    <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                       My Network
                     </span>
                     {isActive && (
@@ -94,7 +94,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
                   return (
                     <>
                       <Briefcase className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                      <span className={`mt-1 text-[11px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                      <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                         Jobs
                       </span>
                       {isActive && (
@@ -113,7 +113,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
                 {({ isActive }) => (
                   <>
                     <MessageCircle className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                    <span className={`mt-1 text-[11px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                    <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                       Job Chat
                     </span>
                     {isActive && (

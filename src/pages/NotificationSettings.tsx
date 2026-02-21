@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PreferenceToggle, SectionTitle } from "@/components/settings/PreferenceComponents";
 import { VisibilitySelector } from "@/components/settings/VisibilitySelector";
 import { Layout } from "@/components/Layout";
+import { Button } from "@/components/ui/button";
 
 interface NotificationSettings {
   job_alerts: boolean;
@@ -102,12 +103,29 @@ const NotificationSettings = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="bg-background min-h-screen">
-        {/* Title */}
-        <div className="px-4 py-6">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Notifications
-          </h1>
+      <div
+        className="min-h-screen"
+        style={{ background: "radial-gradient(circle at top left, #c7d2fe, #e9d5ff, #bfdbfe)" }}
+      >
+        {/* Hero */}
+        <div className="relative w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-500 rounded-b-3xl py-16 px-8 backdrop-blur-xl bg-white/10 overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <Button
+                  variant="ghost"
+                  className="bg-white rounded-full shadow-md hover:bg-indigo-50 hover:scale-105 transition h-9 px-4"
+                  onClick={() => navigate('/settings')}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2 text-indigo-600" />
+                  Back
+                </Button>
+                <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight mt-4">
+                  Notifications
+                </h1>
+              </div>
+            </div>
+          </div>
         </div>
 
       {isLoading ? (
@@ -115,38 +133,40 @@ const NotificationSettings = () => {
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       ) : (
-        <div className="flex flex-col">
-          <SectionTitle title="Notifications" icon={Bell} />
-          <PreferenceToggle
-            label="Job Alerts"
-            subLabel="Get notified about new jobs matching your preferences"
-            checked={notificationSettings.job_alerts}
-            onCheckedChange={(val) => handleNotificationChange('job_alerts', val)}
-            disabled={isUpdating}
-          />
-          <PreferenceToggle
-            label="Profile Views"
-            subLabel="See when someone views your profile"
-            checked={notificationSettings.profile_views}
-            onCheckedChange={(val) => handleNotificationChange('profile_views', val)}
-            disabled={isUpdating}
-          />
-          <PreferenceToggle
-            label="Messages"
-            subLabel="Get notified when you receive a new message"
-            checked={notificationSettings.messages}
-            onCheckedChange={(val) => handleNotificationChange('messages', val)}
-            disabled={isUpdating}
-          />
-          
-          <VisibilitySelector
-            title="Email Frequency"
-            description="How often do you want to receive emails?"
-            value={notificationSettings.email_frequency}
-            options={EMAIL_FREQUENCY_OPTIONS}
-            onChange={(val) => handleNotificationChange('email_frequency', val)}
-            disabled={isUpdating}
-          />
+        <div className="flex flex-col max-w-6xl mx-auto px-6">
+          <div className="bg-white/70 backdrop-blur-md rounded-2xl shadow-lg overflow-hidden">
+            <SectionTitle title="Notifications" icon={Bell} />
+            <PreferenceToggle
+              label="Job Alerts"
+              subLabel="Get notified about new jobs matching your preferences"
+              checked={notificationSettings.job_alerts}
+              onCheckedChange={(val) => handleNotificationChange('job_alerts', val)}
+              disabled={isUpdating}
+            />
+            <PreferenceToggle
+              label="Profile Views"
+              subLabel="See when someone views your profile"
+              checked={notificationSettings.profile_views}
+              onCheckedChange={(val) => handleNotificationChange('profile_views', val)}
+              disabled={isUpdating}
+            />
+            <PreferenceToggle
+              label="Messages"
+              subLabel="Get notified when you receive a new message"
+              checked={notificationSettings.messages}
+              onCheckedChange={(val) => handleNotificationChange('messages', val)}
+              disabled={isUpdating}
+            />
+            
+            <VisibilitySelector
+              title="Email Frequency"
+              description="How often do you want to receive emails?"
+              value={notificationSettings.email_frequency}
+              options={EMAIL_FREQUENCY_OPTIONS}
+              onChange={(val) => handleNotificationChange('email_frequency', val)}
+              disabled={isUpdating}
+            />
+          </div>
         </div>
       )}
       </div>
