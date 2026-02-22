@@ -383,15 +383,16 @@ const Notifications = () => {
 
   return (
     <Layout user={user} onSignOut={signOut}>
-      <div className="min-h-screen bg-white">
+      <div 
+        className="min-h-screen"
+        style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}
+      >
         {/* Universal Page Hero Section */}
-        <div className="relative w-full overflow-hidden border-b border-gray-100">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-[#0077B5]/10 via-transparent to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-[0.03] animate-gradient-shift" />
-          <div className="max-w-5xl mx-auto py-20 px-4 sm:px-6 relative">
+        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl py-16 px-8 overflow-hidden">
+          <div className="max-w-5xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="text-center md:text-left animate-in fade-in slide-in-from-left-8 duration-700">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#0077B5]/10 to-[#E1306C]/10 text-[#833AB4] text-sm font-bold mb-6 border border-[#833AB4]/10">
+              <div className="text-center md:text-left animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 text-[#833AB4] text-sm font-bold mb-6 border border-white/60">
                   <Bell className="h-4 w-4" />
                   <span>Real-time Updates</span>
                 </div>
@@ -404,13 +405,17 @@ const Notifications = () => {
               </div>
             </div>
           </div>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
+          </div>
         </div>
 
         <div className="max-w-4xl mx-auto py-16 px-0 sm:px-6">
           <div className="space-y-16">
             {/* Friend Requests Section */}
             {friendRequests.length > 0 && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+              <div className="space-y-8 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 <div className="flex items-center justify-between px-4 sm:px-2">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-2xl bg-[#0077B5]/10 text-[#0077B5]">
@@ -426,7 +431,7 @@ const Notifications = () => {
                   {friendRequests.map((request, index) => (
                     <Card 
                       key={request.id} 
-                      className="group rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card hover:shadow-2xl transition-all duration-500 overflow-hidden animate-in fade-in slide-in-from-bottom-4"
+                      className="group rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card hover:shadow-2xl transition-all duration-500 overflow-hidden animate-fade-in-up"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
                       <CardContent className="px-4 py-6 sm:p-8">

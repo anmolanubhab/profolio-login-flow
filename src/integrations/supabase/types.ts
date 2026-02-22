@@ -1476,6 +1476,89 @@ export type Database = {
           },
         ]
       }
+      groups: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          image_url: string | null
+          owner_user_id: string
+          is_public: boolean | null
+          industry: string[] | null
+          location: string | null
+          rules: string | null
+          allow_member_invites: boolean | null
+          require_post_approval: boolean | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          image_url?: string | null
+          owner_user_id: string
+          is_public?: boolean | null
+          industry?: string[] | null
+          location?: string | null
+          rules?: string | null
+          allow_member_invites?: boolean | null
+          require_post_approval?: boolean | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          image_url?: string | null
+          owner_user_id?: string
+          is_public?: boolean | null
+          industry?: string[] | null
+          location?: string | null
+          rules?: string | null
+          allow_member_invites?: boolean | null
+          require_post_approval?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_members: {
+        Row: {
+          group_id: string
+          user_id: string
+          role: string
+        }
+        Insert: {
+          group_id: string
+          user_id: string
+          role?: string
+        }
+        Update: {
+          group_id?: string
+          user_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string

@@ -155,13 +155,12 @@ const Jobs = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen" style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}>
         {/* Universal Page Hero Section */}
-        <div className="relative w-full overflow-hidden border-b border-gray-100">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto py-20 px-4 sm:px-6 relative">
+        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl py-16 px-8 overflow-hidden">
+          <div className="max-w-4xl mx-auto relative">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="text-center md:text-left">
+              <div className="text-center md:text-left animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
                 <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tighter">
                   Find Your Next Opportunity
                 </h1>
@@ -169,7 +168,7 @@ const Jobs = () => {
                   Discover jobs that match your skills and interests.
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center gap-3 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 <Button 
                   onClick={() => setShowPostJobDialog(true)}
                   className="w-full sm:w-auto rounded-full font-bold h-12 px-8 text-white border-none transition-all hover:opacity-90 active:scale-[0.98] bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] shadow-lg hover:shadow-xl"
@@ -178,6 +177,10 @@ const Jobs = () => {
                 </Button>
               </div>
             </div>
+          </div>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
           </div>
         </div>
 

@@ -410,13 +410,14 @@ const Groups = () => {
 
   return (
     <Layout user={user} onSignOut={signOut}>
-      <div className="min-h-screen bg-white">
-        {/* Universal Page Hero Section */}
-        <div className="relative w-full overflow-hidden border-b border-gray-100">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-5xl mx-auto py-16 px-6 relative">
+      <div
+        className="min-h-screen"
+        style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}
+      >
+        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl py-16 px-8 overflow-hidden">
+          <div className="max-w-5xl mx-auto">
             <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-8 md:gap-10">
-              <div className="text-center md:text-left animate-in fade-in slide-in-from-left-8 duration-700">
+              <div className="text-center md:text-left animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
                 <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tight leading-tight">
                   Communities
                 </h1>
@@ -424,7 +425,7 @@ const Groups = () => {
                   Connect with like-minded professionals in focused groups and accelerate your career.
                 </p>
               </div>
-              <div className="flex w-full md:w-auto justify-center animate-in fade-in slide-in-from-right-8 duration-700">
+              <div className="flex w-full md:w-auto justify-center animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 <Button onClick={() => navigate("/groups/create")} className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-10 py-7 h-auto text-xl font-bold shadow-2xl shadow-[#833AB4]/30 gap-4 transition-all duration-300 transform hover:scale-105 active:scale-95">
                   <Plus className="h-7 w-7" />
                   Create Group
@@ -432,12 +433,16 @@ const Groups = () => {
               </div>
             </div>
           </div>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
+          </div>
         </div>
 
         <div className="w-full lg:max-w-5xl lg:mx-auto py-16 px-6">
           <div className="w-full lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8">
             <div>
-              <div className="mb-12 space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+              <div className="mb-12 space-y-10 animate-fade-in-up" style={{ animationDelay: '0.25s' }}>
                 <div className="relative max-w-3xl mx-auto lg:mx-0">
                   <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-10 blur-3xl rounded-full" />
                   <div className="relative">

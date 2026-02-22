@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Send, Plus, MessageCircle, Search, Loader2, X } from 'lucide-react';
+import { Send, Plus, MessageCircle, Search, Loader2, X, Image as ImageIcon, Video as VideoIcon, FileText, Camera, Headphones, User as UserIcon, ListChecks, Calendar, PlusCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Command,
@@ -76,6 +76,22 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const [userSearchOpen, setUserSearchOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const photosInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
+  const [documentName, setDocumentName] = useState<string | null>(null);
+  const [selectedAudio, setSelectedAudio] = useState<File | null>(null);
+  const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -270,22 +286,112 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || sendingMessage) return;
+    if (!selectedConversation || sendingMessage || uploading) return;
+
+    const hasMedia = !!selectedImage || !!selectedVideo || !!selectedDocument || !!selectedAudio;
+    if (!newMessage.trim() && !hasMedia) return;
 
     setSendingMessage(true);
     try {
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: selectedConversation,
-          sender_id: user.id,
-          content: newMessage.trim(),
-          message_type: 'text'
-        });
-
-      if (error) throw error;
+      if (hasMedia) {
+        setUploading(true);
+        if (selectedImage) {
+          const ext = selectedImage.name.split('.').pop();
+          const name = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: upErr } = await supabase.storage.from('post-images').upload(name, selectedImage, { cacheControl: '3600', upsert: false });
+          if (upErr) throw upErr;
+          const { data: urlData } = supabase.storage.from('post-images').getPublicUrl(name);
+          const { error } = await supabase
+            .from('messages')
+            .insert({
+              conversation_id: selectedConversation,
+              sender_id: user.id,
+              content: newMessage.trim() || '',
+              message_type: 'image',
+              file_url: urlData.publicUrl,
+              file_name: selectedImage.name
+            });
+          if (error) throw error;
+        } else if (selectedVideo) {
+          const ext = selectedVideo.name.split('.').pop();
+          const name = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: upErr } = await supabase.storage.from('post-videos').upload(name, selectedVideo, { cacheControl: '3600', upsert: false });
+          if (upErr) throw upErr;
+          const { data: urlData } = supabase.storage.from('post-videos').getPublicUrl(name);
+          const { error } = await supabase
+            .from('messages')
+            .insert({
+              conversation_id: selectedConversation,
+              sender_id: user.id,
+              content: newMessage.trim() || '',
+              message_type: 'video',
+              file_url: urlData.publicUrl,
+              file_name: selectedVideo.name
+            });
+          if (error) throw error;
+        } else if (selectedDocument) {
+          const ext = selectedDocument.name.split('.').pop();
+          const name = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: upErr } = await supabase.storage.from('post-documents').upload(name, selectedDocument, { cacheControl: '3600', upsert: false });
+          if (upErr) throw upErr;
+          const { data: urlData } = supabase.storage.from('post-documents').getPublicUrl(name);
+          const { error } = await supabase
+            .from('messages')
+            .insert({
+              conversation_id: selectedConversation,
+              sender_id: user.id,
+              content: newMessage.trim() || '',
+              message_type: 'document',
+              file_url: urlData.publicUrl,
+              file_name: selectedDocument.name
+            });
+          if (error) throw error;
+        } else if (selectedAudio) {
+          const ext = selectedAudio.name.split('.').pop();
+          const name = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: upErr } = await supabase.storage.from('post-audios').upload(name, selectedAudio, { cacheControl: '3600', upsert: false });
+          if (upErr) throw upErr;
+          const { data: urlData } = supabase.storage.from('post-audios').getPublicUrl(name);
+          const { error } = await supabase
+            .from('messages')
+            .insert({
+              conversation_id: selectedConversation,
+              sender_id: user.id,
+              content: newMessage.trim() || '',
+              message_type: 'audio',
+              file_url: urlData.publicUrl,
+              file_name: selectedAudio.name
+            });
+          if (error) throw error;
+        }
+      } else {
+        const { error } = await supabase
+          .from('messages')
+          .insert({
+            conversation_id: selectedConversation,
+            sender_id: user.id,
+            content: newMessage.trim(),
+            message_type: 'text'
+          });
+        if (error) throw error;
+      }
 
       setNewMessage('');
+      setSelectedImage(null);
+      setImagePreview(null);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+      if (videoPreview) URL.revokeObjectURL(videoPreview);
+      setSelectedVideo(null);
+      setVideoPreview(null);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+      setSelectedDocument(null);
+      setDocumentName(null);
+      if (documentInputRef.current) documentInputRef.current.value = '';
+      if (audioPreview) URL.revokeObjectURL(audioPreview);
+      setSelectedAudio(null);
+      setAudioPreview(null);
+      if (audioInputRef.current) audioInputRef.current.value = '';
+      setAttachOpen(false);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -295,6 +401,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
       });
     } finally {
       setSendingMessage(false);
+      setUploading(false);
     }
   };
 
@@ -576,7 +683,32 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                                   : 'bg-white text-gray-700 rounded-tl-none border border-gray-100 font-medium'
                               }`}
                             >
-                              <div className="text-sm leading-relaxed break-words">{message.content}</div>
+                              {message.message_type === 'image' && message.file_url ? (
+                                <div className="space-y-2">
+                                  <img src={message.file_url} alt={message.file_name || 'image'} className="max-h-64 rounded-xl" />
+                                  {message.content && <div className="text-sm leading-relaxed break-words">{message.content}</div>}
+                                </div>
+                              ) : message.message_type === 'video' && message.file_url ? (
+                                <div className="space-y-2">
+                                  <video src={message.file_url} controls className="max-h-64 rounded-xl" />
+                                  {message.content && <div className="text-sm leading-relaxed break-words">{message.content}</div>}
+                                </div>
+                              ) : message.message_type === 'document' && message.file_url ? (
+                                <div className="space-y-2">
+                                  <a href={message.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 underline decoration-[#833AB4]/40">
+                                    <FileText className="h-4 w-4" />
+                                    <span className="text-sm font-medium">{message.file_name || 'Document'}</span>
+                                  </a>
+                                  {message.content && <div className="text-sm leading-relaxed break-words">{message.content}</div>}
+                                </div>
+                              ) : message.message_type === 'audio' && message.file_url ? (
+                                <div className="space-y-2">
+                                  <audio src={message.file_url} controls className="w-64" />
+                                  {message.content && <div className="text-sm leading-relaxed break-words">{message.content}</div>}
+                                </div>
+                              ) : (
+                                <div className="text-sm leading-relaxed break-words">{message.content}</div>
+                              )}
                             </div>
                             <span className={`text-[9px] font-bold uppercase tracking-widest px-1 ${
                               message.sender_id === user.id ? 'text-right text-gray-400' : 'text-left text-gray-400'
@@ -594,10 +726,220 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
 
               {/* Message Input */}
               <div className="p-6 bg-white border-t border-gray-100 flex-shrink-0">
-                <div className="max-w-4xl mx-auto flex gap-4 items-end bg-gray-50/80 p-2 rounded-[2rem] border border-gray-100 group-focus-within:bg-white group-focus-within:ring-2 group-focus-within:ring-[#833AB4]/10 transition-all">
-                  <Button variant="ghost" size="sm" className="rounded-full h-10 w-10 p-0 text-gray-400 hover:text-[#833AB4] hover:bg-white transition-all">
-                    <Plus className="h-5 w-5" />
-                  </Button>
+                <div className="max-w-4xl mx-auto flex flex-col gap-3">
+                  {(imagePreview || videoPreview || documentName || audioPreview) && (
+                    <div className="relative rounded-2xl overflow-hidden bg-white border border-gray-200">
+                      {imagePreview && <img src={imagePreview} className="max-h-64 w-full object-contain" />}
+                      {videoPreview && <video src={videoPreview} controls className="max-h-64 w-full" />}
+                      {documentName && (
+                        <div className="p-4 flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          <span className="text-sm font-medium">{documentName}</span>
+                        </div>
+                      )}
+                      {audioPreview && (
+                        <div className="p-4">
+                          <audio src={audioPreview} controls className="w-full" />
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            if (imagePreview) {
+                              setSelectedImage(null);
+                              setImagePreview(null);
+                              if (imageInputRef.current) imageInputRef.current.value = '';
+                            }
+                            if (videoPreview) {
+                              URL.revokeObjectURL(videoPreview);
+                              setSelectedVideo(null);
+                              setVideoPreview(null);
+                              if (videoInputRef.current) videoInputRef.current.value = '';
+                            }
+                            if (documentName) {
+                              setSelectedDocument(null);
+                              setDocumentName(null);
+                              if (documentInputRef.current) documentInputRef.current.value = '';
+                            }
+                            if (audioPreview) {
+                              URL.revokeObjectURL(audioPreview);
+                              setSelectedAudio(null);
+                              setAudioPreview(null);
+                              if (audioInputRef.current) audioInputRef.current.value = '';
+                            }
+                          }}
+                          className="rounded-full h-8 w-8 p-0 bg-black/40 text-white hover:bg-black/60"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-4 items-end bg-gray-50/80 p-2 rounded-[2rem] border border-gray-100 group-focus-within:bg-white group-focus-within:ring-2 group-focus-within:ring-[#833AB4]/10 transition-all">
+                    <Popover open={attachOpen} onOpenChange={setAttachOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="sm" className="rounded-full h-10 w-10 p-0 text-gray-400 hover:text-[#833AB4] hover:bg-white transition-all">
+                          <Plus className="h-5 w-5" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 rounded-2xl border-gray-100 shadow-xl" align="start" side="top" sideOffset={10}>
+                      <input
+                        type="file"
+                        accept="image/*,video/mp4,video/webm"
+                        ref={photosInputRef}
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.type.startsWith('image/')) {
+                            setSelectedImage(file);
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+                            reader.readAsDataURL(file);
+                            if (videoPreview) {
+                              URL.revokeObjectURL(videoPreview);
+                              setSelectedVideo(null);
+                              setVideoPreview(null);
+                              if (videoInputRef.current) videoInputRef.current.value = '';
+                            }
+                          } else if (['video/mp4','video/webm'].includes(file.type)) {
+                            setSelectedVideo(file);
+                            setVideoPreview(URL.createObjectURL(file));
+                            setSelectedImage(null);
+                            setImagePreview(null);
+                            if (imageInputRef.current) imageInputRef.current.value = '';
+                          }
+                        }}
+                      />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        ref={cameraInputRef}
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (!file.type.startsWith('image/')) return;
+                          setSelectedImage(file);
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+                          reader.readAsDataURL(file);
+                          if (videoPreview) {
+                            URL.revokeObjectURL(videoPreview);
+                            setSelectedVideo(null);
+                            setVideoPreview(null);
+                            if (videoInputRef.current) videoInputRef.current.value = '';
+                          }
+                        }}
+                      />
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,application/*"
+                        ref={documentInputRef}
+                        className="hidden"
+                      />
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        ref={audioInputRef}
+                        className="hidden"
+                      />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          ref={imageInputRef}
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (!file.type.startsWith('image/')) return;
+                            setSelectedImage(file);
+                            const reader = new FileReader();
+                            reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+                            reader.readAsDataURL(file);
+                            if (videoPreview) {
+                              URL.revokeObjectURL(videoPreview);
+                              setSelectedVideo(null);
+                              setVideoPreview(null);
+                              if (videoInputRef.current) videoInputRef.current.value = '';
+                            }
+                          }}
+                        />
+                        <input
+                          type="file"
+                          accept="video/mp4,video/webm"
+                          ref={videoInputRef}
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (!['video/mp4','video/webm'].includes(file.type)) return;
+                            setSelectedVideo(file);
+                            setVideoPreview(URL.createObjectURL(file));
+                            setSelectedImage(null);
+                            setImagePreview(null);
+                            if (imageInputRef.current) imageInputRef.current.value = '';
+                          }}
+                        />
+                        <div className="grid gap-1">
+                          <Button
+                            variant="ghost"
+                            onClick={() => photosInputRef.current?.click()}
+                            disabled={sendingMessage || uploading}
+                            className="justify-start"
+                          >
+                            <ImageIcon className="h-4 w-4 mr-2 text-[#833AB4]" />
+                            Photos & videos
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => cameraInputRef.current?.click()}
+                            disabled={sendingMessage || uploading}
+                            className="justify-start"
+                          >
+                            <ImageIcon className="h-4 w-4 mr-2 text-[#0077B5]" />
+                            Camera
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => videoInputRef.current?.click()}
+                            disabled={sendingMessage || uploading}
+                            className="justify-start"
+                          >
+                            <VideoIcon className="h-4 w-4 mr-2 text-[#E1306C]" />
+                            Video
+                          </Button>
+                          <Separator className="my-1" />
+                          <Button variant="ghost" onClick={() => documentInputRef.current?.click()} className="justify-start text-[#1D2226]">
+                            <FileText className="h-4 w-4 mr-2" />
+                            Document
+                          </Button>
+                          <Button variant="ghost" onClick={() => audioInputRef.current?.click()} className="justify-start text-[#1D2226]">
+                            <Headphones className="h-4 w-4 mr-2" />
+                            Audio
+                          </Button>
+                          <Button variant="ghost" className="justify-start text-[#1D2226]">
+                            <UserIcon className="h-4 w-4 mr-2" />
+                            Contact
+                          </Button>
+                          <Button variant="ghost" className="justify-start text-[#1D2226]">
+                            <ListChecks className="h-4 w-4 mr-2" />
+                            Poll
+                          </Button>
+                          <Button variant="ghost" className="justify-start text-[#1D2226]">
+                            <Calendar className="h-4 w-4 mr-2" />
+                            Event
+                          </Button>
+                          <Button variant="ghost" className="justify-start text-[#1D2226]">
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            New sticker
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   <Input
                     placeholder="Write a message..."
                     value={newMessage}
@@ -605,17 +947,18 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                     className="flex-1 bg-transparent border-none focus-visible:ring-0 text-gray-900 placeholder:text-gray-400 h-10 font-medium"
                   />
-                  <Button 
+                   <Button 
                     onClick={sendMessage}
-                    disabled={!newMessage.trim() || sendingMessage}
+                    disabled={sendingMessage || uploading || (!newMessage.trim() && !selectedImage && !selectedVideo && !selectedDocument && !selectedAudio)}
                     className={`rounded-full h-10 w-10 p-0 shadow-lg transition-all duration-300 ${
-                      newMessage.trim() 
+                      (newMessage.trim() || selectedImage || selectedVideo || selectedDocument || selectedAudio)
                         ? 'bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white hover:opacity-90 shadow-[#833AB4]/20' 
                         : 'bg-gray-200 text-white shadow-none'
                     }`}
                   >
                     {sendingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>

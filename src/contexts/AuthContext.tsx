@@ -3,7 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 
-type Profile = Database['public']['Tables']['profiles']['Row'];
+type Profile = Database['public']['Tables']['profiles']['Row'] & { app_lock_enabled?: boolean };
 
 // Simplified role type - 'user' is the default for all new signups
 export type AppRole = 'user' | 'admin' | 'recruiter' | 'student' | 'employer' | 'company_admin' | 'company_employee' | 'mentor';

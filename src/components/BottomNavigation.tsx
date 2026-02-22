@@ -13,6 +13,37 @@ export default function BottomNavigation({ visible = true }: BottomNavigationPro
   const handleCreatePost = () => {
     navigate('/add-post')
   }
+  
+  const hoverBgClassFor = (title: string) => {
+    if (title === 'Home') {
+      return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff9900,#ffee00,#00cc66,#3399ff,#9933ff)]"
+    }
+    if (title === 'Connections') {
+      return "group-hover:bg-[linear-gradient(90deg,#ff66cc,#9933ff,#3399ff,#00cc99,#66cc33,#ffcc00)]"
+    }
+    if (title === 'Jobs') {
+      return "group-hover:bg-[linear-gradient(90deg,#3399ff,#66ddff,#00cc99,#66cc33,#ffcc00,#ff9900)]"
+    }
+    if (title === 'Notifications') {
+      return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff66cc,#9933ff,#ff9900,#ffee00,#ffcc00)]"
+    }
+    return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff9900,#ffee00,#00cc66,#3399ff,#9933ff)]"
+  }
+  const hoverTextClassFor = (title: string) => {
+    if (title === 'Home') {
+      return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff9900,#ffee00,#00cc66,#3399ff,#9933ff)]"
+    }
+    if (title === 'Connections') {
+      return "group-hover:bg-[linear-gradient(90deg,#ff66cc,#9933ff,#3399ff,#00cc99,#66cc33,#ffcc00)]"
+    }
+    if (title === 'Jobs') {
+      return "group-hover:bg-[linear-gradient(90deg,#3399ff,#66ddff,#00cc99,#66cc33,#ffcc00,#ff9900)]"
+    }
+    if (title === 'Notifications') {
+      return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff66cc,#9933ff,#ff9900,#ffee00,#ffcc00)]"
+    }
+    return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff9900,#ffee00,#00cc66,#3399ff,#9933ff)]"
+  }
 
   return (
     <nav
@@ -41,6 +72,8 @@ export default function BottomNavigation({ visible = true }: BottomNavigationPro
           }
 
           const isActive = location.pathname === item.url
+          const hoverBg = hoverBgClassFor(item.title)
+          const hoverText = hoverTextClassFor(item.title)
           return (
             <NavLink
               key={item.url}
@@ -57,13 +90,13 @@ export default function BottomNavigation({ visible = true }: BottomNavigationPro
                   "flex items-center justify-center transition-all",
                   isActive
                     ? "w-12 h-12 rounded-[14px] bg-card shadow-sm"
-                    : "h-9 w-9 rounded-xl bg-transparent group-hover:bg-muted/60"
+                    : `h-9 w-9 rounded-xl bg-transparent ring-1 ring-white/30 shadow-sm group-hover:ring-2 group-hover:scale-105 ${hoverBg}`
                 )}
               >
                 <item.icon
                   className={cn(
                     "h-5 w-5 transition-colors",
-                    isActive ? "text-primary" : "text-current"
+                    isActive ? "text-primary" : "text-gray-600 group-hover:text-white"
                   )}
                   strokeWidth={isActive ? 2.4 : 2}
                 />
@@ -71,7 +104,7 @@ export default function BottomNavigation({ visible = true }: BottomNavigationPro
               <span
                 className={cn(
                   "text-[10px] font-medium transition-colors",
-                  isActive ? "text-white" : "text-current"
+                  isActive ? "text-white" : `text-current ${hoverText} group-hover:bg-clip-text group-hover:text-transparent`
                 )}
               >
                 {item.title}

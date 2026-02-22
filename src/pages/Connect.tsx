@@ -71,31 +71,35 @@ const Connect = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="min-h-screen bg-white">
-        {/* Universal Page Hero Section */}
-        <div className="relative w-full overflow-hidden border-b border-gray-100">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-6xl mx-auto pt-4 pb-10 px-4 sm:px-6 relative">
-            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
-              <div className="text-center md:text-left">
-                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
-                  Connect
-                </h1>
-                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
-                  Stay in touch with your network and coordinate interviews.
-                </p>
+      <div
+        className="min-h-screen"
+        style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}
+      >
+        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl py-14 px-8 overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                <h1 className="page-title">Connect</h1>
+                <p className="text-[#5E6B7E] text-base md:text-xl mt-2">Stay in touch with your network and coordinate interviews.</p>
               </div>
-              <div className="flex w-full md:w-auto justify-center md:justify-end">
+              <div className="flex w-full md:w-auto justify-center md:justify-end animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
                 <Button 
                   variant="outline" 
                   onClick={() => navigate('/dashboard')}
-                  className="flex items-center gap-2 rounded-full px-6 border-gray-200 hover:bg-gray-50 transition-all font-bold"
+                  className="group rounded-full h-10 px-0 relative p-[1px] overflow-hidden border-none transition-transform hover:scale-105 hover:shadow-lg"
                 >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to Dashboard
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+                  <span className="relative z-10 rounded-full bg-white text-gray-900 px-4 py-2 flex items-center gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Dashboard
+                  </span>
                 </Button>
               </div>
             </div>
+          </div>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
           </div>
         </div>
 

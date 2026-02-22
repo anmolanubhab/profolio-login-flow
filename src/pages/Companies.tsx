@@ -158,33 +158,40 @@ export default function Companies() {
 
   return (
     <Layout>
-      <div className="relative w-full overflow-hidden mb-8 border-b border-gray-100">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-        <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 relative">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-            <div className="text-center lg:text-left">
-              <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
-                My Companies
-              </h1>
-              <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto lg:mx-0">
-                Manage your professional presence and job opportunities in one central dashboard.
-              </p>
-            </div>
-            <div className="w-full lg:w-auto">
-              <Button
-                onClick={() => {
-                  setEditingCompany(null);
-                  setShowCompanyDialog(true);
-                }}
-                className="w-full lg:w-auto rounded-2xl bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 px-10 py-7 h-auto text-lg font-bold border-none group"
-              >
-                <Plus className="w-6 h-6 mr-2 group-hover:rotate-90 transition-transform duration-300" />
-                Add Company
-              </Button>
+      <div
+        className="min-h-screen"
+        style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}
+      >
+        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl py-14 px-8 overflow-hidden mb-8">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+              <div className="text-center lg:text-left animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-2 tracking-tight">
+                  My Companies
+                </h1>
+                <p className="text-gray-700 text-base md:text-lg font-medium max-w-2xl mx-auto lg:mx-0">
+                  Manage your professional presence and job opportunities in one central dashboard.
+                </p>
+              </div>
+              <div className="w-full lg:w-auto animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                <Button
+                  onClick={() => {
+                    setEditingCompany(null);
+                    setShowCompanyDialog(true);
+                  }}
+                  className="w-full lg:w-auto rounded-2xl bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 px-10 py-7 h-auto text-lg font-bold border-none group"
+                >
+                  <Plus className="w-6 h-6 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                  Add Company
+                </Button>
+              </div>
             </div>
           </div>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
+          </div>
         </div>
-      </div>
 
       <div className="max-w-6xl mx-auto pb-12 px-0 sm:px-4">
         {loading ? (
@@ -217,10 +224,35 @@ export default function Companies() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-0 sm:px-0">
-            {companies.map((company) => (
+            {companies.map((company) => {
+              const values: string[] = company.values || [];
+              const getMeta = (key: string) => {
+                const token = values.find((v) => v.startsWith(`__meta_${key}:`));
+                if (!token) return undefined;
+                return token.substring(token.indexOf(':') + 1);
+              };
+              const bannerUrl = getMeta('banner_url');
+              const bannerStyle = getMeta('banner_style');
+              let bannerGradient = "from-[#0077B5] via-[#833AB4] to-[#E1306C]";
+              if (bannerStyle === "blue-teal") bannerGradient = "from-sky-400 via-cyan-500 to-teal-500";
+              if (bannerStyle === "violet-purple") bannerGradient = "from-violet-500 via-purple-500 to-indigo-500";
+              if (bannerStyle === "amber-orange") bannerGradient = "from-amber-400 via-orange-400 to-red-400";
+              if (bannerStyle === "rose-pink") bannerGradient = "from-rose-400 via-pink-500 to-fuchsia-500";
+              return (
               <Card key={company.id} className="group overflow-hidden border-0 sm:border border-gray-100 shadow-none sm:shadow-card hover:shadow-2xl transition-all duration-500 rounded-none sm:rounded-[2rem] bg-white/90 backdrop-blur-md flex flex-col hover:-translate-y-1">
                 {/* Cover Banner */}
-                <div className="h-32 w-full bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] relative shrink-0 overflow-hidden">
+                <div className="h-40 w-full relative shrink-0 overflow-hidden">
+                  {bannerUrl ? (
+                    <div className="w-full h-full flex items-center justify-center bg-white">
+                      <img
+                        src={bannerUrl}
+                        alt={`${company.name} banner`}
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className={`w-full h-full bg-gradient-to-r ${bannerGradient}`} />
+                  )}
                   <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors duration-500" />
                   <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] animate-gradient-shift" />
                   
@@ -351,7 +383,7 @@ export default function Companies() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            )})}
           </div>
         )}
 
@@ -384,6 +416,7 @@ export default function Companies() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+      </div>
       </div>
     </Layout>
   );

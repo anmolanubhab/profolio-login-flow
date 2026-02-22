@@ -24,6 +24,16 @@ export function MobileNavDrawer() {
   const { profile } = useAuth()
 
   const isActive = (url: string) => location.pathname === url
+  const gradients = [
+    "from-blue-400 to-indigo-600",
+    "from-violet-400 to-purple-600",
+    "from-sky-400 to-blue-600",
+    "from-teal-400 to-emerald-600",
+    "from-indigo-400 to-fuchsia-600",
+    "from-orange-400 to-rose-500",
+    "from-amber-400 to-orange-500",
+    "from-pink-400 to-rose-600",
+  ]
 
   const getInitials = (name: string | null) => {
     if (!name) return 'U'
@@ -83,18 +93,20 @@ export function MobileNavDrawer() {
         {/* Menu Items */}
         <div className="flex flex-col py-3 flex-1 overflow-y-auto">
           <nav className="flex flex-col px-2">
-            {secondaryNavItems.map((item) => (
+            {secondaryNavItems.map((item, idx) => (
               <SheetClose asChild key={item.title}>
                 <NavLink
                   to={item.url}
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors",
+                    "group flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-all hover:shadow-md",
                     isActive(item.url)
                       ? "bg-primary/10 text-primary font-medium"
                       : "text-foreground hover:bg-muted"
                   )}
                 >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
+                  <div className={cn("h-8 w-8 rounded-md flex items-center justify-center ring-1 ring-white/40 shadow-sm bg-gradient-to-br transition-transform group-hover:scale-105 group-hover:ring-2", gradients[idx % gradients.length])}>
+                    <item.icon className="h-4 w-4 flex-shrink-0 text-white" />
+                  </div>
                   <span>{item.title}</span>
                 </NavLink>
               </SheetClose>

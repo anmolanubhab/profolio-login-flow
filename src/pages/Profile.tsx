@@ -94,23 +94,11 @@ const Profile = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="w-full bg-white pb-20 min-h-screen">
-        {/* Universal Page Hero Section */}
-        <div className="relative w-full overflow-hidden border-b border-gray-100">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="w-full lg:max-w-4xl lg:mx-auto pt-2 pb-8 px-4 sm:px-6 relative">
-            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
-              <div className="text-center md:text-left">
-                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
-                  My Profile
-                </h1>
-                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
-                  Manage your professional identity and showcase your career achievements.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div
+        className="w-full pb-20 min-h-screen"
+        style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}
+      >
+        {/* Universal Page Hero Section removed */}
 
         <div className="w-full">
           <ProfileHeader userId={user.id} />

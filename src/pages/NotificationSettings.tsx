@@ -105,26 +105,30 @@ const NotificationSettings = () => {
     <Layout user={user} onSignOut={handleSignOut}>
       <div
         className="min-h-screen"
-        style={{ background: "radial-gradient(circle at top left, #c7d2fe, #e9d5ff, #bfdbfe)" }}
+        style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}
       >
         {/* Hero */}
-        <div className="relative w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-500 rounded-b-3xl py-16 px-8 backdrop-blur-xl bg-white/10 overflow-hidden">
+        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl py-16 px-8 overflow-hidden">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
                 <Button
                   variant="ghost"
-                  className="bg-white rounded-full shadow-md hover:bg-indigo-50 hover:scale-105 transition h-9 px-4"
+                  className="bg-white rounded-full shadow-md hover:bg-gray-100 hover:scale-105 transition h-9 px-4"
                   onClick={() => navigate('/settings')}
                 >
                   <ArrowLeft className="h-4 w-4 mr-2 text-indigo-600" />
                   Back
                 </Button>
-                <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight mt-4">
+                <h1 className="text-[#1D2226] text-3xl md:text-5xl font-extrabold tracking-tight mt-4">
                   Notifications
                 </h1>
               </div>
             </div>
+          </div>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
           </div>
         </div>
 

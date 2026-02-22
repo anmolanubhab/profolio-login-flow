@@ -83,14 +83,13 @@ const JobInsightsPage = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-    <div className="w-full bg-white pb-20 min-h-screen">
+    <div className="w-full pb-20 min-h-screen" style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}>
       {/* Universal Page Hero Section */}
-      <div className="relative w-full overflow-hidden border-b border-gray-100">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-        <div className="max-w-5xl mx-auto pt-4 pb-10 px-6 relative">
+      <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl pt-8 pb-10 px-8 overflow-hidden">
+        <div className="max-w-5xl mx-auto relative">
           <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
-            <div className="text-center md:text-left">
-              <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+            <div className="text-center md:text-left animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+              <h1 className="page-title mb-3">
                 Job Insights
               </h1>
               <div className="flex flex-col md:flex-row items-center gap-3 justify-center md:justify-start">
@@ -108,6 +107,10 @@ const JobInsightsPage = () => {
               </div>
             </div>
           </div>
+        </div>
+        <div className="pointer-events-none absolute inset-0 opacity-40">
+          <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+          <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
         </div>
       </div>
 

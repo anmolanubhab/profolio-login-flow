@@ -78,7 +78,7 @@ const JobMessagesPage = () => {
       <Layout user={user} onSignOut={handleSignOut}>
         <div className="w-full bg-white pb-20 min-h-screen">
           <div className="w-full py-4 space-y-4 px-0 sm:px-4">
-            <h1 className="text-2xl font-bold px-4">Job Chat</h1>
+            <h1 className="page-title px-4">Job Chat</h1>
             <ConversationList 
               conversations={conversations} 
               isLoading={isLoading} 
@@ -93,20 +93,23 @@ const JobMessagesPage = () => {
   // Desktop View Logic
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}>
       {/* Universal Page Hero Section */}
-      <div className="relative w-full overflow-hidden border-b border-gray-100 shrink-0">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-6xl mx-auto pt-3 pb-8 px-4 sm:px-6 relative">
+      <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl pt-6 pb-10 px-8 overflow-hidden shrink-0">
+          <div className="max-w-6xl mx-auto relative">
             <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-4">
-              <div className="text-center md:text-left">
-                <h1 className="text-2xl md:text-4xl font-extrabold text-[#1D2226] mb-1 tracking-tight">
+              <div className="text-center md:text-left animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                <h1 className="page-title mb-1">
                   Job Chat
                 </h1>
               <p className="text-[#5E6B7E] text-sm md:text-base font-medium">
                 Connect with recruiters and hiring managers.
               </p>
             </div>
+          </div>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
           </div>
         </div>
       </div>
