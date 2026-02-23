@@ -49,6 +49,7 @@ const Accessibility = lazy(() => import("./pages/resources/Accessibility"));
 const UserAgreement = lazy(() => import("./pages/resources/UserAgreement"));
 const EULA = lazy(() => import("./pages/resources/EULA"));
 const RecommendationTransparency = lazy(() => import("./pages/resources/RecommendationTransparency"));
+const SettingsLayout = lazy(() => import("./layouts/SettingsLayout"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -186,26 +187,16 @@ const App = () => (
                 <ProtectedRoute><CreateGroup /></ProtectedRoute>
               } />
               <Route path="/settings" element={
-                <ProtectedRoute><Settings /></ProtectedRoute>
-              } />
-              <Route path="/settings/account" element={
-                <ProtectedRoute><AccountPreferences /></ProtectedRoute>
-              } />
-              <Route path="/settings/security" element={
-                <ProtectedRoute><SignInSecurity /></ProtectedRoute>
-              } />
-              <Route path="/settings/visibility" element={
-                <ProtectedRoute><Visibility /></ProtectedRoute>
-              } />
-              <Route path="/settings/privacy" element={
-                <ProtectedRoute><DataPrivacy /></ProtectedRoute>
-              } />
-              <Route path="/settings/advertising-data" element={
-                <ProtectedRoute><AdvertisingData /></ProtectedRoute>
-              } />
-              <Route path="/settings/notifications" element={
-                <ProtectedRoute><NotificationSettings /></ProtectedRoute>
-              } />
+                <ProtectedRoute><SettingsLayout /></ProtectedRoute>
+              }>
+                <Route index element={<Settings />} />
+                <Route path="account" element={<AccountPreferences />} />
+                <Route path="security" element={<SignInSecurity />} />
+                <Route path="visibility" element={<Visibility />} />
+                <Route path="privacy" element={<DataPrivacy />} />
+                <Route path="advertising-data" element={<AdvertisingData />} />
+                <Route path="notifications" element={<NotificationSettings />} />
+              </Route>
               <Route path="/saved" element={
                 <ProtectedRoute><SavedPosts /></ProtectedRoute>
               } />

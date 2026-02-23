@@ -24,10 +24,10 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
   return (
     <>
       <nav 
-        className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-border/40"
+        className="fixed top-0 left-0 right-0 z-50 bg-transparent border-b border-white/20"
       >
         {/* DESKTOP LAYOUT (lg and above) - Facebook-style top nav */}
-        <header className="hidden lg:flex sticky top-0 z-50 bg-white border-b h-16">
+        <header className="hidden lg:flex sticky top-0 z-50 bg-transparent h-16">
           <div className="w-full px-6 flex items-center">
             {/* LEFT: Logo + Search */}
             <div className="flex items-center gap-4">
@@ -58,7 +58,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
                 {({ isActive }) => (
                   <>
                     <Home className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                    <span className={`mt-1 text-[11px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                    <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                       Home
                     </span>
                     {isActive && (
@@ -75,7 +75,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
                 {({ isActive }) => (
                   <>
                     <Users className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                    <span className={`mt-1 text-[11px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                    <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                       My Network
                     </span>
                     {isActive && (
@@ -94,7 +94,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
                   return (
                     <>
                       <Briefcase className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                      <span className={`mt-1 text-[11px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                      <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                         Jobs
                       </span>
                       {isActive && (
@@ -113,7 +113,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
                 {({ isActive }) => (
                   <>
                     <MessageCircle className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
-                    <span className={`mt-1 text-[11px] font-medium ${isActive ? 'text-blue-600' : 'text-gray-600'}`}>
+                    <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                       Job Chat
                     </span>
                     {isActive && (

@@ -1,18 +1,28 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, HelpCircle, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  HelpCircle,
+  ChevronRight,
+  Mail,
+  Phone,
+  Lock,
+  Shield,
+  MonitorSmartphone,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Layout } from "@/components/Layout";
 import { PasskeysDrawer } from "@/components/settings/PasskeysDrawer";
 import { SessionsDrawer } from "@/components/settings/SessionsDrawer";
 import { TwoFactorDrawer } from "@/components/settings/TwoFactorDrawer";
 import { EmailAddressesDrawer } from "@/components/settings/EmailAddressesDrawer";
 import { PhoneNumbersDrawer } from "@/components/settings/PhoneNumbersDrawer";
 import { UpdatePasswordDrawer } from "@/components/settings/UpdatePasswordDrawer";
+import { Button } from "@/components/ui/button";
+import SettingRow from "@/components/settings/SettingRow";
 
 interface PreferenceRowProps {
   label: string;
@@ -85,7 +95,7 @@ interface SecurityPreferences {
 
 const SignInSecurity = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [changingPassword, setChangingPassword] = useState(false);
@@ -97,13 +107,6 @@ const SignInSecurity = () => {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const timersRef = useRef<Record<string, number>>({});
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-
-
 
   // Fetch profile for security preferences
   const { data: profile, isLoading } = useQuery({
@@ -203,89 +206,113 @@ const SignInSecurity = () => {
   };
 
   return (
-    <Layout user={user} onSignOut={handleSignOut}>
-      <div className="bg-background min-h-screen">
-        <div className="px-4 py-6">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Sign in & security
-          </h1>
+    <>
+      <div className="space-y-8">
+        <div className="relative w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-500 rounded-3xl py-10 px-6 sm:px-8 lg:px-10 overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <Button
+                  variant="ghost"
+                  className="bg-white rounded-full shadow-md hover:bg-indigo-50 hover:scale-105 transition h-9 px-4"
+                  onClick={() => navigate("/settings")}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2 text-indigo-600" />
+                  Back
+                </Button>
+                <h1 className="text-white text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mt-4">
+                  Sign in & security
+                </h1>
+              </div>
+            </div>
+          </div>
         </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        </div>
-      ) : (
-        <div className="flex flex-col pb-8">
-          {/* SECTION: Account access */}
-          <SectionTitle title="Account access" />
-          
-          <PreferenceRow 
-            label="Email addresses" 
-            rightValue={user?.email || "user@email.com"} 
-            onClick={() => setEmailOpen(true)}
-          />
-          <PreferenceRow 
-            label="Phone numbers" 
-            onClick={() => setPhoneOpen(true)}
-          />
-          <PreferenceRow 
-            label="Change password" 
-            onClick={() => setPasswordOpen(true)}
-          />
-          <PreferenceRow 
-            label="Passkeys" 
-            onClick={() => setPasskeysOpen(true)}
-          />
-          <PreferenceRow 
-            label="Where you're signed in" 
-            onClick={() => setSessionsOpen(true)}
-          />
-          <div className="bg-white">
-            <PreferenceToggle
-              label="Devices that remember your password"
-              subLabel="Allow this browser to stay signed in"
-              checked={!!rememberBrowser}
-              onCheckedChange={(val) => updateColumn("remember_browser", val)}
-              disabled={!!saving["remember_browser"]}
-            />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
-          <PreferenceToggle
-            label="Two-factor authentication"
-            subLabel="Add an extra layer of security"
-            checked={twoFactorEnabled}
-            onCheckedChange={(val) => {
-              if (val) setTwoFactorOpen(true);
-              else updateColumn("two_factor_enabled", false);
-            }}
-            disabled={!!saving["two_factor_enabled"]}
-          />
-          <PreferenceToggle
-            label="App lock"
-            subLabel="Require authentication to open the app"
-            checked={appLockEnabled}
-            onCheckedChange={(val) => updateColumn("app_lock_enabled", val)}
-            disabled={!!saving["app_lock_enabled"]}
-          />
-        </div>
-      )}
+        ) : (
+          <div className="flex flex-col pb-8 max-w-6xl mx-auto px-2 sm:px-0">
+            <div className="bg-white/50 backdrop-blur-xl rounded-2xl shadow-lg border border-white/30 overflow-hidden mb-6">
+              <SectionTitle title="Account access" />
+              <SettingRow
+                icon={<Mail size={18} className="text-purple-600" />}
+                title="Email addresses"
+                value={user?.email || ""}
+                onClick={() => setEmailOpen(true)}
+              />
+              <SettingRow
+                icon={<Phone size={18} className="text-blue-600" />}
+                title="Phone numbers"
+                onClick={() => setPhoneOpen(true)}
+              />
+              <SettingRow
+                icon={<Lock size={18} className="text-pink-600" />}
+                title="Change password"
+                onClick={() => setPasswordOpen(true)}
+              />
+              <SettingRow
+                icon={<Shield size={18} className="text-green-600" />}
+                title="Passkeys"
+                onClick={() => setPasskeysOpen(true)}
+              />
+              <SettingRow
+                icon={<MonitorSmartphone size={18} className="text-indigo-600" />}
+                title="Where you're signed in"
+                onClick={() => setSessionsOpen(true)}
+              />
+              <PreferenceToggle
+                label="Devices that remember your password"
+                subLabel="Allow this browser to stay signed in"
+                checked={!!rememberBrowser}
+                onCheckedChange={(val) => updateColumn("remember_browser", val)}
+                disabled={!!saving["remember_browser"]}
+              />
+            </div>
+            <div className="bg-white/50 backdrop-blur-xl rounded-2xl shadow-lg border border-white/30 overflow-hidden">
+              <SectionTitle title="Security options" />
+              <PreferenceToggle
+                label="Two-factor authentication"
+                subLabel="Add an extra layer of security"
+                checked={twoFactorEnabled}
+                onCheckedChange={(val) => {
+                  if (val) setTwoFactorOpen(true)
+                  else updateColumn("two_factor_enabled", false)
+                }}
+                disabled={!!saving["two_factor_enabled"]}
+              />
+              <PreferenceToggle
+                label="App lock"
+                subLabel="Require authentication to open the app"
+                checked={appLockEnabled}
+                onCheckedChange={(val) => updateColumn("app_lock_enabled", val)}
+                disabled={!!saving["app_lock_enabled"]}
+              />
+            </div>
+          </div>
+        )}
       </div>
       <EmailAddressesDrawer open={emailOpen} onOpenChange={setEmailOpen} />
-      <PhoneNumbersDrawer open={phoneOpen} onOpenChange={setPhoneOpen} currentPhone={(profile as any)?.phone} />
+      <PhoneNumbersDrawer
+        open={phoneOpen}
+        onOpenChange={setPhoneOpen}
+        currentPhone={(profile as any)?.phone}
+      />
       <UpdatePasswordDrawer
         open={passwordOpen}
         onOpenChange={setPasswordOpen}
         onSuccess={async () => {
           try {
-            const signOutAny = (supabase.auth as any).signOut;
-            if (typeof signOutAny === "function") await signOutAny({ scope: "others" });
+            const signOutAny = (supabase.auth as any).signOut
+            if (typeof signOutAny === "function") await signOutAny({ scope: "others" })
           } catch {}
         }}
       />
       <PasskeysDrawer open={passkeysOpen} onOpenChange={setPasskeysOpen} />
       <SessionsDrawer open={sessionsOpen} onOpenChange={setSessionsOpen} />
       <TwoFactorDrawer open={twoFactorOpen} onOpenChange={setTwoFactorOpen} />
-    </Layout>
+    </>
   );
 };
 

@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, HelpCircle } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
 import { Layout } from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { JobPreferencesForm } from '@/components/jobs/JobPreferencesForm';
@@ -37,17 +38,27 @@ const JobPreferences = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="bg-white min-h-screen">
-        {/* Universal Page Hero Section */}
-        <div className="relative w-full overflow-hidden border-b border-gray-100">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto pt-4 pb-10 px-6 relative">
-            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
-              <div className="text-center md:text-left">
-                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+      <div
+        className="min-h-screen"
+        style={{ background: "radial-gradient(circle at top left, #c7d2fe, #e9d5ff, #bfdbfe)" }}
+      >
+        {/* Hero */}
+        <div className="relative w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-500 rounded-b-3xl py-16 px-8 backdrop-blur-xl bg-white/10 overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <Button
+                  variant="ghost"
+                  className="bg-white rounded-full shadow-md hover:bg-indigo-50 hover:scale-105 transition h-9 px-4"
+                  onClick={() => navigate('/settings')}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2 text-indigo-600" />
+                  Back
+                </Button>
+                <h1 className="text-white text-3xl md:text-5xl font-extrabold tracking-tight mt-4">
                   Job Preferences
                 </h1>
-                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
+                <p className="text-white/80 text-base md:text-xl mt-2">
                   Tell us what you're looking for to get better job recommendations.
                 </p>
               </div>
@@ -55,7 +66,7 @@ const JobPreferences = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto py-8 px-0 sm:px-4">
+        <div className="max-w-6xl mx-auto py-8 px-6">
           <JobPreferencesForm />
         </div>
       </div>

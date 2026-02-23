@@ -17,6 +17,7 @@ interface LayoutProps {
   children: ReactNode
   user?: User | null
   onSignOut?: () => void
+  cosmicBg?: boolean
 }
 
 interface LayoutContentProps extends LayoutProps {
@@ -166,6 +167,23 @@ function LayoutHeader({ user, onSignOut }: LayoutProps) {
 
 function LayoutShell(props: LayoutProps) {
   const { showBottomNav } = useScrollDirection(15);
+  if (props.cosmicBg) {
+    return (
+      <SidebarProvider>
+        <div
+          className="flex flex-1 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/assets/cosmic-bg.png')" }}
+        >
+          <div className="min-h-screen bg-transparent backdrop-blur-sm flex flex-1">
+            <AppSidebar />
+            <SidebarInset>
+              <LayoutContent {...props} showBottomNav={showBottomNav} />
+            </SidebarInset>
+          </div>
+        </div>
+      </SidebarProvider>
+    );
+  }
   return (
     <SidebarProvider>
       <div className="flex flex-1">

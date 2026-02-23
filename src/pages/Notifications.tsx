@@ -382,8 +382,8 @@ const Notifications = () => {
   }
 
   return (
-    <Layout user={user} onSignOut={signOut}>
-      <div className="min-h-screen bg-white">
+    <Layout user={user} onSignOut={signOut} cosmicBg>
+      <div className="min-h-screen">
         {/* Universal Page Hero Section */}
         <div className="relative w-full overflow-hidden border-b border-gray-100">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-[#0077B5]/10 via-transparent to-transparent" />
@@ -406,12 +406,12 @@ const Notifications = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto py-16 px-0 sm:px-6">
-          <div className="space-y-16">
+        <div className="max-w-6xl mx-auto py-10 px-4 sm:px-6 lg:px-10">
+          <div className="space-y-10">
             {/* Friend Requests Section */}
             {friendRequests.length > 0 && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="flex items-center justify-between px-4 sm:px-2">
+              <div className="bg-white/50 backdrop-blur-xl border border-white/30 rounded-2xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="flex items-center justify-between px-4 sm:px-6 pt-6 pb-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 rounded-2xl bg-[#0077B5]/10 text-[#0077B5]">
                       <UserPlus className="h-6 w-6" />
@@ -422,10 +422,10 @@ const Notifications = () => {
                     {friendRequests.length} Pending
                   </span>
                 </div>
-                <div className="grid gap-6">
+                <div className="grid gap-6 px-4 sm:px-6 pb-6">
                   {friendRequests.map((request, index) => (
-                    <Card 
-                      key={request.id} 
+                    <Card
+                      key={request.id}
                       className="group rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card hover:shadow-2xl transition-all duration-500 overflow-hidden animate-in fade-in slide-in-from-bottom-4"
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
@@ -484,32 +484,32 @@ const Notifications = () => {
             )}
 
             {/* Other Notifications Section */}
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700" style={{ animationDelay: '200ms' }}>
-              <div className="flex items-center justify-between px-4 sm:px-2">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-2xl bg-[#833AB4]/10 text-[#833AB4]">
-                    <Bell className="h-6 w-6" />
+            {notifications.length > 0 ? (
+              <div className="bg-white/50 backdrop-blur-xl border border-white/30 rounded-2xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700" style={{ animationDelay: '200ms' }}>
+                <div className="flex items-center justify-between px-4 sm:px-6 pt-6 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-2xl bg-[#833AB4]/10 text-[#833AB4]">
+                      <Bell className="h-6 w-6" />
+                    </div>
+                    <h2 className="text-2xl font-black text-[#1D2226] tracking-tight">Recent Activity</h2>
                   </div>
-                  <h2 className="text-2xl font-black text-[#1D2226] tracking-tight">Recent Activity</h2>
-                </div>
-                {notifications.length > 0 && (
                   <span className="bg-gray-100 text-[#5E6B7E] px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200">
                     Latest {notifications.length} Updates
                   </span>
-                )}
-              </div>
-              
-              {notifications.length > 0 ? (
-                <div className="grid gap-4">
+                </div>
+
+                <div className="grid gap-4 px-4 sm:px-6 pb-6">
                   {notifications.map((notification, index) => {
                     const Icon = getNotificationIcon(notification.type);
                     const isRead = notification.is_read;
-                    
+
                     return (
-                      <Card 
-                        key={notification.id} 
-                        className={`cursor-pointer group relative hover:shadow-2xl transition-all duration-500 rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-card overflow-hidden animate-in fade-in slide-in-from-bottom-4 ${!isRead ? 'bg-gradient-to-r from-[#0077B5]/5 via-white to-white' : 'bg-white'}`}
-                        style={{ animationDelay: `${(index * 50) + 300}ms` }}
+                      <Card
+                        key={notification.id}
+                        className={`cursor-pointer group relative hover:shadow-2xl transition-all duration-500 rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-card overflow-hidden animate-in fade-in slide-in-from-bottom-4 ${
+                          !isRead ? "bg-gradient-to-r from-[#0077B5]/5 via-white to-white" : "bg-white"
+                        }`}
+                        style={{ animationDelay: `${index * 50 + 300}ms` }}
                         onClick={() => handleNotificationClick(notification)}
                       >
                         {!isRead && (
@@ -518,7 +518,7 @@ const Notifications = () => {
                         <CardContent className="px-4 py-6 sm:p-8">
                           <div className="flex items-center gap-6">
                             <div className="relative shrink-0">
-                              <div className={`absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-0 group-hover:opacity-20 blur-xl rounded-full transition-opacity`} />
+                              <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-0 group-hover:opacity-20 blur-xl rounded-full transition-opacity" />
                               <Avatar className="h-16 w-16 rounded-[1.5rem] ring-4 ring-white shadow-lg relative z-10 transition-transform group-hover:scale-105">
                                 <AvatarImage src={notification.payload?.sender_avatar} />
                                 <AvatarFallback className="bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400">
@@ -530,7 +530,11 @@ const Notifications = () => {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className={`text-lg leading-snug ${!isRead ? 'font-black text-[#1D2226]' : 'text-[#5E6B7E] font-medium'}`}>
+                              <p
+                                className={`text-lg leading-snug ${
+                                  !isRead ? "font-black text-[#1D2226]" : "text-[#5E6B7E] font-medium"
+                                }`}
+                              >
                                 {getNotificationMessage(notification)}
                               </p>
                               <div className="flex items-center gap-3 mt-2">
@@ -555,28 +559,28 @@ const Notifications = () => {
                     );
                   })}
                 </div>
-              ) : friendRequests.length === 0 ? (
-                <div className="bg-gray-50/30 rounded-none sm:rounded-[3rem] p-12 sm:p-24 text-center border-0 sm:border-2 border-dashed border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                  <div className="relative mb-10">
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-3xl rounded-full" />
-                    <div className="relative bg-white h-28 w-28 rounded-[3rem] flex items-center justify-center mx-auto shadow-2xl">
-                      <Bell className="h-14 w-14 text-gray-300" />
-                    </div>
+              </div>
+            ) : friendRequests.length === 0 ? (
+              <div className="bg-gray-50/30 rounded-none sm:rounded-[3rem] p-12 sm:p-24 text-center border-0 sm:border-2 border-dashed border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="relative mb-10">
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-3xl rounded-full" />
+                  <div className="relative bg-white h-28 w-28 rounded-[3rem] flex items-center justify-center mx-auto shadow-2xl">
+                    <Bell className="h-14 w-14 text-gray-300" />
                   </div>
-                  <h3 className="text-3xl font-extrabold text-[#1D2226] mb-4 tracking-tight">Your Activity is Clear</h3>
-                  <p className="text-[#5E6B7E] font-medium max-w-sm mx-auto text-lg leading-relaxed">
-                    You're all caught up! New notifications will appear here as they arrive.
-                  </p>
-                  <Button 
-                    variant="outline"
-                    className="mt-10 rounded-full px-10 h-14 font-bold border-2 border-[#833AB4]/20 hover:border-[#833AB4] hover:bg-[#833AB4]/5 text-[#833AB4] transition-all"
-                    onClick={() => navigate('/dashboard')}
-                  >
-                    Back to Feed
-                  </Button>
                 </div>
-              ) : null}
-            </div>
+                <h3 className="text-3xl font-extrabold text-[#1D2226] mb-4 tracking-tight">Your Activity is Clear</h3>
+                <p className="text-[#5E6B7E] font-medium max-w-sm mx-auto text-lg leading-relaxed">
+                  You're all caught up! New notifications will appear here as they arrive.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-10 rounded-full px-10 h-14 font-bold border-2 border-[#833AB4]/20 hover:border-[#833AB4] hover:bg-[#833AB4]/5 text-[#833AB4] transition-all"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Back to Feed
+                </Button>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

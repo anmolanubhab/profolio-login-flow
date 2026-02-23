@@ -1,13 +1,16 @@
 import { useNavigate } from "react-router-dom";
-import { 
-  ArrowLeft, 
-  HelpCircle, 
+import {
+  ArrowLeft,
+  HelpCircle,
   User,
   Globe,
   MonitorPlay,
   Bell,
   Eye,
-  ShieldAlert
+  ShieldAlert,
+  Mail,
+  Phone,
+  Lock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,12 +18,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PreferenceRow, PreferenceToggle, SectionTitle, SectionSeparator } from "@/components/settings/PreferenceComponents";
 import { VisibilitySelector } from "@/components/settings/VisibilitySelector";
-import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import React from "react";
 import { UpdateEmailDrawer } from "@/components/settings/UpdateEmailDrawer";
 import { UpdatePhoneDrawer } from "@/components/settings/UpdatePhoneDrawer";
 import { UpdatePasswordDrawer } from "@/components/settings/UpdatePasswordDrawer";
+import SettingRow from "@/components/settings/SettingRow";
 
 interface VisibilitySettings {
   profile: 'everyone' | 'connections' | 'recruiters' | 'only_me';
@@ -93,20 +97,13 @@ const EMAIL_FREQUENCY_OPTIONS = [
 ];
 
 const AccountPreferences = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [emailOpen, setEmailOpen] = React.useState(false);
   const [phoneOpen, setPhoneOpen] = React.useState(false);
   const [passwordOpen, setPasswordOpen] = React.useState(false);
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
-
-
   const handleNotImplemented = (feature: string) => {
     toast({
       title: "Coming Soon",
@@ -237,18 +234,24 @@ const AccountPreferences = () => {
   };
 
   return (
-    <Layout user={user} onSignOut={handleSignOut}>
-      <div className="bg-white min-h-screen">
-        {/* Universal Page Hero Section */}
-        <div className="relative w-full overflow-hidden border-b border-gray-100">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-5 animate-gradient-shift" />
-          <div className="max-w-4xl mx-auto pt-4 pb-10 px-6 relative">
-            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
-              <div className="text-center md:text-left">
-                <h1 className="text-3xl md:text-5xl font-extrabold text-[#1D2226] mb-3 tracking-tight">
+    <>
+      <div className="space-y-8">
+        <div className="relative w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-500 rounded-3xl py-10 px-6 sm:px-8 lg:px-10 overflow-hidden">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <Button
+                  variant="ghost"
+                  className="bg-white rounded-full shadow-md hover:bg-indigo-50 hover:scale-105 transition h-9 px-4"
+                  onClick={() => navigate("/settings")}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2 text-indigo-600" />
+                  Back
+                </Button>
+                <h1 className="text-white text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mt-4">
                   Account Preferences
                 </h1>
-                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
+                <p className="text-white/80 text-sm sm:text-base md:text-lg mt-2">
                   Manage your account settings, language, and privacy preferences.
                 </p>
               </div>
@@ -256,46 +259,51 @@ const AccountPreferences = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto py-8 px-0 sm:px-4 space-y-6">
+        <div className="max-w-6xl mx-auto py-8 px-2 sm:px-0 space-y-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             </div>
           ) : (
             <div className="flex flex-col space-y-6">
-              {/* SECTION 1: Account Information */}
-              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+              <Card className="rounded-2xl bg-white/50 backdrop-blur-xl shadow-lg border border-white/30 overflow-hidden">
+                <CardHeader className="px-6 py-6 border-none">
                   <div className="flex items-center gap-2">
                     <User className="h-5 w-5 text-gray-700" />
-                    <CardTitle className="text-lg font-bold text-gray-900">Account Information</CardTitle>
+                    <CardTitle className="text-lg font-bold text-gray-900">
+                      Account Information
+                    </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <PreferenceRow 
-                    label="Email address" 
-                    rightValue={user?.email || ""} 
-                    onClick={() => setEmailOpen(true)} 
+                  <SettingRow
+                    icon={<Mail size={18} className="text-purple-600" />}
+                    title="Email address"
+                    value={user?.email || ""}
+                    onClick={() => setEmailOpen(true)}
                   />
-                  <PreferenceRow 
-                    label="Phone number" 
-                    rightValue={profile?.phone || "Not provided"} 
-                    onClick={() => setPhoneOpen(true)} 
+                  <SettingRow
+                    icon={<Phone size={18} className="text-blue-600" />}
+                    title="Phone number"
+                    value={profile?.phone || "Not provided"}
+                    onClick={() => setPhoneOpen(true)}
                   />
-                  <PreferenceRow 
-                    label="Password" 
-                    rightValue="••••••••" 
-                    onClick={() => setPasswordOpen(true)} 
+                  <SettingRow
+                    icon={<Lock size={18} className="text-pink-600" />}
+                    title="Password"
+                    value="••••••••"
+                    onClick={() => setPasswordOpen(true)}
                   />
                 </CardContent>
               </Card>
 
-              {/* SECTION 2: Localization */}
-              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+              <Card className="rounded-2xl bg-white/50 backdrop-blur-xl shadow-lg border border-white/30 overflow-hidden">
+                <CardHeader className="px-6 py-6 border-none">
                   <div className="flex items-center gap-2">
                     <Globe className="h-5 w-5 text-gray-700" />
-                    <CardTitle className="text-lg font-bold text-gray-900">Display & Localization</CardTitle>
+                    <CardTitle className="text-lg font-bold text-gray-900">
+                      Display & Localization
+                    </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -304,7 +312,7 @@ const AccountPreferences = () => {
                     description="Select your preferred language"
                     value={localizationSettings.language}
                     options={LANGUAGE_OPTIONS}
-                    onChange={(val) => handleLocalizationChange('language', val)}
+                    onChange={(val) => handleLocalizationChange("language", val)}
                     disabled={isUpdating}
                   />
                   <VisibilitySelector
@@ -312,75 +320,77 @@ const AccountPreferences = () => {
                     description="Select your region"
                     value={localizationSettings.region}
                     options={REGION_OPTIONS}
-                    onChange={(val) => handleLocalizationChange('region', val)}
+                    onChange={(val) => handleLocalizationChange("region", val)}
                     disabled={isUpdating}
                   />
-                  <PreferenceRow 
-                    label="Time zone" 
-                    rightValue={preferences.timezone || "Pacific Time"} 
+                  <PreferenceRow
+                    label="Time zone"
+                    rightValue={preferences.timezone || "Pacific Time"}
                     subLabel="Auto-detected"
-                    onClick={() => handleNotImplemented("Time zone")} 
+                    onClick={() => handleNotImplemented("Time zone")}
                   />
                 </CardContent>
               </Card>
 
-              {/* SECTION 3: Content Preferences */}
-              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+              <Card className="rounded-2xl bg-white/50 backdrop-blur-xl shadow-lg border border-white/30 overflow-hidden">
+                <CardHeader className="px-6 py-6 border-none">
                   <div className="flex items-center gap-2">
                     <MonitorPlay className="h-5 w-5 text-gray-700" />
-                    <CardTitle className="text-lg font-bold text-gray-900">Content Preferences</CardTitle>
+                    <CardTitle className="text-lg font-bold text-gray-900">
+                      Content Preferences
+                    </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <PreferenceRow 
-                    label="Autoplay videos" 
-                    rightValue={autoplay} 
-                    onClick={() => handleNotImplemented("Autoplay videos")} 
+                  <PreferenceRow
+                    label="Autoplay videos"
+                    rightValue={autoplay}
+                    onClick={() => handleNotImplemented("Autoplay videos")}
                   />
-                  <PreferenceToggle 
-                    label="Sound effects" 
+                  <PreferenceToggle
+                    label="Sound effects"
                     subLabel="Play sounds for notifications and actions"
                     checked={soundEffects}
                     onCheckedChange={handleToggleSound}
                     disabled={isUpdating}
                   />
-                  <PreferenceRow 
-                    label="Feed preferences" 
-                    rightValue={feedPreferences} 
-                    onClick={() => handleNotImplemented("Feed preferences")} 
+                  <PreferenceRow
+                    label="Feed preferences"
+                    rightValue={feedPreferences}
+                    onClick={() => handleNotImplemented("Feed preferences")}
                   />
                 </CardContent>
               </Card>
 
-              {/* SECTION 4: Notifications */}
-              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+              <Card className="rounded-2xl bg-white/50 backdrop-blur-xl shadow-lg border border-white/30 overflow-hidden">
+                <CardHeader className="px-6 py-6 border-none">
                   <div className="flex items-center gap-2">
                     <Bell className="h-5 w-5 text-gray-700" />
-                    <CardTitle className="text-lg font-bold text-gray-900">Notifications</CardTitle>
+                    <CardTitle className="text-lg font-bold text-gray-900">
+                      Notifications
+                    </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <PreferenceToggle 
-                    label="Job alerts" 
+                  <PreferenceToggle
+                    label="Job alerts"
                     subLabel="Get notified about new job matches"
                     checked={notificationSettings.job_alerts}
-                    onCheckedChange={(val) => handleNotificationChange('job_alerts', val)}
+                    onCheckedChange={(val) => handleNotificationChange("job_alerts", val)}
                     disabled={isUpdating}
                   />
-                  <PreferenceToggle 
-                    label="Profile views" 
+                  <PreferenceToggle
+                    label="Profile views"
                     subLabel="Notify me when someone views my profile"
                     checked={notificationSettings.profile_views}
-                    onCheckedChange={(val) => handleNotificationChange('profile_views', val)}
+                    onCheckedChange={(val) => handleNotificationChange("profile_views", val)}
                     disabled={isUpdating}
                   />
-                  <PreferenceToggle 
-                    label="Messages" 
+                  <PreferenceToggle
+                    label="Messages"
                     subLabel="Notify me about new messages"
                     checked={notificationSettings.messages}
-                    onCheckedChange={(val) => handleNotificationChange('messages', val)}
+                    onCheckedChange={(val) => handleNotificationChange("messages", val)}
                     disabled={isUpdating}
                   />
                   <VisibilitySelector
@@ -388,11 +398,11 @@ const AccountPreferences = () => {
                     description="How often you want to receive emails"
                     value={notificationSettings.email_frequency}
                     options={EMAIL_FREQUENCY_OPTIONS}
-                    onChange={(val) => handleNotificationChange('email_frequency', val)}
+                    onChange={(val) => handleNotificationChange("email_frequency", val)}
                     disabled={isUpdating}
                   />
-                  <PreferenceToggle 
-                    label="Push notifications" 
+                  <PreferenceToggle
+                    label="Push notifications"
                     subLabel="Receive alerts on your device"
                     checked={pushNotifications}
                     onCheckedChange={handleTogglePush}
@@ -401,12 +411,13 @@ const AccountPreferences = () => {
                 </CardContent>
               </Card>
 
-              {/* SECTION 5: Profile Visibility */}
-              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+              <Card className="rounded-2xl bg-white/50 backdrop-blur-xl shadow-lg border border-white/30 overflow-hidden">
+                <CardHeader className="px-6 py-6 border-none">
                   <div className="flex items-center gap-2">
                     <Eye className="h-5 w-5 text-gray-700" />
-                    <CardTitle className="text-lg font-bold text-gray-900">Profile Visibility</CardTitle>
+                    <CardTitle className="text-lg font-bold text-gray-900">
+                      Profile Visibility
+                    </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -415,7 +426,7 @@ const AccountPreferences = () => {
                     description="Control who can see your profile"
                     value={visibilitySettings.profile}
                     options={PROFILE_VISIBILITY_OPTIONS}
-                    onChange={(val) => handleVisibilityChange('profile', val)}
+                    onChange={(val) => handleVisibilityChange("profile", val)}
                     disabled={isUpdating}
                   />
                   <VisibilitySelector
@@ -423,7 +434,7 @@ const AccountPreferences = () => {
                     description="Manage who sees your job activity"
                     value={visibilitySettings.job_activity}
                     options={JOB_ACTIVITY_OPTIONS}
-                    onChange={(val) => handleVisibilityChange('job_activity', val)}
+                    onChange={(val) => handleVisibilityChange("job_activity", val)}
                     disabled={isUpdating}
                   />
                   <VisibilitySelector
@@ -431,35 +442,36 @@ const AccountPreferences = () => {
                     description="Choose who can see your email address"
                     value={visibilitySettings.email}
                     options={EMAIL_VISIBILITY_OPTIONS}
-                    onChange={(val) => handleVisibilityChange('email', val)}
+                    onChange={(val) => handleVisibilityChange("email", val)}
                     disabled={isUpdating}
                   />
-                  <PreferenceRow 
-                    label="Story viewing" 
-                    rightValue={storyViewing} 
-                    onClick={() => handleNotImplemented("Story viewing")} 
+                  <PreferenceRow
+                    label="Story viewing"
+                    rightValue={storyViewing}
+                    onClick={() => handleNotImplemented("Story viewing")}
                   />
                 </CardContent>
               </Card>
 
-              {/* SECTION 6: Account Actions */}
-              <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-                <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4 border-b border-gray-50">
+              <Card className="rounded-2xl bg-white/50 backdrop-blur-xl shadow-lg border border-white/30 overflow-hidden">
+                <CardHeader className="px-6 py-6 border-none">
                   <div className="flex items-center gap-2">
                     <ShieldAlert className="h-5 w-5 text-gray-700" />
-                    <CardTitle className="text-lg font-bold text-gray-900">Account Actions</CardTitle>
+                    <CardTitle className="text-lg font-bold text-gray-900">
+                      Account Actions
+                    </CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <PreferenceRow 
-                    label="Hibernate account" 
+                  <PreferenceRow
+                    label="Hibernate account"
                     subLabel="Temporary deactivate your account"
-                    onClick={() => handleNotImplemented("Hibernate account")} 
+                    onClick={() => handleNotImplemented("Hibernate account")}
                   />
-                  <PreferenceRow 
-                    label="Close account" 
+                  <PreferenceRow
+                    label="Close account"
                     subLabel="Permanently delete your account"
-                    onClick={() => handleNotImplemented("Close account")} 
+                    onClick={() => handleNotImplemented("Close account")}
                   />
                 </CardContent>
               </Card>
@@ -468,9 +480,13 @@ const AccountPreferences = () => {
         </div>
       </div>
       <UpdateEmailDrawer open={emailOpen} onOpenChange={setEmailOpen} />
-      <UpdatePhoneDrawer open={phoneOpen} onOpenChange={setPhoneOpen} currentPhone={profile?.phone} />
+      <UpdatePhoneDrawer
+        open={phoneOpen}
+        onOpenChange={setPhoneOpen}
+        currentPhone={profile?.phone}
+      />
       <UpdatePasswordDrawer open={passwordOpen} onOpenChange={setPasswordOpen} />
-    </Layout>
+    </>
   );
 };
 
