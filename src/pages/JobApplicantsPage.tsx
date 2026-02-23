@@ -74,36 +74,43 @@ const JobApplicantsPage = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      {/* Gradient Hero Section */}
-      <div className="relative bg-white border-b overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5]/5 via-[#833AB4]/5 to-[#E1306C]/5 animate-gradient-shift" />
-        <div className="container max-w-4xl mx-auto px-4 py-12 relative">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => navigate(-1)}
-                className="rounded-full hover:bg-white/50 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">
-                  Applicants
-                  {job?.title && <span className="text-[#833AB4] font-normal block md:inline md:ml-3">for {job.title}</span>}
-                </h1>
-                <p className="text-gray-600 mt-2 flex items-center gap-2">
-                  <Users className="h-4 w-4 text-[#0077B5]" />
-                  Manage candidates who applied to this position.
-                </p>
+      <div 
+        className="min-h-screen"
+        style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}
+      >
+        {/* Gradient Hero Section */}
+        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl py-12 px-8 overflow-hidden">
+          <div className="container max-w-4xl mx-auto relative">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-4 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => navigate(-1)}
+                  className="rounded-full hover:bg-white/50 transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">
+                    Applicants
+                    {job?.title && <span className="text-[#833AB4] font-normal block md:inline md:ml-3">for {job.title}</span>}
+                  </h1>
+                  <p className="text-gray-600 mt-2 flex items-center gap-2">
+                    <Users className="h-4 w-4 text-[#0077B5]" />
+                    Manage candidates who applied to this position.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
+          </div>
         </div>
-      </div>
 
-      <div className="container max-w-4xl mx-auto py-12 px-4">
+        <div className="container max-w-4xl mx-auto py-12 px-4">
         {!applicants || applicants.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center bg-white border border-gray-100 rounded-[2rem] shadow-xl shadow-gray-200/50">
             <div className="bg-gradient-to-br from-[#0077B5]/10 to-[#E1306C]/10 p-6 rounded-[2rem] mb-6">
@@ -130,6 +137,7 @@ const JobApplicantsPage = () => {
           onOpenChange={setIsDrawerOpen}
           onUpdateStatus={handleUpdateStatus}
         />
+      </div>
       </div>
     </Layout>
   );

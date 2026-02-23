@@ -81,6 +81,8 @@ export default function CompanyProfile() {
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const isValidUuid = (id?: string) =>
+    !!id && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 
   // Determine default tab based on URL path
   const defaultTab = location.pathname.endsWith('/jobs') ? 'jobs' : 'posts';
@@ -111,7 +113,7 @@ export default function CompanyProfile() {
   } = useCompany(companyId);
 
   useEffect(() => {
-    if (companyId && !isLoading) {
+    if (companyId && isValidUuid(companyId) && !isLoading) {
       const controller = new AbortController();
       fetchJobs(controller.signal);
       return () => controller.abort();
@@ -119,7 +121,7 @@ export default function CompanyProfile() {
   }, [companyId, isAdmin, isLoading]);
 
   const fetchJobs = async (signal?: AbortSignal) => {
-    if (!companyId) return;
+    if (!companyId || !isValidUuid(companyId)) return;
     
     setLoadingJobs(true);
     try {
@@ -325,6 +327,31 @@ export default function CompanyProfile() {
         <div className="max-w-4xl mx-auto py-8 px-0 sm:px-4 space-y-4 sm:space-y-6">
           {/* Company Header */}
           <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
+            <div className="h-36 w-full relative shrink-0">
+              {(() => {
+                const values: string[] = company.values || [];
+                const getMeta = (key: string) => {
+                  const token = values.find((v) => v.startsWith(`__meta_${key}:`));
+                  if (!token) return undefined;
+                  return token.substring(token.indexOf(':') + 1);
+                };
+                const bannerUrl = getMeta('banner_url');
+                const bannerStyle = getMeta('banner_style');
+                let bannerGradient = "from-[#0077B5] via-[#833AB4] to-[#E1306C]";
+                if (bannerStyle === "blue-teal") bannerGradient = "from-sky-400 via-cyan-500 to-teal-500";
+                if (bannerStyle === "violet-purple") bannerGradient = "from-violet-500 via-purple-500 to-indigo-500";
+                if (bannerStyle === "amber-orange") bannerGradient = "from-amber-400 via-orange-400 to-red-400";
+                if (bannerStyle === "rose-pink") bannerGradient = "from-rose-400 via-pink-500 to-fuchsia-500";
+                return bannerUrl ? (
+                  <div className="w-full h-full flex items-center justify-center bg-white">
+                    <img src={bannerUrl} alt={`${company.name} banner`} className="max-w-full max-h-full object-contain" />
+                  </div>
+                ) : (
+                  <div className={`w-full h-full bg-gradient-to-r ${bannerGradient}`} />
+                );
+              })()}
+              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
+            </div>
             <CardContent className="px-4 py-6 sm:px-8 sm:pb-8">
               <div className="flex flex-col sm:flex-row gap-6">
                 {company.logo_url ? (
@@ -488,11 +515,11 @@ export default function CompanyProfile() {
                         </div>
                       )}
                       
-                      {company.values && company.values.length > 0 && (
+                      {company.values && company.values.filter(v => !v.startsWith('__meta_')).length > 0 && (
                         <div>
                           <h3 className="font-semibold text-gray-900 mb-3">Our Values</h3>
                           <div className="flex flex-wrap gap-2">
-                            {company.values.map((value, index) => (
+                            {company.values.filter(v => !v.startsWith('__meta_')).map((value, index) => (
                               <Badge key={index} variant="outline" className="text-sm py-1.5 px-4 bg-gray-50/50 border-gray-100 text-gray-700">
                                 {value}
                               </Badge>

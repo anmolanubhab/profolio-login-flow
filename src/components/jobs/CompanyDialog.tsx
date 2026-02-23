@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Upload, X } from 'lucide-react';
+import { Building2, Upload, X, Image as ImageIcon } from 'lucide-react';
 
 interface Company {
   id?: string;
@@ -35,6 +35,8 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string>('');
   const { toast } = useToast();
   
   const [formData, setFormData] = useState({
@@ -47,6 +49,7 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
     founded_year: '',
     culture: '',
     values: '',
+    bannerStyle: '',
   });
 
   useEffect(() => {
@@ -60,9 +63,12 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
         employee_count: editCompany.employee_count || '',
         founded_year: editCompany.founded_year || '',
         culture: editCompany.culture || '',
-        values: editCompany.values?.join(', ') || '',
+        values: (editCompany.values || []).filter(v => !v.startsWith('__meta_')).join(', ') || '',
+        bannerStyle: (editCompany.values || []).find(v => v.startsWith('__meta_banner_style:'))?.split(':')[1] || '',
       });
       setLogoPreview(editCompany.logo_url || '');
+      const existingBanner = (editCompany.values || []).find(v => v.startsWith('__meta_banner_url:'))?.split(':')[1];
+      if (existingBanner) setBannerPreview(existingBanner);
     } else {
       setFormData({
         name: '',
@@ -74,9 +80,12 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
         founded_year: '',
         culture: '',
         values: '',
+        bannerStyle: '',
       });
       setLogoPreview('');
       setLogoFile(null);
+      setBannerPreview('');
+      setBannerFile(null);
     }
   }, [editCompany, open]);
 
@@ -93,6 +102,22 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
       }
       setLogoFile(file);
       setLogoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 4 * 1024 * 1024) {
+        toast({
+          title: 'File too large',
+          description: 'Banner must be less than 4MB',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setBannerFile(file);
+      setBannerPreview(URL.createObjectURL(file));
     }
   };
 
@@ -124,6 +149,28 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
     return publicUrl;
   };
 
+  const uploadBanner = async (userId: string): Promise<string | null> => {
+    if (!bannerFile) return null;
+    const fileExt = bannerFile.name.split('.').pop()?.toLowerCase() || 'png';
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 10);
+    const filePath = `${userId}/company-banner-${timestamp}-${randomStr}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, bannerFile, {
+        cacheControl: '3600',
+        upsert: false
+      });
+    if (uploadError) {
+      console.error('Banner upload failed:', uploadError);
+      throw new Error(`Banner upload failed: ${uploadError.message}`);
+    }
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+    return publicUrl;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -147,11 +194,31 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
 
       // Upload logo first (only if new file selected)
       const newLogoUrl = await uploadLogo(user.id);
+      const newBannerUrl = await uploadBanner(user.id);
 
-      const valuesArray = formData.values
+      let valuesArray = formData.values
         .split(',')
         .map(v => v.trim())
         .filter(v => v.length > 0);
+      // Attach meta config for banner
+      // remove old meta tokens if editing
+      const existingMeta = (editCompany?.values || []).filter(v => v.startsWith('__meta_')) || [];
+      const filteredMeta = existingMeta
+        .filter(v => !v.startsWith('__meta_banner_url:') && !v.startsWith('__meta_banner_style:'));
+      if (formData.bannerStyle) {
+        filteredMeta.push(`__meta_banner_style:${formData.bannerStyle}`);
+      }
+      if (newBannerUrl) {
+        filteredMeta.push(`__meta_banner_url:${newBannerUrl}`);
+      } else if (bannerPreview && bannerPreview.startsWith('http') && !existingMeta.find(v => v.startsWith('__meta_banner_url:'))) {
+        // keep preview only if it was existing URL set from edit state
+        filteredMeta.push(`__meta_banner_url:${bannerPreview}`);
+      } else if (!newBannerUrl) {
+        // if no new upload and editCompany had banner meta, retain it
+        const prevBanner = existingMeta.find(v => v.startsWith('__meta_banner_url:'));
+        if (prevBanner) filteredMeta.push(prevBanner);
+      }
+      valuesArray = [...valuesArray, ...filteredMeta];
 
       let result;
       if (editCompany?.id) {
@@ -299,6 +366,69 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
                     </Button>
                   )}
                   <p className="text-xs text-[#5E6B7E] mt-1">Max 2MB, PNG or JPG</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-[#1D2226]">Company Banner (optional)</Label>
+              <div className="mt-2 flex items-center gap-4">
+                <div className="w-full h-20 rounded-xl bg-[#F3F6F9] flex items-center justify-center overflow-hidden border-2 border-[#E5E7EB]">
+                  {bannerPreview ? (
+                    <img src={bannerPreview} alt="Banner preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex items-center gap-2 text-[#5E6B7E] px-2">
+                      <ImageIcon className="w-5 h-5" />
+                      No banner selected
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBannerChange}
+                    className="hidden"
+                    id="banner-upload"
+                  />
+                  <Label
+                    htmlFor="banner-upload"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#E5E7EB] rounded-lg cursor-pointer hover:bg-[#F3F6F9] transition-all text-sm font-medium"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload Banner
+                  </Label>
+                  {bannerPreview && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setBannerFile(null);
+                        setBannerPreview('');
+                      }}
+                      className="ml-2"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <p className="text-xs text-[#5E6B7E] mt-1">Max 4MB, wide images work best</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div>
+                  <Label className="text-sm font-medium text-[#1D2226]">Banner Style</Label>
+                  <Select value={formData.bannerStyle} onValueChange={(value) => setFormData({ ...formData, bannerStyle: value })}>
+                    <SelectTrigger className="mt-1.5 border-[#E5E7EB]">
+                      <SelectValue placeholder="Select preset" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="indigo-fuchsia">Indigo → Fuchsia</SelectItem>
+                      <SelectItem value="blue-teal">Blue → Teal</SelectItem>
+                      <SelectItem value="violet-purple">Violet → Purple</SelectItem>
+                      <SelectItem value="amber-orange">Amber → Orange</SelectItem>
+                      <SelectItem value="rose-pink">Rose → Pink</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>

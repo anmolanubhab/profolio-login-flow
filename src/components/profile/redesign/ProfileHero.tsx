@@ -205,7 +205,7 @@ export const ProfileHero = ({ profile, isOwnProfile, onEdit, skillsCount = 0 }: 
         </div>
 
         {/* Primary Action Button (Rainbow Gradient) */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-center md:flex-col md:gap-2">
           {isOwnProfile ? (
             <>
             <Button

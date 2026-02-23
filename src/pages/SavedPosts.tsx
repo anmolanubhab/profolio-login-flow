@@ -52,7 +52,7 @@ const SavedPosts = () => {
 
       if (profileError) {
         const code = (profileError as any)?.code;
-        if (code === 'ABORTED') return;
+        if (code === 'ABORTED' || code === 20 || code === '20') return;
         throw profileError;
       }
 
@@ -99,7 +99,7 @@ const SavedPosts = () => {
 
       if (qError) {
         const code = (qError as any)?.code;
-        if (code === 'ABORTED') return;
+        if (code === 'ABORTED' || code === 20 || code === '20') return;
         throw qError;
       }
 
@@ -130,14 +130,18 @@ const SavedPosts = () => {
       setPosts(formatted);
     } catch (err: unknown) {
       const rec = (err as Record<string, any>) || {};
-      const isAbort = rec?.name === 'AbortError' || rec?.code === 'ABORTED';
+      const message = typeof rec?.message === 'string' ? rec.message : '';
+      const isAbort =
+        rec?.name === 'AbortError' ||
+        rec?.code === 'ABORTED' ||
+        rec?.code === 20 ||
+        rec?.code === '20' ||
+        message.includes('net::ERR_ABORTED') ||
+        message.toLowerCase().includes('abort');
       if (isAbort) return;
 
       console.error('Error fetching saved posts:', err);
-      const message = typeof rec?.message === 'string'
-        ? rec.message
-        : 'Failed to load saved posts';
-      setError(message);
+      setError(message || 'Failed to load saved posts');
       toast({
         title: "Error",
         description: "Failed to load saved posts. Please try again.",
@@ -189,72 +193,85 @@ const SavedPosts = () => {
 
   return (
     <Layout>
-      {/* Universal Page Hero Section */}
-      <div className="bg-gradient-to-br from-blue-50 via-white to-purple-50 border-b">
-        <div className="max-w-5xl mx-auto px-4 pt-6 pb-12 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-            <Bookmark className="w-8 h-8 text-blue-600" />
+      <div 
+        className="min-h-screen"
+        style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}
+      >
+        {/* Universal Page Hero Section */}
+        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl py-14 px-8 overflow-hidden">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center justify-center">
+              <div className="text-center animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full mb-4 shadow-sm">
+                  <Bookmark className="w-8 h-8 text-[#833AB4]" />
+                </div>
+                <h1 className="page-title mb-3">
+                  Saved Content
+                </h1>
+                <p className="text-lg text-[#5E6B7E] max-w-2xl mx-auto">
+                  Access your bookmarked posts and industry insights anytime, anywhere.
+                </p>
+              </div>
+            </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            Saved Content
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Access your bookmarked posts and industry insights anytime, anywhere.
-          </p>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
+          </div>
         </div>
-      </div>
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-          <p className="text-gray-500">Retrieving your collection...</p>
-        </div>
-      ) : error ? (
-        <div className="flex flex-col items-center justify-center py-20 px-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md text-center">
-            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Something went wrong
-            </h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={() => fetchSavedPosts()} variant="default">
-              Try Again
-            </Button>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 animate-fade-in-up">
+            <Loader2 className="w-12 h-12 text-[#833AB4] animate-spin mb-4" />
+            <p className="text-[#5E6B7E]">Retrieving your collection...</p>
           </div>
-        </div>
-      ) : posts.length === 0 ? (
-        <div className="py-16">
-          <EmptyFeedState />
-        </div>
-      ) : (
-        <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-          {posts.map((post, index) => (
-            <PostCard
-              key={`${post.id}-${index}`}
-              id={post.id}
-              user={{
-                name: post.profiles?.display_name || 'Unknown',
-                avatar: post.profiles?.avatar_url || undefined,
-                subtitle: post.profiles?.profession || undefined
-              }}
-              content={post.content}
-              image={post.image_url || undefined}
-              mediaType={post.media_type === 'video' ? 'video' : 'image'}
-              timestamp={post.created_at}
-              likes={post.post_likes.length}
-              comments={post.comments?.[0]?.count}
-              initialIsLiked={post.post_likes.some(l => l.user_id === user?.id)}
-              onLike={(isLiked) => handleLike(post.id, isLiked)}
-              onDelete={() => handleDeletePost(post.id)}
-              onHide={() => {}}
-              postedAs={(post.posted_as as 'user' | 'company') || 'user'}
-              companyId={post.company_id}
-              companyName={post.company_name}
-              companyLogo={post.company_logo}
-            />
-          ))}
-        </div>
-      )}
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-20 px-4 animate-fade-in-up">
+            <div className="bg-white/70 backdrop-blur-md border border-gray-100 rounded-[2rem] p-8 max-w-md text-center shadow-card">
+              <AlertTriangle className="w-12 h-12 text-[#833AB4] mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-[#1D2226] mb-2">
+                Something went wrong
+              </h3>
+              <p className="text-[#5E6B7E] mb-4">{error}</p>
+              <Button onClick={() => fetchSavedPosts()} className="rounded-full px-6">
+                Try Again
+              </Button>
+            </div>
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="py-16 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            <EmptyFeedState />
+          </div>
+        ) : (
+          <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+            {posts.map((post, index) => (
+              <PostCard
+                key={`${post.id}-${index}`}
+                id={post.id}
+                user={{
+                  name: post.profiles?.display_name || 'Unknown',
+                  avatar: post.profiles?.avatar_url || undefined,
+                  subtitle: post.profiles?.profession || undefined
+                }}
+                content={post.content}
+                image={post.image_url || undefined}
+                mediaType={post.media_type === 'video' ? 'video' : 'image'}
+                timestamp={post.created_at}
+                likes={post.post_likes.length}
+                comments={post.comments?.[0]?.count}
+                initialIsLiked={post.post_likes.some(l => l.user_id === user?.id)}
+                onLike={(isLiked) => handleLike(post.id, isLiked)}
+                onDelete={() => handleDeletePost(post.id)}
+                onHide={() => {}}
+                postedAs={(post.posted_as as 'user' | 'company') || 'user'}
+                companyId={post.company_id}
+                companyName={post.company_name}
+                companyLogo={post.company_logo}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </Layout>
   );
 };

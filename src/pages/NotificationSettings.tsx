@@ -92,14 +92,14 @@ const NotificationSettings = () => {
   const isUpdating = updatePreferencesMutation.isPending;
 
   return (
-      <div className="space-y-8">
-        <div className="relative w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-500 rounded-3xl py-10 px-6 sm:px-8 lg:px-10 overflow-hidden">
+    <div className="space-y-8">
+      <div className="relative w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-500 rounded-3xl py-10 px-6 sm:px-8 lg:px-10 overflow-hidden">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
                 <Button
                   variant="ghost"
-                  className="bg-white rounded-full shadow-md hover:bg-indigo-50 hover:scale-105 transition h-9 px-4"
+                  className="bg-white rounded-full shadow-md hover:bg-gray-100 hover:scale-105 transition h-9 px-4"
                   onClick={() => navigate('/settings')}
                 >
                   <ArrowLeft className="h-4 w-4 mr-2 text-indigo-600" />
@@ -110,6 +110,10 @@ const NotificationSettings = () => {
                 </h1>
               </div>
             </div>
+          </div>
+          <div className="pointer-events-none absolute inset-0 opacity-40">
+            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
           </div>
         </div>
 

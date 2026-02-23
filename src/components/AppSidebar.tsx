@@ -23,6 +23,16 @@ export function AppSidebar() {
   const sidebarItems = navigationConfig.filter((item) => 
     !["Home", "Connections", "Jobs", "Profile"].includes(item.title)
   );
+  const gradients = [
+    "from-blue-400 to-indigo-600",
+    "from-violet-400 to-purple-600",
+    "from-sky-400 to-blue-600",
+    "from-teal-400 to-emerald-600",
+    "from-indigo-400 to-fuchsia-600",
+    "from-orange-400 to-rose-500",
+    "from-amber-400 to-orange-500",
+    "from-pink-400 to-rose-600",
+  ]
 
   const activityItems = sidebarItems.filter((item) =>
     ["Notifications", "Connect", "Saved Posts"].includes(item.title)
@@ -33,8 +43,9 @@ export function AppSidebar() {
   )
 
   const manageItems = sidebarItems.filter((item) =>
-    ["Companies", "Settings"].includes(item.title)
+    ["Companies"].includes(item.title)
   )
+  const settingsItem = sidebarItems.find((item) => item.title === "Settings")
 
   const getNavCls = ({ isActive, isRainbow }: { isActive: boolean, isRainbow?: boolean }) => {
     if (isRainbow) {
@@ -72,9 +83,8 @@ export function AppSidebar() {
                   Activity
                 </p>
               )}
-              {activityItems.map((item) => {
+              {activityItems.map((item, idx) => {
                 const isRainbow = item.variant === 'rainbow'
-                const is3D = ["Notifications", "Connect", "Saved Posts"].includes(item.title)
                 return (
                   <SidebarMenuItem key={item.title} className={isRainbow ? "mb-2 mt-2" : ""}>
                     <SidebarMenuButton
@@ -90,19 +100,15 @@ export function AppSidebar() {
                           const effectiveActive = isJobsItem
                             ? isActive && !location.pathname.startsWith('/jobs/messages')
                             : isActive
-                          return getNavCls({ isActive: effectiveActive, isRainbow })
+                          return cn(getNavCls({ isActive: effectiveActive, isRainbow }), "group/menu-item")
                         }}
                         style={isRainbow ? {
                           background: 'linear-gradient(135deg, #6A11CB 0%, #2575FC 30%, #00C6FF 60%, #00E676 100%)'
                         } : undefined}
                       >
-                        {is3D ? (
-                          <div className="h-[22px] w-[22px] rounded-md bg-gradient-to-br from-[#6A11CB] via-[#2575FC] to-[#00E676] shadow-lg ring-1 ring-white/20 flex items-center justify-center">
-                            <item.icon className="h-[14px] w-[14px] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]" strokeWidth={isRainbow ? 2.5 : 2.5} />
-                          </div>
-                        ) : (
-                          <item.icon className="h-[18px] w-[18px]" strokeWidth={isRainbow ? 2.5 : 2} />
-                        )}
+                        <div className={`h-[24px] w-[24px] rounded-md bg-gradient-to-br ${gradients[idx % gradients.length]} shadow-lg ring-1 ring-white/20 flex items-center justify-center transition-transform group-hover/menu-item:scale-105 group-hover/menu-item:ring-2`}>
+                          <item.icon className="h-[14px] w-[14px] text-white" strokeWidth={2.5} />
+                        </div>
                         {!isCollapsed && <span>{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
@@ -115,9 +121,8 @@ export function AppSidebar() {
                   Profile
                 </p>
               )}
-              {profileItems.map((item) => {
+              {profileItems.map((item, idx) => {
                 const isRainbow = item.variant === 'rainbow'
-                const is3D = ["Certificates", "Resume", "Groups"].includes(item.title)
                 return (
                   <SidebarMenuItem key={item.title} className={isRainbow ? "mb-2 mt-2" : ""}>
                     <SidebarMenuButton
@@ -133,19 +138,15 @@ export function AppSidebar() {
                           const effectiveActive = isJobsItem
                             ? isActive && !location.pathname.startsWith('/jobs/messages')
                             : isActive
-                          return getNavCls({ isActive: effectiveActive, isRainbow })
+                          return cn(getNavCls({ isActive: effectiveActive, isRainbow }), "group/menu-item")
                         }}
                         style={isRainbow ? {
                           background: 'linear-gradient(135deg, #6A11CB 0%, #2575FC 30%, #00C6FF 60%, #00E676 100%)'
                         } : undefined}
                       >
-                        {is3D ? (
-                          <div className="h-[22px] w-[22px] rounded-md bg-gradient-to-br from-[#6A11CB] via-[#2575FC] to-[#00E676] shadow-lg ring-1 ring-white/20 flex items-center justify-center">
-                            <item.icon className="h-[14px] w-[14px] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]" strokeWidth={isRainbow ? 2.5 : 2.5} />
-                          </div>
-                        ) : (
-                          <item.icon className="h-[18px] w-[18px]" strokeWidth={isRainbow ? 2.5 : 2} />
-                        )}
+                        <div className={`h-[24px] w-[24px] rounded-md bg-gradient-to-br ${gradients[idx % gradients.length]} shadow-lg ring-1 ring-white/20 flex items-center justify-center transition-transform group-hover/menu-item:scale-105 group-hover/menu-item:ring-2`}>
+                          <item.icon className="h-[14px] w-[14px] text-white" strokeWidth={2.5} />
+                        </div>
                         {!isCollapsed && <span>{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
@@ -158,9 +159,8 @@ export function AppSidebar() {
                   Manage
                 </p>
               )}
-              {manageItems.map((item) => {
+              {manageItems.map((item, idx) => {
                 const isRainbow = item.variant === 'rainbow'
-                const is3D = ["Companies", "Settings"].includes(item.title)
                 return (
                   <SidebarMenuItem key={item.title} className={isRainbow ? "mb-2 mt-2" : ""}>
                     <SidebarMenuButton
@@ -176,30 +176,47 @@ export function AppSidebar() {
                           const effectiveActive = isJobsItem
                             ? isActive && !location.pathname.startsWith('/jobs/messages')
                             : isActive
-                          return getNavCls({ isActive: effectiveActive, isRainbow })
+                          return cn(getNavCls({ isActive: effectiveActive, isRainbow }), "group/menu-item")
                         }}
                         style={isRainbow ? {
                           background: 'linear-gradient(135deg, #6A11CB 0%, #2575FC 30%, #00C6FF 60%, #00E676 100%)'
                         } : undefined}
                       >
-                        {is3D ? (
-                          <div className="h-[22px] w-[22px] rounded-md bg-gradient-to-br from-[#6A11CB] via-[#2575FC] to-[#00E676] shadow-lg ring-1 ring-white/20 flex items-center justify-center">
-                            <item.icon className="h-[14px] w-[14px] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]" strokeWidth={isRainbow ? 2.5 : 2.5} />
-                          </div>
-                        ) : (
-                          <item.icon className="h-[18px] w-[18px]" strokeWidth={isRainbow ? 2.5 : 2} />
-                        )}
+                        <div className={`h-[24px] w-[24px] rounded-md bg-gradient-to-br ${gradients[idx % gradients.length]} shadow-lg ring-1 ring-white/20 flex items-center justify-center transition-transform group-hover/menu-item:scale-105 group-hover/menu-item:ring-2`}>
+                          <item.icon className="h-[14px] w-[14px] text-white" strokeWidth={2.5} />
+                        </div>
                         {!isCollapsed && <span>{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
               })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-        </Sidebar>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        {settingsItem && (
+          <SidebarGroup className="mt-auto">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={isCollapsed ? settingsItem.title : undefined}>
+                    <NavLink
+                      to={settingsItem.url}
+                      className={({ isActive }) => getNavCls({ isActive, isRainbow: false })}
+                    >
+                      <div className={`h-[24px] w-[24px] rounded-md bg-gradient-to-br from-indigo-400 to-fuchsia-600 shadow-lg ring-1 ring-white/20 flex items-center justify-center transition-transform`}>
+                        <settingsItem.icon className="h-[14px] w-[14px] text-white" strokeWidth={2.5} />
+                      </div>
+                      {!isCollapsed && <span>{settingsItem.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+      </SidebarContent>
+    </Sidebar>
       </div>
     </div>
   )

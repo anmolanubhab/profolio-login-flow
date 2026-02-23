@@ -4,7 +4,6 @@ import { Layout } from '@/components/Layout';
 import Feed from '@/components/Feed';
 import Stories from '@/components/Stories';
 import PostInput from '@/components/PostInput';
-import { CompanyInvitationsCard } from '@/components/company/CompanyInvitationsCard';
 import { ProfileCompletionCard } from '@/components/profile/ProfileCompletionCard';
 
 const UnifiedDashboard = () => {
@@ -19,7 +18,6 @@ const UnifiedDashboard = () => {
         <div className="w-full lg:max-w-4xl mx-0 lg:mx-auto bg-primary-foreground px-4 sm:px-6 lg:px-0">
           <div className="space-y-0 sm:space-y-4 lg:space-y-6">
             <ProfileCompletionCard />
-            <CompanyInvitationsCard />
             <Stories />
             <div className="hidden lg:block">
               <PostInput

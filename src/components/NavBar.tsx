@@ -20,6 +20,12 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
   
   // Use profile from AuthContext (single source of truth)
   const avatarUrl = profile?.avatar_url
+  const gradients = {
+    home: "from-blue-400 to-indigo-600",
+    network: "from-violet-400 to-purple-600",
+    jobs: "from-sky-400 to-blue-600",
+    chat: "from-teal-400 to-emerald-600",
+  }
 
   return (
     <>
@@ -49,15 +55,17 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
               </div>
             </div>
 
-            {/* CENTER: Nav Icons with rainbow active indicator */}
+            {/* CENTER: Nav Icons with gradient capsules */}
             <div className="flex-1 flex justify-center gap-10 text-gray-600">
               <NavLink
                 to="/dashboard"
-                className="relative flex flex-col items-center justify-center h-16 px-4 cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-100 rounded-lg"
+                className="group relative flex flex-col items-center justify-center h-16 px-4 cursor-pointer transition-all duration-300 ease-in-out rounded-lg"
               >
                 {({ isActive }) => (
                   <>
-                    <Home className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                    <div className={`h-9 w-9 rounded-xl bg-gradient-to-br ${gradients.home} ring-1 ring-white/40 shadow-sm flex items-center justify-center transition-transform group-hover:scale-105 group-hover:ring-2`}>
+                      <Home className="h-4 w-4 text-white" />
+                    </div>
                     <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                       Home
                     </span>
@@ -70,11 +78,13 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
 
               <NavLink
                 to="/network"
-                className="relative flex flex-col items-center justify-center h-16 px-4 cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-100 rounded-lg"
+                className="group relative flex flex-col items-center justify-center h-16 px-4 cursor-pointer transition-all duration-300 ease-in-out rounded-lg"
               >
                 {({ isActive }) => (
                   <>
-                    <Users className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                    <div className={`h-9 w-9 rounded-xl bg-gradient-to-br ${gradients.network} ring-1 ring-white/40 shadow-sm flex items-center justify-center transition-transform group-hover:scale-105 group-hover:ring-2`}>
+                      <Users className="h-4 w-4 text-white" />
+                    </div>
                     <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                       My Network
                     </span>
@@ -87,13 +97,15 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
 
               <NavLink
                 to="/jobs"
-                className="relative flex flex-col items-center justify-center h-16 px-4 cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-100 rounded-lg"
+                className="group relative flex flex-col items-center justify-center h-16 px-4 cursor-pointer transition-all duration-300 ease-in-out rounded-lg"
               >
                 {() => {
                   const isActive = location.pathname.startsWith('/jobs') && !location.pathname.startsWith('/jobs/messages');
                   return (
                     <>
-                      <Briefcase className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                      <div className={`h-9 w-9 rounded-xl bg-gradient-to-br ${gradients.jobs} ring-1 ring-white/40 shadow-sm flex items-center justify-center transition-transform group-hover:scale-105 group-hover:ring-2`}>
+                        <Briefcase className="h-4 w-4 text-white" />
+                      </div>
                       <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                         Jobs
                       </span>
@@ -108,11 +120,13 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
               <NavLink
                 to="/jobs/messages"
                 title="Job specific conversations"
-                className="relative flex flex-col items-center justify-center h-16 px-4 cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-100 rounded-lg"
+                className="group relative flex flex-col items-center justify-center h-16 px-4 cursor-pointer transition-all duration-300 ease-in-out rounded-lg"
               >
                 {({ isActive }) => (
                   <>
-                    <MessageCircle className={`h-5 w-5 ${isActive ? 'text-blue-600' : 'text-gray-500'}`} />
+                    <div className={`h-9 w-9 rounded-xl bg-gradient-to-br ${gradients.chat} ring-1 ring-white/40 shadow-sm flex items-center justify-center transition-transform group-hover:scale-105 group-hover:ring-2`}>
+                      <MessageCircle className="h-4 w-4 text-white" />
+                    </div>
                     <span className="mt-1 text-[11px] font-medium bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] bg-clip-text text-transparent">
                       Job Chat
                     </span>
@@ -129,7 +143,7 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
               <button
                 type="button"
                 onClick={() => navigate('/add-post')}
-                className="hidden lg:inline-flex items-center gap-2 h-9 px-4 rounded-full text-sm font-semibold text-white shadow-md hover:shadow-lg active:scale-95 transition-all"
+                className="hidden lg:inline-flex items-center gap-2 h-9 px-4 rounded-full text-sm font-semibold text-white shadow-md hover:shadow-xl hover:scale-105 hover:brightness-110 active:scale-95 transition-all duration-200"
                 style={{
                   background: 'linear-gradient(135deg, #6A11CB 0%, #2575FC 30%, #00C6FF 60%, #00E676 100%)'
                 }}
@@ -139,11 +153,11 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
               </button>
               <NavLink
                 to="/profile"
-                className="relative flex items-center justify-center h-16 px-4 cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-100 rounded-lg"
+                className="group relative flex items-center justify-center h-16 px-4 cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-100 rounded-lg"
               >
                 {({ isActive }) => (
                   <>
-                    <Avatar className="h-12 w-12 border border-border/60">
+                    <Avatar className="h-12 w-12 border border-border/60 transition-transform duration-200 group-hover:scale-105 group-hover:shadow-lg">
                       <AvatarImage src={avatarUrl || user?.user_metadata?.avatar_url} referrerPolicy="no-referrer" />
                       <AvatarFallback className="text-[10px]">
                         {user?.email?.charAt(0).toUpperCase() || 'U'}

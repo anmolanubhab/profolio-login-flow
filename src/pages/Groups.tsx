@@ -1,18 +1,18 @@
-import { useState } from "react"
-import { Layout } from "@/components/Layout"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Users } from "lucide-react"
+import { useState } from "react";
+import { Layout } from "@/components/Layout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Users } from "lucide-react";
 
 type Group = {
-  id: string
-  name: string
-  description: string
-  memberCount: number
-  imageUrl: string | null
-}
+  id: string;
+  name: string;
+  description: string;
+  memberCount: number;
+  imageUrl: string | null;
+};
 
 const myGroupsSeed: Group[] = [
   {
@@ -22,7 +22,7 @@ const myGroupsSeed: Group[] = [
     memberCount: 1280,
     imageUrl: null,
   },
-]
+];
 
 const discoverGroupsSeed: Group[] = [
   {
@@ -53,26 +53,26 @@ const discoverGroupsSeed: Group[] = [
     memberCount: 23822,
     imageUrl: null,
   },
-]
+];
 
 const GroupsPage = () => {
-  const [activeTab, setActiveTab] = useState<"your-groups" | "requested">("your-groups")
-  const [myGroups, setMyGroups] = useState<Group[]>(myGroupsSeed)
-  const [discoverGroups, setDiscoverGroups] = useState<Group[]>(discoverGroupsSeed)
+  const [activeTab, setActiveTab] = useState<"your-groups" | "requested">("your-groups");
+  const [myGroups, setMyGroups] = useState<Group[]>(myGroupsSeed);
+  const [discoverGroups, setDiscoverGroups] = useState<Group[]>(discoverGroupsSeed);
 
   const join = (group: Group) => {
-    if (myGroups.some((g) => g.id === group.id)) return
-    setMyGroups((prev) => [...prev, group])
-    setDiscoverGroups((prev) => prev.filter((g) => g.id !== group.id))
-  }
+    if (myGroups.some((g) => g.id === group.id)) return;
+    setMyGroups((prev) => [...prev, group]);
+    setDiscoverGroups((prev) => prev.filter((g) => g.id !== group.id));
+  };
 
   const leave = (groupId: string) => {
-    setMyGroups((prev) => prev.filter((g) => g.id !== groupId))
-    const fromSeed = discoverGroupsSeed.find((g) => g.id === groupId)
+    setMyGroups((prev) => prev.filter((g) => g.id !== groupId));
+    const fromSeed = discoverGroupsSeed.find((g) => g.id === groupId);
     if (fromSeed && !discoverGroups.some((g) => g.id === fromSeed.id)) {
-      setDiscoverGroups((prev) => [...prev, fromSeed])
+      setDiscoverGroups((prev) => [...prev, fromSeed]);
     }
-  }
+  };
 
   return (
     <Layout>
@@ -217,8 +217,8 @@ const GroupsPage = () => {
         </div>
       </div>
     </Layout>
-  )
-}
+  );
+};
 
-export default GroupsPage
+export default GroupsPage;
 

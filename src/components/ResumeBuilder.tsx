@@ -44,6 +44,22 @@ const ResumeBuilder = () => {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    const elements = Array.from(document.querySelectorAll('.rb-reveal'));
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -10% 0px' }
+    );
+    elements.forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
+
   const loadResumes = async (signal?: AbortSignal) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -462,8 +478,8 @@ const ResumeBuilder = () => {
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/50 backdrop-blur-sm p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
+    <div className="max-w-6xl mx-auto space-y-8 rb-animate">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/50 backdrop-blur-sm p-6 rounded-[2.5rem] border border-gray-100 shadow-sm rb-reveal">
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
@@ -549,12 +565,12 @@ const ResumeBuilder = () => {
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white/50 backdrop-blur-sm rounded-[3rem] border border-gray-100">
+          <div className="flex flex-col items-center justify-center py-20 bg-white/50 backdrop-blur-sm rounded-[3rem] border border-gray-100 rb-reveal">
             <div className="h-12 w-12 border-4 border-gray-100 border-t-[#833AB4] rounded-full animate-spin mb-4" />
             <p className="text-[#5E6B7E] font-bold animate-pulse">Loading your portfolio...</p>
           </div>
         ) : savedResumes.length === 0 ? (
-          <Card className="border-2 border-dashed border-gray-100 bg-gray-50/30 rounded-[3rem] overflow-hidden">
+          <Card className="border-2 border-dashed border-gray-100 bg-gray-50/30 rounded-[3rem] overflow-hidden rb-reveal">
             <CardContent className="flex flex-col items-center justify-center py-24 px-6 text-center">
                <div className="relative mb-8">
                  <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-3xl rounded-full" />
@@ -588,8 +604,8 @@ const ResumeBuilder = () => {
             {savedResumes.map((resume, index) => (
               <Card 
                 key={resume.id} 
-                className="group relative hover:shadow-2xl transition-all duration-500 rounded-[2.5rem] border-gray-100 overflow-hidden flex flex-col bg-white animate-in fade-in slide-in-from-bottom-4"
-                style={{ animationDelay: `${index * 100}ms` }}
+                className="group relative hover:shadow-2xl transition-all duration-500 rounded-[2.5rem] border-gray-100 overflow-hidden flex flex-col bg-white rb-reveal"
+                style={{ transitionDelay: `${index * 60}ms` }}
               >
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <CardContent className="p-8 space-y-6">
@@ -662,7 +678,7 @@ const ResumeBuilder = () => {
       </div>
 
       {/* Builder Form - Only show if not editing a PDF or if creating new */}
-      <div className={`${editingId || (!loading && savedResumes.length === 0) ? "block" : "hidden"} space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pt-12 border-t border-gray-100`}>
+      <div className={`${editingId || (!loading && savedResumes.length === 0) ? "block" : "hidden"} space-y-8 rb-animate-slow rb-reveal pt-12 border-t border-gray-100`}>
          <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-2">
             <div>
               <h3 className="text-3xl font-extrabold text-[#1D2226] tracking-tight">

@@ -15,7 +15,8 @@ import {
   Bell,
   LogOut,
   Loader2,
-  Briefcase
+  Briefcase,
+  Sparkles
 } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -71,6 +72,8 @@ const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const robotFallbacks = ["/robo.png", "/robot.png", "/ai-bot.png", "https://cdn-icons-png.flaticon.com/512/4712/4712108.png"];
+  const [robotIdx, setRobotIdx] = useState(0);
 
   const handleSignOut = async () => {
     if (isSigningOut) return;
@@ -100,24 +103,24 @@ const Settings = () => {
 
   // Main settings options
   const mainSettings = [
-    { icon: User, label: "Account preferences", description: "Manage email, phone number, & more", onClick: () => navigate("/settings/account") },
-    { icon: Briefcase, label: "Job preferences", description: "Set desired job roles and locations", onClick: () => navigate("/jobs/preferences") },
-    { icon: Lock, label: "Sign in & security", description: "Set two-factor authentication and passwords", onClick: () => navigate("/settings/security") },
-    { icon: Eye, label: "Visibility", description: "Control how others see your profile & activity", onClick: () => navigate("/settings/visibility") },
-    { icon: Shield, label: "Data privacy", description: "Manage your data visibility and sharing settings", onClick: () => navigate("/settings/privacy") },
-    { icon: FileText, label: "Advertising data", description: "Manage how your data is used for ads", onClick: () => navigate("/settings/advertising-data") },
-    { icon: Bell, label: "Notifications", description: "Choose what alerts you receive", onClick: () => navigate("/settings/notifications") },
+    { icon: User, label: "Account preferences", description: "Manage email, phone number, & more", iconBg: "from-blue-400 to-indigo-600", onClick: () => navigate("/settings/account") },
+    { icon: Briefcase, label: "Job preferences", description: "Set desired job roles and locations", iconBg: "from-violet-400 to-purple-600", onClick: () => navigate("/jobs/preferences") },
+    { icon: Lock, label: "Sign in & security", description: "Set two-factor authentication and passwords", iconBg: "from-sky-400 to-blue-600", onClick: () => navigate("/settings/security") },
+    { icon: Eye, label: "Visibility", description: "Control how others see your profile & activity", iconBg: "from-teal-400 to-emerald-600", onClick: () => navigate("/settings/visibility") },
+    { icon: Shield, label: "Data privacy", description: "Manage your data visibility and sharing settings", iconBg: "from-indigo-400 to-fuchsia-600", onClick: () => navigate("/settings/privacy") },
+    { icon: FileText, label: "Advertising data", description: "Manage how your data is used for ads", iconBg: "from-orange-400 to-rose-500", onClick: () => navigate("/settings/advertising-data") },
+    { icon: Bell, label: "Notifications", description: "Choose what alerts you receive", iconBg: "from-amber-400 to-orange-500", onClick: () => navigate("/settings/notifications") },
   ];
 
   // Secondary links
-  const secondaryLinks: { label: string; path: string }[] = [
-    { label: "Help Center", path: "/resources/help" },
-    { label: "Professional Community Policies", path: "/resources/community-policies" },
-    { label: "Privacy Policy", path: "/resources/privacy" },
-    { label: "Accessibility", path: "/resources/accessibility" },
-    { label: "Recommendation Transparency", path: "/resources/recommendation-transparency" },
-    { label: "User Agreement", path: "/resources/user-agreement" },
-    { label: "End User License Agreement", path: "/resources/eula" },
+  const secondaryLinks: { label: string; path: string; icon: React.ElementType; iconBg: string }[] = [
+    { label: "Help Center", path: "/resources/help", icon: HelpCircle, iconBg: "from-sky-400 to-blue-600" },
+    { label: "Professional Community Policies", path: "/resources/community-policies", icon: Shield, iconBg: "from-indigo-400 to-fuchsia-600" },
+    { label: "Privacy Policy", path: "/resources/privacy", icon: Shield, iconBg: "from-emerald-400 to-teal-600" },
+    { label: "Accessibility", path: "/resources/accessibility", icon: Eye, iconBg: "from-violet-400 to-purple-600" },
+    { label: "Recommendation Transparency", path: "/resources/recommendation-transparency", icon: Eye, iconBg: "from-amber-400 to-orange-500" },
+    { label: "User Agreement", path: "/resources/user-agreement", icon: FileText, iconBg: "from-blue-400 to-indigo-600" },
+    { label: "End User License Agreement", path: "/resources/eula", icon: FileText, iconBg: "from-rose-400 to-pink-600" },
   ];
 
   return (
@@ -133,6 +136,7 @@ const Settings = () => {
                   Manage your account preferences and security settings.
                 </p>
               </div>
+              
             </div>
           </div>
         </div>
@@ -151,10 +155,13 @@ const Settings = () => {
             </div>
             <Button 
               variant="outline" 
-              className="rounded-full h-10 px-4"
+              className="group rounded-full h-10 px-0 relative p-[1px] overflow-hidden border-none transition-transform hover:scale-105 hover:shadow-lg"
               onClick={() => navigate('/profile')}
             >
-              View profile
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-100 group-hover:brightness-110" />
+              <span className="relative z-10 rounded-full bg-white text-gray-900 px-4 py-2">
+                View profile
+              </span>
             </Button>
           </div>
 
@@ -167,15 +174,15 @@ const Settings = () => {
                   className="flex items-center justify-between p-6 bg-white/50 backdrop-blur-xl border border-white/30 rounded-2xl shadow-lg hover:shadow-xl transition text-left"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-white/60 flex items-center justify-center ring-1 ring-white/50">
-                      <item.icon className="w-6 h-6 text-indigo-500" />
+                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center ring-1 ring-white/40 shadow-md bg-gradient-to-br ${(item as any).iconBg} transition-transform duration-200 group-hover:scale-105 group-hover:ring-2`}>
+                      <item.icon className="w-6 h-6 text-white transition-colors" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-800">{item.label}</h3>
                       <p className="text-sm text-gray-500 mt-1">{(item as any).description}</p>
                     </div>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                  <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
                 </button>
               ))}
             </div>
@@ -186,16 +193,32 @@ const Settings = () => {
           </div>
 
           <div className="pb-12">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 px-2">Resources</h3>
+            <div className="flex items-center justify-between mb-3 px-2">
+              <h3 className="text-lg font-extrabold bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-blue-500 bg-clip-text text-transparent tracking-wider">Resources</h3>
+              <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-white shadow-md"
+                style={{ background: 'linear-gradient(135deg, #6A11CB 0%, #2575FC 50%, #E1306C 100%)' }}>
+                <Sparkles className="h-3 w-3" />
+                Quick access
+              </span>
+            </div>
+            <div className="h-1 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 mx-2 mb-4"></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {secondaryLinks.map(({ label, path }) => (
+              {secondaryLinks.map(({ label, path, icon: Icon, iconBg }) => (
                 <button
                   key={label}
                   onClick={() => navigate(path)}
                   className="flex items-center justify-between p-5 rounded-2xl bg-white/50 backdrop-blur-xl border border-white/30 shadow-lg hover:shadow-2xl transition group text-left"
                 >
-                  <span className="text-sm font-medium text-[#1D2226]">{label}</span>
-                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                  <div className="pointer-events-none absolute -top-6 -left-10 right-0 h-24 bg-gradient-to-r from-indigo-100 via-purple-100 to-blue-100 opacity-0 group-hover:opacity-60 blur-xl"></div>
+                  <div className="flex items-start gap-3">
+                    <div className={`h-10 w-10 rounded-lg bg-gradient-to-br ${iconBg} ring-1 ring-white/40 shadow-md flex items-center justify-center transition-transform group-hover:scale-105 group-hover:ring-2`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="text-sm font-semibold text-[#1D2226] group-hover:bg-gradient-to-r group-hover:from-indigo-500 group-hover:via-fuchsia-500 group-hover:to-blue-500 group-hover:bg-clip-text group-hover:text-transparent">
+                      {label}
+                    </span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-indigo-600 transition-all group-hover:translate-x-1" />
                 </button>
               ))}
             </div>

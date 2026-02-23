@@ -53,8 +53,19 @@ export function useCompany(companyId?: string) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null);
 
+  const isValidUuid = (id: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+
   const fetchCompany = useCallback(async (signal?: AbortSignal) => {
     if (!companyId) {
+      setIsLoading(false);
+      return;
+    }
+    if (!isValidUuid(companyId)) {
+      setCompany(null);
+      setIsAdmin(false);
+      setFollowerCount(0);
+      setIsFollowing(false);
       setIsLoading(false);
       return;
     }

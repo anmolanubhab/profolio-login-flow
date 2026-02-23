@@ -39,6 +39,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useSavedPosts } from '@/hooks/useSavedPosts';
 import {
   BookmarkPlus,
   BookmarkCheck,
@@ -106,37 +107,18 @@ export const PostOptionsMenu = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { savedPostIds, toggleSave, isToggling } = useSavedPosts();
 
   // Fetch initial state when menu opens
   useEffect(() => {
-    if (open && currentUserProfileId) {
-      const controller = new AbortController();
-      checkPostState(controller.signal);
-      return () => controller.abort();
-    }
-  }, [open, currentUserProfileId, postId]);
+    if (!currentUserProfileId) return;
+    setIsSaved(savedPostIds.has(postId));
+  }, [currentUserProfileId, postId, savedPostIds]);
 
   const checkPostState = async (signal?: AbortSignal) => {
     if (!currentUserProfileId) return;
     setIsLoadingState(true);
     try {
-      // Check if saved
-      const { data: savedData, error: savedError } = await supabase
-        .from('saved_posts')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', currentUserProfileId)
-        .abortSignal(signal)
-        .maybeSingle();
-      
-      if (savedError && savedError.code !== 'ABORTED') {
-        throw savedError;
-      }
-      
-      setIsSaved(!!savedData);
-
-      // Check if notifications enabled (handling potential missing table gracefully)
-      // We use 'any' to bypass TS check if table definition is missing in local types
       const { data: notifData, error: notifError } = await supabase
         .from('post_notifications_enabled')
         .select('id')
@@ -304,13 +286,8 @@ export const PostOptionsMenu = ({
     const newSavedState = !isSaved;
 
     try {
+      toggleSave(postId);
       if (newSavedState) {
-        // Save
-        const { error } = await supabase.from('saved_posts').insert({
-          user_id: currentUserProfileId,
-          post_id: postId,
-        });
-        if (error && error.code !== '23505') throw error;
         toast({ 
           title: 'Post saved',
           action: (
@@ -318,13 +295,6 @@ export const PostOptionsMenu = ({
           )
         });
       } else {
-        // Unsave
-        const { error } = await supabase
-          .from('saved_posts')
-          .delete()
-          .eq('user_id', currentUserProfileId)
-          .eq('post_id', postId);
-        if (error) throw error;
         toast({ 
           title: 'Removed from Saved',
           action: (
@@ -332,7 +302,6 @@ export const PostOptionsMenu = ({
           )
         });
       }
-      setIsSaved(newSavedState);
       closeMenu();
     } catch (err) {
       console.error('Error toggling save post:', err);
