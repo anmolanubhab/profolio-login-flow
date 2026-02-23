@@ -405,8 +405,8 @@ const PostCard = ({
 
   return (
     <article 
-      className="bg-white overflow-hidden
-        rounded-none sm:rounded-[2rem] border-0 sm:border sm:border-gray-100 shadow-none sm:shadow-card hover:shadow-card-hover transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 group/card mx-0 mb-4 sm:mb-6" 
+      className="bg-white p-0 overflow-hidden w-full
+        rounded-xl sm:rounded-2xl border border-[#E8EBEF] shadow-sm hover:shadow-md transition-all duration-300 animate-in fade-in slide-in-from-bottom-4 group/card mx-0 mb-4 sm:mb-6" 
       id={`post-${id}`}
     >
       <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />

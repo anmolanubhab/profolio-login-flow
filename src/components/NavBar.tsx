@@ -30,10 +30,10 @@ const NavBar = ({ visible = true, user }: NavBarProps) => {
   return (
     <>
       <nav 
-        className="fixed top-0 left-0 right-0 z-50 bg-transparent border-b border-white/20"
+        className="fixed top-0 left-0 right-0 z-50 bg-gray-100 border-b border-border/60"
       >
         {/* DESKTOP LAYOUT (lg and above) - Facebook-style top nav */}
-        <header className="hidden lg:flex sticky top-0 z-50 bg-transparent h-16">
+        <header className="hidden lg:flex sticky top-0 z-50 bg-gray-100 h-16">
           <div className="w-full px-6 flex items-center">
             {/* LEFT: Logo + Search */}
             <div className="flex items-center gap-4">

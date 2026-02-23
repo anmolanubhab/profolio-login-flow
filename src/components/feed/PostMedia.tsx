@@ -22,10 +22,10 @@ const PostMedia = ({ src, mediaType, alt = 'Post content', isCompact = false }: 
 
   if (hasError) {
     return (
-      <div className={cn(isCompact ? "mx-4 mb-4" : "mx-0 sm:mx-6 mb-4 sm:mb-6")}>
+      <div className={cn(isCompact ? "mx-4 mb-4" : "w-full mb-4 sm:mb-6")}>
         <div className={cn(
-          "w-full h-64 bg-[#F3F6F8] rounded-none sm:rounded-[2rem] flex flex-col items-center justify-center text-[#5E6B7E] text-sm gap-4 border-0 sm:border sm:border-[#E8EBEF]/60",
-          isCompact && "h-48 rounded-[1.5rem]"
+          "w-full h-64 bg-[#F3F6F8] flex flex-col items-center justify-center text-[#5E6B7E] text-sm gap-4 border-0 sm:border sm:border-[#E8EBEF]/60",
+          isCompact && "h-48"
         )}>
           <div className="p-4 bg-white rounded-2xl shadow-sm">
             <svg className="w-8 h-8 text-[#833AB4]/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -40,15 +40,15 @@ const PostMedia = ({ src, mediaType, alt = 'Post content', isCompact = false }: 
 
   if (mediaType === 'video') {
     return (
-      <div className={cn(isCompact ? "mx-4 mb-4" : "mx-0 sm:mx-6 mb-4 sm:mb-6")}>
+      <div className={cn(isCompact ? "mx-4 mb-4" : "w-full mb-4 sm:mb-6")}>
         <div className={cn(
-          "relative w-full bg-[#1D2226] rounded-none sm:rounded-[2rem] flex items-center justify-center overflow-hidden group/video shadow-none sm:shadow-lg",
-          isCompact && "rounded-[1.5rem]"
+          "relative w-full bg-[#1D2226] flex items-center justify-center overflow-hidden group/video shadow-none sm:shadow-lg",
+          isCompact && ""
         )}>
           <video
             src={src as string}
             controls
-            className="w-full max-h-[600px] object-contain mx-auto transition-transform duration-700 group-hover/video:scale-[1.02]"
+            className="w-full max-h-[600px] object-contain mx-auto block max-w-none transition-transform duration-700 group-hover/video:scale-[1.02]"
             preload="metadata"
             onError={() => setHasError(true)}
             onPlay={() => setIsPlaying(true)}
@@ -70,10 +70,10 @@ const PostMedia = ({ src, mediaType, alt = 'Post content', isCompact = false }: 
   }
 
   return (
-    <div className={cn(isCompact ? "mx-4 mb-4" : "mx-0 sm:mx-6 mb-4 sm:mb-6")}>
+    <div className={cn(isCompact ? "mx-4 mb-4" : "w-full mb-4 sm:mb-6")}>
       <div className={cn(
-        "relative w-full rounded-none sm:rounded-[2rem] overflow-hidden flex items-center justify-center bg-[#F3F6F8]/50 group/media border-0 sm:border sm:border-[#E8EBEF]/40 shadow-none sm:shadow-sm",
-        isCompact && "rounded-[1.5rem]"
+        "relative w-full overflow-hidden flex items-center justify-center bg-[#F3F6F8]/50 group/media border-0 sm:border sm:border-[#E8EBEF]/40 shadow-none sm:shadow-sm",
+        isCompact && ""
       )}>
         {isLoading && (
           <div className="absolute inset-0 bg-gradient-to-br from-[#F3F6F8] via-white to-[#F3F6F8] animate-pulse" />
@@ -82,7 +82,7 @@ const PostMedia = ({ src, mediaType, alt = 'Post content', isCompact = false }: 
           src={src as string}
           alt={alt}
           className={cn(
-            "w-full h-auto max-h-[700px] object-cover transition-all duration-700 mx-auto group-hover/media:scale-105",
+            "w-full h-auto max-h-[700px] object-cover block max-w-none transition-all duration-700 mx-auto group-hover/media:scale-105",
             isLoading ? "opacity-0 scale-105" : "opacity-100 scale-100"
           )}
           loading="lazy"

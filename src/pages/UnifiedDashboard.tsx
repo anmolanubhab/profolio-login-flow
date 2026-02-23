@@ -13,9 +13,10 @@ const UnifiedDashboard = () => {
   } = useAuth();
   const [feedRefresh, setFeedRefresh] = useState(0);
   if (!user) return null;
-  return <Layout user={user} onSignOut={signOut}>
+  return (
+    <Layout user={user} onSignOut={signOut}>
       <div className="w-full flex flex-col gap-0 px-0">
-        <div className="w-full lg:max-w-4xl mx-0 lg:mx-auto bg-primary-foreground px-4 sm:px-6 lg:px-0">
+        <div className="w-full lg:max-w-4xl mx-0 lg:mx-auto px-4 sm:px-6 lg:px-0">
           <div className="space-y-0 sm:space-y-4 lg:space-y-6">
             <ProfileCompletionCard />
             <Stories />
@@ -25,10 +26,13 @@ const UnifiedDashboard = () => {
                 onPostCreated={() => setFeedRefresh((prev) => prev + 1)}
               />
             </div>
-            <Feed refresh={feedRefresh} />
           </div>
         </div>
+        <div className="w-full px-0">
+          <Feed refresh={feedRefresh} />
+        </div>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
 export default UnifiedDashboard;

@@ -7,7 +7,7 @@ type PostCardSkeletonProps = {
 const PostCardSkeleton = ({ isCompanyPost = false }: PostCardSkeletonProps) => {
   return (
     <div
-      className="bg-white overflow-hidden mb-6 rounded-[2rem] sm:rounded-[2.5rem] border border-[#E8EBEF]/60 shadow-sm animate-pulse"
+      className="bg-white overflow-hidden mb-6 rounded-xl sm:rounded-2xl border border-[#E8EBEF]/60 shadow-sm animate-pulse"
     >
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-start gap-4">
@@ -27,8 +27,8 @@ const PostCardSkeleton = ({ isCompanyPost = false }: PostCardSkeletonProps) => {
       </div>
 
       {/* Media placeholder */}
-      <div className="mx-6 mb-6">
-        <Skeleton className="w-full h-80 rounded-[2rem] bg-[#F3F6F8]" />
+      <div className="w-full mb-6">
+        <Skeleton className="w-full h-80 bg-[#F3F6F8]" />
       </div>
 
       {/* Engagement stats */}

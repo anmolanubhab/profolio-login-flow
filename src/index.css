@@ -134,19 +134,44 @@ All colors MUST be HSL.
   }
 
   h1 {
-    @apply text-4xl font-extrabold tracking-tight text-[#1D2226];
+    @apply font-bold tracking-tight;
+    font-size: 32px;
+    line-height: 40px;
   }
 
   h2 {
-    @apply text-lg md:text-xl font-semibold;
+    @apply font-semibold;
+    font-size: 24px;
+    line-height: 32px;
   }
 
   h3 {
-    @apply text-base md:text-lg font-medium;
+    @apply font-semibold;
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  h4 {
+    @apply font-medium;
+    font-size: 18px;
+    line-height: 28px;
+  }
+
+  h5 {
+    @apply font-medium;
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  h6 {
+    @apply font-medium;
+    font-size: 14px;
+    line-height: 20px;
   }
 
   p {
-    @apply text-sm md:text-base leading-relaxed;
+    font-size: 14px;
+    line-height: 20px;
   }
 
   /* Ensure images don't overflow */
@@ -165,8 +190,49 @@ All colors MUST be HSL.
 }
 
 @layer components {
+  .text-body-lg {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 400;
+  }
+
+  .text-body {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
+  }
+
+  .text-body-sm {
+    font-size: 13px;
+    line-height: 20px;
+    font-weight: 400;
+  }
+
+  .text-caption {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 400;
+  }
+
+  .btn-text-primary {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .btn-text-secondary {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .btn-text-sm {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
   .page-title {
-    @apply text-4xl font-extrabold tracking-tight text-[#1D2226];
+    @apply font-bold tracking-tight;
+    font-size: 32px;
+    line-height: 40px;
   }
   .brand-font {
     font-family: 'Grand Hotel', cursive;
@@ -193,9 +259,7 @@ All colors MUST be HSL.
     z-index: 50;
     height: var(--nav-height);
     border-bottom: 1px solid hsl(var(--border));
-    background-color: hsl(var(--card) / 0.8);
-    -webkit-backdrop-filter: saturate(180%) blur(10px);
-    backdrop-filter: saturate(180%) blur(10px);
+    background-color: hsl(var(--card));
     box-shadow: var(--shadow-card);
   }
   .navbar-inner {
