@@ -6,7 +6,7 @@ import { Bookmark, Loader2, AlertTriangle } from "lucide-react";
 import PostCard from "@/components/PostCard";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import EmptyFeedState from "@/components/feed/EmptyFeedState";
+import EmptySavedPosts from "@/components/empty-states/EmptySavedPosts";
 
 interface Post {
   id: string;
@@ -28,27 +28,40 @@ interface Post {
   comments?: { count: number }[];
 }
 
+const PAGE_SIZE = 10;
+
 const SavedPosts = () => {
   const { user, signOut } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const { toast } = useToast();
 
-  const fetchSavedPosts = useCallback(async (signal?: AbortSignal) => {
+  const fetchSavedPosts = useCallback(async (pageNumber = 0, options?: { signal?: AbortSignal }) => {
+    const signal = options?.signal;
     if (!user) return;
 
     try {
-      setLoading(true);
+      if (pageNumber === 0) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
       setError(null);
 
-      // Fetch current profile ID (profiles.id) for the authenticated user (auth.uid())
-      const { data: profile, error: profileError } = await (supabase as any)
+      let profileQuery = (supabase as any)
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
-        .abortSignal(signal!)
-        .maybeSingle();
+        .eq('user_id', user.id);
+
+      if (signal) {
+        profileQuery = profileQuery.abortSignal(signal as any);
+      }
+
+      const { data: profile, error: profileError } = await profileQuery.maybeSingle();
 
       if (profileError) {
         const code = (profileError as any)?.code;
@@ -64,8 +77,11 @@ const SavedPosts = () => {
         return;
       }
 
+      const from = pageNumber * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
       // Single optimized query: saved_posts -> posts (includes profiles, likes, comments count)
-      const { data, error: qError } = await (supabase as any)
+      let postsQuery = (supabase as any)
         .from('saved_posts')
         .select(`
           post:posts (
@@ -95,7 +111,13 @@ const SavedPosts = () => {
         `)
         .eq('user_id', profileId)
         .order('created_at', { ascending: false, referencedTable: 'posts' })
-        .abortSignal(signal!);
+        .range(from, to);
+
+      if (signal) {
+        postsQuery = postsQuery.abortSignal(signal as any);
+      }
+
+      const { data, error: qError } = await postsQuery;
 
       if (qError) {
         const code = (qError as any)?.code;
@@ -127,7 +149,14 @@ const SavedPosts = () => {
           comments: p.comments || [],
         }));
 
-      setPosts(formatted);
+      setPosts(prev =>
+        pageNumber === 0
+          ? formatted
+          : [...prev, ...formatted]
+      );
+
+      setHasMore(formatted.length === PAGE_SIZE);
+      setPage(pageNumber);
     } catch (err: unknown) {
       const rec = (err as Record<string, any>) || {};
       const message = typeof rec?.message === 'string' ? rec.message : '';
@@ -148,7 +177,11 @@ const SavedPosts = () => {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      if (pageNumber === 0) {
+        setLoading(false);
+      } else {
+        setLoadingMore(false);
+      }
     }
   }, [user, toast]);
 
@@ -156,7 +189,7 @@ const SavedPosts = () => {
     if (!user) return;
 
     const controller = new AbortController();
-    fetchSavedPosts(controller.signal);
+    fetchSavedPosts(0, { signal: controller.signal });
 
     return () => controller.abort();
   }, [user, fetchSavedPosts]);
@@ -187,7 +220,7 @@ const SavedPosts = () => {
       }
     } catch (error) {
       console.error('Error toggling like:', error);
-      fetchSavedPosts(); // Revert on error
+      fetchSavedPosts(0); // Revert on error (reload first page)
     }
   };
 
@@ -239,9 +272,7 @@ const SavedPosts = () => {
             </div>
           </div>
         ) : posts.length === 0 ? (
-          <div className="py-16 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-            <EmptyFeedState />
-          </div>
+          <EmptySavedPosts />
         ) : (
           <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
             {posts.map((post, index) => (
@@ -269,6 +300,18 @@ const SavedPosts = () => {
                 companyLogo={post.company_logo}
               />
             ))}
+            {hasMore && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  onClick={() => fetchSavedPosts(page + 1)}
+                  disabled={loadingMore}
+                  className="rounded-full px-6"
+                >
+                  {loadingMore && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Load more
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
