@@ -31,13 +31,13 @@ export const EmailAddressesDrawer: React.FC<EmailAddressesDrawerProps> = ({ open
     if (!user) return;
     setFetching(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("user_emails")
         .select("id,email,is_primary,verified")
         .eq("user_id", user.id)
         .order("is_primary", { ascending: false });
       if (error) throw error;
-      const rows = (data || []) as EmailRow[];
+      const rows = (data || []) as unknown as EmailRow[];
       const existsPrimary = rows.some(r => r.is_primary);
       if (!existsPrimary && user.email) {
         // Ensure current auth email appears as primary
@@ -66,7 +66,7 @@ export const EmailAddressesDrawer: React.FC<EmailAddressesDrawerProps> = ({ open
       setLoading(true);
       const { error: updErr } = await supabase.auth.updateUser({ email: newEmail });
       if (updErr) throw updErr;
-      await supabase.from("user_emails").insert({
+      await (supabase as any).from("user_emails").insert({
         user_id: user.id,
         email: newEmail,
         is_primary: false,
@@ -106,7 +106,7 @@ export const EmailAddressesDrawer: React.FC<EmailAddressesDrawerProps> = ({ open
     }
     try {
       setLoading(true);
-      await supabase.from("user_emails").delete().eq("id", row.id);
+      await (supabase as any).from("user_emails").delete().eq("id", row.id);
       toast({ title: "Email removed" });
       await load();
     } catch (e: any) {

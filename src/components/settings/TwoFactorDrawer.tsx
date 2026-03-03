@@ -33,7 +33,7 @@ async function hotp(secret: Uint8Array, counter: number) {
   const msg = new ArrayBuffer(8);
   const view = new DataView(msg);
   view.setUint32(4, counter);
-  const key = await crypto.subtle.importKey("raw", secret, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+  const key = await crypto.subtle.importKey("raw", (secret as unknown) as ArrayBuffer, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("HMAC", key, msg);
   const h = new Uint8Array(sig);
   const offset = h[h.length - 1] & 0x0f;
@@ -72,7 +72,7 @@ export const TwoFactorDrawer: React.FC<TwoFactorDrawerProps> = ({ open, onOpenCh
       const expected = await totp(secretBytes);
       if (expected !== code) throw new Error("Invalid code");
 
-      await supabase.from("user_twofactor").upsert({
+      await (supabase as any).from("user_twofactor").upsert({
         user_id: user.id,
         method: "totp",
         totp_secret: secretB32,
@@ -80,7 +80,7 @@ export const TwoFactorDrawer: React.FC<TwoFactorDrawerProps> = ({ open, onOpenCh
       await supabase.from("profiles").update({
         two_factor_enabled: true,
         two_factor_type: "totp",
-      }).eq("user_id", user.id);
+      } as any).eq("user_id", user.id);
 
       const gen: string[] = [];
       for (let i = 0; i < 8; i++) {
@@ -89,7 +89,7 @@ export const TwoFactorDrawer: React.FC<TwoFactorDrawerProps> = ({ open, onOpenCh
         const plain = Array.from(buf).map(b => b.toString(16).padStart(2, "0")).join("");
         const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(plain));
         const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
-        await supabase.from("user_recovery_codes").insert({
+        await (supabase as any).from("user_recovery_codes").insert({
           user_id: user.id,
           code_hash: hashHex,
         });
@@ -112,8 +112,8 @@ export const TwoFactorDrawer: React.FC<TwoFactorDrawerProps> = ({ open, onOpenCh
         two_factor_enabled: false,
         two_factor_type: null,
       } as any).eq("user_id", user.id);
-      await supabase.from("user_twofactor").delete().eq("user_id", user.id);
-      await supabase.from("user_recovery_codes").delete().eq("user_id", user.id);
+      await (supabase as any).from("user_twofactor").delete().eq("user_id", user.id);
+      await (supabase as any).from("user_recovery_codes").delete().eq("user_id", user.id);
       toast({ title: "Two-factor disabled" });
       onOpenChange(false);
     } catch (e: any) {

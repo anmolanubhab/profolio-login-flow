@@ -18,6 +18,7 @@ interface Certificate {
   description: string | null;
   file_url: string;
   file_name: string;
+  user_id: string;
   file_size: number | null;
   created_at: string;
   visibility?: string;

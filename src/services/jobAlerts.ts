@@ -87,13 +87,13 @@ export const checkAndGenerateJobAlerts = async (userId: string) => {
   }
 
   // 4. Check for duplicates (already sent alerts)
-  const { data: existingLogs } = await supabase
+  const { data: existingLogs } = await (supabase as any)
     .from('job_alerts_log')
     .select('job_id, channel')
     .eq('user_id', userId);
 
-  const sentJobIdsInApp = new Set(existingLogs?.filter(l => l.channel === 'in_app').map(l => l.job_id));
-  const sentJobIdsEmail = new Set(existingLogs?.filter(l => l.channel === 'email').map(l => l.job_id));
+  const sentJobIdsInApp = new Set(existingLogs?.filter((l: any) => l.channel === 'in_app').map((l: any) => l.job_id));
+  const sentJobIdsEmail = new Set(existingLogs?.filter((l: any) => l.channel === 'email').map((l: any) => l.job_id));
 
   // 5. Generate Alerts
   const newInAppAlerts = matchingJobs.filter(job => !sentJobIdsInApp.has(job.id));
@@ -102,7 +102,7 @@ export const checkAndGenerateJobAlerts = async (userId: string) => {
   // Create In-App Notifications
   for (const job of newInAppAlerts) {
     // Log
-    await supabase.from('job_alerts_log').insert({
+    await (supabase as any).from('job_alerts_log').insert({
       user_id: userId,
       job_id: job.id,
       channel: 'in_app'
@@ -127,7 +127,7 @@ export const checkAndGenerateJobAlerts = async (userId: string) => {
     
     if (notifPrefs.email_frequency === 'instant') {
       for (const job of newEmailAlerts) {
-        await supabase.from('job_alerts_log').insert({
+        await (supabase as any).from('job_alerts_log').insert({
           user_id: userId,
           job_id: job.id,
           channel: 'email'

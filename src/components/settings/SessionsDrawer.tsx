@@ -40,7 +40,7 @@ export const SessionsDrawer: React.FC<SessionsDrawerProps> = ({ open, onOpenChan
     const ua = navigator.userAgent;
     const deviceName = navigator.platform || "This device";
     const deviceId = await sha(ua + "|" + deviceName);
-    await supabase.from("user_sessions").upsert({
+    await (supabase as any).from("user_sessions").upsert({
       user_id: user.id,
       device_id: deviceId,
       device_name: deviceName,
@@ -55,7 +55,7 @@ export const SessionsDrawer: React.FC<SessionsDrawerProps> = ({ open, onOpenChan
     setFetching(true);
     try {
       await syncCurrent();
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("user_sessions")
         .select("*")
         .eq("user_id", user.id)
@@ -86,7 +86,7 @@ export const SessionsDrawer: React.FC<SessionsDrawerProps> = ({ open, onOpenChan
         const ua = navigator.userAgent;
         const deviceName = navigator.platform || "This device";
         const deviceId = await sha(ua + "|" + deviceName);
-        await supabase.from("user_sessions").delete().eq("user_id", user.id).neq("device_id", deviceId);
+        await (supabase as any).from("user_sessions").delete().eq("user_id", user.id).neq("device_id", deviceId);
       }
       toast({ title: "Signed out from other devices" });
       await load();

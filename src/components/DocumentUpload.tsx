@@ -63,7 +63,7 @@ export const DocumentUpload = ({
       }, 200);
 
       const result = await secureUpload({
-        bucket,
+        bucket: bucket as any,
         file,
         userId: user.id
       });

@@ -14,7 +14,7 @@ export const useSavedJobs = () => {
     queryFn: async ({ signal }) => {
       if (!user?.id) return new Set<string>();
       
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('saved_jobs')
         .select('job_id')
         .eq('user_id', user.id)
@@ -26,7 +26,7 @@ export const useSavedJobs = () => {
         throw error;
       }
 
-      return new Set(data.map(item => item.job_id));
+      return new Set((data || []).map((item: any) => item.job_id));
     },
     enabled: !!user?.id,
   });
@@ -38,7 +38,7 @@ export const useSavedJobs = () => {
       const isSaved = savedJobIds?.has(jobId);
 
       if (isSaved) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('saved_jobs')
           .delete()
           .eq('user_id', user.id)
@@ -46,7 +46,7 @@ export const useSavedJobs = () => {
         if (error) throw error;
         return { action: 'unsaved', jobId };
       } else {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('saved_jobs')
           .insert({ user_id: user.id, job_id: jobId });
         if (error) throw error;

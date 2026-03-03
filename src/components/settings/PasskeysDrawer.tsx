@@ -32,7 +32,7 @@ export const PasskeysDrawer: React.FC<PasskeysDrawerProps> = ({ open, onOpenChan
     if (!user) return;
     setFetching(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("user_passkeys")
         .select("id, credential_id, device_name, created_at")
         .eq("user_id", user.id)
@@ -74,7 +74,7 @@ export const PasskeysDrawer: React.FC<PasskeysDrawerProps> = ({ open, onOpenChan
       if (!cred) throw new Error("Passkey creation was cancelled");
       const credentialId = cred.id;
       const deviceName = navigator.platform || "This device";
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("user_passkeys")
         .insert({ user_id: user.id, credential_id: credentialId, device_name: deviceName });
       if (error) throw error;
@@ -89,7 +89,7 @@ export const PasskeysDrawer: React.FC<PasskeysDrawerProps> = ({ open, onOpenChan
 
   const removePasskey = async (id: string) => {
     try {
-      const { error } = await supabase.from("user_passkeys").delete().eq("id", id);
+      const { error } = await (supabase as any).from("user_passkeys").delete().eq("id", id);
       if (error) throw error;
       toast({ title: "Passkey removed" });
       await load();

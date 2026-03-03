@@ -16,7 +16,7 @@ export const useJobAnalytics = (jobId: string | undefined) => {
     queryFn: async ({ signal }) => {
       if (!jobId) throw new Error('Job ID is required');
       
-      const { data, error } = await supabase.rpc('get_job_analytics', {
+      const { data, error } = await (supabase.rpc as any)('get_job_analytics', {
         p_job_id: jobId
       }).abortSignal(signal);
 
@@ -25,7 +25,7 @@ export const useJobAnalytics = (jobId: string | undefined) => {
         throw error;
       }
 
-      return data as JobAnalytics;
+      return data as unknown as JobAnalytics;
     },
     enabled: !!jobId,
     refetchInterval: 10000, // Poll every 10 seconds for near real-time updates
