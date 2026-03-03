@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { FileText, Download, Edit, Trash2, ArrowLeft, Plus, Eye } from 'lucide-react';
+import { FileText, Download, Edit, Trash2, ArrowLeft, Plus, Eye, Sparkles, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import { DocumentUpload } from '@/components/DocumentUpload';
+import { useAIAssistant } from '@/hooks/useAIAssistant';
 import { VisibilitySelector } from '@/components/settings/VisibilitySelector';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,6 +38,8 @@ const ResumeBuilder = () => {
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadVisibility, setUploadVisibility] = useState('recruiters');
   const { toast } = useToast();
+  const { generate: aiGenerate, loading: aiLoading } = useAIAssistant();
+  const [aiPreview, setAiPreview] = useState<{ field: string; text: string } | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -777,15 +780,35 @@ const ResumeBuilder = () => {
                  Professional Summary
                </CardTitle>
              </CardHeader>
-             <CardContent className="p-8">
-               <Textarea
-                 placeholder="Write a compelling summary of your career and goals..."
-                 value={formData.summary}
-                 onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-                 rows={4}
-                 className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[120px] leading-relaxed"
-               />
-             </CardContent>
+              <CardContent className="p-8 space-y-4">
+                <Textarea
+                  placeholder="Write a compelling summary of your career and goals..."
+                  value={formData.summary}
+                  onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                  rows={4}
+                  className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[120px] leading-relaxed"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={aiLoading}
+                  onClick={async () => {
+                    const result = await aiGenerate('resume_summary', {
+                      name: formData.personalInfo.name,
+                      education: formData.education,
+                      skills: formData.skills,
+                      experience: formData.experience,
+                      goal: formData.title,
+                    });
+                    if (result) setAiPreview({ field: 'summary', text: result });
+                  }}
+                  className="rounded-full border-[#833AB4]/30 text-[#833AB4] hover:bg-[#833AB4]/10 gap-2"
+                >
+                  {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  Generate Summary with AI
+                </Button>
+              </CardContent>
            </Card>
 
            <div className="grid md:grid-cols-2 gap-8">
@@ -798,15 +821,34 @@ const ResumeBuilder = () => {
                    Experience
                  </CardTitle>
                </CardHeader>
-               <CardContent className="p-8">
-                 <Textarea
-                   placeholder="Describe your work history, projects, and achievements..."
-                   value={formData.experience}
-                   onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-                   rows={8}
-                   className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[200px] leading-relaxed"
-                 />
-               </CardContent>
+                <CardContent className="p-8 space-y-4">
+                  <Textarea
+                    placeholder="Describe your work history, projects, and achievements..."
+                    value={formData.experience}
+                    onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                    rows={8}
+                    className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[200px] leading-relaxed"
+                  />
+                  {formData.experience.trim() && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={aiLoading}
+                      onClick={async () => {
+                        const result = await aiGenerate('improve_text', {
+                          text: formData.experience,
+                          field: 'experience section',
+                        });
+                        if (result) setAiPreview({ field: 'experience', text: result });
+                      }}
+                      className="rounded-full border-[#833AB4]/30 text-[#833AB4] hover:bg-[#833AB4]/10 gap-2"
+                    >
+                      {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      Improve with AI
+                    </Button>
+                  )}
+                </CardContent>
              </Card>
 
              <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
@@ -818,15 +860,45 @@ const ResumeBuilder = () => {
                    Core Skills
                  </CardTitle>
                </CardHeader>
-               <CardContent className="p-8">
-                 <Textarea
-                   placeholder="List your key technical and soft skills (e.g., React, Project Management, UI/UX)..."
-                   value={formData.skills}
-                   onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-                   rows={8}
-                   className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[200px] leading-relaxed"
-                 />
-               </CardContent>
+                <CardContent className="p-8 space-y-4">
+                  <Textarea
+                    placeholder="List your key technical and soft skills (e.g., React, Project Management, UI/UX)..."
+                    value={formData.skills}
+                    onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
+                    rows={8}
+                    className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[200px] leading-relaxed"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={aiLoading}
+                    onClick={async () => {
+                      const result = await aiGenerate('skill_suggestions', {
+                        education: formData.education,
+                        experience: formData.experience,
+                        currentSkills: formData.skills ? formData.skills.split(',').map(s => s.trim()) : [],
+                        profession: formData.title,
+                      });
+                      if (result) {
+                        try {
+                          const skills = JSON.parse(result);
+                          if (Array.isArray(skills)) {
+                            setAiPreview({ field: 'skills', text: skills.join(', ') });
+                          } else {
+                            setAiPreview({ field: 'skills', text: result });
+                          }
+                        } catch {
+                          setAiPreview({ field: 'skills', text: result });
+                        }
+                      }
+                    }}
+                    className="rounded-full border-[#833AB4]/30 text-[#833AB4] hover:bg-[#833AB4]/10 gap-2"
+                  >
+                    {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    Suggest Skills with AI
+                  </Button>
+                </CardContent>
              </Card>
            </div>
            
@@ -851,7 +923,53 @@ const ResumeBuilder = () => {
               </Button>
            </div>
          </div>
-      </div>
+       </div>
+
+      {/* AI Preview Dialog */}
+      {aiPreview && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setAiPreview(null)}>
+          <div className="bg-white rounded-[2.5rem] max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] p-6 rounded-t-[2.5rem]">
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-6 w-6 text-white" />
+                <h3 className="text-xl font-bold text-white">AI Generated {aiPreview.field === 'summary' ? 'Summary' : aiPreview.field === 'experience' ? 'Experience' : 'Skills'}</h3>
+              </div>
+              <p className="text-white/80 text-sm mt-1">Review and accept or edit before saving</p>
+            </div>
+            <div className="p-8 space-y-6">
+              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                <p className="text-[#1D2226] leading-relaxed whitespace-pre-wrap">{aiPreview.text}</p>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setAiPreview(null)}
+                  className="rounded-full px-6"
+                >
+                  ✏️ Cancel & Edit Manually
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (aiPreview.field === 'summary') {
+                      setFormData(prev => ({ ...prev, summary: aiPreview.text }));
+                    } else if (aiPreview.field === 'experience') {
+                      setFormData(prev => ({ ...prev, experience: aiPreview.text }));
+                    } else if (aiPreview.field === 'skills') {
+                      const existing = formData.skills.trim();
+                      const newSkills = existing ? `${existing}, ${aiPreview.text}` : aiPreview.text;
+                      setFormData(prev => ({ ...prev, skills: newSkills }));
+                    }
+                    setAiPreview(null);
+                  }}
+                  className="rounded-full px-6 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white hover:opacity-90"
+                >
+                  ✅ Accept & Use
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
