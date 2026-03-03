@@ -72,7 +72,7 @@ const SavedJobs = () => {
           *,
           company:companies(name, logo_url)
         `)
-        .in('id', Array.from(savedJobIds))
+        .in('id', Array.from(savedJobIds) as string[])
         .abortSignal(signal);
 
       if (error) {
@@ -217,7 +217,7 @@ const SavedJobs = () => {
                 onViewDetails={handleViewDetails}
                 onToggleSave={toggleSave}
                 appliedJobIds={appliedJobIds}
-                savedJobIds={savedJobIds}
+                savedJobIds={savedJobIds as Set<string>}
                 userProfileId={profileId}
               />
             </div>

@@ -230,7 +230,7 @@ const Jobs = () => {
             onDelete={setDeletingJobId}
             onToggleSave={toggleSave}
             appliedJobIds={appliedJobIds}
-            savedJobIds={savedJobIds}
+            savedJobIds={savedJobIds as Set<string>}
             readOnly={false}
             filters={filters}
             userProfileId={profileId}

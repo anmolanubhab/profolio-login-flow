@@ -10,12 +10,18 @@ export const useAIAssistant = () => {
 
   const generate = async (action: AIAction, data: Record<string, any>): Promise<string | null> => {
     setLoading(true);
+    console.log("AI Assistant: invoking action", action, "with data", data);
     try {
       const { data: result, error } = await supabase.functions.invoke('ai-assistant', {
         body: { action, data },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("AI Assistant: invocation error", error);
+        throw error;
+      }
+
+      console.log("AI response:", result);
 
       if (result?.error) {
         toast({

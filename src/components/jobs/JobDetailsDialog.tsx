@@ -76,12 +76,12 @@ export const JobDetailsDialog = ({
            // However, for safety, if we can't verify, we block.
            
            // Let's make a quick check for company admin if needed
-           const { data: adminData } = await supabase
-             .from('company_admins')
-             .select('role')
-             .eq('company_id', data.companies.id)
-             .eq('user_id', profile.id)
-             .single();
+            const { data: adminData } = await (supabase as any)
+              .from('company_admins')
+              .select('role')
+              .eq('company_id', data.companies.id)
+              .eq('user_id', profile.id)
+              .single();
              
            if (adminData) {
              isAuthorized = true;

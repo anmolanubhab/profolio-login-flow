@@ -438,8 +438,9 @@ export function useCompanyInvitations() {
       if (error) throw error;
       
       // Check for application-level errors returned by RPC
-      if (data && !data.success) {
-         throw new Error(data.error || 'Failed to accept invitation');
+      const rpcResult = data as any;
+      if (rpcResult && !rpcResult.success) {
+         throw new Error(rpcResult.error || 'Failed to accept invitation');
       }
 
       setInvitations(prev => prev.filter(inv => inv.id !== invitationId));

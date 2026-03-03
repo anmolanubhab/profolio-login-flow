@@ -6,8 +6,8 @@ export interface Resume {
   id: string;
   title: string;
   content: any;
-  file_url?: string; // For PDF uploads
-  visibility: 'everyone' | 'recruiters' | 'only_me';
+  pdf_url?: string;
+  visibility?: 'everyone' | 'recruiters' | 'only_me';
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -36,7 +36,7 @@ export const useResumes = () => {
         ) return [];
         throw error;
       }
-      return data as Resume[];
+      return (data as unknown) as Resume[];
     },
   });
 };

@@ -289,7 +289,7 @@ const ResumeBuilder = () => {
       // First fetch the resume to get the file path
       const { data: resume } = await supabase
         .from('resumes')
-        .select('file_url, user_id')
+        .select('pdf_url, user_id')
         .eq('id', id)
         .single();
 
@@ -301,11 +301,11 @@ const ResumeBuilder = () => {
       if (error) throw error;
 
       // If there's a file, try to delete it from storage
-      if (resume?.file_url) {
+      if (resume?.pdf_url) {
         try {
           // If it's a full URL, try to extract the path
           // If it's a relative path (new system), use it directly
-          let storagePath = resume.file_url;
+          let storagePath = resume.pdf_url;
           
           if (storagePath.startsWith('http')) {
             const urlParts = storagePath.split('/resumes/');

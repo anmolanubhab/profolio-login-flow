@@ -21,7 +21,7 @@ interface ApplyJobDialogProps {
 
 export const ApplyJobDialog = ({ job, open, onOpenChange }: ApplyJobDialogProps) => {
   const navigate = useNavigate();
-  const { resumes, isLoading: isLoadingResumes } = useResumes();
+  const { data: resumes, isLoading: isLoadingResumes } = useResumes();
   const { apply, isApplying } = useJobApplication();
   
   const [selectedResumeId, setSelectedResumeId] = useState<string>('');

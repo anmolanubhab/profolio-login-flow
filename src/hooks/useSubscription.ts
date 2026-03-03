@@ -59,11 +59,11 @@ export const useSubscription = () => {
         };
       }
 
-      const plan = (data?.subscription_plan as SubscriptionPlan) || 'free';
+      const plan = ((data as any)?.subscription_plan as SubscriptionPlan) || 'free';
       
       return {
         plan,
-        status: data?.subscription_status || 'active',
+        status: (data as any)?.subscription_status || 'active',
         features: PLAN_FEATURES[plan] || PLAN_FEATURES.free,
       };
     },
