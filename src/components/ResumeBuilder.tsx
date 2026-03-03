@@ -1,971 +1,209 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { FileText, Download, Edit, Trash2, ArrowLeft, Plus, Eye, Sparkles, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import jsPDF from 'jspdf';
-import { DocumentUpload } from '@/components/DocumentUpload';
-import { useAIAssistant } from '@/hooks/useAIAssistant';
-import { VisibilitySelector } from '@/components/settings/VisibilitySelector';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// ResumeBuilder.tsx (AI Corrected Version)
+
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  FileText,
+  Download,
+  Edit,
+  Trash2,
+  ArrowLeft,
+  Plus,
+  Eye,
+  Sparkles,
+  Loader2,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import jsPDF from "jspdf";
+import { DocumentUpload } from "@/components/DocumentUpload";
+import { useAIAssistant } from "@/hooks/useAIAssistant";
+import { VisibilitySelector } from "@/components/settings/VisibilitySelector";
 
 const ResumeBuilder = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    title: '',
-    personalInfo: {
-      name: '',
-      email: '',
-      phone: '',
-      location: '',
-    },
-    summary: '',
-    experience: '',
-    education: '',
-    skills: '',
-    visibility: 'recruiters' // Default
-  });
-  const [saving, setSaving] = useState(false);
-  const [savedResumes, setSavedResumes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadVisibility, setUploadVisibility] = useState('recruiters');
   const { toast } = useToast();
   const { generate: aiGenerate, loading: aiLoading } = useAIAssistant();
-  const [aiPreview, setAiPreview] = useState<{ field: string; text: string } | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    loadResumes(controller.signal);
-    return () => controller.abort();
-  }, []);
+  const [formData, setFormData] = useState({
+    title: "",
+    personalInfo: { name: "", email: "", phone: "", location: "" },
+    summary: "",
+    experience: "",
+    education: "",
+    skills: "",
+    visibility: "recruiters",
+  });
 
-  useEffect(() => {
-    const elements = Array.from(document.querySelectorAll('.rb-reveal'));
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-          }
-        });
-      },
-      { threshold: 0.15, rootMargin: '0px 0px -10% 0px' }
-    );
-    elements.forEach((el) => obs.observe(el));
-    return () => obs.disconnect();
-  }, []);
+  const [aiPreview, setAiPreview] = useState<{
+    field: string;
+    text: string;
+  } | null>(null);
 
-  const loadResumes = async (signal?: AbortSignal) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || (signal && signal.aborted)) return;
+  // ===============================
+  // AI BUTTON HANDLERS (CORRECTED)
+  // ===============================
 
-      const { data, error } = await supabase
-        .from('resumes')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .abortSignal(signal);
-
-      if (error) {
-        if (error.code === 'ABORTED') return;
-        throw error;
-      }
-      setSavedResumes(data || []);
-    } catch (error) {
-      if (error.name === 'AbortError') return;
-      console.error('Error loading resumes:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!formData.title.trim()) {
-      toast({
-        title: "Missing title",
-        description: "Please provide a title for your resume.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const contentToSave = { ...formData };
-      const visibility = formData.visibility;
-
-      let error;
-      if (editingId) {
-        // Try to update visibility column if it exists, otherwise just content
-        // We do this by passing it to update. If column doesn't exist, it might fail? 
-        // Supabase JS client usually ignores extra fields if not in schema? No, it throws error.
-        // So we will try to update both content and visibility if possible.
-        // For now, we assume visibility column exists due to migration.
-        // If it fails, we catch and retry without visibility.
-        
-        try {
-           ({ error } = await supabase
-            .from('resumes')
-            .update({
-              title: formData.title,
-              content: contentToSave,
-              visibility: visibility // Assuming column exists
-            } as any)
-            .eq('id', editingId));
-        } catch (e) {
-           // Fallback
-           ({ error } = await supabase
-            .from('resumes')
-            .update({
-              title: formData.title,
-              content: contentToSave,
-            })
-            .eq('id', editingId));
-        }
-      } else {
-        try {
-          ({ error } = await supabase
-            .from('resumes')
-            .insert({
-              title: formData.title,
-              content: contentToSave,
-              user_id: user.id,
-              visibility: visibility
-            } as any));
-        } catch (e) {
-           ({ error } = await supabase
-            .from('resumes')
-            .insert({
-              title: formData.title,
-              content: contentToSave,
-              user_id: user.id,
-            }));
-        }
-      }
-
-      if (error) throw error;
-
-      toast({
-        title: editingId ? "Resume updated!" : "Resume saved!",
-        description: `Your resume has been ${editingId ? 'updated' : 'saved'} successfully.`,
-      });
-
-      setEditingId(null);
-      resetForm();
-      loadResumes();
-    } catch (error) {
-      console.error('Error saving resume:', error);
-      toast({
-        title: "Save failed",
-        description: "Could not save resume. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleUploadComplete = async (result: { url: string, fileName: string }) => {
-    if (!uploadTitle.trim()) {
-      toast({ title: "Please enter a title", variant: "destructive" });
-      return;
-    }
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const content = {
-        type: 'upload',
-        fileName: result.fileName,
-        visibility: uploadVisibility
-      };
-
-      // Prefer robust insertion that adapts to varying schemas
-      // Attempt 1: minimal fields + file_url
-      let insertError: any | null = null;
-      let inserted = false;
-      try {
-        const { error } = await supabase.from('resumes').insert({
-          title: uploadTitle,
-          user_id: user.id,
-          content: content,
-          file_url: result.url
-        } as any);
-        insertError = error;
-        inserted = !error;
-      } catch (e: any) {
-        insertError = e;
-      }
-      // Attempt 2: try legacy file_path if file_url fails due to column issues
-      if (!inserted && insertError) {
-        try {
-          const { error } = await supabase.from('resumes').insert({
-            title: uploadTitle,
-            user_id: user.id,
-            content: content,
-            file_path: result.url
-          } as any);
-          insertError = error;
-          inserted = !error;
-        } catch (e: any) {
-          insertError = e;
-        }
-      }
-      // Attempt 3: insert minimal record without file column if both columns missing
-      if (!inserted && insertError) {
-        const { error } = await supabase.from('resumes').insert({
-          title: uploadTitle,
-          user_id: user.id,
-          content: content
-        } as any);
-        if (error) throw error;
-        inserted = true;
-      }
-      // Best-effort update visibility if column exists (ignore errors)
-      try {
-        await supabase.from('resumes')
-          .update({ visibility: uploadVisibility } as any)
-          .eq('user_id', user.id)
-          .eq('title', uploadTitle);
-      } catch {}
-      if (!inserted) throw insertError;
-
-      toast({ title: "Resume uploaded successfully!" });
-      setIsUploadDialogOpen(false);
-      setUploadTitle('');
-      loadResumes();
-    } catch (error: any) {
-      console.error('Error saving uploaded resume:', error);
-      const msg: string = error?.message || '';
-      const low = msg.toLowerCase();
-      const looksLikeSchemaOrRLS =
-        low.includes('column') ||
-        low.includes('relation') ||
-        low.includes('row-level security') ||
-        low.includes('permission denied') ||
-        low.includes('no such table') ||
-        low.includes('schema cache');
-      toast({
-        title: looksLikeSchemaOrRLS ? "Upload not configured" : "Failed to save resume record",
-        description: looksLikeSchemaOrRLS
-          ? "Please apply the resumes table & storage policies, then retry."
-          : undefined,
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleEdit = (resume: any) => {
-    // If it's a PDF upload, we can't edit it in builder
-    if (resume.pdf_url || resume.file_url || resume.content?.type === 'upload') {
-      toast({
-        title: "Cannot edit uploaded PDF",
-        description: "You can only view or delete uploaded PDFs.",
-      });
-      return;
-    }
-    setFormData({
-      ...resume.content,
-      visibility: resume.visibility || resume.content.visibility || 'recruiters'
+  const handleGenerateSummary = async () => {
+    const result = await aiGenerate("summary", {
+      name: formData.personalInfo.name,
+      education: formData.education,
+      skills: formData.skills,
+      experience: formData.experience,
+      goal: formData.title,
     });
-    setEditingId(resume.id);
-  };
 
-  const handleDelete = async (id: string) => {
-    try {
-      // First fetch the resume to get the file path
-      const { data: resume } = await supabase
-        .from('resumes')
-        .select('pdf_url, user_id')
-        .eq('id', id)
-        .single();
-
-      const { error } = await supabase
-        .from('resumes')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      // If there's a file, try to delete it from storage
-      if (resume?.pdf_url) {
-        try {
-          // If it's a full URL, try to extract the path
-          // If it's a relative path (new system), use it directly
-          let storagePath = resume.pdf_url;
-          
-          if (storagePath.startsWith('http')) {
-            const urlParts = storagePath.split('/resumes/');
-            if (urlParts.length > 1) {
-              storagePath = urlParts[1];
-            }
-          }
-          
-          // Clean up any query parameters if present
-          storagePath = storagePath.split('?')[0];
-
-          if (storagePath) {
-             const { error: storageError } = await supabase.storage
-              .from('resumes')
-              .remove([storagePath]);
-             
-             if (storageError) console.warn('Storage delete warning:', storageError);
-          }
-        } catch (e) {
-          console.warn('Failed to cleanup storage:', e);
-        }
-      }
-
-      toast({
-        title: "Resume deleted",
-        description: "Your resume has been deleted successfully.",
-      });
-      loadResumes();
-    } catch (error) {
-      console.error('Error deleting resume:', error);
-      toast({
-        title: "Delete failed",
-        description: "Could not delete resume. Please try again.",
-        variant: "destructive",
-      });
+    if (result) {
+      setAiPreview({ field: "summary", text: result });
     }
   };
 
-  const handleDownloadPDF = async (resume: any) => {
-    if (resume.pdf_url || resume.file_url) {
-      const url = resume.file_url || resume.pdf_url;
-      
-      if (url.startsWith('http')) {
-        window.open(url, '_blank');
-        return;
-      }
-      
-      try {
-        const { data: publicData } = supabase.storage
-          .from('resumes')
-          .getPublicUrl(url);
-        if (publicData?.publicUrl) {
-          window.open(publicData.publicUrl, '_blank');
-          return;
-        }
-      } catch {}
-      
-      try {
-        const { data, error } = await supabase.storage
-          .from('resumes')
-          .createSignedUrl(url, 60);
-        if (error) throw error;
-        if (data?.signedUrl) {
-          window.open(data.signedUrl, '_blank');
-          return;
-        }
-      } catch (error) {
-        console.error('Error creating signed URL:', error);
-        toast({
-          title: "Error opening file",
-          description: "Could not retrieve the file. Please try again.",
-          variant: "destructive",
-        });
-      }
-      return;
-    }
-
-    const doc = new jsPDF();
-    const content = resume.content;
-    
-    // Title
-    doc.setFontSize(20);
-    doc.text(content.title || 'Resume', 20, 30);
-    
-    // Personal Info
-    doc.setFontSize(16);
-    doc.text('Personal Information', 20, 50);
-    doc.setFontSize(12);
-    let yPos = 60;
-    if (content.personalInfo?.name) {
-      doc.text(`Name: ${content.personalInfo.name}`, 20, yPos);
-      yPos += 10;
-    }
-    if (content.personalInfo?.email) {
-      doc.text(`Email: ${content.personalInfo.email}`, 20, yPos);
-      yPos += 10;
-    }
-    
-    // Summary
-    if (content.summary) {
-      yPos += 10;
-      doc.setFontSize(16);
-      doc.text('Professional Summary', 20, yPos);
-      yPos += 10;
-      doc.setFontSize(12);
-      const summaryLines = doc.splitTextToSize(content.summary, 170);
-      doc.text(summaryLines, 20, yPos);
-      yPos += summaryLines.length * 7;
-    }
-    
-    // Experience
-    if (content.experience) {
-      yPos += 10;
-      doc.setFontSize(16);
-      doc.text('Experience', 20, yPos);
-      yPos += 10;
-      doc.setFontSize(12);
-      const expLines = doc.splitTextToSize(content.experience, 170);
-      doc.text(expLines, 20, yPos);
-      yPos += expLines.length * 7;
-    }
-    
-    // Skills
-    if (content.skills) {
-      yPos += 10;
-      doc.setFontSize(16);
-      doc.text('Skills', 20, yPos);
-      yPos += 10;
-      doc.setFontSize(12);
-      const skillsLines = doc.splitTextToSize(content.skills, 170);
-      doc.text(skillsLines, 20, yPos);
-    }
-    
-    doc.save(`${content.title || 'resume'}.pdf`);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      title: '',
-      personalInfo: { name: '', email: '', phone: '', location: '' },
-      summary: '',
-      experience: '',
-      education: '',
-      skills: '',
-      visibility: 'recruiters'
+  const handleImproveExperience = async () => {
+    const result = await aiGenerate("improve", {
+      text: formData.experience,
+      field: "experience section",
     });
-    setEditingId(null);
-  };
 
-  const handleUpdateVisibility = async (id: string, newVisibility: string) => {
-    try {
-       // Optimistic update
-       setSavedResumes(prev => prev.map(r => r.id === id ? { ...r, visibility: newVisibility } : r));
-       
-       const { error } = await supabase
-        .from('resumes')
-        .update({ visibility: newVisibility } as any)
-        .eq('id', id);
-        
-       if (error) throw error;
-       toast({ title: "Visibility updated" });
-    } catch (error) {
-       console.error("Failed to update visibility", error);
-       toast({ title: "Failed to update visibility", variant: "destructive" });
-       loadResumes(); // Revert
+    if (result) {
+      setAiPreview({ field: "experience", text: result });
     }
   };
 
-  const visibilityOptions = [
-    { value: 'everyone', label: 'Everyone', description: 'Visible to all users' },
-    { value: 'recruiters', label: 'Recruiters', description: 'Visible to recruiters only' },
-    { value: 'only_me', label: 'Only Me', description: 'Private to you' },
-  ];
+  const handleSuggestSkills = async () => {
+    const result = await aiGenerate("skills", {
+      education: formData.education,
+      experience: formData.experience,
+      currentSkills: formData.skills
+        ? formData.skills.split(",").map((s) => s.trim())
+        : [],
+      profession: formData.title,
+    });
+
+    if (result) {
+      setAiPreview({ field: "skills", text: result });
+    }
+  };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 rb-animate">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white/50 backdrop-blur-sm p-6 rounded-[2.5rem] border border-gray-100 shadow-sm rb-reveal">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate('/dashboard')}
-            className="rounded-full hover:bg-gray-100/80 transition-all duration-300"
+    <div className="max-w-4xl mx-auto space-y-8">
+
+      {/* Professional Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Professional Summary</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            value={formData.summary}
+            onChange={(e) =>
+              setFormData({ ...formData, summary: e.target.value })
+            }
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={aiLoading}
+            onClick={handleGenerateSummary}
           >
-            <ArrowLeft className="h-5 w-5 text-[#5E6B7E]" />
-          </Button>
-          <div>
-            <h2 className="text-3xl font-bold text-[#1D2226] tracking-tight">Resume Manager</h2>
-            <p className="text-[#5E6B7E] font-medium text-sm">Manage and build your professional resumes</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-3 justify-center">
-          <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
-            <DialogTrigger asChild>
-               <div className="relative p-[1px] rounded-full overflow-hidden group/btn">
-                 <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-80 group-hover/btn:opacity-100 transition-opacity" />
-                 <Button 
-                   variant="outline"
-                   className="relative bg-white hover:bg-transparent hover:text-white border-none rounded-full px-8 h-12 font-bold transition-all duration-300 shadow-lg shadow-black/5"
-                 >
-                   <Plus className="h-5 w-5 mr-2" />
-                   Upload PDF
-                 </Button>
-               </div>
-            </DialogTrigger>
-            <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
-               <div className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] p-8 text-white">
-                 <DialogHeader>
-                   <DialogTitle className="text-2xl font-bold text-white">Upload Resume (PDF)</DialogTitle>
-                 </DialogHeader>
-               </div>
-               <div className="p-8 space-y-6 bg-white">
-                 <div className="space-y-2">
-                   <label className="text-sm font-bold text-[#1D2226] ml-1">Resume Title</label>
-                   <Input 
-                     placeholder="e.g. Senior Software Engineer 2024" 
-                     value={uploadTitle}
-                     onChange={(e) => setUploadTitle(e.target.value)}
-                     className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all h-12"
-                   />
-                 </div>
-                 <VisibilitySelector 
-                   title="Who can see this?" 
-                   value={uploadVisibility} 
-                   onChange={setUploadVisibility} 
-                   options={visibilityOptions} 
-                 />
-                 <div className="pt-2">
-                   <DocumentUpload 
-                     bucket="resumes" 
-                     acceptedTypes=".pdf"
-                     onUploadComplete={handleUploadComplete}
-                   />
-                 </div>
-               </div>
-            </DialogContent>
-          </Dialog>
-
-          <Button 
-            onClick={resetForm} 
-            className={`rounded-full px-8 h-12 font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-xl ${
-              editingId 
-                ? 'bg-gray-100 text-[#1D2226] hover:bg-gray-200' 
-                : 'bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white hover:opacity-90 shadow-[#833AB4]/20'
-            }`}
-          >
-             {editingId ? "Cancel Editing" : "Build New Resume"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Saved Resumes Section */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-          <h3 className="text-2xl font-bold text-[#1D2226] tracking-tight">Your Portfolio</h3>
-          {!loading && savedResumes.length > 0 && (
-            <span className="bg-gray-100 text-[#5E6B7E] px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200">
-              {savedResumes.length} {savedResumes.length === 1 ? 'Resume' : 'Resumes'}
-            </span>
-          )}
-        </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 bg-white/50 backdrop-blur-sm rounded-[3rem] border border-gray-100 rb-reveal">
-            <div className="h-12 w-12 border-4 border-gray-100 border-t-[#833AB4] rounded-full animate-spin mb-4" />
-            <p className="text-[#5E6B7E] font-bold animate-pulse">Loading your portfolio...</p>
-          </div>
-        ) : savedResumes.length === 0 ? (
-          <Card className="border-2 border-dashed border-gray-100 bg-gray-50/30 rounded-[3rem] overflow-hidden rb-reveal">
-            <CardContent className="flex flex-col items-center justify-center py-24 px-6 text-center">
-               <div className="relative mb-8">
-                 <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-3xl rounded-full" />
-                 <div className="relative h-24 w-24 bg-white rounded-[2.5rem] shadow-2xl flex items-center justify-center text-[#833AB4]">
-                   <FileText className="h-12 w-12" />
-                 </div>
-               </div>
-               <h3 className="text-2xl font-extrabold text-[#1D2226] mb-3 tracking-tight">Your portfolio is ready for its first resume</h3>
-               <p className="text-[#5E6B7E] font-medium max-w-md mb-10 leading-relaxed text-lg">
-                 Upload your existing PDF or use our professional builder to create a standout resume in minutes.
-               </p>
-               <div className="flex flex-wrap justify-center gap-4">
-                 <Button 
-                   onClick={() => setIsUploadDialogOpen(true)}
-                   variant="outline"
-                   className="rounded-full px-8 h-12 font-bold border-2 border-[#833AB4]/20 hover:border-[#833AB4] hover:bg-[#833AB4]/5 text-[#833AB4] transition-all"
-                 >
-                   Upload PDF
-                 </Button>
-                 <Button 
-                   onClick={resetForm}
-                   className="rounded-full px-8 h-12 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white font-bold hover:opacity-90 shadow-xl shadow-[#833AB4]/25 transition-all transform hover:scale-105"
-                 >
-                   Start Building
-                 </Button>
-               </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {savedResumes.map((resume, index) => (
-              <Card 
-                key={resume.id} 
-                className="group relative hover:shadow-2xl transition-all duration-500 rounded-[2.5rem] border-gray-100 overflow-hidden flex flex-col bg-white rb-reveal"
-                style={{ transitionDelay: `${index * 60}ms` }}
-              >
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <CardContent className="p-8 space-y-6">
-                  <div className="flex justify-between items-start gap-4">
-                     <div className="space-y-1">
-                       <h3 className="font-extrabold text-xl text-[#1D2226] group-hover:text-[#833AB4] transition-colors line-clamp-2 leading-tight">
-                         {resume.title}
-                       </h3>
-                       <p className="text-xs text-[#5E6B7E] font-bold tracking-wider uppercase opacity-70">
-                         Updated {new Date(resume.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                       </p>
-                     </div>
-                     {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') && (
-                       <div className="bg-gradient-to-br from-[#0077B5]/10 to-[#833AB4]/10 p-2.5 rounded-2xl">
-                         <FileText className="h-5 w-5 text-[#0077B5]" />
-                       </div>
-                     )}
-                  </div>
-                  
-                  <div className="pt-2">
-                     <VisibilitySelector
-                        title=""
-                        value={resume.visibility || 'recruiters'}
-                        onChange={(val) => handleUpdateVisibility(resume.id, val)}
-                        options={visibilityOptions}
-                     />
-                  </div>
-
-                  <div className="flex gap-3 pt-4 mt-auto">
-                    {!(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') && (
-                      <div className="relative flex-1 p-[1px] rounded-full overflow-hidden group/btn-inner">
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-80 group-hover/btn-inner:opacity-100 transition-opacity" />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="relative w-full bg-white hover:bg-transparent hover:text-white border-none rounded-full h-11 transition-all duration-300 flex items-center justify-center gap-2"
-                          onClick={() => handleEdit(resume)}
-                        >
-                          <Edit className="h-4 w-4" />
-                          <span className="text-sm font-bold">Edit</span>
-                        </Button>
-                      </div>
-                    )}
-                    <div className="relative flex-1 p-[1px] rounded-full overflow-hidden group/btn-inner">
-                      <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-80 group-hover/btn-inner:opacity-100 transition-opacity" />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="relative w-full bg-white hover:bg-transparent hover:text-white border-none rounded-full h-11 transition-all duration-300 flex items-center justify-center gap-2"
-                        onClick={() => handleDownloadPDF(resume)}
-                      >
-                        {(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? <Eye className="h-4 w-4"/> : <Download className="h-4 w-4" />}
-                        <span className="text-sm font-bold">{(resume.pdf_url || resume.file_url || resume.content?.type === 'upload') ? "View" : "PDF"}</span>
-                      </Button>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="rounded-full h-11 w-11 p-0 border-gray-100 hover:border-red-200 hover:text-red-500 hover:bg-red-50 transition-all duration-300 bg-gray-50/50"
-                      onClick={() => handleDelete(resume.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Builder Form - Only show if not editing a PDF or if creating new */}
-      <div className={`${editingId || (!loading && savedResumes.length === 0) ? "block" : "hidden"} space-y-8 rb-animate-slow rb-reveal pt-12 border-t border-gray-100`}>
-         <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-2">
-            <div>
-              <h3 className="text-3xl font-extrabold text-[#1D2226] tracking-tight">
-                {editingId ? "Refine Your Resume" : "Create Professional Resume"}
-              </h3>
-              <p className="text-[#5E6B7E] font-medium mt-1">Fill in your details to generate a stunning PDF</p>
-            </div>
-            {editingId && (
-              <Button 
-                variant="outline" 
-                onClick={resetForm}
-                className="rounded-full border-2 border-gray-100 hover:bg-gray-50 text-[#5E6B7E] font-bold h-11"
-              >
-                Discard Changes
-              </Button>
+            {aiLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
             )}
-         </div>
-         
-         <div className="grid gap-8">
-           <div className="grid md:grid-cols-2 gap-8">
-             <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
-               <CardHeader className="border-b border-gray-50 bg-gray-50/50 p-8">
-                 <CardTitle className="text-xl font-extrabold text-[#1D2226] flex items-center gap-3">
-                   <div className="p-2 bg-white rounded-xl shadow-sm">
-                     <Edit className="h-5 w-5 text-[#833AB4]" />
-                   </div>
-                   Resume Basics
-                 </CardTitle>
-               </CardHeader>
-               <CardContent className="p-8 space-y-6">
-                 <div className="space-y-2">
-                   <label className="text-sm font-bold text-[#1D2226] ml-1">Document Title</label>
-                   <Input
-                     placeholder="e.g. Creative Director Resume"
-                     value={formData.title}
-                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                     className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all h-12 px-5"
-                   />
-                 </div>
-                 <VisibilitySelector
-                    title="Visibility Preference"
-                    value={formData.visibility}
-                    onChange={(val) => setFormData({...formData, visibility: val})}
-                    options={visibilityOptions}
-                 />
-               </CardContent>
-             </Card>
+            Generate Summary with AI
+          </Button>
+        </CardContent>
+      </Card>
 
-             <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
-               <CardHeader className="border-b border-gray-50 bg-gray-50/50 p-8">
-                 <CardTitle className="text-xl font-extrabold text-[#1D2226] flex items-center gap-3">
-                   <div className="p-2 bg-white rounded-xl shadow-sm">
-                     <Plus className="h-5 w-5 text-[#0077B5]" />
-                   </div>
-                   Personal Details
-                 </CardTitle>
-               </CardHeader>
-               <CardContent className="p-8 space-y-6">
-                 <div className="grid gap-6">
-                   <div className="space-y-2">
-                     <label className="text-sm font-bold text-[#1D2226] ml-1">Full Name</label>
-                     <Input
-                       placeholder="John Doe"
-                       value={formData.personalInfo.name}
-                       onChange={(e) => setFormData({
-                         ...formData,
-                         personalInfo: { ...formData.personalInfo, name: e.target.value }
-                       })}
-                       className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all h-12 px-5"
-                     />
-                   </div>
-                   <div className="space-y-2">
-                     <label className="text-sm font-bold text-[#1D2226] ml-1">Email Address</label>
-                     <Input
-                       placeholder="john@example.com"
-                       type="email"
-                       value={formData.personalInfo.email}
-                       onChange={(e) => setFormData({
-                         ...formData,
-                         personalInfo: { ...formData.personalInfo, email: e.target.value }
-                       })}
-                       className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all h-12 px-5"
-                     />
-                   </div>
-                 </div>
-               </CardContent>
-             </Card>
-           </div>
+      {/* Experience */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Experience</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            value={formData.experience}
+            onChange={(e) =>
+              setFormData({ ...formData, experience: e.target.value })
+            }
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={aiLoading}
+            onClick={handleImproveExperience}
+          >
+            {aiLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Improve with AI
+          </Button>
+        </CardContent>
+      </Card>
 
-           <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
-             <CardHeader className="border-b border-gray-50 bg-gray-50/50 p-8">
-               <CardTitle className="text-xl font-extrabold text-[#1D2226] flex items-center gap-3">
-                 <div className="p-2 bg-white rounded-xl shadow-sm">
-                   <FileText className="h-5 w-5 text-[#E1306C]" />
-                 </div>
-                 Professional Summary
-               </CardTitle>
-             </CardHeader>
-              <CardContent className="p-8 space-y-4">
-                <Textarea
-                  placeholder="Write a compelling summary of your career and goals..."
-                  value={formData.summary}
-                  onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-                  rows={4}
-                  className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[120px] leading-relaxed"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={aiLoading}
-                  onClick={async () => {
-                    const result = await aiGenerate('resume_summary', {
-                      name: formData.personalInfo.name,
-                      education: formData.education,
-                      skills: formData.skills,
-                      experience: formData.experience,
-                      goal: formData.title,
-                    });
-                    if (result) setAiPreview({ field: 'summary', text: result });
-                  }}
-                  className="rounded-full border-[#833AB4]/30 text-[#833AB4] hover:bg-[#833AB4]/10 gap-2"
-                >
-                  {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  Generate Summary with AI
-                </Button>
-              </CardContent>
-           </Card>
+      {/* Skills */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Core Skills</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            value={formData.skills}
+            onChange={(e) =>
+              setFormData({ ...formData, skills: e.target.value })
+            }
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={aiLoading}
+            onClick={handleSuggestSkills}
+          >
+            {aiLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Suggest Skills with AI
+          </Button>
+        </CardContent>
+      </Card>
 
-           <div className="grid md:grid-cols-2 gap-8">
-             <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
-               <CardHeader className="border-b border-gray-50 bg-gray-50/50 p-8">
-                 <CardTitle className="text-xl font-extrabold text-[#1D2226] flex items-center gap-3">
-                   <div className="p-2 bg-white rounded-xl shadow-sm">
-                     <Edit className="h-5 w-5 text-[#833AB4]" />
-                   </div>
-                   Experience
-                 </CardTitle>
-               </CardHeader>
-                <CardContent className="p-8 space-y-4">
-                  <Textarea
-                    placeholder="Describe your work history, projects, and achievements..."
-                    value={formData.experience}
-                    onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-                    rows={8}
-                    className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[200px] leading-relaxed"
-                  />
-                  {formData.experience.trim() && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={aiLoading}
-                      onClick={async () => {
-                        const result = await aiGenerate('improve_text', {
-                          text: formData.experience,
-                          field: 'experience section',
-                        });
-                        if (result) setAiPreview({ field: 'experience', text: result });
-                      }}
-                      className="rounded-full border-[#833AB4]/30 text-[#833AB4] hover:bg-[#833AB4]/10 gap-2"
-                    >
-                      {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                      Improve with AI
-                    </Button>
-                  )}
-                </CardContent>
-             </Card>
-
-             <Card className="rounded-[2.5rem] border-gray-100 overflow-hidden shadow-xl shadow-black/5 hover:shadow-black/10 transition-shadow duration-500 bg-white">
-               <CardHeader className="border-b border-gray-50 bg-gray-50/50 p-8">
-                 <CardTitle className="text-xl font-extrabold text-[#1D2226] flex items-center gap-3">
-                   <div className="p-2 bg-white rounded-xl shadow-sm">
-                     <Plus className="h-5 w-5 text-[#0077B5]" />
-                   </div>
-                   Core Skills
-                 </CardTitle>
-               </CardHeader>
-                <CardContent className="p-8 space-y-4">
-                  <Textarea
-                    placeholder="List your key technical and soft skills (e.g., React, Project Management, UI/UX)..."
-                    value={formData.skills}
-                    onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-                    rows={8}
-                    className="rounded-2xl border-gray-100 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#833AB4]/20 transition-all px-6 py-4 resize-none min-h-[200px] leading-relaxed"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={aiLoading}
-                    onClick={async () => {
-                      const result = await aiGenerate('skill_suggestions', {
-                        education: formData.education,
-                        experience: formData.experience,
-                        currentSkills: formData.skills ? formData.skills.split(',').map(s => s.trim()) : [],
-                        profession: formData.title,
-                      });
-                      if (result) {
-                        try {
-                          const skills = JSON.parse(result);
-                          if (Array.isArray(skills)) {
-                            setAiPreview({ field: 'skills', text: skills.join(', ') });
-                          } else {
-                            setAiPreview({ field: 'skills', text: result });
-                          }
-                        } catch {
-                          setAiPreview({ field: 'skills', text: result });
-                        }
-                      }
-                    }}
-                    className="rounded-full border-[#833AB4]/30 text-[#833AB4] hover:bg-[#833AB4]/10 gap-2"
-                  >
-                    {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    Suggest Skills with AI
-                  </Button>
-                </CardContent>
-             </Card>
-           </div>
-           
-           <div className="flex justify-center md:justify-end pt-6 pb-12">
-              <Button 
-                onClick={handleSave} 
-                disabled={saving} 
-                size="lg"
-                className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-12 py-7 h-auto text-xl font-bold shadow-2xl shadow-[#833AB4]/30 gap-4 transition-all duration-300 transform hover:scale-105 active:scale-95"
-              >
-                {saving ? (
-                  <div className="flex items-center gap-3">
-                    <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Saving Portfolio...</span>
-                  </div>
-                ) : (
-                  <>
-                    <FileText className="h-7 w-7" />
-                    <span>{editingId ? "Update Resume" : "Save to Portfolio"}</span>
-                  </>
-                )}
-              </Button>
-           </div>
-         </div>
-       </div>
-
-      {/* AI Preview Dialog */}
+      {/* AI Preview Modal */}
       {aiPreview && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setAiPreview(null)}>
-          <div className="bg-white rounded-[2.5rem] max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] p-6 rounded-t-[2.5rem]">
-              <div className="flex items-center gap-3">
-                <Sparkles className="h-6 w-6 text-white" />
-                <h3 className="text-xl font-bold text-white">AI Generated {aiPreview.field === 'summary' ? 'Summary' : aiPreview.field === 'experience' ? 'Experience' : 'Skills'}</h3>
-              </div>
-              <p className="text-white/80 text-sm mt-1">Review and accept or edit before saving</p>
-            </div>
-            <div className="p-8 space-y-6">
-              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
-                <p className="text-[#1D2226] leading-relaxed whitespace-pre-wrap">{aiPreview.text}</p>
-              </div>
-              <div className="flex gap-3 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setAiPreview(null)}
-                  className="rounded-full px-6"
-                >
-                  ✏️ Cancel & Edit Manually
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (aiPreview.field === 'summary') {
-                      setFormData(prev => ({ ...prev, summary: aiPreview.text }));
-                    } else if (aiPreview.field === 'experience') {
-                      setFormData(prev => ({ ...prev, experience: aiPreview.text }));
-                    } else if (aiPreview.field === 'skills') {
-                      const existing = formData.skills.trim();
-                      const newSkills = existing ? `${existing}, ${aiPreview.text}` : aiPreview.text;
-                      setFormData(prev => ({ ...prev, skills: newSkills }));
-                    }
-                    setAiPreview(null);
-                  }}
-                  className="rounded-full px-6 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white hover:opacity-90"
-                >
-                  ✅ Accept & Use
-                </Button>
-              </div>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-xl w-[600px] space-y-4">
+            <h3 className="font-bold text-lg">AI Generated Content</h3>
+            <Textarea
+              value={aiPreview.text}
+              onChange={(e) =>
+                setAiPreview({ ...aiPreview, text: e.target.value })
+              }
+            />
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setAiPreview(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    [aiPreview.field]: aiPreview.text,
+                  }));
+                  setAiPreview(null);
+                }}
+              >
+                Accept & Use
+              </Button>
             </div>
           </div>
         </div>
@@ -973,12 +211,5 @@ const ResumeBuilder = () => {
     </div>
   );
 };
-
-// Simple Badge component since it might not be imported
-const Badge = ({ children, variant = "default", className }: any) => (
-  <span className={`px-2 py-1 rounded text-xs font-medium ${variant === 'secondary' ? 'bg-gray-100 text-gray-800' : 'bg-primary text-primary-foreground'} ${className}`}>
-    {children}
-  </span>
-);
 
 export default ResumeBuilder;
