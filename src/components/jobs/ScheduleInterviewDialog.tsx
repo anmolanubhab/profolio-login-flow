@@ -121,38 +121,6 @@ export const ScheduleInterviewDialog = ({
       });
     } finally {
       setIsSubmitting(false);
-    });
-      scheduledAt.setHours(hours, minutes, 0, 0);
-
-      const { error } = await supabase.from('interviews').insert({
-        title: values.title,
-        description: values.description || null,
-        scheduled_at: scheduledAt.toISOString(),
-        duration_minutes: values.duration_minutes,
-        meeting_link: values.meeting_link || null,
-        interviewer_id: user.id,
-        interviewee_id: intervieweeId,
-        status: 'scheduled',
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Interview scheduled successfully.",
-      });
-      
-      onOpenChange(false);
-      form.reset();
-    } catch (error: any) {
-      console.error('Error scheduling interview:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to schedule interview.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
