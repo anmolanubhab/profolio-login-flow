@@ -64,7 +64,7 @@ export function AppSidebar() {
   return (
     <div
       className={cn(
-        "relative min-h-screen lg:min-h-0 lg:h-[calc(100vh-4rem)] lg:sticky lg:top-16 lg:self-start backdrop-blur-xl bg-gradient-to-b from-white/90 via-white/60 to-white/10 border-r border-white/20 shadow-[inset_-1px_0_25px_rgba(255,255,255,0.4)]",
+        "relative h-[calc(100vh-4rem)] sticky top-16 self-start backdrop-blur-xl bg-gradient-to-b from-white/90 via-white/60 to-white/10 border-r border-white/20 shadow-[inset_-1px_0_25px_rgba(255,255,255,0.4)] hidden lg:block overflow-y-auto",
         sidebarWidthCls
       )}
     >
