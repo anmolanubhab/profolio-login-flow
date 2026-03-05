@@ -151,7 +151,7 @@ function LayoutContent({ children, user, onSignOut, showBottomNav }: LayoutConte
 
 export function Layout(props: LayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col pt-16">
       <LayoutHeader {...props} />
       <LayoutShell {...props} />
     </div>
