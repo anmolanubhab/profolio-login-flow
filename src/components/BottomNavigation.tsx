@@ -1,118 +1,117 @@
-import { NavLink, useLocation, useNavigate } from "react-router-dom"
-import { cn } from "@/lib/utils"
-import { mainNavItems } from "@/config/navigationConfig"
+import { Home, Users, Plus, Bell, Briefcase } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
-interface BottomNavigationProps {
-  visible?: boolean;
-}
+const BottomNavigation = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
 
-export default function BottomNavigation({ visible = true }: BottomNavigationProps) {
-  const location = useLocation()
-  const navigate = useNavigate()
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-  const handleCreatePost = () => {
-    navigate('/add-post')
-  }
-  
-  const hoverBgClassFor = (title: string) => {
-    if (title === 'Home') {
-      return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff9900,#ffee00,#00cc66,#3399ff,#9933ff)]"
-    }
-    if (title === 'Connections') {
-      return "group-hover:bg-[linear-gradient(90deg,#ff66cc,#9933ff,#3399ff,#00cc99,#66cc33,#ffcc00)]"
-    }
-    if (title === 'Jobs') {
-      return "group-hover:bg-[linear-gradient(90deg,#3399ff,#66ddff,#00cc99,#66cc33,#ffcc00,#ff9900)]"
-    }
-    if (title === 'Notifications') {
-      return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff66cc,#9933ff,#ff9900,#ffee00,#ffcc00)]"
-    }
-    return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff9900,#ffee00,#00cc66,#3399ff,#9933ff)]"
-  }
-  const hoverTextClassFor = (title: string) => {
-    if (title === 'Home') {
-      return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff9900,#ffee00,#00cc66,#3399ff,#9933ff)]"
-    }
-    if (title === 'Connections') {
-      return "group-hover:bg-[linear-gradient(90deg,#ff66cc,#9933ff,#3399ff,#00cc99,#66cc33,#ffcc00)]"
-    }
-    if (title === 'Jobs') {
-      return "group-hover:bg-[linear-gradient(90deg,#3399ff,#66ddff,#00cc99,#66cc33,#ffcc00,#ff9900)]"
-    }
-    if (title === 'Notifications') {
-      return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff66cc,#9933ff,#ff9900,#ffee00,#ffcc00)]"
-    }
-    return "group-hover:bg-[linear-gradient(90deg,#ff4d4d,#ff9900,#ffee00,#00cc66,#3399ff,#9933ff)]"
-  }
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+
+      if (!error && count) {
+        setUnreadCount(count);
+      }
+    };
+
+    fetchUnreadCount();
+    
+    // Subscribe to notification changes
+    const channel = supabase
+      .channel('bottom-nav-notifications')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+        fetchUnreadCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const navItems = [
+    { id: 'home', icon: Home, label: 'Home', path: '/dashboard' },
+    { id: 'network', icon: Users, label: 'Network', path: '/connect' },
+    { id: 'add', icon: Plus, label: 'Add Post', path: '/add-post', isCenter: true },
+    { id: 'notifications', icon: Bell, label: 'Notifications', path: '/notifications' },
+    { id: 'jobs', icon: Briefcase, label: 'Jobs', path: '/jobs' }
+  ];
+
+  const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav
-      className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border/40 lg:hidden transition-transform duration-300 ease-out",
-        visible ? "translate-y-0" : "translate-y-full"
-      )}
-    >
-      <div className="grid grid-cols-5 h-16 px-1 w-full relative">
-        {mainNavItems.map((item) => {
-          if (item.variant === 'rainbow') {
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border w-full max-w-full">
+      <div className="relative flex items-center justify-center h-16 px-2 sm:px-4 max-w-md mx-auto w-full">
+        {navItems.map((item, index) => {
+          const Icon = item.icon;
+          const active = isActive(item.path);
+          
+          if (item.isCenter) {
             return (
-              <div key={item.url} className="flex items-center justify-center">
-                <button
-                  onClick={handleCreatePost}
-                  className="flex items-center justify-center w-12 h-12 rounded-[14px] shadow-lg transition-all duration-200 ease-out hover:scale-105 hover:shadow-xl active:scale-95"
-                  style={{
-                    background: 'linear-gradient(135deg, #6A11CB 0%, #2575FC 30%, #00C6FF 60%, #00E676 100%)'
-                  }}
-                  aria-label={item.title}
+              <div key={item.id} className="flex-1 flex justify-center">
+                <Button
+                  onClick={() => navigate(item.path)}
+                  className={cn(
+                    "w-14 h-14 rounded-full shadow-lg shadow-primary/25",
+                    "bg-gradient-to-br from-primary to-primary/80",
+                    "hover:shadow-xl hover:shadow-primary/30 hover:scale-105",
+                    "transition-all duration-300 ease-out",
+                    "border-4 border-background",
+                    "-mt-6 relative z-10"
+                  )}
+                  size="icon"
                 >
-                  <item.icon className="h-6 w-6 text-white" strokeWidth={2.5} />
-                </button>
+                  <Icon className="h-6 w-6 text-primary-foreground" />
+                </Button>
               </div>
             );
           }
 
-          const isActive = location.pathname === item.url
-          const hoverBg = hoverBgClassFor(item.title)
-          const hoverText = hoverTextClassFor(item.title)
           return (
-            <NavLink
-              key={item.url}
-              to={item.url}
+            <Button
+              key={item.id}
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(item.path)}
               className={cn(
-                "group flex flex-col items-center justify-center gap-1 w-full h-full transition-all duration-200 ease-out",
-                isActive
-                  ? "text-foreground scale-[0.98]"
-                  : "text-muted-foreground hover:text-foreground hover:scale-[1.02]"
+                "flex-1 flex flex-col items-center justify-center h-16 gap-1",
+                "hover:bg-muted/50 transition-all duration-200",
+                active && "text-primary bg-primary/5"
               )}
             >
-              <div
-                className={cn(
-                  "flex items-center justify-center transition-all",
-                  isActive
-                    ? "w-12 h-12 rounded-[14px] bg-card shadow-sm"
-                    : `h-9 w-9 rounded-xl bg-transparent ring-1 ring-white/30 shadow-sm group-hover:ring-2 group-hover:scale-105 ${hoverBg}`
+              <div className="relative">
+                <Icon className={cn(
+                  "h-5 w-5 transition-colors",
+                  active ? "text-primary" : "text-muted-foreground"
+                )} />
+                {item.id === 'notifications' && unreadCount > 0 && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full" />
                 )}
-              >
-                <item.icon
-                  className={cn(
-                    "h-5 w-5 transition-colors",
-                    isActive ? "text-primary" : "text-gray-600 group-hover:text-white"
-                  )}
-                  strokeWidth={isActive ? 2.4 : 2}
-                />
               </div>
-              <span
-                className={cn(
-                  "text-[10px] font-medium transition-colors",
-                  isActive ? "text-white" : `text-current ${hoverText} group-hover:bg-clip-text group-hover:text-transparent`
-                )}
-              >
-                {item.title}
+              <span className={cn(
+                "text-xs font-medium transition-colors",
+                active ? "text-primary" : "text-muted-foreground"
+              )}>
+                {item.label}
               </span>
-            </NavLink>
-          )
+            </Button>
+          );
         })}
       </div>
     </nav>
-  )
-}
+  );
+};
+
+export default BottomNavigation;

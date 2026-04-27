@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,10 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Search, UserPlus, Eye } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { useCompanyAdmin } from '@/hooks/use-company-admin';
-
-import { useAuth } from '@/contexts/AuthContext';
 
 interface Profile {
   id: string;
@@ -27,56 +23,56 @@ interface Profile {
 }
 
 const Network = () => {
-  const { user } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [openOnly, setOpenOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { hasCompanies } = useCompanyAdmin();
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/');
+        return;
+      }
+      setUser(user);
+    };
+
+    getUser();
+  }, [navigate]);
 
   useEffect(() => {
     if (user) {
-      const controller = new AbortController();
-      fetchProfiles(controller.signal);
-      return () => controller.abort();
+      fetchProfiles();
     }
   }, [user]);
 
   useEffect(() => {
-    const query = searchQuery.trim().toLowerCase();
-    let base = [...profiles];
-    if (openOnly) {
-      base = base.filter(p => (p as any).open_to_work === true && (
-        (p as any).open_to_work_visibility === 'public' ||
-        ((p as any).open_to_work_visibility === 'recruiters' && hasCompanies)
-      ));
-    }
-    if (query) {
-      base = base.filter(p =>
-        p.display_name?.toLowerCase().includes(query) ||
-        p.profession?.toLowerCase().includes(query) ||
-        p.location?.toLowerCase().includes(query)
+    if (searchQuery.trim() === '') {
+      setFilteredProfiles(profiles);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = profiles.filter(profile => 
+        profile.display_name?.toLowerCase().includes(query) ||
+        profile.profession?.toLowerCase().includes(query) ||
+        profile.location?.toLowerCase().includes(query)
       );
+      setFilteredProfiles(filtered);
     }
-    setFilteredProfiles(base);
-  }, [searchQuery, profiles, openOnly, hasCompanies]);
+  }, [searchQuery, profiles]);
 
-  const fetchProfiles = async (signal?: AbortSignal) => {
+  const fetchProfiles = async () => {
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('profiles')
-        .select('id, user_id, display_name, bio, profession, location, avatar_url, profile_visibility, open_to_work, open_to_work_visibility')
+        .select('*')
         .neq('user_id', user?.id)
-        .order('created_at', { ascending: false })
-        .abortSignal(signal);
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        if (error.code === 'ABORTED') return;
-        throw error;
-      }
+      if (error) throw error;
 
       // Filter out private profiles unless connected
       const visibleProfiles = data?.filter(profile => 
@@ -87,14 +83,6 @@ const Network = () => {
       setProfiles(visibleProfiles);
       setFilteredProfiles(visibleProfiles);
     } catch (error: any) {
-      if (
-        error?.name === 'AbortError' ||
-        typeof error?.message === 'string' &&
-          (error.message.includes('AbortError') ||
-           error.message.includes('signal is aborted'))
-      ) {
-        return;
-      }
       toast({
         title: "Error",
         description: error.message,
@@ -126,122 +114,90 @@ const Network = () => {
 
   return (
     <Layout user={user!} onSignOut={handleSignOut}>
-      <div
-        className="min-h-screen"
-        style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}
-      >
-        {/* Universal Page Hero Section */}
-        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl pt-8 pb-12 px-8 overflow-hidden">
-          <div className="max-w-4xl mx-auto relative">
-            <div className="flex flex-col items-center md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
-              <div className="text-center md:text-left animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                <h1 className="page-title mb-3">
-                  Discover People
-                </h1>
-                <p className="text-[#5E6B7E] text-base md:text-xl font-medium max-w-2xl mx-auto md:mx-0">
-                  Connect with professionals and expand your network.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="pointer-events-none absolute inset-0 opacity-40">
-            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
-            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
-          </div>
+      <div className="container mx-auto max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Discover People</h1>
+          <p className="text-muted-foreground">Connect with professionals and expand your network</p>
         </div>
 
-        <div className="max-w-6xl mx-auto py-8 px-0 sm:px-4">
-          <Card className="mb-10 bg-white rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-card overflow-hidden">
-            <CardHeader className="p-4 sm:p-8">
-              <div className="relative group">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#833AB4] transition-colors" />
-                <Input
-                  type="text"
-                  placeholder="Search by name, profession, or location..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 h-14 bg-gray-50/50 border-gray-100 rounded-2xl focus:border-[#833AB4]/30 focus:ring-[#833AB4]/10 transition-all text-lg"
-                />
-              </div>
-              {hasCompanies && (
-                <div className="mt-4 flex items-center justify-end gap-3">
-                  <span className="text-sm text-muted-foreground">Show candidates open to opportunities</span>
-                  <Switch checked={openOnly} onCheckedChange={setOpenOnly} />
-                </div>
-              )}
-            </CardHeader>
+        <Card className="mb-6 bg-gradient-card shadow-card border-0">
+          <CardHeader>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by name, profession, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-background/50 border-muted focus:border-primary/50"
+              />
+            </div>
+          </CardHeader>
+        </Card>
+
+        {filteredProfiles.length === 0 ? (
+          <Card className="p-12 text-center bg-gradient-card shadow-card border-0">
+            <p className="text-muted-foreground">
+              {searchQuery ? 'No profiles found matching your search.' : 'No profiles available yet.'}
+            </p>
           </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProfiles.map((profile) => (
+              <Card key={profile.id} className="bg-gradient-card shadow-card border-0 hover:shadow-elegant transition-smooth">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <Avatar className="h-20 w-20 border-4 border-background shadow-elegant">
+                      <AvatarImage src={profile.avatar_url} />
+                      <AvatarFallback className="text-lg font-bold bg-primary text-primary-foreground">
+                        {profile.display_name?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
 
-          {filteredProfiles.length === 0 ? (
-            <Card className="p-12 sm:p-20 text-center bg-white rounded-none sm:rounded-[2rem] border-0 sm:border shadow-none sm:shadow-card">
-              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Search className="h-10 w-10 text-gray-300" />
-              </div>
-              <p className="text-xl font-medium text-gray-400">
-                {searchQuery ? 'No profiles found matching your search.' : 'No profiles available yet.'}
-              </p>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-              {filteredProfiles.map((profile) => (
-                <Card key={profile.id} className="group bg-white rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-card hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 overflow-hidden flex flex-col">
-                  <div className="h-24 bg-gradient-to-r from-[#0077B5]/10 via-[#833AB4]/10 to-[#E1306C]/10 relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] animate-gradient-shift" />
-                  </div>
-                  <CardContent className="pt-0 px-4 sm:px-8 pb-6 sm:pb-8 flex-1 flex flex-col items-center text-center relative">
-                    <div className="relative -mt-12 mb-6">
-                      <Avatar className="h-24 w-24 border-4 border-white shadow-xl group-hover:scale-105 transition-transform duration-500">
-                        <AvatarImage src={profile.avatar_url} className="object-cover" />
-                        <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600">
-                          {profile.display_name?.charAt(0) || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="absolute bottom-1 right-1 bg-green-500 h-4 w-4 rounded-full border-2 border-white shadow-sm" />
-                    </div>
-
-                    <div className="space-y-2 w-full mb-8">
-                      <h3 className="font-bold text-xl text-gray-900 group-hover:text-[#0077B5] transition-colors line-clamp-1">
+                    <div className="space-y-2 w-full">
+                      <h3 className="font-semibold text-lg text-foreground">
                         {profile.display_name || 'User'}
                       </h3>
                       {profile.profession && (
-                        <p className="text-sm font-bold text-[#833AB4] uppercase tracking-wider">
+                        <p className="text-sm text-primary font-medium">
                           {profile.profession}
                         </p>
                       )}
                       {profile.location && (
-                        <p className="text-sm text-gray-400 font-medium">
+                        <p className="text-sm text-muted-foreground">
                           {profile.location}
                         </p>
                       )}
                       {profile.bio && (
-                        <p className="text-sm text-gray-500 line-clamp-2 mt-4 leading-relaxed px-2">
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
                           {profile.bio}
                         </p>
                       )}
                     </div>
 
-                    <div className="mt-auto w-full space-y-3">
+                    <div className="flex gap-2 w-full pt-2">
                       <Button
                         variant="outline"
+                        size="sm"
                         onClick={() => handleViewProfile(profile.id)}
-                        className="w-full rounded-full font-bold h-11 border-gray-100 text-gray-600 hover:bg-gray-50 hover:border-gray-200 transition-all"
+                        className="flex-1"
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View Profile
                       </Button>
-                      <Button
-                        className="w-full rounded-full font-bold h-11 text-white border-none transition-all hover:opacity-90 active:scale-[0.98] bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]"
-                      >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Connect
-                      </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+
+                    {profile.profile_visibility && (
+                      <Badge variant="secondary" className="text-xs">
+                        {profile.profile_visibility === 'public' ? 'Public' : 'Connections Only'}
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </Layout>
   );

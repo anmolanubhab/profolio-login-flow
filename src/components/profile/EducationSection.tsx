@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface Education {
   id: string;
@@ -30,7 +29,6 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
-  const { user, profile: authProfile, refreshProfile } = useAuth();
 
   const [editData, setEditData] = useState({
     institution: '',
@@ -43,24 +41,8 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
   });
 
   useEffect(() => {
-    if (isOwnProfile && authProfile && user?.id === userId) {
-      const educationArray = (authProfile as any)?.education || [];
-      const formattedEducations = educationArray.map((edu: any, index: number) => ({
-        id: edu.id || `edu_${index}`,
-        institution: edu.institution || '',
-        degree: edu.degree || '',
-        field_of_study: edu.field_of_study || '',
-        start_date: edu.start_date || '',
-        end_date: edu.end_date || '',
-        grade: edu.grade || '',
-        description: edu.description || ''
-      }));
-      setEducations(formattedEducations);
-      setLoading(false);
-    } else {
-      fetchEducations();
-    }
-  }, [userId, authProfile, isOwnProfile, user]);
+    fetchEducations();
+  }, [userId]);
 
   const fetchEducations = async () => {
     try {
@@ -164,12 +146,7 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
 
       if (error) throw error;
 
-      if (isOwnProfile) {
-        await refreshProfile();
-      } else {
-        fetchEducations();
-      }
-      
+      fetchEducations();
       setIsAdding(false);
       setEditingId(null);
       resetEditData();
@@ -207,12 +184,7 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
 
       if (error) throw error;
 
-      if (isOwnProfile) {
-        await refreshProfile();
-      } else {
-        fetchEducations();
-      }
-
+      fetchEducations();
       toast({
         title: "Success",
         description: "Education deleted successfully!",
@@ -241,8 +213,8 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
 
   if (loading) {
     return (
-      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-        <CardContent className="px-4 py-6 sm:p-8">
+      <Card>
+        <CardContent className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-muted rounded w-3/4"></div>
             <div className="h-4 bg-muted rounded w-1/2"></div>
@@ -266,8 +238,8 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
 
       {/* Add/Edit Form */}
       {isOwnProfile && (isAdding || editingId) && (
-        <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-primary/20 bg-white shadow-none sm:shadow-card overflow-hidden">
-          <CardContent className="px-4 py-6 sm:p-8">
+        <Card className="border-primary/20">
+          <CardContent className="p-6">
             <div className="grid gap-4">
               <Input
                 placeholder="Institution Name"
@@ -337,8 +309,8 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
       {/* Education List */}
       <div className="space-y-4">
         {educations.map((education) => (
-          <Card key={education.id} className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-            <CardContent className="px-4 py-6 sm:p-8">
+          <Card key={education.id} className="shadow-card">
+            <CardContent className="p-6">
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg text-foreground">
@@ -396,8 +368,8 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
         ))}
 
         {educations.length === 0 && !isAdding && (
-          <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-            <CardContent className="px-4 py-6 sm:p-8 text-center">
+          <Card>
+            <CardContent className="p-6 text-center">
               <p className="text-muted-foreground">
                 No education history added yet. Click "Add Education" to get started.
               </p>

@@ -7,8 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { VisualExperienceTimeline } from './redesign/VisualExperienceTimeline';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface Experience {
   id: string;
@@ -33,7 +31,6 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
-  const { user, profile: authProfile, refreshProfile } = useAuth();
 
   const [editData, setEditData] = useState({
     company: '',
@@ -47,25 +44,8 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
   });
 
   useEffect(() => {
-    if (isOwnProfile && authProfile && user?.id === userId) {
-      const experienceArray = (authProfile as any)?.experience || [];
-      const formattedExperiences = experienceArray.map((exp: any, index: number) => ({
-        id: exp.id || `exp_${index}`,
-        company: exp.company || '',
-        role: exp.role || '',
-        start_date: exp.start_date || '',
-        end_date: exp.end_date || '',
-        is_current: exp.is_current || false,
-        employment_type: exp.employment_type || '',
-        location: exp.location || '',
-        description: exp.description || ''
-      }));
-      setExperiences(formattedExperiences);
-      setLoading(false);
-    } else {
-      fetchExperiences();
-    }
-  }, [userId, authProfile, isOwnProfile, user]);
+    fetchExperiences();
+  }, [userId]);
 
   const fetchExperiences = async () => {
     try {
@@ -171,12 +151,7 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
 
       if (error) throw error;
 
-      if (isOwnProfile) {
-        await refreshProfile();
-      } else {
-        fetchExperiences();
-      }
-      
+      fetchExperiences();
       setIsAdding(false);
       setEditingId(null);
       resetEditData();
@@ -214,12 +189,7 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
 
       if (error) throw error;
 
-      if (isOwnProfile) {
-        await refreshProfile();
-      } else {
-        fetchExperiences();
-      }
-      
+      fetchExperiences();
       toast({
         title: "Success",
         description: "Experience deleted successfully!",
@@ -239,10 +209,17 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
     resetEditData();
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
   if (loading) {
     return (
-      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-        <CardContent className="px-4 py-6 sm:p-8">
+      <Card>
+        <CardContent className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-muted rounded w-3/4"></div>
             <div className="h-4 bg-muted rounded w-1/2"></div>
@@ -266,8 +243,8 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
 
       {/* Add/Edit Form */}
       {isOwnProfile && (isAdding || editingId) && (
-        <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-primary/20 bg-white shadow-none sm:shadow-card overflow-hidden">
-          <CardContent className="px-4 py-6 sm:p-8">
+        <Card className="border-primary/20">
+          <CardContent className="p-6">
             <div className="grid gap-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
@@ -354,13 +331,78 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
         </Card>
       )}
 
-      {/* Experience Timeline */}
-      <VisualExperienceTimeline 
-        experiences={experiences}
-        isOwnProfile={isOwnProfile}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+      {/* Experience List */}
+      <div className="space-y-4">
+        {experiences.map((experience) => (
+          <Card key={experience.id} className="shadow-card">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg text-foreground">
+                    {experience.role}
+                  </h3>
+                  <p className="text-primary font-medium">
+                    {experience.company}
+                  </p>
+                  <p className="text-muted-foreground text-sm">
+                    {formatDate(experience.start_date)} - {
+                      experience.is_current ? 'Present' : 
+                      experience.end_date ? formatDate(experience.end_date) : 'Present'
+                    }
+                  </p>
+                  {experience.employment_type && (
+                    <p className="text-muted-foreground text-sm">
+                      {experience.employment_type}
+                    </p>
+                  )}
+                  {experience.location && (
+                    <p className="text-muted-foreground text-sm">
+                      📍 {experience.location}
+                    </p>
+                  )}
+                  {experience.description && (
+                    <p className="text-foreground mt-3 leading-relaxed">
+                      {experience.description}
+                    </p>
+                  )}
+                </div>
+                
+                {isOwnProfile && (
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(experience)}
+                      disabled={editingId !== null || isAdding}
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(experience.id)}
+                      disabled={editingId !== null || isAdding}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {experiences.length === 0 && !isAdding && (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground">
+                No work experience added yet. Click "Add Experience" to get started.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };

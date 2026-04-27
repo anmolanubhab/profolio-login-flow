@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Send, Plus, MessageCircle, Search, Loader2, X, Image as ImageIcon, Video as VideoIcon, FileText, Camera, Headphones, User as UserIcon, ListChecks, Calendar, PlusCircle } from 'lucide-react';
+import { Send, Plus, MessageCircle, Search, Loader2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Command,
@@ -76,22 +76,6 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const [userSearchOpen, setUserSearchOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
-  const photosInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const documentInputRef = useRef<HTMLInputElement>(null);
-  const audioInputRef = useRef<HTMLInputElement>(null);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
-  const [videoPreview, setVideoPreview] = useState<string | null>(null);
-  const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
-  const [documentName, setDocumentName] = useState<string | null>(null);
-  const [selectedAudio, setSelectedAudio] = useState<File | null>(null);
-  const [audioPreview, setAudioPreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [attachOpen, setAttachOpen] = useState(false);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -286,112 +270,22 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   };
 
   const sendMessage = async () => {
-    if (!selectedConversation || sendingMessage || uploading) return;
-
-    const hasMedia = !!selectedImage || !!selectedVideo || !!selectedDocument || !!selectedAudio;
-    if (!newMessage.trim() && !hasMedia) return;
+    if (!newMessage.trim() || !selectedConversation || sendingMessage) return;
 
     setSendingMessage(true);
     try {
-      if (hasMedia) {
-        setUploading(true);
-        if (selectedImage) {
-          const ext = selectedImage.name.split('.').pop();
-          const name = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-          const { error: upErr } = await supabase.storage.from('post-images').upload(name, selectedImage, { cacheControl: '3600', upsert: false });
-          if (upErr) throw upErr;
-          const { data: urlData } = supabase.storage.from('post-images').getPublicUrl(name);
-          const { error } = await supabase
-            .from('messages')
-            .insert({
-              conversation_id: selectedConversation,
-              sender_id: user.id,
-              content: newMessage.trim() || '',
-              message_type: 'image',
-              file_url: urlData.publicUrl,
-              file_name: selectedImage.name
-            });
-          if (error) throw error;
-        } else if (selectedVideo) {
-          const ext = selectedVideo.name.split('.').pop();
-          const name = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-          const { error: upErr } = await supabase.storage.from('post-videos').upload(name, selectedVideo, { cacheControl: '3600', upsert: false });
-          if (upErr) throw upErr;
-          const { data: urlData } = supabase.storage.from('post-videos').getPublicUrl(name);
-          const { error } = await supabase
-            .from('messages')
-            .insert({
-              conversation_id: selectedConversation,
-              sender_id: user.id,
-              content: newMessage.trim() || '',
-              message_type: 'video',
-              file_url: urlData.publicUrl,
-              file_name: selectedVideo.name
-            });
-          if (error) throw error;
-        } else if (selectedDocument) {
-          const ext = selectedDocument.name.split('.').pop();
-          const name = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-          const { error: upErr } = await supabase.storage.from('post-documents').upload(name, selectedDocument, { cacheControl: '3600', upsert: false });
-          if (upErr) throw upErr;
-          const { data: urlData } = supabase.storage.from('post-documents').getPublicUrl(name);
-          const { error } = await supabase
-            .from('messages')
-            .insert({
-              conversation_id: selectedConversation,
-              sender_id: user.id,
-              content: newMessage.trim() || '',
-              message_type: 'document',
-              file_url: urlData.publicUrl,
-              file_name: selectedDocument.name
-            });
-          if (error) throw error;
-        } else if (selectedAudio) {
-          const ext = selectedAudio.name.split('.').pop();
-          const name = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-          const { error: upErr } = await supabase.storage.from('post-audios').upload(name, selectedAudio, { cacheControl: '3600', upsert: false });
-          if (upErr) throw upErr;
-          const { data: urlData } = supabase.storage.from('post-audios').getPublicUrl(name);
-          const { error } = await supabase
-            .from('messages')
-            .insert({
-              conversation_id: selectedConversation,
-              sender_id: user.id,
-              content: newMessage.trim() || '',
-              message_type: 'audio',
-              file_url: urlData.publicUrl,
-              file_name: selectedAudio.name
-            });
-          if (error) throw error;
-        }
-      } else {
-        const { error } = await supabase
-          .from('messages')
-          .insert({
-            conversation_id: selectedConversation,
-            sender_id: user.id,
-            content: newMessage.trim(),
-            message_type: 'text'
-          });
-        if (error) throw error;
-      }
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: selectedConversation,
+          sender_id: user.id,
+          content: newMessage.trim(),
+          message_type: 'text'
+        });
+
+      if (error) throw error;
 
       setNewMessage('');
-      setSelectedImage(null);
-      setImagePreview(null);
-      if (imageInputRef.current) imageInputRef.current.value = '';
-      if (videoPreview) URL.revokeObjectURL(videoPreview);
-      setSelectedVideo(null);
-      setVideoPreview(null);
-      if (videoInputRef.current) videoInputRef.current.value = '';
-      setSelectedDocument(null);
-      setDocumentName(null);
-      if (documentInputRef.current) documentInputRef.current.value = '';
-      if (audioPreview) URL.revokeObjectURL(audioPreview);
-      setSelectedAudio(null);
-      setAudioPreview(null);
-      if (audioInputRef.current) audioInputRef.current.value = '';
-      setAttachOpen(false);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -401,7 +295,6 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
       });
     } finally {
       setSendingMessage(false);
-      setUploading(false);
     }
   };
 
@@ -472,79 +365,77 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 sm:gap-8 h-[calc(100vh-380px)] min-h-[600px]">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-280px)] min-h-[500px]">
       {/* Conversations List */}
-      <Card className="lg:col-span-1 flex flex-col rounded-none sm:rounded-[2rem] border-0 sm:border-gray-100 shadow-none sm:shadow-xl sm:shadow-gray-100/50 overflow-hidden">
-        <CardHeader className="pb-3 flex-shrink-0 px-6 pt-6">
-          <div className="flex items-center justify-between mb-4">
-            <CardTitle className="text-xl font-bold text-gray-900">Messages</CardTitle>
+      <Card className="lg:col-span-1 flex flex-col">
+        <CardHeader className="pb-3 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Messages</CardTitle>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowNewChat(!showNewChat)}
-              className="rounded-full h-10 w-10 p-0 border-gray-100 hover:bg-gray-50 text-gray-500"
             >
-              {showNewChat ? <X className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+              {showNewChat ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </Button>
           </div>
           
           {showNewChat && (
-            <div className="space-y-2 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="space-y-2 pt-2">
               <Popover open={userSearchOpen} onOpenChange={setUserSearchOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     role="combobox"
                     aria-expanded={userSearchOpen}
-                    className="w-full justify-start text-muted-foreground h-12 rounded-xl border-gray-100 bg-gray-50/50 hover:bg-gray-50 font-medium"
+                    className="w-full justify-start text-muted-foreground"
                   >
-                    <Search className="h-4 w-4 mr-2 text-gray-400" />
+                    <Search className="h-4 w-4 mr-2" />
                     Search users...
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0 rounded-2xl border-gray-100 shadow-2xl" align="start">
+                <PopoverContent className="w-[300px] p-0" align="start">
                   <Command shouldFilter={false}>
                     <CommandInput 
                       placeholder="Search by name..." 
                       value={searchQuery}
                       onValueChange={setSearchQuery}
-                      className="h-12 border-none focus:ring-0"
                     />
-                    <CommandList className="max-h-[300px]">
+                    <CommandList>
                       {searchLoading && (
-                        <div className="flex items-center justify-center p-8">
-                          <Loader2 className="h-6 w-6 animate-spin text-[#833AB4]" />
+                        <div className="flex items-center justify-center p-4">
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         </div>
                       )}
                       {!searchLoading && searchQuery.length >= 2 && searchResults.length === 0 && (
-                        <CommandEmpty className="p-8 text-center text-gray-400 font-medium">No users found.</CommandEmpty>
+                        <CommandEmpty>No users found.</CommandEmpty>
                       )}
                       {!searchLoading && searchQuery.length < 2 && (
-                        <div className="p-8 text-sm text-gray-400 text-center font-medium">
+                        <div className="p-4 text-sm text-muted-foreground text-center">
                           Type at least 2 characters to search
                         </div>
                       )}
                       {searchResults.length > 0 && (
-                        <CommandGroup heading="Users" className="p-2">
+                        <CommandGroup heading="Users">
                           {searchResults.map((profile) => (
                             <CommandItem
                               key={profile.id}
                               value={profile.id}
                               onSelect={() => startNewConversation(profile)}
-                              className="cursor-pointer rounded-xl p-3 hover:bg-gray-50 transition-colors"
+                              className="cursor-pointer"
                             >
-                              <Avatar className="h-10 w-10 mr-3 rounded-xl ring-2 ring-white shadow-sm">
+                              <Avatar className="h-8 w-8 mr-2">
                                 <AvatarImage src={profile.avatar_url || undefined} />
-                                <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 font-bold">
+                                <AvatarFallback>
                                   {profile.display_name?.[0]?.toUpperCase() || 'U'}
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-gray-900 truncate">
+                                <p className="text-sm font-medium truncate">
                                   {profile.display_name || profile.full_name || 'Unknown User'}
                                 </p>
-                                <p className="text-xs text-gray-500 truncate font-medium">
-                                  {profile.profession || profile.email || ''}
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {profile.email || profile.profession || ''}
                                 </p>
                               </div>
                             </CommandItem>
@@ -559,104 +450,82 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
           )}
         </CardHeader>
         <CardContent className="p-0 flex-1 overflow-hidden">
-          <ScrollArea className="h-full px-2">
+          <ScrollArea className="h-full">
             {conversations.length === 0 ? (
-              <div className="p-12 text-center text-gray-400">
-                <div className="bg-gray-50 h-20 w-20 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                  <MessageCircle className="h-10 w-10 text-gray-200" />
-                </div>
-                <p className="text-base font-bold text-gray-900 mb-1">No conversations yet</p>
-                <p className="text-sm font-medium">Start a new chat to connect</p>
+              <div className="p-6 text-center text-muted-foreground">
+                <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No conversations yet</p>
+                <p className="text-xs mt-1">Start a new chat to connect</p>
               </div>
             ) : (
-              <div className="space-y-1 p-2">
-                {conversations.map((conversation) => (
-                  <div
-                    key={conversation.id}
-                    className={`p-4 rounded-2xl cursor-pointer hover:bg-gray-50 transition-all duration-300 group ${
-                      selectedConversation === conversation.id ? 'bg-gradient-to-r from-[#0077B5]/5 to-[#E1306C]/5 ring-1 ring-[#833AB4]/10 shadow-sm' : ''
-                    }`}
-                    onClick={() => handleSelectConversation(conversation)}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <Avatar className="h-14 w-14 flex-shrink-0 rounded-2xl ring-4 ring-white shadow-sm group-hover:scale-105 transition-transform duration-300">
-                          <AvatarImage src={conversation.otherUser?.avatar_url || undefined} />
-                          <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 font-bold text-lg">
-                            {conversation.otherUser?.display_name?.[0]?.toUpperCase() || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-white rounded-full" />
+              conversations.map((conversation) => (
+                <div
+                  key={conversation.id}
+                  className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
+                    selectedConversation === conversation.id ? 'bg-muted' : ''
+                  }`}
+                  onClick={() => handleSelectConversation(conversation)}
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10 flex-shrink-0">
+                      <AvatarImage src={conversation.otherUser?.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {conversation.otherUser?.display_name?.[0]?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">
+                        {conversation.otherUser?.display_name || 'Unknown User'}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start mb-1">
-                          <h4 className="font-bold text-gray-900 truncate">
-                            {conversation.otherUser?.display_name || 'Unknown User'}
-                          </h4>
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                            {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: false })}
-                          </span>
-                        </div>
-                        {conversation.lastMessage && (
-                          <p className="text-sm text-gray-500 truncate font-medium">
-                            {conversation.lastMessage}
-                          </p>
-                        )}
+                      {conversation.lastMessage && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {conversation.lastMessage}
+                        </p>
+                      )}
+                      <div className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))
             )}
           </ScrollArea>
         </CardContent>
       </Card>
 
       {/* Chat Window */}
-      <Card className="lg:col-span-2 flex flex-col rounded-none sm:rounded-[2rem] border-0 sm:border-gray-100 shadow-none sm:shadow-xl sm:shadow-gray-100/50 overflow-hidden bg-gray-50/30">
+      <Card className="lg:col-span-2 flex flex-col">
         {selectedConversation ? (
           <>
-            <CardHeader className="pb-4 flex-shrink-0 border-b border-gray-100 bg-white px-8 pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-12 w-12 rounded-2xl ring-4 ring-gray-50 shadow-sm">
-                    <AvatarImage src={selectedConversationUser?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-gray-100 to-gray-200 text-gray-600 font-bold">
-                      {selectedConversationUser?.display_name?.[0]?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <CardTitle className="text-lg font-bold text-gray-900">
-                      {selectedConversationUser?.display_name || 'Chat'}
-                    </CardTitle>
-                    {selectedConversationUser?.profession && (
-                      <p className="text-xs font-bold text-[#833AB4] uppercase tracking-wider">
-                        {selectedConversationUser.profession}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="rounded-full h-10 w-10 p-0 border-gray-100 text-gray-400 hover:text-gray-900">
-                    <Search className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" className="rounded-full h-10 w-10 p-0 border-gray-100 text-gray-400 hover:text-gray-900">
-                    <Plus className="h-4 w-4" />
-                  </Button>
+            <CardHeader className="pb-3 flex-shrink-0 border-b">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={selectedConversationUser?.avatar_url || undefined} />
+                  <AvatarFallback>
+                    {selectedConversationUser?.display_name?.[0]?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <CardTitle className="text-base">
+                    {selectedConversationUser?.display_name || 'Chat'}
+                  </CardTitle>
+                  {selectedConversationUser?.profession && (
+                    <p className="text-xs text-muted-foreground">
+                      {selectedConversationUser.profession}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-0 flex flex-col flex-1 overflow-hidden relative">
+            <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
               {/* Messages */}
-              <ScrollArea className="flex-1 p-8">
-                <div className="space-y-6">
+              <ScrollArea className="flex-1 p-4">
+                <div className="space-y-4">
                   {messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
-                      <div className="bg-white h-20 w-20 rounded-[2rem] flex items-center justify-center mb-6 shadow-sm border border-gray-100">
-                        <MessageCircle className="h-10 w-10 text-gray-200" />
-                      </div>
-                      <p className="text-base font-bold text-gray-900 mb-1">New conversation</p>
-                      <p className="text-sm font-medium text-gray-500">Send a message to start the connection</p>
+                    <div className="text-center text-muted-foreground py-8">
+                      <p className="text-sm">No messages yet</p>
+                      <p className="text-xs mt-1">Send a message to start the conversation</p>
                     </div>
                   ) : (
                     messages.map((message) => (
@@ -666,55 +535,32 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                           message.sender_id === user.id ? 'justify-end' : 'justify-start'
                         }`}
                       >
-                        <div className={`flex items-end gap-3 max-w-[80%] ${message.sender_id === user.id ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className="flex items-end gap-2 max-w-[70%]">
                           {message.sender_id !== user.id && (
-                            <Avatar className="h-8 w-8 flex-shrink-0 rounded-xl ring-2 ring-white shadow-sm mb-1">
+                            <Avatar className="h-6 w-6 flex-shrink-0">
                               <AvatarImage src={message.senderProfile?.avatar_url || undefined} />
-                              <AvatarFallback className="text-[10px] font-bold">
+                              <AvatarFallback className="text-xs">
                                 {message.senderProfile?.display_name?.[0]?.toUpperCase() || 'U'}
                               </AvatarFallback>
                             </Avatar>
                           )}
-                          <div className="flex flex-col gap-1.5">
+                          <div
+                            className={`rounded-2xl px-4 py-2 ${
+                              message.sender_id === user.id
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted'
+                            }`}
+                          >
+                            <div className="text-sm break-words">{message.content}</div>
                             <div
-                              className={`rounded-[1.5rem] px-5 py-3 shadow-sm ${
+                              className={`text-xs mt-1 ${
                                 message.sender_id === user.id
-                                  ? 'bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white rounded-tr-none font-medium'
-                                  : 'bg-white text-gray-700 rounded-tl-none border border-gray-100 font-medium'
+                                  ? 'text-primary-foreground/70'
+                                  : 'text-muted-foreground'
                               }`}
                             >
-                              {message.message_type === 'image' && message.file_url ? (
-                                <div className="space-y-2">
-                                  <img src={message.file_url} alt={message.file_name || 'image'} className="max-h-64 rounded-xl" />
-                                  {message.content && <div className="text-sm leading-relaxed break-words">{message.content}</div>}
-                                </div>
-                              ) : message.message_type === 'video' && message.file_url ? (
-                                <div className="space-y-2">
-                                  <video src={message.file_url} controls className="max-h-64 rounded-xl" />
-                                  {message.content && <div className="text-sm leading-relaxed break-words">{message.content}</div>}
-                                </div>
-                              ) : message.message_type === 'document' && message.file_url ? (
-                                <div className="space-y-2">
-                                  <a href={message.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 underline decoration-[#833AB4]/40">
-                                    <FileText className="h-4 w-4" />
-                                    <span className="text-sm font-medium">{message.file_name || 'Document'}</span>
-                                  </a>
-                                  {message.content && <div className="text-sm leading-relaxed break-words">{message.content}</div>}
-                                </div>
-                              ) : message.message_type === 'audio' && message.file_url ? (
-                                <div className="space-y-2">
-                                  <audio src={message.file_url} controls className="w-64" />
-                                  {message.content && <div className="text-sm leading-relaxed break-words">{message.content}</div>}
-                                </div>
-                              ) : (
-                                <div className="text-sm leading-relaxed break-words">{message.content}</div>
-                              )}
-                            </div>
-                            <span className={`text-[9px] font-bold uppercase tracking-widest px-1 ${
-                              message.sender_id === user.id ? 'text-right text-gray-400' : 'text-left text-gray-400'
-                            }`}>
                               {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                            </span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -725,260 +571,39 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-6 bg-white border-t border-gray-100 flex-shrink-0">
-                <div className="max-w-4xl mx-auto flex flex-col gap-3">
-                  {(imagePreview || videoPreview || documentName || audioPreview) && (
-                    <div className="relative rounded-2xl overflow-hidden bg-white border border-gray-200">
-                      {imagePreview && <img src={imagePreview} className="max-h-64 w-full object-contain" />}
-                      {videoPreview && <video src={videoPreview} controls className="max-h-64 w-full" />}
-                      {documentName && (
-                        <div className="p-4 flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          <span className="text-sm font-medium">{documentName}</span>
-                        </div>
-                      )}
-                      {audioPreview && (
-                        <div className="p-4">
-                          <audio src={audioPreview} controls className="w-full" />
-                        </div>
-                      )}
-                      <div className="absolute top-2 right-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            if (imagePreview) {
-                              setSelectedImage(null);
-                              setImagePreview(null);
-                              if (imageInputRef.current) imageInputRef.current.value = '';
-                            }
-                            if (videoPreview) {
-                              URL.revokeObjectURL(videoPreview);
-                              setSelectedVideo(null);
-                              setVideoPreview(null);
-                              if (videoInputRef.current) videoInputRef.current.value = '';
-                            }
-                            if (documentName) {
-                              setSelectedDocument(null);
-                              setDocumentName(null);
-                              if (documentInputRef.current) documentInputRef.current.value = '';
-                            }
-                            if (audioPreview) {
-                              URL.revokeObjectURL(audioPreview);
-                              setSelectedAudio(null);
-                              setAudioPreview(null);
-                              if (audioInputRef.current) audioInputRef.current.value = '';
-                            }
-                          }}
-                          className="rounded-full h-8 w-8 p-0 bg-black/40 text-white hover:bg-black/60"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex gap-4 items-end bg-gray-50/80 p-2 rounded-[2rem] border border-gray-100 group-focus-within:bg-white group-focus-within:ring-2 group-focus-within:ring-[#833AB4]/10 transition-all">
-                    <Popover open={attachOpen} onOpenChange={setAttachOpen}>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="sm" className="rounded-full h-10 w-10 p-0 text-gray-400 hover:text-[#833AB4] hover:bg-white transition-all">
-                          <Plus className="h-5 w-5" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-56 p-2 rounded-2xl border-gray-100 shadow-xl" align="start" side="top" sideOffset={10}>
-                      <input
-                        type="file"
-                        accept="image/*,video/mp4,video/webm"
-                        ref={photosInputRef}
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (file.type.startsWith('image/')) {
-                            setSelectedImage(file);
-                            const reader = new FileReader();
-                            reader.onload = (ev) => setImagePreview(ev.target?.result as string);
-                            reader.readAsDataURL(file);
-                            if (videoPreview) {
-                              URL.revokeObjectURL(videoPreview);
-                              setSelectedVideo(null);
-                              setVideoPreview(null);
-                              if (videoInputRef.current) videoInputRef.current.value = '';
-                            }
-                          } else if (['video/mp4','video/webm'].includes(file.type)) {
-                            setSelectedVideo(file);
-                            setVideoPreview(URL.createObjectURL(file));
-                            setSelectedImage(null);
-                            setImagePreview(null);
-                            if (imageInputRef.current) imageInputRef.current.value = '';
-                          }
-                        }}
-                      />
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        ref={cameraInputRef}
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (!file.type.startsWith('image/')) return;
-                          setSelectedImage(file);
-                          const reader = new FileReader();
-                          reader.onload = (ev) => setImagePreview(ev.target?.result as string);
-                          reader.readAsDataURL(file);
-                          if (videoPreview) {
-                            URL.revokeObjectURL(videoPreview);
-                            setSelectedVideo(null);
-                            setVideoPreview(null);
-                            if (videoInputRef.current) videoInputRef.current.value = '';
-                          }
-                        }}
-                      />
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,application/*"
-                        ref={documentInputRef}
-                        className="hidden"
-                      />
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        ref={audioInputRef}
-                        className="hidden"
-                      />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          ref={imageInputRef}
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            if (!file.type.startsWith('image/')) return;
-                            setSelectedImage(file);
-                            const reader = new FileReader();
-                            reader.onload = (ev) => setImagePreview(ev.target?.result as string);
-                            reader.readAsDataURL(file);
-                            if (videoPreview) {
-                              URL.revokeObjectURL(videoPreview);
-                              setSelectedVideo(null);
-                              setVideoPreview(null);
-                              if (videoInputRef.current) videoInputRef.current.value = '';
-                            }
-                          }}
-                        />
-                        <input
-                          type="file"
-                          accept="video/mp4,video/webm"
-                          ref={videoInputRef}
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            if (!['video/mp4','video/webm'].includes(file.type)) return;
-                            setSelectedVideo(file);
-                            setVideoPreview(URL.createObjectURL(file));
-                            setSelectedImage(null);
-                            setImagePreview(null);
-                            if (imageInputRef.current) imageInputRef.current.value = '';
-                          }}
-                        />
-                        <div className="grid gap-1">
-                          <Button
-                            variant="ghost"
-                            onClick={() => photosInputRef.current?.click()}
-                            disabled={sendingMessage || uploading}
-                            className="justify-start"
-                          >
-                            <ImageIcon className="h-4 w-4 mr-2 text-[#833AB4]" />
-                            Photos & videos
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            onClick={() => cameraInputRef.current?.click()}
-                            disabled={sendingMessage || uploading}
-                            className="justify-start"
-                          >
-                            <ImageIcon className="h-4 w-4 mr-2 text-[#0077B5]" />
-                            Camera
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            onClick={() => videoInputRef.current?.click()}
-                            disabled={sendingMessage || uploading}
-                            className="justify-start"
-                          >
-                            <VideoIcon className="h-4 w-4 mr-2 text-[#E1306C]" />
-                            Video
-                          </Button>
-                          <Separator className="my-1" />
-                          <Button variant="ghost" onClick={() => documentInputRef.current?.click()} className="justify-start text-[#1D2226]">
-                            <FileText className="h-4 w-4 mr-2" />
-                            Document
-                          </Button>
-                          <Button variant="ghost" onClick={() => audioInputRef.current?.click()} className="justify-start text-[#1D2226]">
-                            <Headphones className="h-4 w-4 mr-2" />
-                            Audio
-                          </Button>
-                          <Button variant="ghost" className="justify-start text-[#1D2226]">
-                            <UserIcon className="h-4 w-4 mr-2" />
-                            Contact
-                          </Button>
-                          <Button variant="ghost" className="justify-start text-[#1D2226]">
-                            <ListChecks className="h-4 w-4 mr-2" />
-                            Poll
-                          </Button>
-                          <Button variant="ghost" className="justify-start text-[#1D2226]">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            Event
-                          </Button>
-                          <Button variant="ghost" className="justify-start text-[#1D2226]">
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            New sticker
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+              <div className="p-4 border-t flex-shrink-0">
+                <div className="flex gap-2">
                   <Input
-                    placeholder="Write a message..."
+                    placeholder="Type a message..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                    className="flex-1 bg-transparent border-none focus-visible:ring-0 text-gray-900 placeholder:text-gray-400 h-10 font-medium"
+                    disabled={sendingMessage}
+                    className="flex-1"
                   />
-                   <Button 
-                    onClick={sendMessage}
-                    disabled={sendingMessage || uploading || (!newMessage.trim() && !selectedImage && !selectedVideo && !selectedDocument && !selectedAudio)}
-                    className={`rounded-full h-10 w-10 p-0 shadow-lg transition-all duration-300 ${
-                      (newMessage.trim() || selectedImage || selectedVideo || selectedDocument || selectedAudio)
-                        ? 'bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white hover:opacity-90 shadow-[#833AB4]/20' 
-                        : 'bg-gray-200 text-white shadow-none'
-                    }`}
+                  <Button 
+                    onClick={sendMessage} 
+                    disabled={sendingMessage || !newMessage.trim()}
+                    size="icon"
                   >
-                    {sendingMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {sendingMessage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
-                  </div>
                 </div>
               </div>
             </CardContent>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white">
-            <div className="bg-gradient-to-br from-[#0077B5]/5 via-[#833AB4]/5 to-[#E1306C]/5 h-32 w-32 rounded-[2.5rem] flex items-center justify-center mb-8 animate-pulse shadow-sm border border-[#833AB4]/5">
-              <MessageCircle className="h-16 w-16 text-[#833AB4]/30" />
+          <CardContent className="flex items-center justify-center h-full">
+            <div className="text-center text-muted-foreground">
+              <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
+              <h3 className="font-medium mb-1">Select a conversation</h3>
+              <p className="text-sm">Choose from your existing conversations or start a new chat</p>
             </div>
-            <h3 className="text-2xl font-extrabold text-gray-900 mb-3 tracking-tight">Your Inbox</h3>
-            <p className="text-gray-500 max-w-sm mx-auto text-lg font-medium leading-relaxed mb-10">
-              Select a conversation from the sidebar or start a new chat to begin messaging.
-            </p>
-            <Button 
-              onClick={() => setShowNewChat(true)}
-              className="bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-10 py-6 h-auto text-lg font-bold shadow-xl shadow-[#833AB4]/20 transition-all hover:scale-105 active:scale-95"
-            >
-              Start a Conversation
-            </Button>
-          </div>
+          </CardContent>
         )}
       </Card>
     </div>

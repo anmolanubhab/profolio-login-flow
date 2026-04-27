@@ -6,33 +6,12 @@
     <title>Profolio - Your Future, Verified</title>
     <meta name="description" content="Professional portfolio platform for students and employers" />
     <meta name="author" content="Profolio" />
-    
-    <!-- Removed external Google Fonts to avoid DNS/network errors in low-connectivity environments -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Critical CSS inlined for faster FCP/LCP -->
-    <style>
-      /* Critical CSS - minimal styles for initial paint with font fallback */
-      @font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:local('Inter'),local('-apple-system'),local('BlinkMacSystemFont')}
-      *,*::before,*::after{box-sizing:border-box;border-width:0;border-style:solid}
-      html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif}
-      body{margin:0;line-height:inherit;background:linear-gradient(135deg,hsl(200,90%,55%),hsl(280,80%,60%),hsl(330,85%,65%));min-height:100vh}
-      #root{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
-      /* LCP optimization - show text immediately with fallback font */
-      h1,h2,.text-5xl,.text-6xl{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-weight:700}
-    </style>
-    <script>
-      (function () {
-        if (!('onLine' in navigator) || !navigator.onLine) return;
-        var link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap';
-        link.onerror = function(){ /* silent fail to avoid noisy logs */ };
-        document.head.appendChild(link);
-      })();
-    </script>
-
-    <meta property="og:title" content="Profolio - Your Future, Verified" />
-    <meta property="og:description" content="Professional portfolio platform for students and employers" />
+    <meta property="og:title" content="fd036f0b-2b9d-4b27-8f26-69059b779a0c" />
+    <meta property="og:description" content="Lovable Generated Project" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 

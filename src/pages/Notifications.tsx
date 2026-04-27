@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, MessageCircle, UserPlus, Award, Check, X, ThumbsUp, MessageSquare, Share2, Eye, Briefcase, Star, Loader2 } from 'lucide-react';
+import { Bell, MessageCircle, UserPlus, Award, Check, X, ThumbsUp, MessageSquare, Share2, Eye, Briefcase, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { User } from '@supabase/supabase-js';
+import BottomNavigation from '@/components/BottomNavigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { Layout } from '@/components/Layout';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface FriendRequest {
   id: string;
@@ -31,7 +31,7 @@ interface Notification {
 }
 
 const Notifications = () => {
-  const { user, signOut } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,10 +40,22 @@ const Notifications = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/');
+        return;
+      }
+      setUser(user);
+    };
+
+    getUser();
+  }, [navigate]);
+
+  useEffect(() => {
     if (user) {
-      const controller = new AbortController();
-      fetchFriendRequests(controller.signal);
-      fetchNotifications(controller.signal);
+      fetchFriendRequests();
+      fetchNotifications();
 
       // Set up real-time subscription for notifications
       const channel = supabase
@@ -56,32 +68,25 @@ const Notifications = () => {
             table: 'notifications'
           },
           () => {
-            fetchNotifications(controller.signal);
+            fetchNotifications();
           }
         )
         .subscribe();
 
       return () => {
-        controller.abort();
         supabase.removeChannel(channel);
       };
     }
   }, [user]);
 
-  const fetchFriendRequests = async (signal?: AbortSignal) => {
+  const fetchFriendRequests = async () => {
     try {
       // Get current user's profile first
-      const { data: myProfile, error: profileError } = await supabase
+      const { data: myProfile } = await supabase
         .from('profiles')
         .select('id')
         .eq('user_id', user?.id)
-        .abortSignal(signal)
-        .maybeSingle();
-
-      if (profileError) {
-        if (profileError.code === 'ABORTED') return;
-        throw profileError;
-      }
+        .single();
 
       if (!myProfile) return;
 
@@ -96,13 +101,9 @@ const Notifications = () => {
         `)
         .eq('receiver_id', myProfile.id)
         .eq('status', 'pending')
-        .order('created_at', { ascending: false })
-        .abortSignal(signal);
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        if (error.code === 'ABORTED') return;
-        throw error;
-      }
+      if (error) throw error;
 
       // Fetch sender profiles
       const requestsWithProfiles = await Promise.all(
@@ -111,8 +112,7 @@ const Notifications = () => {
             .from('profiles')
             .select('display_name, avatar_url')
             .eq('id', request.sender_id)
-            .abortSignal(signal)
-            .maybeSingle();
+            .single();
 
           return {
             ...request,
@@ -123,26 +123,19 @@ const Notifications = () => {
 
       setFriendRequests(requestsWithProfiles);
     } catch (error: any) {
-      if (error.name === 'AbortError' || error.code === 'ABORTED') return;
       console.error('Error fetching friend requests:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchNotifications = async (signal?: AbortSignal) => {
+  const fetchNotifications = async () => {
     try {
-      const { data: myProfile, error: profileError } = await supabase
+      const { data: myProfile } = await supabase
         .from('profiles')
         .select('id')
         .eq('user_id', user?.id)
-        .abortSignal(signal)
-        .maybeSingle();
-
-      if (profileError) {
-        if (profileError.code === 'ABORTED') return;
-        throw profileError;
-      }
+        .single();
 
       if (!myProfile) return;
 
@@ -151,19 +144,12 @@ const Notifications = () => {
         .select('*')
         .eq('user_id', myProfile.id)
         .order('created_at', { ascending: false })
-        .limit(20)
-        .abortSignal(signal);
+        .limit(20);
 
-      if (error) {
-        if (error.code === 'ABORTED') return;
-        console.error('Supabase notifications error:', error);
-        throw error;
-      }
+      if (error) throw error;
       setNotifications(data || []);
     } catch (error: any) {
-      if (error.name === 'AbortError' || error.code === 'ABORTED') return;
       console.error('Error fetching notifications:', error);
-      // Don't show toast for now to avoid spamming the user if it's a persistent error
     }
   };
 
@@ -237,18 +223,6 @@ const Notifications = () => {
       case 'profile_save':
         return Eye;
       case 'new_job':
-      case 'application_submitted':
-      case 'new_application':
-        return Briefcase;
-      case 'application_shortlisted':
-      case 'application_offered':
-        return Star;
-      case 'application_rejected':
-      case 'application_interview':
-      case 'interview_scheduled':
-      case 'interview_completed':
-      case 'interview_selected':
-      case 'interview_rejected':
         return Briefcase;
       case 'message':
         return MessageCircle;
@@ -256,8 +230,6 @@ const Notifications = () => {
         return Award;
       case 'skill_endorsement':
         return Star;
-      case 'new_follower':
-        return UserPlus;
       default:
         return Bell;
     }
@@ -265,54 +237,31 @@ const Notifications = () => {
 
   const getNotificationMessage = (notification: Notification) => {
     const { type, payload } = notification;
-    const senderName = payload?.sender_name || payload?.follower_name || 'Someone';
-    const jobTitle = payload?.job_title || 'a position';
+    const senderName = payload?.sender_name || 'Someone';
 
     switch (type) {
       case 'like':
         return `${senderName} liked your post`;
       case 'comment':
-        return `${senderName} commented on your post`;
+        return `${senderName} commented: "${payload?.message}"`;
       case 'share':
         return `${senderName} shared your post`;
       case 'connection_request':
-        return `${senderName} wants to connect with you`;
+        return `${senderName} sent you a connection request`;
       case 'connection_accepted':
         return `${senderName} accepted your connection request`;
       case 'profile_view':
         return `${senderName} viewed your profile`;
       case 'profile_save':
         return `${senderName} saved your profile`;
-      case 'new_follower':
-        return `${senderName} started following you`;
       case 'new_job':
-        return `New job opportunity: ${jobTitle}`;
-      case 'application_submitted':
-        return `Your application for ${jobTitle} was submitted`;
-      case 'new_application':
-        return `New application received for ${jobTitle}`;
-      case 'application_shortlisted':
-        return `Great news! You've been shortlisted for ${jobTitle}`;
-      case 'application_rejected':
-        return `Update on your application for ${jobTitle}`;
-      case 'application_offered':
-        return `Congratulations! You received an offer for ${jobTitle}`;
-      case 'application_interview':
-        return `Interview scheduled for ${jobTitle}`;
-      case 'interview_scheduled':
-        return `Interview scheduled for ${jobTitle}`;
-      case 'interview_completed':
-        return `Interview completed for ${jobTitle}`;
-      case 'interview_selected':
-        return `You were selected for ${jobTitle}`;
-      case 'interview_rejected':
-        return `You were not selected for ${jobTitle}`;
+        return `New job posted: ${payload?.job_title}`;
       case 'message':
-        return `${senderName}: ${payload?.message || 'sent you a message'}`;
+        return `${senderName}: ${payload?.message}`;
       case 'skill_endorsement':
         return `${senderName} endorsed your ${payload?.skill_name || 'skill'}`;
       default:
-        return payload?.message || 'You have a new notification';
+        return payload?.message || 'New notification';
     }
   };
 
@@ -343,16 +292,6 @@ const Notifications = () => {
         navigate('/profile');
         break;
       case 'new_job':
-      case 'application_submitted':
-      case 'new_application':
-      case 'application_shortlisted':
-      case 'application_rejected':
-      case 'application_offered':
-      case 'application_interview':
-      case 'interview_scheduled':
-      case 'interview_completed':
-      case 'interview_selected':
-      case 'interview_rejected':
         navigate('/jobs');
         break;
       case 'message':
@@ -369,224 +308,130 @@ const Notifications = () => {
 
   if (loading) {
     return (
-      <Layout user={user} onSignOut={signOut} cosmicBg>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in duration-700">
-          <div className="relative mb-6">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-2xl rounded-full animate-pulse" />
-            <div className="relative h-16 w-16 border-4 border-gray-100 border-t-[#833AB4] rounded-full animate-spin" />
+      <div className="min-h-screen bg-background pb-20">
+        <header className="bg-primary text-primary-foreground sticky top-0 z-40">
+          <div className="container mx-auto px-4 py-3">
+            <h1 className="text-xl font-bold">Notifications</h1>
           </div>
-          <p className="text-[#5E6B7E] font-bold text-lg animate-pulse tracking-tight">Syncing your activity...</p>
+        </header>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-      </Layout>
+        <BottomNavigation />
+      </div>
     );
   }
 
   return (
-    <Layout user={user} onSignOut={signOut} cosmicBg>
-      <div className="min-h-screen">
-        {/* Universal Page Hero Section */}
-        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl py-16 px-8 overflow-hidden">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="text-center md:text-left animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 text-[#833AB4] text-sm font-bold mb-6 border border-white/60">
-                  <Bell className="h-4 w-4" />
-                  <span>Real-time Updates</span>
-                </div>
-                <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tighter">
-                  Activity Center
-                </h1>
-                <p className="text-[#5E6B7E] text-lg md:text-2xl font-medium max-w-2xl mx-auto md:mx-0 leading-relaxed">
-                  Stay ahead with instant updates from your network and career opportunities.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="pointer-events-none absolute inset-0 opacity-40">
-            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
-            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
-          </div>
+    <div className="min-h-screen bg-background pb-20">
+      <header className="bg-primary text-primary-foreground sticky top-0 z-40">
+        <div className="container mx-auto px-4 py-3">
+          <h1 className="text-xl font-bold">Notifications</h1>
         </div>
+      </header>
 
-        <div className="max-w-6xl mx-auto py-10 px-4 sm:px-6 lg:px-10">
-          <div className="space-y-10">
-            {/* Friend Requests Section */}
-            {friendRequests.length > 0 && (
-              <div className="bg-white/50 backdrop-blur-xl border border-white/30 rounded-2xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="flex items-center justify-between px-4 sm:px-6 pt-6 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-[#0077B5]/10 text-[#0077B5]">
-                      <UserPlus className="h-6 w-6" />
+      <main className="container mx-auto px-4 py-6 max-w-2xl">
+        <div className="space-y-4">
+          {/* Friend Requests Section */}
+          {friendRequests.length > 0 && (
+            <>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Friend Requests</h2>
+              {friendRequests.map((request) => (
+                <Card key={request.id} className="bg-primary/5 border-primary/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={request.sender_profile.avatar_url} />
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {request.sender_profile.display_name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-sm">
+                          {request.sender_profile.display_name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Sent you a friend request
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatTime(request.created_at)}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleAcceptRequest(request.id)}
+                          disabled={processing === request.id}
+                          className="bg-success hover:bg-success/90"
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRejectRequest(request.id)}
+                          disabled={processing === request.id}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <h2 className="text-2xl font-black text-[#1D2226] tracking-tight">Connection Requests</h2>
-                  </div>
-                  <span className="bg-[#0077B5]/10 text-[#0077B5] px-4 py-1.5 rounded-full text-xs font-bold border border-[#0077B5]/10">
-                    {friendRequests.length} Pending
-                  </span>
-                </div>
-                <div className="grid gap-6 px-4 sm:px-6 pb-6">
-                  {friendRequests.map((request, index) => (
-                    <Card
-                      key={request.id}
-                      className="group rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card hover:shadow-2xl transition-all duration-500 overflow-hidden animate-in fade-in slide-in-from-bottom-4"
-                      style={{ animationDelay: `${index * 100}ms` }}
-                    >
-                      <CardContent className="px-4 py-6 sm:p-8">
-                        <div className="flex flex-col sm:flex-row items-center gap-6">
-                          <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-2xl rounded-full group-hover:opacity-40 transition-opacity" />
-                            <Avatar className="h-20 w-20 rounded-[2rem] ring-4 ring-white shadow-xl relative z-10">
-                              <AvatarImage src={request.sender_profile.avatar_url} />
-                              <AvatarFallback className="bg-gradient-to-br from-[#0077B5] to-[#E1306C] text-white font-black text-2xl">
-                                {request.sender_profile.display_name.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                          </div>
-                          <div className="flex-1 text-center sm:text-left min-w-0">
-                            <h3 className="font-extrabold text-2xl text-[#1D2226] group-hover:text-[#833AB4] transition-colors tracking-tight">
-                              {request.sender_profile.display_name}
-                            </h3>
-                            <p className="text-[#5E6B7E] font-medium mt-1 leading-relaxed">
-                              wants to join your professional network
-                            </p>
-                            <div className="flex items-center justify-center sm:justify-start gap-2 mt-3">
-                              <span className="text-[10px] font-bold text-[#5E6B7E] uppercase tracking-widest px-3 py-1 rounded-full bg-gray-100 border border-gray-200">
-                                {formatTime(request.created_at)}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex gap-4 w-full sm:w-auto">
-                            <Button
-                              size="lg"
-                              onClick={() => handleAcceptRequest(request.id)}
-                              disabled={processing === request.id}
-                              className="flex-1 sm:flex-initial bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] hover:opacity-90 text-white border-none rounded-full px-10 shadow-xl shadow-[#833AB4]/25 h-14 font-bold transition-all transform hover:scale-105 active:scale-95"
-                            >
-                              {processing === request.id ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-6 w-6" />}
-                            </Button>
-                            <div className="relative p-[1px] rounded-full overflow-hidden flex-1 sm:flex-initial">
-                              <div className="absolute inset-0 bg-gray-200" />
-                              <Button
-                                size="lg"
-                                variant="outline"
-                                onClick={() => handleRejectRequest(request.id)}
-                                disabled={processing === request.id}
-                                className="relative w-full bg-white hover:bg-gray-50 border-none rounded-full px-10 h-14 transition-all font-bold text-gray-500 shadow-lg shadow-black/5"
-                              >
-                                <X className="h-6 w-6" />
-                              </Button>
-                            </div>
-                          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          )}
+
+          {/* Other Notifications */}
+          {notifications.length > 0 && (
+            <>
+              <h2 className="text-lg font-semibold text-foreground mb-2 mt-6">All Notifications</h2>
+              {notifications.map((notification) => {
+                const Icon = getNotificationIcon(notification.type);
+                return (
+                  <Card 
+                    key={notification.id} 
+                    className={`cursor-pointer hover:shadow-md transition-shadow ${!notification.is_read ? 'bg-primary/5' : ''}`}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={notification.payload?.sender_avatar} />
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            <Icon className="h-5 w-5" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="text-sm">
+                            {getNotificationMessage(notification)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatTime(notification.created_at)}
+                          </p>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Other Notifications Section */}
-            {notifications.length > 0 ? (
-              <div className="bg-white/50 backdrop-blur-xl border border-white/30 rounded-2xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700" style={{ animationDelay: '200ms' }}>
-                <div className="flex items-center justify-between px-4 sm:px-6 pt-6 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-2xl bg-[#833AB4]/10 text-[#833AB4]">
-                      <Bell className="h-6 w-6" />
-                    </div>
-                    <h2 className="text-2xl font-black text-[#1D2226] tracking-tight">Recent Activity</h2>
-                  </div>
-                  <span className="bg-gray-100 text-[#5E6B7E] px-4 py-1.5 rounded-full text-xs font-bold border border-gray-200">
-                    Latest {notifications.length} Updates
-                  </span>
-                </div>
-
-                <div className="grid gap-4 px-4 sm:px-6 pb-6">
-                  {notifications.map((notification, index) => {
-                    const Icon = getNotificationIcon(notification.type);
-                    const isRead = notification.is_read;
-
-                    return (
-                      <Card
-                        key={notification.id}
-                        className={`cursor-pointer group relative hover:shadow-2xl transition-all duration-500 rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 shadow-none sm:shadow-card overflow-hidden animate-in fade-in slide-in-from-bottom-4 ${
-                          !isRead ? "bg-gradient-to-r from-[#0077B5]/5 via-white to-white" : "bg-white"
-                        }`}
-                        style={{ animationDelay: `${index * 50 + 300}ms` }}
-                        onClick={() => handleNotificationClick(notification)}
-                      >
-                        {!isRead && (
-                          <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
+                        {!notification.is_read && (
+                          <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />
                         )}
-                        <CardContent className="px-4 py-6 sm:p-8">
-                          <div className="flex items-center gap-6">
-                            <div className="relative shrink-0">
-                              <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-0 group-hover:opacity-20 blur-xl rounded-full transition-opacity" />
-                              <Avatar className="h-16 w-16 rounded-[1.5rem] ring-4 ring-white shadow-lg relative z-10 transition-transform group-hover:scale-105">
-                                <AvatarImage src={notification.payload?.sender_avatar} />
-                                <AvatarFallback className="bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400">
-                                  <Icon className="h-7 w-7" />
-                                </AvatarFallback>
-                              </Avatar>
-                              {!isRead && (
-                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-[#0077B5] to-[#E1306C] rounded-full ring-4 ring-white shadow-lg z-20 animate-pulse" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p
-                                className={`text-lg leading-snug ${
-                                  !isRead ? "font-black text-[#1D2226]" : "text-[#5E6B7E] font-medium"
-                                }`}
-                              >
-                                {getNotificationMessage(notification)}
-                              </p>
-                              <div className="flex items-center gap-3 mt-2">
-                                <span className="text-[10px] font-bold text-[#5E6B7E] uppercase tracking-widest px-3 py-1 rounded-full bg-gray-50 border border-gray-100">
-                                  {formatTime(notification.created_at)}
-                                </span>
-                                {!isRead && (
-                                  <span className="text-[10px] font-black text-[#833AB4] uppercase tracking-widest">
-                                    New Activity
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="p-3 rounded-full bg-gray-50 text-gray-400">
-                                <Check className="h-5 w-5" />
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : friendRequests.length === 0 ? (
-              <div className="bg-gray-50/30 rounded-none sm:rounded-[3rem] p-12 sm:p-24 text-center border-0 sm:border-2 border-dashed border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="relative mb-10">
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-3xl rounded-full" />
-                  <div className="relative bg-white h-28 w-28 rounded-[3rem] flex items-center justify-center mx-auto shadow-2xl">
-                    <Bell className="h-14 w-14 text-gray-300" />
-                  </div>
-                </div>
-                <h3 className="text-3xl font-extrabold text-[#1D2226] mb-4 tracking-tight">Your Activity is Clear</h3>
-                <p className="text-[#5E6B7E] font-medium max-w-sm mx-auto text-lg leading-relaxed">
-                  You're all caught up! New notifications will appear here as they arrive.
-                </p>
-                <Button
-                  variant="outline"
-                  className="mt-10 rounded-full px-10 h-14 font-bold border-2 border-[#833AB4]/20 hover:border-[#833AB4] hover:bg-[#833AB4]/5 text-[#833AB4] transition-all"
-                  onClick={() => navigate('/dashboard')}
-                >
-                  Back to Feed
-                </Button>
-              </div>
-            ) : null}
-          </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </>
+          )}
+
+          {friendRequests.length === 0 && notifications.length === 0 && (
+            <Card className="p-12 text-center">
+              <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No notifications yet</p>
+            </Card>
+          )}
         </div>
-      </div>
-    </Layout>
+      </main>
+
+      <BottomNavigation />
+    </div>
   );
 };
 

@@ -4,13 +4,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Upload, FileText, Download, Trash2, Plus, Eye, Lock, Globe, Building2 } from 'lucide-react';
-import { DocumentUpload } from '@/components/DocumentUpload';
-import { VisibilitySelector } from '@/components/settings/VisibilitySelector';
+import { Upload, FileText, Download, Trash2, Plus } from 'lucide-react';
 
 interface Certificate {
   id: string;
@@ -18,51 +15,31 @@ interface Certificate {
   description: string | null;
   file_url: string;
   file_name: string;
-  user_id: string;
   file_size: number | null;
   created_at: string;
-  visibility?: string;
 }
 
 const CertificateVault = () => {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [visibility, setVisibility] = useState('recruiters');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const fetchCertificates = async (signal?: AbortSignal) => {
-    setLoading(true);
+  const fetchCertificates = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || (signal && signal.aborted)) return;
-
       const { data, error } = await supabase
         .from('certificates')
         .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .abortSignal(signal);
+        .order('created_at', { ascending: false });
 
-      if (error) {
-        if (
-          error.code === 'ABORTED' ||
-          (error as any).name === 'AbortError' ||
-          (error as any).code === 20 ||
-          (error as any).code === '20'
-        ) return;
-        throw error;
-      }
+      if (error) throw error;
       setCertificates(data || []);
-    } catch (error: any) {
-      if (
-        error.name === 'AbortError' ||
-        error.code === 'ABORTED' ||
-        error.code === 20 ||
-        error.code === '20'
-      ) return;
+    } catch (error) {
       console.error('Error fetching certificates:', error);
       toast({
         title: "Error loading certificates",
@@ -75,56 +52,68 @@ const CertificateVault = () => {
   };
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchCertificates(controller.signal);
-    return () => controller.abort();
+    fetchCertificates();
   }, []);
 
-  const handleUploadComplete = async (result: { url: string; filePath: string; fileName: string; fileSize: number }) => {
-    if (!title.trim()) {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast({
+          title: "File too large",
+          description: "Please select a file smaller than 10MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile || !title.trim()) {
       toast({
-        title: "Missing title",
-        description: "Please provide a title for your certificate.",
+        title: "Missing information",
+        description: "Please provide a title and select a file.",
         variant: "destructive",
       });
       return;
     }
 
+    setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const basePayload = {
-        title: title.trim(),
-        description: description.trim() || null,
-        file_url: result.url,
-        file_name: result.fileName,
-        file_size: result.fileSize,
-        user_id: user.id,
-      };
+      // Upload file using secure upload
+      const { secureUpload } = await import('@/lib/secure-upload');
+      const result = await secureUpload({
+        bucket: 'certificates',
+        file: selectedFile,
+        userId: user.id
+      });
 
-      const payloadWithVisibility = {
-        ...basePayload,
-        visibility,
-      } as any;
-
-      const firstInsert = await supabase
-        .from('certificates')
-        .insert(payloadWithVisibility);
-
-      if (firstInsert.error) {
-        const message = firstInsert.error.message || '';
-        if (message.includes('visibility') && message.includes('column')) {
-          const fallbackInsert = await supabase
-            .from('certificates')
-            .insert(basePayload as any);
-          if (fallbackInsert.error) {
-            throw fallbackInsert.error;
-          }
-        } else {
-          throw firstInsert.error;
-        }
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
       }
+
+      // Get file URL
+      const publicUrl = result.url;
+      const filePath = result.filePath;
+
+      // Save certificate record
+      const { error: dbError } = await supabase
+        .from('certificates')
+        .insert({
+          title: title.trim(),
+          description: description.trim() || null,
+          file_url: publicUrl,
+          file_name: selectedFile.name,
+          file_size: selectedFile.size,
+          user_id: user.id,
+        });
+
+      if (dbError) throw dbError;
 
       toast({
         title: "Certificate uploaded!",
@@ -134,7 +123,10 @@ const CertificateVault = () => {
       // Reset form and refresh list
       setTitle('');
       setDescription('');
-      setVisibility('recruiters');
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       setIsDialogOpen(false);
       fetchCertificates();
 
@@ -145,58 +137,8 @@ const CertificateVault = () => {
         description: "Could not upload certificate. Please try again.",
         variant: "destructive",
       });
-    }
-  };
-
-  const handleUpdateVisibility = async (id: string, newVisibility: string) => {
-    try {
-      // Optimistic update
-      setCertificates(prev => prev.map(c => c.id === id ? { ...c, visibility: newVisibility } : c));
-
-      const { error } = await supabase
-        .from('certificates')
-        .update({ visibility: newVisibility } as any)
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      toast({ title: "Visibility updated" });
-    } catch (error) {
-      console.error('Error updating visibility:', error);
-      toast({ 
-        title: "Update failed", 
-        description: "Could not update visibility setting.",
-        variant: "destructive" 
-      });
-      fetchCertificates(); // Revert
-    }
-  };
-
-  const handleView = async (cert: Certificate) => {
-    if (!cert.file_url) return;
-
-    if (cert.file_url.startsWith('http')) {
-      window.open(cert.file_url, '_blank');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.storage
-        .from('certificates')
-        .createSignedUrl(cert.file_url, 60);
-
-      if (error) throw error;
-      
-      if (data?.signedUrl) {
-        window.open(data.signedUrl, '_blank');
-      }
-    } catch (error) {
-      console.error('Error opening certificate:', error);
-      toast({
-        title: "Error opening certificate",
-        description: "Could not retrieve the file.",
-        variant: "destructive"
-      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -210,25 +152,13 @@ const CertificateVault = () => {
 
       if (dbError) throw dbError;
 
-      // Delete from storage (optional, mostly clean up)
-      // Extract path from URL if needed, but we passed file_name/path usually. 
-      // Here we assume filePath is passed correctly or derived.
-      // If we only have URL, we might need to parse it.
-      // But let's skip strict storage deletion for now to avoid errors if path is wrong, 
-      // or try it safely.
-      
-      try {
-         // Assuming certificates bucket
-         // If file_url is full public URL, we need relative path.
-         // Usually it's just the filename if in root, or user_id/filename.
-         // Let's rely on what we have.
-         const { error: storageError } = await supabase.storage
-          .from('certificates')
-          .remove([filePath]);
-          
-         if (storageError) console.warn('Storage delete warning:', storageError);
-      } catch (e) {
-        // ignore
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('certificates')
+        .remove([filePath]);
+
+      if (storageError) {
+        console.warn('Storage deletion failed:', storageError);
       }
 
       toast({
@@ -262,197 +192,152 @@ const CertificateVault = () => {
     });
   };
 
-  const visibilityOptions = [
-    { value: 'everyone', label: 'Everyone', description: 'Visible to all users' },
-    { value: 'recruiters', label: 'Recruiters', description: 'Visible to recruiters only' },
-    { value: 'only_me', label: 'Only Me', description: 'Private to you' },
-  ];
-
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
-        <div>
-          <h2 className="text-2xl font-bold text-[#1D2226] tracking-tight">Credential Vault</h2>
-          <p className="text-[#5E6B7E] text-sm font-medium mt-1">Manage and showcase your professional certifications.</p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Certificate Vault</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="rounded-full px-6 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white hover:opacity-90 shadow-lg shadow-[#833AB4]/20 border-none transition-all duration-300 font-bold h-11">
+            <Button>
               <Plus className="h-4 w-4 mr-2" />
               Add Certificate
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-            <div className="h-2 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
-            <div className="p-8">
-              <DialogHeader className="mb-6">
-                <DialogTitle className="text-2xl font-bold text-[#1D2226] tracking-tight">Upload Certificate</DialogTitle>
-                <p className="text-[#5E6B7E] text-sm font-medium">Add a new credential to your professional vault.</p>
-              </DialogHeader>
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-[#5E6B7E] uppercase tracking-widest">Certificate Title</Label>
-                    <Input
-                      placeholder="e.g. AWS Certified Developer"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="rounded-xl border-gray-200 focus:ring-[#833AB4] focus:border-[#833AB4] h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-[#5E6B7E] uppercase tracking-widest">Description (Optional)</Label>
-                    <Textarea
-                      placeholder="Briefly describe this certification..."
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="rounded-xl border-gray-200 focus:ring-[#833AB4] focus:border-[#833AB4] min-h-[100px]"
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-[#5E6B7E] uppercase tracking-widest">Visibility Settings</Label>
-                  <VisibilitySelector
-                    title=""
-                    value={visibility}
-                    onChange={setVisibility}
-                    options={visibilityOptions}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-[#5E6B7E] uppercase tracking-widest">Certificate File</Label>
-                  <DocumentUpload
-                    bucket="certificates"
-                    acceptedTypes=".pdf,.jpg,.jpeg,.png,.webp"
-                    onUploadComplete={handleUploadComplete}
-                    label="Drop your file here or click to browse"
-                  />
-                </div>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Upload Certificate</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Input
+                  placeholder="Certificate title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
               </div>
+              <div>
+                <Textarea
+                  placeholder="Description (optional)"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {selectedFile ? selectedFile.name : 'Select File'}
+                </Button>
+              </div>
+              <Button
+                onClick={handleUpload}
+                disabled={uploading || !selectedFile || !title.trim()}
+                className="w-full"
+              >
+                {uploading ? "Uploading..." : "Upload Certificate"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
       {loading ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="animate-pulse border-none shadow-sm rounded-[2rem] h-[300px]">
-              <CardHeader className="p-6">
-                <div className="h-6 bg-gray-100 rounded-lg w-3/4 mb-4" />
-                <div className="flex gap-2">
-                  <div className="h-5 bg-gray-50 rounded-full w-20" />
-                  <div className="h-5 bg-gray-50 rounded-full w-20" />
-                </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-4 bg-muted rounded w-3/4" />
+                <div className="h-3 bg-muted rounded w-1/2" />
               </CardHeader>
-              <CardContent className="p-6 pt-0">
-                <div className="h-4 bg-gray-50 rounded-lg w-full mb-2" />
-                <div className="h-4 bg-gray-50 rounded-lg w-2/3" />
-                <div className="mt-auto pt-8">
-                  <div className="h-10 bg-gray-100 rounded-full w-full" />
-                </div>
+              <CardContent>
+                <div className="h-3 bg-muted rounded w-full mb-2" />
+                <div className="h-3 bg-muted rounded w-2/3" />
               </CardContent>
             </Card>
           ))}
         </div>
       ) : certificates.length === 0 ? (
-        <Card className="border-2 border-dashed border-gray-100 bg-gray-50/30 rounded-[2.5rem]">
-          <CardContent className="flex flex-col items-center justify-center py-24 px-6 text-center">
-            <div className="relative mb-6">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] opacity-20 blur-2xl rounded-full" />
-              <div className="relative h-20 w-20 bg-white rounded-[2rem] shadow-xl flex items-center justify-center text-[#833AB4]">
-                <FileText className="h-10 w-10" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-[#1D2226] mb-2 tracking-tight">Your vault is empty</h3>
-            <p className="text-[#5E6B7E] font-medium max-w-sm mb-8 leading-relaxed">
-              Upload your certifications, diplomas, and awards to showcase your verified achievements to recruiters.
+        <Card className="text-center py-12">
+          <CardContent>
+            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No certificates yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Upload your first certificate to get started
             </p>
-            <Button 
-              onClick={() => setIsDialogOpen(true)}
-              className="rounded-full px-8 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] text-white hover:opacity-90 shadow-xl shadow-[#833AB4]/25 border-none h-12 font-bold transition-all transform hover:scale-105 active:scale-95"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Add Your First Certificate
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Certificate
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {certificates.map((cert, index) => (
-            <Card 
-              key={cert.id} 
-              className="group hover:shadow-xl transition-all duration-500 border-none shadow-sm rounded-[2rem] overflow-hidden flex flex-col bg-white animate-in fade-in slide-in-from-bottom-4"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              <CardHeader className="p-6 pb-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-xl font-bold text-[#1D2226] tracking-tight truncate group-hover:text-[#833AB4] transition-colors" title={cert.title}>
-                      {cert.title}
-                    </CardTitle>
-                    <div className="flex flex-wrap items-center gap-2 mt-3">
-                      <Badge variant="secondary" className="bg-gray-50 text-[#5E6B7E] hover:bg-gray-100 border-none rounded-full px-3 py-0.5 text-[11px] font-bold">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {certificates.map((cert) => (
+            <Card key={cert.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">{cert.title}</CardTitle>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="secondary" className="text-xs">
                         {formatDate(cert.created_at)}
                       </Badge>
-                      <Badge variant="outline" className="border-gray-100 text-[#5E6B7E] rounded-full px-3 py-0.5 text-[11px] font-bold">
+                      <Badge variant="outline" className="text-xs">
                         {formatFileSize(cert.file_size)}
                       </Badge>
                     </div>
                   </div>
-                  <div className="h-10 w-10 rounded-2xl bg-gray-50 flex items-center justify-center text-[#5E6B7E] group-hover:bg-[#833AB4]/5 group-hover:text-[#833AB4] transition-all" title={`Visible to: ${cert.visibility || 'recruiters'}`}>
-                     {cert.visibility === 'everyone' && <Globe className="h-5 w-5" />}
-                     {(cert.visibility === 'recruiters' || !cert.visibility) && <Building2 className="h-5 w-5" />}
-                     {cert.visibility === 'only_me' && <Lock className="h-5 w-5" />}
-                  </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-6 pt-0 flex-1 flex flex-col">
+              <CardContent>
                 {cert.description && (
-                  <p className="text-[#5E6B7E] text-sm leading-relaxed line-clamp-2 mb-6 italic">
-                    "{cert.description}"
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {cert.description}
                   </p>
                 )}
-                
-                <div className="mt-auto space-y-4">
-                  <div className="bg-gray-50/50 p-3 rounded-2xl border border-gray-100/50">
-                    <Label className="text-[10px] font-bold text-[#5E6B7E] uppercase tracking-widest mb-2 block">Privacy Control</Label>
-                    <VisibilitySelector
-                      title=""
-                      value={cert.visibility || 'recruiters'}
-                      onChange={(val) => handleUpdateVisibility(cert.id, val)}
-                      options={visibilityOptions}
-                    />
-                  </div>
-
-                  <div className="flex gap-3">
-                    <div className="relative flex-1 p-[1px] rounded-full overflow-hidden group/btn">
-                      <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="relative w-full bg-white hover:bg-transparent hover:text-white border-none rounded-full px-4 h-11 transition-all duration-300 flex items-center justify-center gap-2 font-bold"
-                        onClick={() => handleView(cert)}
-                      >
-                        <Eye className="h-4 w-4" />
-                        <span>View Document</span>
-                      </Button>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full h-11 w-11 text-[#5E6B7E] hover:text-red-500 hover:bg-red-50 transition-all duration-300"
-                      onClick={() => {
-                        const fileNameInStorage = cert.file_url.split('/').pop();
-                        const storagePath = `${cert.user_id}/${fileNameInStorage}`;
-                        handleDelete(cert.id, storagePath);
-                      }}
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
-                  </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={async () => {
+                      // Generate a signed URL for private bucket access
+                      const { data, error } = await supabase.storage
+                        .from('certificates')
+                        .createSignedUrl(cert.file_url, 3600); // 1 hour expiry
+                      
+                      if (error || !data?.signedUrl) {
+                        toast({
+                          title: "Error",
+                          description: "Could not generate download link.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      window.open(data.signedUrl, '_blank');
+                    }}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    View
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(cert.id, cert.file_url.split('/').pop() || '')}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>

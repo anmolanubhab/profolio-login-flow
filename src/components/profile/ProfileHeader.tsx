@@ -10,9 +10,6 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useAuth } from '@/contexts/AuthContext';
-
-import { ProfileHero } from './redesign/ProfileHero';
 
 interface Profile {
   id: string;
@@ -21,7 +18,6 @@ interface Profile {
   profession?: string;
   location?: string;
   avatar_url?: string;
-  cover_url?: string;
   phone?: string;
   website?: string;
   profile_visibility?: string;
@@ -34,14 +30,11 @@ interface ProfileHeaderProps {
 
 const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [skillsCount, setSkillsCount] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [uploadingCover, setUploadingCover] = useState(false);
   const { toast } = useToast();
-  const { user, refreshProfile, profile: authProfile } = useAuth();
 
   const [editData, setEditData] = useState({
     display_name: '',
@@ -50,54 +43,14 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
     location: '',
     phone: '',
     website: '',
-    profile_visibility: 'public',
+    profile_visibility: 'public'
   });
-  
-  // Local state for cover preview (not saved to DB directly, uses photo_url)
-  const [coverPreview, setCoverPreview] = useState('');
 
   useEffect(() => {
-    const initProfile = async () => {
-      // 1. Handle Profile Data
-      // If viewing own profile and we have auth context data, use it (Single Source of Truth)
-      if (user?.id === userId && authProfile) {
-        setProfile(authProfile as any);
-        setEditData({
-          display_name: authProfile.display_name || '',
-          bio: authProfile.bio || '',
-          profession: authProfile.profession || '',
-          location: authProfile.location || '',
-          phone: authProfile.phone || '',
-          website: authProfile.website || '',
-          profile_visibility: authProfile.profile_visibility || 'public',
-        });
-        setCoverPreview(authProfile.cover_url || authProfile.photo_url || '');
-        setLoading(false);
-      } else {
-        // Otherwise fetch from DB (viewing others or auth not ready)
-        await fetchProfileData();
-      }
+    fetchProfile();
+  }, [userId]);
 
-      // 2. Always fetch skills count (not in AuthContext)
-      fetchSkillsCount();
-    };
-
-    initProfile();
-  }, [userId, user?.id, authProfile]);
-
-  const fetchSkillsCount = async () => {
-    try {
-      const { count: sCount } = await supabase
-        .from('skills')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
-      setSkillsCount(sCount || 0);
-    } catch (error) {
-      console.error('Error fetching skills count:', error);
-    }
-  };
-
-  const fetchProfileData = async () => {
+  const fetchProfile = async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -116,54 +69,28 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
           location: (data as any).location || '',
           phone: (data as any).phone || '',
           website: (data as any).website || '',
-          profile_visibility: (data as any).profile_visibility || 'public',
+          profile_visibility: (data as any).profile_visibility || 'public'
         });
-        setCoverPreview((data as any).cover_url || (data as any).photo_url || '');
       } else {
-        // Create a new profile if it doesn't exist (handle duplicate race)
+        // Create a new profile if it doesn't exist
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
           .insert({ user_id: userId })
           .select()
           .single();
 
-        if (createError) {
-          if ((createError as any).code === '23505') {
-            // Duplicate - fetch existing
-            const { data: existing, error: fetchErr } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', userId)
-              .maybeSingle();
-            if (!fetchErr && existing) {
-              setProfile(existing as any);
-              setEditData({
-                display_name: (existing as any).display_name || '',
-                bio: (existing as any).bio || '',
-                profession: (existing as any).profession || '',
-                location: (existing as any).location || '',
-                phone: (existing as any).phone || '',
-                website: (existing as any).website || '',
-                profile_visibility: (existing as any).profile_visibility || 'public',
-              });
-              setCoverPreview((existing as any).cover_url || (existing as any).photo_url || '');
-            }
-          } else {
-            throw createError;
-          }
-        } else if (newProfile) {
-          setProfile(newProfile as any);
-          setEditData({
-            display_name: '',
-            bio: '',
-            profession: '',
-            location: '',
-            phone: '',
-            website: '',
-            profile_visibility: 'public',
-          });
-          setCoverPreview('');
-        }
+        if (createError) throw createError;
+
+        setProfile(newProfile as any);
+        setEditData({
+          display_name: '',
+          bio: '',
+          profession: '',
+          location: '',
+          phone: '',
+          website: '',
+          profile_visibility: 'public'
+        });
       }
     } catch (error: any) {
       toast({
@@ -203,12 +130,6 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
       if (updateError) throw updateError;
 
       setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
-      
-      // Update global context if this is the current user's profile
-      if (user?.id === userId) {
-        await refreshProfile();
-      }
-
       toast({
         title: "Success",
         description: "Profile photo updated successfully!",
@@ -224,91 +145,17 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
     }
   };
 
-  const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setUploadingCover(true);
-    try {
-      const { secureUpload } = await import('@/lib/secure-upload');
-      // Use 'avatars' bucket for cover images (public bucket that exists)
-      const result = await secureUpload({
-        bucket: 'avatars',
-        file: file,
-        userId: userId
-      });
-
-      if (!result.success) {
-        console.error('Cover upload failed:', result.error);
-        throw new Error(result.error || 'Upload failed');
-      }
-
-      const publicUrl = result.url;
-      console.log('Cover uploaded successfully:', publicUrl);
-
-      // Store cover URL in cover_url field
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ cover_url: publicUrl })
-        .eq('user_id', userId);
-
-      if (updateError) {
-        // Check for schema/column error specifically
-        if (updateError.message?.includes('column') || updateError.message?.includes('schema')) {
-          console.error('Schema mismatch detected:', updateError);
-          toast({
-            title: 'Configuration Error',
-            description: 'The database schema is missing the cover_url column. Please apply the latest migrations.',
-            variant: 'destructive',
-          });
-          // Do not block the UI, just warn
-        } else {
-          console.error('Database update error:', updateError);
-          throw updateError;
-        }
-      }
-
-      setProfile(prev => prev ? { ...prev, cover_url: publicUrl } : null);
-      setCoverPreview(publicUrl);
-      
-      // Update global context if this is the current user's profile
-      if (user?.id === userId) {
-        await refreshProfile();
-      }
-      
-      toast({
-        title: "Success",
-        description: "Cover photo updated successfully!",
-      });
-    } catch (error: any) {
-      console.error('Cover upload error:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setUploadingCover(false);
-    }
-  };
-
   const handleSave = async () => {
     setSaving(true);
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(editData)
+        .update(editData as any)
         .eq('user_id', userId);
 
       if (error) throw error;
 
       setProfile(prev => prev ? { ...prev, ...editData } : null);
-
-      // Update global context if this is the current user's profile
-      if (user?.id === userId) {
-        await refreshProfile();
-      }
-
       setIsEditing(false);
       toast({
         title: "Success",
@@ -333,17 +180,15 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
       location: profile?.location || '',
       phone: profile?.phone || '',
       website: profile?.website || '',
-      profile_visibility: profile?.profile_visibility || 'public',
+      profile_visibility: profile?.profile_visibility || 'public'
     });
-    setCoverPreview(profile?.photo_url || '');
     setIsEditing(false);
   };
 
   if (loading) {
     return (
-      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card mb-6 overflow-hidden">
-        <CardContent className="px-4 py-6 sm:p-8">
-          <div className="animate-pulse flex space-x-4">
+      <Card className="p-6 mb-6 bg-gradient-card shadow-card">
+        <div className="animate-pulse flex space-x-4">
           <div className="rounded-full bg-muted h-24 w-24"></div>
           <div className="flex-1 space-y-2 py-1">
             <div className="h-4 bg-muted rounded w-3/4"></div>
@@ -351,81 +196,56 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
             <div className="h-4 bg-muted rounded w-5/6"></div>
           </div>
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-  if (!isEditing && profile) {
-    return (
-      <ProfileHero 
-        profile={profile} 
-        isOwnProfile={user?.id === userId} 
-        onEdit={() => setIsEditing(true)} 
-        skillsCount={skillsCount}
-      />
+      </Card>
     );
   }
 
   return (
-    <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card mb-6 overflow-hidden">
-      <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
+    <Card className="mb-6 bg-gradient-card shadow-card border-0">
+      <CardHeader className="pb-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-foreground">Edit Profile</h2>
+          <h2 className="text-xl font-semibold text-foreground">Profile Information</h2>
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-success hover:bg-success/90 text-success-foreground shadow-elegant"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving...' : 'Save Changes'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={saving}
-              className="border-muted-foreground/20 hover:bg-muted/50"
-            >
-              <X className="h-4 w-4 mr-2" />
-              Cancel
-            </Button>
+            {isEditing ? (
+              <>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="bg-success hover:bg-success/90 text-success-foreground shadow-elegant"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="border-muted-foreground/20 hover:bg-muted/50"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsEditing(true)}
+                className="border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/40"
+              >
+                <Edit3 className="h-4 w-4 mr-2" />
+                Edit Profile
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6 px-4 py-6 sm:px-8 sm:pb-8">
-        {/* Cover Photo Section */}
-        <div className="relative h-32 md:h-40 w-full rounded-xl overflow-hidden bg-muted group">
-          {coverPreview ? (
-            <img src={coverPreview} alt="Cover" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-r from-primary/10 to-primary/5 flex items-center justify-center text-muted-foreground">
-              <span className="text-sm">No cover photo</span>
-            </div>
-          )}
-          <label htmlFor="cover-upload" className="absolute bottom-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 cursor-pointer transition-smooth backdrop-blur-sm">
-            <Camera className="h-5 w-5" />
-            <input
-              id="cover-upload"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleCoverUpload}
-              disabled={uploadingCover}
-            />
-          </label>
-          {uploadingCover && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-            </div>
-          )}
-        </div>
-
+      <CardContent className="space-y-6">
         {/* Profile Photo Section */}
-        <div className="flex flex-col md:flex-row gap-6 -mt-12 px-4 relative z-10">
+        <div className="flex flex-col md:flex-row gap-6">
           <div className="flex flex-col items-center space-y-2">
             <div className="relative">
               <Avatar className="h-28 w-28 md:h-32 md:w-32 border-4 border-background shadow-elegant">
@@ -452,6 +272,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
           </div>
 
           <div className="flex-1 space-y-6">
+            {isEditing ? (
               <div className="space-y-6">
                 {/* Privacy Settings */}
                 <div className="space-y-4">
@@ -589,6 +410,69 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
                   </div>
                 </div>
               </div>
+            ) : (
+              /* Display Mode */
+              <div className="space-y-6">
+                {/* Basic Information Display */}
+                <div className="space-y-3">
+                  <h1 className="text-3xl font-bold text-foreground">
+                    {profile?.display_name || 'Your Name'}
+                  </h1>
+                  {profile?.profession && (
+                    <p className="text-lg text-primary font-semibold">
+                      {profile.profession}
+                    </p>
+                  )}
+                </div>
+
+                {/* Contact Information Display */}
+                {(profile?.location || profile?.phone || profile?.website) && (
+                  <>
+                    <Separator className="bg-muted/30" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {profile?.location && (
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                          <span className="text-sm">{profile.location}</span>
+                        </div>
+                      )}
+                      {profile?.phone && (
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <Phone className="h-4 w-4 text-primary flex-shrink-0" />
+                          <span className="text-sm">{profile.phone}</span>
+                        </div>
+                      )}
+                      {profile?.website && (
+                        <div className="flex items-center gap-3 text-muted-foreground md:col-span-2">
+                          <Globe className="h-4 w-4 text-primary flex-shrink-0" />
+                          <a 
+                            href={profile.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-sm text-primary hover:underline transition-smooth"
+                          >
+                            {profile.website}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* Bio Display */}
+                {profile?.bio && (
+                  <>
+                    <Separator className="bg-muted/30" />
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold text-foreground/80 uppercase tracking-wide">About</h4>
+                      <p className="text-foreground leading-relaxed text-sm">
+                        {profile.bio}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

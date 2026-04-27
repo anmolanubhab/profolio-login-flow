@@ -5,16 +5,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { VisualSkills } from './redesign/VisualSkills';
-import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Skill {
   id: string;
   skill_name: string;
   endorsement_count: number;
   has_endorsed: boolean;
-  proficiency?: string;
 }
 
 interface SkillsSectionProps {
@@ -27,18 +25,14 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [newSkill, setNewSkill] = useState('');
-  const [newSkillLevel, setNewSkillLevel] = useState('beginner');
   const [saving, setSaving] = useState(false);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const { toast } = useToast();
-  const { user, profile: authProfile } = useAuth();
 
   useEffect(() => {
-    if (authProfile) {
-      setCurrentProfileId(authProfile.id);
-    }
-  }, [authProfile]);
+    fetchCurrentProfile();
+  }, []);
 
   useEffect(() => {
     if (profileId) {
@@ -48,6 +42,21 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
       }
     }
   }, [profileId, currentProfileId]);
+
+  const fetchCurrentProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data) {
+        setCurrentProfileId(data.id);
+      }
+    }
+  };
 
   const checkConnection = async () => {
     if (!currentProfileId || !profileId) return;
@@ -64,10 +73,10 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
 
   const fetchSkills = async () => {
     try {
-      // Fetch skills from the skills table - only columns that exist
+      // Fetch skills from the skills table
       const { data: skillsData, error: skillsError } = await supabase
         .from('skills')
-        .select('id, skill_name, proficiency, years_of_experience')
+        .select('id, skill_name')
         .eq('user_id', profileId);
 
       if (skillsError) throw skillsError;
@@ -102,7 +111,6 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
             skill_name: skill.skill_name,
             endorsement_count: count || 0,
             has_endorsed: hasEndorsed,
-            proficiency: skill.proficiency || 'beginner',
           };
         })
       );
@@ -141,13 +149,11 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
         .insert({
           user_id: profileId,
           skill_name: trimmedSkill,
-          proficiency: newSkillLevel as 'beginner' | 'intermediate' | 'advanced' | 'expert',
         });
 
       if (error) throw error;
 
       setNewSkill('');
-      setNewSkillLevel('beginner');
       fetchSkills();
       toast({
         title: "Success",
@@ -270,10 +276,12 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
     }
   };
 
+  const canEndorse = !isOwnProfile && currentProfileId && (isConnected || true); // Allow all logged-in users to endorse
+
   if (loading) {
     return (
-      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-        <CardContent className="px-4 py-6 sm:p-8">
+      <Card>
+        <CardContent className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-muted rounded w-1/4"></div>
             <div className="flex flex-wrap gap-2">
@@ -293,31 +301,16 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
 
       {/* Add Skill Input */}
       {isOwnProfile && (
-        <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-primary/20 bg-white shadow-none sm:shadow-card overflow-hidden">
-          <CardContent className="px-4 py-6 sm:p-8">
+        <Card className="border-primary/20">
+          <CardContent className="p-6">
             <div className="flex gap-2">
-              <div className="flex-1">
-                <Input
-                  placeholder="Add a skill (e.g., JavaScript, Project Management)"
-                  value={newSkill}
-                  onChange={(e) => setNewSkill(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={saving}
-                />
-              </div>
-              <div className="w-[180px]">
-                <Select value={newSkillLevel} onValueChange={setNewSkillLevel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="advanced">Advanced</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Input
+                placeholder="Add a skill (e.g., JavaScript, Project Management)"
+                value={newSkill}
+                onChange={(e) => setNewSkill(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={saving}
+              />
               <Button 
                 onClick={handleAddSkill}
                 disabled={!newSkill.trim() || saving}
@@ -331,21 +324,80 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
       )}
 
       {/* Skills Display */}
-      <Card className="shadow-card border-0 bg-transparent shadow-none">
-        <CardContent className="p-0">
-          <VisualSkills 
-            skills={skills}
-            isOwnProfile={isOwnProfile}
-            onEndorse={handleEndorse}
-            onDelete={handleRemoveSkill}
-          />
+      <Card className="shadow-card">
+        <CardContent className="p-6">
+          {skills.length > 0 ? (
+            <div className="space-y-3">
+              {skills.map((skill) => (
+                <div
+                  key={skill.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant="secondary"
+                      className="text-sm py-1 px-3 bg-primary/10 text-primary"
+                    >
+                      {skill.skill_name}
+                    </Badge>
+                    {skill.endorsement_count > 0 && (
+                      <span className="text-sm text-muted-foreground flex items-center gap-1">
+                        <ThumbsUp className="h-3 w-3" />
+                        {skill.endorsement_count} endorsement{skill.endorsement_count !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {canEndorse && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={skill.has_endorsed ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleEndorse(skill)}
+                            disabled={saving}
+                            className="gap-1"
+                          >
+                            <ThumbsUp className={`h-4 w-4 ${skill.has_endorsed ? '' : ''}`} />
+                            {skill.has_endorsed ? 'Endorsed' : 'Endorse'}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {skill.has_endorsed ? 'Remove endorsement' : 'Endorse this skill'}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {isOwnProfile && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveSkill(skill.id)}
+                        disabled={saving}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                {isOwnProfile 
+                  ? "No skills added yet. Add your first skill above to get started."
+                  : "No skills added yet."}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Skill Suggestions */}
       {isOwnProfile && (
-        <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-          <CardContent className="px-4 py-6 sm:p-8">
+        <Card>
+          <CardContent className="p-6">
             <h3 className="text-lg font-medium mb-3">Suggested Skills</h3>
             <div className="flex flex-wrap gap-2">
               {[

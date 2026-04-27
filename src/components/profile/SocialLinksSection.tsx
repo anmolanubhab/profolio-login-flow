@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Save, X, ExternalLink, Mail, Phone, Globe, Linkedin, Github, Twitter } from 'lucide-react';
+import { Save, X, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface SocialLinksSectionProps {
   userId: string;
@@ -18,50 +16,34 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
-  const { user, profile: authProfile, refreshProfile } = useAuth();
 
-  const [formData, setFormData] = useState({
+  const [socialLinks, setSocialLinks] = useState({
     linkedin_url: '',
     github_url: '',
     twitter_url: '',
-    website: '',
-    phone: '',
+    website: ''
   });
 
   useEffect(() => {
-    if (isOwnProfile && authProfile && user?.id === userId) {
-      setFormData({
-        linkedin_url: authProfile.linkedin_url || '',
-        github_url: authProfile.github_url || '',
-        twitter_url: authProfile.twitter_url || '',
-        website: authProfile.website || '',
-        phone: authProfile.phone || '',
-      });
-      setLoading(false);
-    } else {
-      fetchData();
-    }
-  }, [userId, authProfile, isOwnProfile, user]);
+    fetchSocialLinks();
+  }, [userId]);
 
-  const fetchData = async () => {
+  const fetchSocialLinks = async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('linkedin_url, github_url, twitter_url, website, phone')
+        .select('linkedin_url, github_url, twitter_url, website' as any)
         .eq('user_id', userId)
         .maybeSingle();
 
       if (error) throw error;
       
-      if (data) {
-        setFormData({
-          linkedin_url: data.linkedin_url || '',
-          github_url: data.github_url || '',
-          twitter_url: data.twitter_url || '',
-          website: data.website || '',
-          phone: data.phone || '',
-        });
-      }
+      setSocialLinks({
+        linkedin_url: (data as any)?.linkedin_url || '',
+        github_url: (data as any)?.github_url || '',
+        twitter_url: (data as any)?.twitter_url || '',
+        website: (data as any)?.website || ''
+      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -78,19 +60,15 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(formData)
+        .update(socialLinks as any)
         .eq('user_id', userId);
 
       if (error) throw error;
 
-      if (isOwnProfile) {
-        await refreshProfile();
-      }
-
       setIsEditing(false);
       toast({
         title: "Success",
-        description: "Profile settings updated successfully!",
+        description: "Social links updated successfully!",
       });
     } catch (error: any) {
       toast({
@@ -104,7 +82,7 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
   };
 
   const handleCancel = () => {
-    fetchData(); // Reset to original values
+    fetchSocialLinks(); // Reset to original values
     setIsEditing(false);
   };
 
@@ -123,11 +101,12 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
 
   if (loading) {
     return (
-      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-        <CardContent className="px-4 py-6 sm:p-8">
+      <Card>
+        <CardContent className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-muted rounded w-1/4"></div>
             <div className="space-y-3">
+              <div className="h-10 bg-muted rounded"></div>
               <div className="h-10 bg-muted rounded"></div>
               <div className="h-10 bg-muted rounded"></div>
             </div>
@@ -138,175 +117,178 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Contact & Social Links</h2>
+        <h2 className="text-xl font-semibold">Social Links</h2>
         {!isEditing && isOwnProfile && (
           <Button onClick={() => setIsEditing(true)}>
-            Edit Settings
+            Edit Links
           </Button>
         )}
       </div>
 
-      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-        <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
-          <CardTitle className="text-lg">Contact Information</CardTitle>
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="text-lg">Professional Links</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6 px-4 py-6 sm:px-8 sm:pb-8">
-          {/* Phone */}
-          <div className="space-y-3">
-            <Label className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-gray-500" /> Phone Number
-            </Label>
-            {isEditing ? (
-              <Input 
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                placeholder="+1 (555) 000-0000"
-              />
-            ) : (
-              <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
-                <span className={!formData.phone ? "text-muted-foreground italic" : ""}>
-                  {formData.phone || "No phone added"}
-                </span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        <CardContent className="space-y-4">
+          {isEditing && isOwnProfile ? (
+            <>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">LinkedIn</label>
+                  <Input
+                    placeholder="https://linkedin.com/in/your-profile"
+                    value={socialLinks.linkedin_url}
+                    onChange={(e) => setSocialLinks(prev => ({ ...prev, linkedin_url: e.target.value }))}
+                  />
+                </div>
 
-      <Card className="rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-100 bg-white shadow-none sm:shadow-card overflow-hidden">
-        <CardHeader className="px-4 py-6 sm:px-8 sm:pt-8 sm:pb-4">
-          <CardTitle className="text-lg">Social Profiles</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 px-4 py-6 sm:px-8 sm:pb-8">
-          {isEditing ? (
-            <div className="space-y-4">
-              <div>
-                <Label className="mb-2 block flex items-center gap-2">
-                  <Linkedin className="h-4 w-4" /> LinkedIn
-                </Label>
-                <Input
-                  placeholder="https://linkedin.com/in/..."
-                  value={formData.linkedin_url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, linkedin_url: e.target.value }))}
-                />
-              </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">GitHub</label>
+                  <Input
+                    placeholder="https://github.com/your-username"
+                    value={socialLinks.github_url}
+                    onChange={(e) => setSocialLinks(prev => ({ ...prev, github_url: e.target.value }))}
+                  />
+                </div>
 
-              <div>
-                <Label className="mb-2 block flex items-center gap-2">
-                  <Github className="h-4 w-4" /> GitHub
-                </Label>
-                <Input
-                  placeholder="https://github.com/..."
-                  value={formData.github_url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, github_url: e.target.value }))}
-                />
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Twitter</label>
+                  <Input
+                    placeholder="https://twitter.com/your-handle"
+                    value={socialLinks.twitter_url}
+                    onChange={(e) => setSocialLinks(prev => ({ ...prev, twitter_url: e.target.value }))}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Personal Website</label>
+                  <Input
+                    placeholder="https://your-website.com"
+                    value={socialLinks.website}
+                    onChange={(e) => setSocialLinks(prev => ({ ...prev, website: e.target.value }))}
+                  />
+                </div>
               </div>
 
-              <div>
-                <Label className="mb-2 block flex items-center gap-2">
-                  <Twitter className="h-4 w-4" /> Twitter / X
-                </Label>
-                <Input
-                  placeholder="https://twitter.com/..."
-                  value={formData.twitter_url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, twitter_url: e.target.value }))}
-                />
-              </div>
-
-              <div>
-                <Label className="mb-2 block flex items-center gap-2">
-                  <Globe className="h-4 w-4" /> Personal Website
-                </Label>
-                <Input
-                  placeholder="https://your-website.com"
-                  value={formData.website}
-                  onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                />
-              </div>
-
-              <div className="flex gap-2 pt-4 justify-end">
+              <div className="flex gap-2 pt-4">
+                <Button 
+                  onClick={handleSave} 
+                  disabled={saving}
+                  className="bg-success hover:bg-success/90"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? 'Saving...' : 'Save'}
+                </Button>
                 <Button variant="outline" onClick={handleCancel} disabled={saving}>
                   <X className="h-4 w-4 mr-2" />
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleSave} 
-                  disabled={saving}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
               </div>
-            </div>
+            </>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {formData.linkedin_url && (
-                <Button variant="outline" className="justify-start h-auto py-3 px-4" asChild>
-                  <a href={formatUrl(formData.linkedin_url)} target="_blank" rel="noopener noreferrer">
-                    <Linkedin className="h-5 w-5 mr-3 text-[#0077b5]" />
-                    <div className="text-left overflow-hidden">
-                      <div className="font-medium text-sm">LinkedIn</div>
-                      <div className="text-xs text-muted-foreground truncate max-w-[150px]">
-                        {getDisplayUrl(formData.linkedin_url)}
-                      </div>
-                    </div>
-                    <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
-                  </a>
-                </Button>
-              )}
-              
-              {formData.github_url && (
-                <Button variant="outline" className="justify-start h-auto py-3 px-4" asChild>
-                  <a href={formatUrl(formData.github_url)} target="_blank" rel="noopener noreferrer">
-                    <Github className="h-5 w-5 mr-3" />
-                    <div className="text-left overflow-hidden">
-                      <div className="font-medium text-sm">GitHub</div>
-                      <div className="text-xs text-muted-foreground truncate max-w-[150px]">
-                        {getDisplayUrl(formData.github_url)}
-                      </div>
-                    </div>
-                    <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
-                  </a>
-                </Button>
+            <div className="space-y-4">
+              {socialLinks.linkedin_url && (
+                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                  <div>
+                    <p className="font-medium">LinkedIn</p>
+                    <p className="text-sm text-muted-foreground">
+                      {getDisplayUrl(socialLinks.linkedin_url)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                  >
+                    <a
+                      href={formatUrl(socialLinks.linkedin_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
               )}
 
-              {formData.twitter_url && (
-                <Button variant="outline" className="justify-start h-auto py-3 px-4" asChild>
-                  <a href={formatUrl(formData.twitter_url)} target="_blank" rel="noopener noreferrer">
-                    <Twitter className="h-5 w-5 mr-3 text-[#1DA1F2]" />
-                    <div className="text-left overflow-hidden">
-                      <div className="font-medium text-sm">Twitter</div>
-                      <div className="text-xs text-muted-foreground truncate max-w-[150px]">
-                        {getDisplayUrl(formData.twitter_url)}
-                      </div>
-                    </div>
-                    <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
-                  </a>
-                </Button>
+              {socialLinks.github_url && (
+                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                  <div>
+                    <p className="font-medium">GitHub</p>
+                    <p className="text-sm text-muted-foreground">
+                      {getDisplayUrl(socialLinks.github_url)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                  >
+                    <a
+                      href={formatUrl(socialLinks.github_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
               )}
 
-              {formData.website && (
-                <Button variant="outline" className="justify-start h-auto py-3 px-4" asChild>
-                  <a href={formatUrl(formData.website)} target="_blank" rel="noopener noreferrer">
-                    <Globe className="h-5 w-5 mr-3 text-green-600" />
-                    <div className="text-left overflow-hidden">
-                      <div className="font-medium text-sm">Website</div>
-                      <div className="text-xs text-muted-foreground truncate max-w-[150px]">
-                        {getDisplayUrl(formData.website)}
-                      </div>
-                    </div>
-                    <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
-                  </a>
-                </Button>
+              {socialLinks.twitter_url && (
+                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                  <div>
+                    <p className="font-medium">Twitter</p>
+                    <p className="text-sm text-muted-foreground">
+                      {getDisplayUrl(socialLinks.twitter_url)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                  >
+                    <a
+                      href={formatUrl(socialLinks.twitter_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
               )}
 
-              {!formData.linkedin_url && !formData.github_url && !formData.twitter_url && !formData.website && (
-                <div className="col-span-full text-center py-8 bg-gray-50 rounded-lg border border-dashed">
-                  <p className="text-muted-foreground text-sm">
-                    No social links added yet.
+              {socialLinks.website && (
+                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                  <div>
+                    <p className="font-medium">Personal Website</p>
+                    <p className="text-sm text-muted-foreground">
+                      {getDisplayUrl(socialLinks.website)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                  >
+                    <a
+                      href={formatUrl(socialLinks.website)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              )}
+
+              {!socialLinks.linkedin_url && !socialLinks.github_url && !socialLinks.twitter_url && !socialLinks.website && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    No social links added yet. Click "Edit Links" to add your professional profiles.
                   </p>
                 </div>
               )}

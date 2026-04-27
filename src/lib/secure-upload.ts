@@ -10,7 +10,7 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10MB
 
 export interface SecureUploadOptions {
-  bucket: 'avatars' | 'post-images' | 'certificates' | 'resumes' | 'stories' | 'group-logos';
+  bucket: 'avatars' | 'post-images' | 'certificates' | 'resumes' | 'stories';
   file: File;
   userId: string;
   allowedTypes?: string[];
@@ -68,7 +68,6 @@ export async function secureUpload({
       case 'avatars':
       case 'post-images':
       case 'stories':
-      case 'group-logos':
         defaultAllowedTypes = ALLOWED_IMAGE_TYPES;
         defaultMaxSize = MAX_IMAGE_SIZE;
         break;
@@ -97,36 +96,21 @@ export async function secureUpload({
     const secureFilename = generateSecureFilename(file.name);
     const filePath = `${userId}/${secureFilename}`;
 
-    // Upload to storage, with graceful fallback for missing buckets
-    let activeBucket = bucket;
-    let { error: uploadError } = await supabase.storage
-      .from(activeBucket)
+    // Upload to storage
+    const { error: uploadError } = await supabase.storage
+      .from(bucket)
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false // Prevent overwriting
       });
 
-    // If target bucket doesn't exist (common on fresh projects), fall back to 'avatars'
-    if (uploadError && activeBucket === 'group-logos') {
-      const msg = uploadError.message?.toLowerCase() || '';
-      if (msg.includes('not found') || msg.includes('does not exist') || msg.includes('bucket')) {
-        activeBucket = 'avatars';
-        const retry = await supabase.storage
-          .from(activeBucket)
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-        uploadError = retry.error || null as any;
-      }
-    }
-
     if (uploadError) {
       return { success: false, error: uploadError.message };
     }
 
-    // Treat 'certificates' as private. 'resumes' is public per current configuration.
-    const isPrivateBucket = bucket === 'certificates';
+    // For private buckets (certificates, resumes), store the file path instead of public URL
+    // Public URL won't work for private buckets
+    const isPrivateBucket = bucket === 'certificates' || bucket === 'resumes';
     
     if (isPrivateBucket) {
       return {
@@ -138,15 +122,12 @@ export async function secureUpload({
 
     // Get public URL for public buckets
     const { data: { publicUrl } } = supabase.storage
-      .from(activeBucket)
+      .from(bucket)
       .getPublicUrl(filePath);
-
-    // Add cache busting timestamp
-    const publicUrlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
 
     return {
       success: true,
-      url: publicUrlWithTimestamp,
+      url: publicUrl,
       filePath
     };
 

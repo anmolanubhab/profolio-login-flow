@@ -1,85 +1,59 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Layout } from '@/components/Layout';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import ProfileTabs from '@/components/profile/ProfileTabs';
-import { useAuth } from '@/contexts/AuthContext';
 
 const Profile = () => {
-  const { user, profile, loading: authLoading, refreshProfile, signOut } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
-  const [creatingProfile, setCreatingProfile] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const initProfile = async () => {
-      if (authLoading) return;
-
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate('/');
         return;
       }
-
+      setUser(user);
+      
+      // Fetch profile ID
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
       if (profile) {
         setProfileId(profile.id);
-        return;
       }
-
-      // Only attempt creation if we have a user but no profile and aren't already creating
-      if (!profile && !creatingProfile) {
-        setCreatingProfile(true);
-        try {
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert({ user_id: user.id })
-            .select('id')
-            .single();
-
-          if (newProfile?.id) {
-            setProfileId(newProfile.id);
-            await refreshProfile();
-          } else if (createError) {
-            if ((createError as any).code === '23505') {
-              const { data: existing, error: fetchErr } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('user_id', user.id)
-                .single();
-              if (existing?.id) {
-                setProfileId(existing.id);
-                await refreshProfile();
-              } else if (fetchErr) {
-                console.error('Profile fetch after duplicate failed:', fetchErr);
-              }
-            } else {
-              console.error('Error creating profile:', createError);
-              toast({
-                title: "Profile Error",
-                description: "Could not initialize profile. Please refresh.",
-                variant: "destructive",
-              });
-            }
-          }
-        } catch (error) {
-          console.error('Error in profile initialization:', error);
-        } finally {
-          setCreatingProfile(false);
-        }
-      }
+      
+      setLoading(false);
     };
 
-    initProfile();
-  }, [user, profile, authLoading, navigate, toast, creatingProfile, refreshProfile]);
+    getUser();
+  }, [navigate]);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      navigate('/');
+    }
   };
 
-  if (authLoading || (user && !profileId && creatingProfile)) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -87,31 +61,15 @@ const Profile = () => {
     );
   }
 
-  // Fallback if user is missing (should be handled by navigate)
-  if (!user) {
-    return null; 
+  if (!user || !profileId) {
+    return null;
   }
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div
-        className="w-full pb-20 min-h-screen"
-        style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}
-      >
-        {/* Universal Page Hero Section removed */}
-
-        <div className="w-full">
-          <ProfileHeader userId={user.id} />
-          {/* Only render tabs if we have a profile ID, otherwise show a loader or empty state */}
-          {profileId ? (
-            <ProfileTabs userId={user.id} profileId={profileId} isOwnProfile={true} />
-          ) : (
-            <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Initializing profile...</p>
-            </div>
-          )}
-        </div>
+      <div className="container mx-auto max-w-4xl">
+        <ProfileHeader userId={user.id} />
+        <ProfileTabs userId={user.id} profileId={profileId} isOwnProfile={true} />
       </div>
     </Layout>
   );

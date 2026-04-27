@@ -8,7 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { DollarSign } from 'lucide-react';
+import { MapPin, Clock, Building, DollarSign, Briefcase, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,97 +28,234 @@ import {
 import { Layout } from '@/components/Layout';
 import { PostJobDialog } from '@/components/jobs/PostJobDialog';
 import { JobFilters, JobFiltersState } from '@/components/jobs/JobFilters';
-import { JobsFeed } from '@/components/jobs/JobsFeed';
-import { useJobFeed, Job } from '@/hooks/useJobFeed';
-import { ApplyJobDialog } from '@/components/jobs/ApplyJobDialog';
-import { useJobApplication } from '@/hooks/useJobApplication';
-import { useSavedJobs } from '@/hooks/useSavedJobs';
-import { useQueryClient } from '@tanstack/react-query';
-import { Bookmark } from 'lucide-react';
 
-import { useAuth } from '@/contexts/AuthContext';
+interface Job {
+  id: string;
+  title: string;
+  company_name: string;
+  company_id?: string;
+  description: string;
+  requirements: string;
+  location: string;
+  employment_type: string;
+  remote_option: string;
+  apply_link: string;
+  salary_min: number;
+  salary_max: number;
+  currency: string;
+  posted_at: string;
+  posted_by: string;
+  status: string;
+  company?: {
+    name: string;
+    logo_url: string;
+  };
+}
 
 const Jobs = () => {
-  const { user } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
   const [profileId, setProfileId] = useState<string>('');
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [filters, setFilters] = useState<JobFiltersState>({
     search: '',
     companyId: '',
     location: '',
     employmentType: '',
   });
-  
+  const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [showPostJobDialog, setShowPostJobDialog] = useState(false);
+  const [coverLetter, setCoverLetter] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
-  
   const { toast } = useToast();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { savedJobIds, toggleSave } = useSavedJobs();
-  const { appliedJobIds } = useJobApplication();
-  
-  // Use hook to get jobs for filters
-  const { jobs } = useJobFeed();
 
   useEffect(() => {
-    if (!user) return;
-
-    const controller = new AbortController();
-    
-    const getProfile = async () => {
-      try {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .abortSignal(controller.signal)
-          .maybeSingle();
-        
-        if (error) {
-          if (error.code === 'ABORTED') return;
-          throw error;
-        }
-
-        if (profile) {
-          setProfileId(profile.id);
-        }
-      } catch (error) {
-        console.error('Error fetching profile:', error);
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/');
+        return;
+      }
+      setUser(user);
+      
+      // FIXED: Get profile ID for job posting
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (profile) {
+        setProfileId(profile.id);
       }
     };
+    getUser();
+  }, [navigate]);
 
-    getProfile();
-
-    return () => controller.abort();
+  useEffect(() => {
+    if (user) {
+      fetchJobs();
+      fetchApplications();
+    }
   }, [user]);
+
+  useEffect(() => {
+    let filtered = [...jobs];
+
+    // Search filter
+    if (filters.search.trim()) {
+      const query = filters.search.toLowerCase();
+      filtered = filtered.filter(job => {
+        const companyName = job.company_name || job.company?.name || '';
+        return (
+          job.title.toLowerCase().includes(query) ||
+          companyName.toLowerCase().includes(query) ||
+          job.location?.toLowerCase().includes(query) ||
+          job.description?.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    // Company filter
+    if (filters.companyId) {
+      filtered = filtered.filter(job => job.company_id === filters.companyId);
+    }
+
+    // Location filter
+    if (filters.location) {
+      filtered = filtered.filter(job => job.location === filters.location);
+    }
+
+    // Employment type filter
+    if (filters.employmentType) {
+      filtered = filtered.filter(job => 
+        job.employment_type?.toLowerCase() === filters.employmentType.toLowerCase()
+      );
+    }
+
+    setFilteredJobs(filtered);
+  }, [filters, jobs]);
+
+  const fetchJobs = async () => {
+    try {
+      // FIXED: Fetch jobs with optional company relation
+      const { data, error } = await supabase
+        .from('jobs')
+        .select(`
+          *,
+          company:companies(name, logo_url)
+        `)
+        .eq('status', 'open')
+        .order('posted_at', { ascending: false });
+
+      if (error) throw error;
+      setJobs(data || []);
+      setFilteredJobs(data || []);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchApplications = async () => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (!profile) return;
+
+      const { data, error } = await supabase
+        .from('applications')
+        .select('job_id')
+        .eq('user_id', profile.id);
+
+      if (error) throw error;
+      setAppliedJobs(new Set(data?.map(app => app.job_id) || []));
+    } catch (error: any) {
+      console.error('Error fetching applications:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate('/');
   };
 
-  const handleApplyClick = (job: any) => {
-    setSelectedJob(job);
-    setShowApplyDialog(true);
-    // Also increment view on apply intent
-    if (job.posted_by !== profileId) {
-      (supabase.rpc as any)('increment_job_view', { job_id: job.id });
+  const handleApply = async () => {
+    if (!selectedJob || !user) return;
+
+    try {
+      setApplying(true);
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile) throw new Error('Profile not found');
+
+      const { error } = await supabase
+        .from('applications')
+        .insert({
+          job_id: selectedJob.id,
+          user_id: profile.id,
+          cover_letter: coverLetter.trim() || null,
+          status: 'applied',
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'Application submitted successfully!',
+      });
+
+      setAppliedJobs(prev => new Set([...prev, selectedJob.id]));
+      setShowApplyDialog(false);
+      setCoverLetter('');
+      setSelectedJob(null);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setApplying(false);
     }
   };
 
-  const handleViewDetails = (job: any) => {
-    setSelectedJob(job);
-    if (job.posted_by !== profileId) {
-      (supabase.rpc as any)('increment_job_view', { job_id: job.id });
-    }
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const postTime = new Date(timestamp);
+    const diffInDays = Math.floor((now.getTime() - postTime.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'Today';
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+    return `${Math.floor(diffInDays / 30)} months ago`;
   };
 
-  const handleEditJob = (job: any) => {
-    setEditingJob(job);
-    setShowPostJobDialog(true);
+  const formatSalary = (job: Job) => {
+    if (!job.salary_min || !job.salary_max) return null;
+    const currency = job.currency || 'USD';
+    return `${currency} ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
   };
 
   const handleDeleteJob = async (jobId: string) => {
@@ -129,7 +272,7 @@ const Jobs = () => {
         description: 'Job deleted successfully!',
       });
 
-      queryClient.invalidateQueries({ queryKey: ['jobs-feed'] });
+      fetchJobs();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -141,116 +284,199 @@ const Jobs = () => {
     }
   };
 
-  const formatSalary = (job: Job) => {
-    if (!job.salary_min || !job.salary_max) return null;
-    const currency = job.currency || 'USD';
-    return `${currency} ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
+  const isJobOwner = (job: Job) => {
+    return job.posted_by === profileId;
   };
 
-  if (!user) {
-    return null; 
+  if (loading) {
+    return (
+      <Layout user={user!} onSignOut={handleSignOut}>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
   }
 
-  const uniqueLocations = Array.from(new Set(jobs?.map(job => job.location).filter(Boolean) || [])) as string[];
-
   return (
-    <Layout user={user} onSignOut={handleSignOut}>
-      <div className="min-h-screen" style={{ background: "radial-gradient(1000px 300px at 0% 0%, #e9d5ff 0%, #fce7f3 40%, #dbeafe 80%)" }}>
-        {/* Universal Page Hero Section */}
-        <div className="relative w-full bg-gradient-to-r from-indigo-300 via-pink-200 to-blue-200 rounded-b-3xl py-16 px-8 overflow-hidden">
-          <div className="max-w-4xl mx-auto relative">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="text-center md:text-left animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-                <h1 className="text-4xl md:text-6xl font-extrabold text-[#1D2226] mb-4 tracking-tighter">
-                  Find Your Next Opportunity
-                </h1>
-                <p className="text-[#5E6B7E] text-lg md:text-2xl font-medium max-w-2xl mx-auto md:mx-0 leading-relaxed">
-                  Discover jobs that match your skills and interests.
-                </p>
+    <Layout user={user!} onSignOut={handleSignOut}>
+      <div className="container mx-auto max-w-4xl">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Next Opportunity</h1>
+            <p className="text-muted-foreground">Discover jobs that match your skills and interests</p>
+          </div>
+          {/* FIXED: Added Post Job button */}
+          <Button 
+            onClick={() => setShowPostJobDialog(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Post a Job
+          </Button>
+        </div>
+
+        <Card className="mb-6 bg-gradient-card shadow-card border-0">
+          <CardContent className="pt-6">
+            <JobFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              locations={jobs.map(job => job.location).filter(Boolean)}
+            />
+          </CardContent>
+        </Card>
+
+        {filteredJobs.length === 0 ? (
+          <Card className="p-12 text-center bg-gradient-card shadow-card border-0">
+            <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">
+              {filters.search || filters.companyId || filters.location || filters.employmentType 
+                ? 'No jobs found matching your filters.' 
+                : 'No job openings available at the moment.'}
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {filteredJobs.map((job) => {
+              const hasApplied = appliedJobs.has(job.id);
+              return (
+                <Card key={job.id} className="bg-gradient-card shadow-card border-0 hover:shadow-elegant transition-smooth">
+                  <CardContent className="p-6">
+                     <div className="space-y-4">
+                       <div className="flex items-start gap-4">
+                         {job.company?.logo_url && (
+                           <img 
+                             src={job.company.logo_url} 
+                             alt={job.company?.name || job.company_name}
+                             className="h-12 w-12 rounded object-cover"
+                           />
+                          )}
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg text-foreground">{job.title}</h3>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                              <Building className="h-4 w-4" />
+                              <span>{job.company_name || job.company?.name}</span>
+                            </div>
+                          </div>
+                         <div className="flex items-center gap-2">
+                           <Badge variant={hasApplied ? "secondary" : "outline"}>
+                             {hasApplied ? 'Applied' : job.employment_type}
+                           </Badge>
+                           {isJobOwner(job) && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                   <DropdownMenuItem onClick={() => {
+                                     setEditingJob(job);
+                                     setShowPostJobDialog(true);
+                                   }}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Job
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => setDeletingJobId(job.id)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete Job
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                         </div>
+                      </div>
+                      
+                      <p className="text-sm text-muted-foreground line-clamp-2">{job.description}</p>
+
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          <span>{job.location}</span>
+                        </div>
+                        {job.remote_option && (
+                          <Badge variant="secondary" className="text-xs">
+                            {job.remote_option}
+                          </Badge>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span>{formatTimeAgo(job.posted_at)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2">
+                        {formatSalary(job) && (
+                          <div className="flex items-center gap-1 text-primary font-medium">
+                            <DollarSign className="h-4 w-4" />
+                            <span>{formatSalary(job)}</span>
+                          </div>
+                        )}
+                        <div className="flex gap-2 ml-auto">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedJob(job);
+                            }}
+                          >
+                            View Details
+                          </Button>
+                          <Button 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedJob(job);
+                              setShowApplyDialog(true);
+                            }}
+                            disabled={hasApplied}
+                          >
+                            {hasApplied ? 'Applied' : 'Apply Now'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Apply Dialog */}
+        <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Apply for {selectedJob?.title}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Cover Letter (Optional)</label>
+                <Textarea
+                  placeholder="Tell the employer why you're a great fit for this position..."
+                  value={coverLetter}
+                  onChange={(e) => setCoverLetter(e.target.value)}
+                  rows={6}
+                  className="mt-2"
+                />
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-3 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-                <Button 
-                  onClick={() => setShowPostJobDialog(true)}
-                  className="w-full sm:w-auto rounded-full font-bold h-12 px-8 text-white border-none transition-all hover:opacity-90 active:scale-[0.98] bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C] shadow-lg hover:shadow-xl"
-                >
-                  Post a Job
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowApplyDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleApply} disabled={applying}>
+                  {applying ? 'Submitting...' : 'Submit Application'}
                 </Button>
               </div>
             </div>
-          </div>
-          <div className="pointer-events-none absolute inset-0 opacity-40">
-            <div className="absolute -top-20 -right-32 w-[400px] h-[400px] bg-white/30 rounded-full blur-3xl" />
-            <div className="absolute -bottom-24 -left-16 w-[300px] h-[300px] bg-white/20 rounded-full blur-3xl" />
-          </div>
-        </div>
-
-        <div className="max-w-4xl mx-auto py-8 px-0 sm:px-4">
-          <div className="mb-8 flex flex-wrap items-center gap-3 px-4 sm:px-2">
-            <Button 
-              variant="outline" 
-              className="rounded-full font-semibold relative p-[1px] overflow-hidden group border-none h-10"
-              onClick={() => navigate('/jobs/saved')}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0077B5] via-[#833AB4] to-[#E1306C]" />
-              <div className="flex items-center justify-center w-full h-full bg-white rounded-full relative z-10 px-4 text-gray-700 group-hover:bg-gray-50 transition-colors">
-                <Bookmark className="h-4 w-4 mr-2" />
-                Saved Jobs
-              </div>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="rounded-full font-semibold h-10 px-6 border-gray-200 text-gray-600 hover:bg-gray-50"
-              onClick={() => navigate('/jobs/preferences')}
-            >
-              Job Preferences
-            </Button>
-            <Button 
-              variant="outline" 
-              className="rounded-full font-semibold h-10 px-6 border-gray-200 text-gray-600 hover:bg-gray-50"
-              onClick={() => navigate('/jobs/my-jobs')}
-            >
-              My Posted Jobs
-            </Button>
-          </div>
-
-          <Card className="mb-10 bg-white shadow-none sm:shadow-card border-0 sm:border border-gray-100 rounded-none sm:rounded-[2rem] overflow-hidden">
-            <CardContent className="px-4 py-6 sm:p-8">
-              <JobFilters
-                filters={filters}
-                onFiltersChange={setFilters}
-                locations={uniqueLocations}
-              />
-            </CardContent>
-          </Card>
-
-          <JobsFeed 
-            onApply={handleApplyClick}
-            onViewDetails={handleViewDetails}
-            onEdit={handleEditJob}
-            onDelete={setDeletingJobId}
-            onToggleSave={toggleSave}
-            appliedJobIds={appliedJobIds}
-            savedJobIds={savedJobIds as Set<string>}
-            readOnly={false}
-            filters={filters}
-            userProfileId={profileId}
-          />
-        </div>
-      </div>
-
-        {/* Apply Dialog */}
-        <ApplyJobDialog 
-          job={selectedJob} 
-          open={showApplyDialog} 
-          onOpenChange={setShowApplyDialog} 
-        />
+          </DialogContent>
+        </Dialog>
 
         {/* Job Details Dialog */}
         <Dialog open={!!selectedJob && !showApplyDialog} onOpenChange={() => setSelectedJob(null)}>
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader className="sr-only">
-              <DialogTitle>Job Details</DialogTitle>
-            </DialogHeader>
             {selectedJob && (
               <div className="space-y-6">
                  <div>
@@ -264,6 +490,7 @@ const Jobs = () => {
                      )}
                      <div className="flex-1">
                        <h2 className="text-2xl font-bold">{selectedJob.title}</h2>
+                       {/* FIXED: Show company_name or fallback */}
                        <p className="text-lg text-muted-foreground">{selectedJob.company_name || selectedJob.company?.name}</p>
                      </div>
                    </div>
@@ -312,9 +539,9 @@ const Jobs = () => {
                      <Button 
                        className="flex-1"
                        onClick={() => setShowApplyDialog(true)}
-                       disabled={appliedJobIds.has(selectedJob.id)}
+                       disabled={appliedJobs.has(selectedJob.id)}
                      >
-                       {appliedJobIds.has(selectedJob.id) ? 'Already Applied' : 'Apply for this Job'}
+                       {appliedJobs.has(selectedJob.id) ? 'Already Applied' : 'Apply for this Job'}
                      </Button>
                    )}
                  </div>
@@ -334,7 +561,7 @@ const Jobs = () => {
               profileId={profileId}
               editJob={editingJob}
               onJobPosted={() => {
-                queryClient.invalidateQueries({ queryKey: ['jobs-feed'] });
+                fetchJobs();
                 setEditingJob(null);
               }}
             />
@@ -360,8 +587,9 @@ const Jobs = () => {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-      </Layout>
-    );
-  };
+       </div>
+     </Layout>
+   );
+ };
  
  export default Jobs;

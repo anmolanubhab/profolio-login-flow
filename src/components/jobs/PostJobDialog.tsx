@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,19 +9,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Briefcase, Building2, DollarSign, Eye, AlertCircle, Lock } from 'lucide-react';
-import { useSubscription } from '@/hooks/useSubscription';
-import { UpgradeAlert } from '@/components/monetization/UpgradeAlert';
-import { Checkbox } from '@/components/ui/checkbox';
+import { MapPin, Briefcase, Building2, DollarSign, Eye } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CompanySelector } from './CompanySelector';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Job {
   id?: string;
   title: string;
   company_name: string;
-  company_id?: string;
   description: string;
   requirements: string;
   location: string;
@@ -32,9 +26,6 @@ interface Job {
   salary_min: string | number;
   salary_max: string | number;
   currency: string;
-  status?: string;
-  posted_by?: string;
-  is_featured?: boolean;
 }
 
 interface PostJobDialogProps {
@@ -43,24 +34,12 @@ interface PostJobDialogProps {
   profileId: string;
   onJobPosted: () => void;
   editJob?: Job | null;
-  redirectAfterPost?: boolean;
 }
 
-export const PostJobDialog = ({ 
-  open, 
-  onOpenChange, 
-  profileId, 
-  onJobPosted, 
-  editJob,
-  redirectAfterPost = true 
-}: PostJobDialogProps) => {
-  const navigate = useNavigate();
+export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, editJob }: PostJobDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('form');
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const { toast } = useToast();
-  const { data: subscription } = useSubscription();
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     company_id: '',
@@ -74,7 +53,6 @@ export const PostJobDialog = ({
     salary_min: '',
     salary_max: '',
     currency: 'USD',
-    is_featured: false,
   });
 
   useEffect(() => {
@@ -92,96 +70,75 @@ export const PostJobDialog = ({
         salary_min: editJob.salary_min?.toString() || '',
         salary_max: editJob.salary_max?.toString() || '',
         currency: editJob.currency || 'USD',
-        is_featured: (editJob as any).is_featured || false,
       });
     }
   }, [editJob]);
 
-  const validateForm = (): boolean => {
-    const errors: string[] = [];
-    
+  const validateForm = () => {
     if (!formData.title.trim()) {
-      errors.push('Job title is required');
-    }
-    
-    // CRITICAL: Company is always required for job posting
-    if (!formData.company_id) {
-      errors.push('Please select a company. Jobs must be associated with a company.');
-    }
-    
-    if (!formData.description.trim()) {
-      errors.push('Job description is required');
-    }
-    
-    if (!formData.location.trim()) {
-      errors.push('Location is required');
-    }
-    
-    if (formData.salary_min && formData.salary_max) {
-      if (parseFloat(formData.salary_min) > parseFloat(formData.salary_max)) {
-        errors.push('Minimum salary cannot be greater than maximum salary');
-      }
-    }
-
-    setValidationErrors(errors);
-    
-    if (errors.length > 0) {
       toast({
         title: 'Validation Error',
-        description: errors[0],
+        description: 'Please enter a job title',
         variant: 'destructive',
       });
       return false;
     }
-    
+    if (!formData.company_id && !formData.company_name.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please select a company',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    if (!formData.description.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a job description',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    if (!formData.location.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter a location',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    if (formData.salary_min && formData.salary_max) {
+      if (parseFloat(formData.salary_min) > parseFloat(formData.salary_max)) {
+        toast({
+          title: 'Validation Error',
+          description: 'Minimum salary cannot be greater than maximum salary',
+          variant: 'destructive',
+        });
+        return false;
+      }
+    }
     return true;
-  };
-
-  // Check if current user can edit this job
-  const canEditJob = (): boolean => {
-    if (!editJob) return true;
-    return editJob.posted_by === profileId;
   };
 
   const handleSubmit = async (e: React.FormEvent, isDraft = false) => {
     e.preventDefault();
     
-    // Prevent non-owners from editing
-    if (editJob && !canEditJob()) {
-      toast({
-        title: 'Permission Denied',
-        description: 'You can only edit jobs that you posted.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
     if (!isDraft && !validateForm()) return;
-    
-    // For drafts, still require company_id
-    if (isDraft && !formData.company_id) {
-      toast({
-        title: 'Company Required',
-        description: 'Please select a company before saving as draft.',
-        variant: 'destructive',
-      });
-      return;
-    }
     
     setLoading(true);
 
     try {
       const jobData = {
         posted_by: profileId,
-        title: formData.title.trim(),
-        company_id: formData.company_id, // Always required
+        title: formData.title,
+        company_id: formData.company_id || null,
         company_name: formData.company_name,
-        description: formData.description.trim(),
-        requirements: formData.requirements?.trim() || null,
-        location: formData.location.trim(),
+        description: formData.description,
+        requirements: formData.requirements || null,
+        location: formData.location,
         employment_type: formData.employment_type,
         remote_option: formData.remote_option,
-        apply_link: formData.apply_link?.trim() || null,
+        apply_link: formData.apply_link || null,
         salary_min: formData.salary_min ? parseFloat(formData.salary_min) : null,
         salary_max: formData.salary_max ? parseFloat(formData.salary_max) : null,
         currency: formData.currency,
@@ -193,29 +150,22 @@ export const PostJobDialog = ({
         const result = await supabase
           .from('jobs')
           .update(jobData)
-          .eq('id', editJob.id)
-          .eq('posted_by', profileId); // Ensure only owner can update
+          .eq('id', editJob.id);
         error = result.error;
       } else {
         const result = await supabase.from('jobs').insert(jobData);
         error = result.error;
       }
 
-      if (error) {
-        console.error('Job post error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: 'Success',
-        description: editJob 
-          ? 'Job updated successfully!' 
-          : isDraft 
-            ? 'Job saved as draft!' 
-            : 'Job posted successfully!',
+        description: editJob ? 'Job updated successfully!' : isDraft ? 'Job saved as draft!' : 'Job posted successfully!',
       });
 
-      // Reset form
+      onOpenChange(false);
+      onJobPosted();
       setFormData({
         title: '',
         company_id: '',
@@ -229,22 +179,11 @@ export const PostJobDialog = ({
         salary_min: '',
         salary_max: '',
         currency: 'USD',
-        is_featured: false,
       });
-      setValidationErrors([]);
-      
-      onOpenChange(false);
-      onJobPosted();
-      
-      // Redirect to My Jobs after posting (not drafts)
-      if (redirectAfterPost && !isDraft && !editJob) {
-        navigate('/jobs/my-jobs');
-      }
     } catch (error: any) {
-      console.error('Job submission error:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to save job. Please try again.',
+        description: error.message,
         variant: 'destructive',
       });
     } finally {
@@ -258,25 +197,7 @@ export const PostJobDialog = ({
   };
 
   return (
-    <>
-      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Upgrade to Recruiter Pro</DialogTitle>
-          </DialogHeader>
-          <UpgradeAlert 
-            title="Feature Your Job" 
-            description="Get 3x more views by pinning your job to the top of search results. Upgrade to Recruiter Pro to unlock this feature."
-            className="border-0 shadow-none"
-            onUpgrade={() => {
-              setShowUpgradeDialog(false);
-              navigate('/settings');
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">{editJob ? 'Edit Job Post' : 'Post a New Job'}</DialogTitle>
@@ -294,20 +215,6 @@ export const PostJobDialog = ({
 
           <TabsContent value="form">
             <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
-              {/* Validation Errors Display */}
-              {validationErrors.length > 0 && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    <ul className="list-disc list-inside space-y-1">
-                      {validationErrors.map((error, idx) => (
-                        <li key={idx}>{error}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
-              
               <div className="space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -465,43 +372,6 @@ export const PostJobDialog = ({
                     </div>
                   </div>
                 </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-[#0A66C2]" />
-                    Visibility
-                  </h3>
-                  <div className="flex items-start space-x-3 p-4 border rounded-lg bg-slate-50">
-                    <Checkbox 
-                      id="featured" 
-                      checked={formData.is_featured} 
-                      onCheckedChange={(checked) => {
-                        if (checked && !subscription?.features.canFeatureJobs) {
-                          setShowUpgradeDialog(true);
-                          return;
-                        }
-                        setFormData({ ...formData, is_featured: !!checked });
-                      }}
-                    />
-                    <div className="space-y-1">
-                      <Label 
-                        htmlFor="featured" 
-                        className="text-sm font-medium text-[#1D2226] flex items-center gap-2 cursor-pointer"
-                      >
-                        Feature this job
-                        {!subscription?.features.canFeatureJobs && (
-                          <Badge variant="secondary" className="h-5 px-1.5 bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200 gap-1 text-[10px]">
-                            <Lock className="h-3 w-3" />
-                            Pro
-                          </Badge>
-                        )}
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Featured jobs are pinned to the top of search results and get up to 3x more applications.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button 
@@ -607,6 +477,5 @@ export const PostJobDialog = ({
         </Tabs>
       </DialogContent>
     </Dialog>
-    </>
   );
 };
