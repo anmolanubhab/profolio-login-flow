@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -41,25 +42,13 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     fetchNotifications();
     fetchUnreadCount();
-    setupRealtimeSubscription();
-
-    // Click outside handler
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    const unsubscribe = setupRealtimeSubscription();
+    return unsubscribe;
   }, [userId]);
 
   useEffect(() => {
@@ -222,9 +211,9 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
     }
   };
 
-  const handleBellClick = () => {
-    setIsOpen(!isOpen);
-    if (!isOpen) {
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open) {
       markAsRead();
     }
   };
@@ -290,96 +279,110 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={handleBellClick}
-        className="menu-button relative"
-        aria-label="Notifications"
-      >
-        <Bell className="h-5 w-5 text-muted-foreground" />
-        {unreadCount > 0 && (
-          <Badge 
-            variant="destructive" 
-            className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs animate-scale-in"
-          >
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </Badge>
-        )}
-      </button>
-
-      {isOpen && (
-        <div 
-          className="dropdown-menu w-96 max-w-[calc(100vw-2rem)] animate-fade-in"
-          style={{ 
-            position: 'absolute',
-            right: 0,
-            top: 'calc(100% + 0.5rem)',
-            zIndex: 1000,
-          }}
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          className="menu-button relative"
+          aria-label="Notifications"
         >
-          <div className="p-3 border-b border-border">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-base">Notifications</h3>
-              {notifications.length > 0 && (
+          <Bell className="h-5 w-5 text-muted-foreground" />
+          {unreadCount > 0 && (
+            <Badge
+              variant="destructive"
+              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs animate-scale-in"
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </Badge>
+          )}
+        </button>
+      </PopoverTrigger>
+
+      {/*
+        Previously this dropdown was a plain absolutely-positioned <div>
+        rendered inline inside NavBar's own DOM tree. NavBar wraps its
+        content in ".navbar" (overflow-x-hidden) and ".navbar-inner"
+        (overflow-hidden) to stop horizontal scroll on mobile -- but since
+        overflow-x and overflow-y can't be set independently in the browser
+        (setting one non-visible forces the other to behave as "auto" too),
+        those ancestors clipped ANY child content taller than the navbar's
+        own ~56px height. The dropdown was rendering and updating state
+        correctly, it just became invisible the moment it grew past the
+        navbar's box -- indistinguishable from "the bell does nothing".
+        The profile avatar menu right next to this one already used the
+        Radix-based DropdownMenu (which portals its content to
+        document.body, escaping ancestor overflow entirely) and worked
+        fine, which is what gave this away. Popover uses the same portal
+        mechanism, so switching to it fixes the clipping for good instead
+        of just nudging z-index/position values that were never the actual
+        problem.
+      */}
+      <PopoverContent
+        align="end"
+        sideOffset={8}
+        className="w-96 max-w-[calc(100vw-2rem)] p-0"
+      >
+        <div className="p-3 border-b border-border">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-base">Notifications</h3>
+            {notifications.length > 0 && (
+              <button
+                onClick={() => window.location.href = '/notifications'}
+                className="text-sm text-primary hover:underline"
+              >
+                View All
+              </button>
+            )}
+          </div>
+        </div>
+
+        <ScrollArea className="h-[400px]">
+          {notifications.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground">
+              <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
+              <p>No notifications yet</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {notifications.map((notification) => (
                 <button
-                  onClick={() => window.location.href = '/notifications'}
-                  className="text-sm text-primary hover:underline"
+                  key={notification.id}
+                  onClick={() => handleNotificationClick(notification)}
+                  className={`w-full p-3 flex items-start gap-3 hover:bg-secondary/50 transition-colors text-left ${
+                    !notification.is_read ? 'bg-primary/5' : ''
+                  }`}
                 >
-                  View All
+                  <Avatar className="h-10 w-10 flex-shrink-0">
+                    <AvatarImage src={notification.payload.sender_avatar} />
+                    <AvatarFallback>
+                      {notification.payload.sender_name?.charAt(0) || 'N'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm line-clamp-2">
+                      {getNotificationMessage(notification)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                    </p>
+                  </div>
+                  {!notification.is_read && (
+                    <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
+                  )}
+                </button>
+              ))}
+
+              {hasMore && (
+                <button
+                  onClick={() => setPage(prev => prev + 1)}
+                  className="w-full p-3 text-sm text-primary hover:bg-secondary/50 transition-colors"
+                >
+                  Load more
                 </button>
               )}
             </div>
-          </div>
-
-          <ScrollArea className="h-[400px]">
-            {notifications.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                <Bell className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                <p>No notifications yet</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {notifications.map((notification) => (
-                  <button
-                    key={notification.id}
-                    onClick={() => handleNotificationClick(notification)}
-                    className={`w-full p-3 flex items-start gap-3 hover:bg-secondary/50 transition-colors text-left ${
-                      !notification.is_read ? 'bg-primary/5' : ''
-                    }`}
-                  >
-                    <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarImage src={notification.payload.sender_avatar} />
-                      <AvatarFallback>
-                        {notification.payload.sender_name?.charAt(0) || 'N'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm line-clamp-2">
-                        {getNotificationMessage(notification)}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                      </p>
-                    </div>
-                    {!notification.is_read && (
-                      <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1" />
-                    )}
-                  </button>
-                ))}
-
-                {hasMore && (
-                  <button
-                    onClick={() => setPage(prev => prev + 1)}
-                    className="w-full p-3 text-sm text-primary hover:bg-secondary/50 transition-colors"
-                  >
-                    Load more
-                  </button>
-                )}
-              </div>
-            )}
-          </ScrollArea>
-        </div>
-      )}
-    </div>
+          )}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
   );
 };
