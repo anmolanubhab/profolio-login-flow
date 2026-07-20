@@ -22,6 +22,7 @@ const Dashboard = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedRefresh, setFeedRefresh] = useState(0);
+  const [feedMode, setFeedMode] = useState<'foryou' | 'following'>('foryou');
   const [profileId, setProfileId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
@@ -191,7 +192,31 @@ const Dashboard = () => {
               }}
               onPostCreated={() => setFeedRefresh(prev => prev + 1)}
             />
-            <Feed refresh={feedRefresh} />
+
+            <div className="flex items-center gap-1 p-1 bg-secondary/50 rounded-full w-fit">
+              <button
+                onClick={() => setFeedMode('foryou')}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  feedMode === 'foryou'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                For You
+              </button>
+              <button
+                onClick={() => setFeedMode('following')}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  feedMode === 'following'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Following
+              </button>
+            </div>
+
+            <Feed refresh={feedRefresh} mode={feedMode} />
           </TabsContent>
 
           <TabsContent value="jobs" className="space-y-4">

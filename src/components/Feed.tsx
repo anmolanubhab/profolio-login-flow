@@ -19,23 +19,30 @@ interface Post {
 
 interface FeedProps {
   refresh?: number;
+  mode?: 'foryou' | 'following';
 }
 
-const Feed = ({ refresh }: FeedProps) => {
+const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [followingIsEmpty, setFollowingIsEmpty] = useState(false);
   const { toast } = useToast();
 
   const fetchPosts = async () => {
     try {
+      setFollowingIsEmpty(false);
+
       // Get current user and their filters
       const { data: { user } } = await supabase.auth.getUser();
       let currentUserProfileId: string | null = null;
       let hiddenPostIds: string[] = [];
       let blockedUserIds: string[] = [];
       let snoozedUserIds: string[] = [];
-      
+      // Auth user ids (posts.user_id) of people this user follows or is
+      // connected with -- only populated/used when mode === 'following'.
+      let followingAuthUserIds: string[] | null = null;
+
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -43,7 +50,7 @@ const Feed = ({ refresh }: FeedProps) => {
           .eq('user_id', user.id)
           .single();
         currentUserProfileId = profile?.id || null;
-        
+
         if (currentUserProfileId) {
           // Fetch hidden posts
           const { data: hiddenData } = await supabase
@@ -57,7 +64,7 @@ const Feed = ({ refresh }: FeedProps) => {
             .from('blocked_users')
             .select('blocked_user_id')
             .eq('user_id', currentUserProfileId);
-          
+
           // Convert blocked profile IDs to user IDs for filtering
           if (blockedData && blockedData.length > 0) {
             const blockedProfileIds = blockedData.map((b) => b.blocked_user_id);
@@ -74,7 +81,7 @@ const Feed = ({ refresh }: FeedProps) => {
             .select('snoozed_user_id')
             .eq('user_id', currentUserProfileId)
             .gt('snoozed_until', new Date().toISOString());
-          
+
           // Convert snoozed profile IDs to user IDs
           if (snoozedData && snoozedData.length > 0) {
             const snoozedProfileIds = snoozedData.map((s) => s.snoozed_user_id);
@@ -84,17 +91,66 @@ const Feed = ({ refresh }: FeedProps) => {
               .in('id', snoozedProfileIds);
             snoozedUserIds = snoozedProfiles?.map((p) => p.user_id) || [];
           }
+
+          if (mode === 'following') {
+            // "Following" audience = people you're connected with (accepted,
+            // either direction) UNION people you explicitly follow.
+            const [{ data: connectionsData }, { data: followingData }] = await Promise.all([
+              supabase
+                .from('connections')
+                .select('user_id, connection_id')
+                .eq('status', 'accepted')
+                .or(`user_id.eq.${currentUserProfileId},connection_id.eq.${currentUserProfileId}`),
+              supabase
+                .from('followers')
+                .select('following_id')
+                .eq('follower_id', currentUserProfileId),
+            ]);
+
+            const connectedProfileIds = (connectionsData || []).map((c) =>
+              c.user_id === currentUserProfileId ? c.connection_id : c.user_id
+            );
+            const followedProfileIds = (followingData || []).map((f) => f.following_id);
+            const audienceProfileIds = [...new Set([...connectedProfileIds, ...followedProfileIds])];
+
+            if (audienceProfileIds.length === 0) {
+              // Nobody to show yet -- skip the posts query entirely.
+              setPosts([]);
+              setFollowingIsEmpty(true);
+              setLoading(false);
+              return;
+            }
+
+            const { data: audienceProfiles } = await supabase
+              .from('profiles')
+              .select('user_id')
+              .in('id', audienceProfileIds);
+            followingAuthUserIds = (audienceProfiles || []).map((p) => p.user_id);
+
+            if (followingAuthUserIds.length === 0) {
+              setPosts([]);
+              setFollowingIsEmpty(true);
+              setLoading(false);
+              return;
+            }
+          }
         }
       }
 
       // First get posts, then get profile info for each post
-      const { data: postsData, error: postsError } = await supabase
+      let postsQuery = supabase
         .from('posts')
         .select(`
           *,
           post_likes (id, user_id)
         `)
         .order('created_at', { ascending: false });
+
+      if (mode === 'following' && followingAuthUserIds) {
+        postsQuery = postsQuery.in('user_id', followingAuthUserIds);
+      }
+
+      const { data: postsData, error: postsError } = await postsQuery;
 
       if (postsError) throw postsError;
 
@@ -146,7 +202,7 @@ const Feed = ({ refresh }: FeedProps) => {
 
   useEffect(() => {
     fetchPosts();
-  }, [refresh]);
+  }, [refresh, mode]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id ?? null));
@@ -218,7 +274,14 @@ const Feed = ({ refresh }: FeedProps) => {
   if (posts.length === 0) {
     return (
       <div className="centered py-12 subtle">
-        <p>No posts yet. Be the first to share something!</p>
+        {mode === 'following' && followingIsEmpty ? (
+          <>
+            <p className="font-medium">Your Following feed is empty</p>
+            <p className="text-sm mt-1">Connect with people or follow them from their profile to see their posts here.</p>
+          </>
+        ) : (
+          <p>No posts yet. Be the first to share something!</p>
+        )}
       </div>
     );
   }
