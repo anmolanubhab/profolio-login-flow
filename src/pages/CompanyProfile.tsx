@@ -7,16 +7,23 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  Building2, 
-  MapPin, 
-  Globe, 
-  Users, 
-  Calendar, 
+import { useToast } from '@/hooks/use-toast';
+import PostCard from '@/components/PostCard';
+import { ReactionType } from '@/components/ReactionBar';
+import { PollData, buildPollSummary, buildReactionSummary } from '@/lib/postAggregation';
+import {
+  Building2,
+  MapPin,
+  Globe,
+  Users,
+  Calendar,
   Briefcase,
   ExternalLink,
   Heart,
-  Target
+  Target,
+  Rss,
+  UserPlus,
+  UserMinus,
 } from 'lucide-react';
 
 interface Company {
@@ -44,15 +51,40 @@ interface Job {
   posted_at: string;
 }
 
+interface CompanyPost {
+  id: string;
+  content: string;
+  image_url: string | null;
+  video_url: string | null;
+  document_url: string | null;
+  document_name: string | null;
+  carousel_urls: string[] | null;
+  post_type: string;
+  created_at: string;
+  post_reactions: { id: string; user_id: string; reaction_type: ReactionType }[];
+  polls: PollData | null;
+}
+
 export default function CompanyProfile() {
   const { companyId } = useParams<{ companyId: string }>();
   const [company, setCompany] = useState<Company | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  const [posts, setPosts] = useState<CompanyPost[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
 
   useEffect(() => {
     if (companyId) {
       fetchCompanyData();
+      fetchCompanyPosts();
+      fetchFollowState();
     }
   }, [companyId]);
 
@@ -86,6 +118,161 @@ export default function CompanyProfile() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchFollowState = async () => {
+    if (!companyId) return;
+    try {
+      const { count } = await supabase
+        .from('company_followers')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId);
+      setFollowerCount(count || 0);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      if (!profile) return;
+      setCurrentUserProfileId(profile.id);
+
+      const { data: existing } = await supabase
+        .from('company_followers')
+        .select('id')
+        .eq('company_id', companyId)
+        .eq('user_id', profile.id)
+        .maybeSingle();
+      setIsFollowing(!!existing);
+    } catch (error) {
+      console.error('Error fetching follow state:', error);
+    }
+  };
+
+  const handleToggleFollow = async () => {
+    if (!companyId) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({ title: 'Sign in required', description: 'Please sign in to follow companies.', variant: 'destructive' });
+      return;
+    }
+
+    setFollowLoading(true);
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      if (!profile) return;
+
+      if (isFollowing) {
+        await supabase
+          .from('company_followers')
+          .delete()
+          .eq('company_id', companyId)
+          .eq('user_id', profile.id);
+        setIsFollowing(false);
+        setFollowerCount((prev) => Math.max(0, prev - 1));
+      } else {
+        await supabase.from('company_followers').insert({ company_id: companyId, user_id: profile.id });
+        setIsFollowing(true);
+        setFollowerCount((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      toast({ title: 'Error', description: 'Could not update follow status. Please try again.', variant: 'destructive' });
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  const fetchCompanyPosts = async () => {
+    if (!companyId) return;
+    setPostsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          id, content, image_url, video_url, document_url, document_name, carousel_urls, post_type, created_at,
+          post_reactions ( id, user_id, reaction_type ),
+          polls (
+            id,
+            question,
+            poll_options ( id, option_text, position ),
+            poll_votes ( id, option_id, user_id )
+          )
+        `)
+        .eq('company_id', companyId)
+        .eq('posted_as', 'company')
+        .eq('status', 'published')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPosts((data as unknown as CompanyPost[]) || []);
+    } catch (error) {
+      console.error('Error fetching company posts:', error);
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  const handleReact = async (postId: string, type: ReactionType | null) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).single();
+      if (!profile) return;
+
+      const { data: existing } = await supabase
+        .from('post_reactions')
+        .select('id, reaction_type')
+        .eq('post_id', postId)
+        .eq('user_id', profile.id)
+        .maybeSingle();
+
+      if (type === null) {
+        if (existing) await supabase.from('post_reactions').delete().eq('id', existing.id);
+      } else if (existing) {
+        if (existing.reaction_type === type) {
+          await supabase.from('post_reactions').delete().eq('id', existing.id);
+        } else {
+          await supabase.from('post_reactions').update({ reaction_type: type }).eq('id', existing.id);
+        }
+      } else {
+        await supabase.from('post_reactions').insert({ post_id: postId, user_id: profile.id, reaction_type: type });
+      }
+
+      fetchCompanyPosts();
+    } catch (error) {
+      console.error('Error updating reaction:', error);
+      toast({ title: 'Error', description: 'Could not update your reaction. Please try again.', variant: 'destructive' });
+    }
+  };
+
+  const handleVote = async (pollId: string, optionId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).single();
+      if (!profile) return;
+
+      const { error } = await supabase.from('poll_votes').insert({ poll_id: pollId, option_id: optionId, user_id: profile.id });
+      if (error && error.code !== '23505') throw error;
+
+      fetchCompanyPosts();
+    } catch (error) {
+      console.error('Error casting vote:', error);
+      toast({ title: 'Error', description: 'Could not cast your vote. Please try again.', variant: 'destructive' });
+    }
+  };
+
+  const handleDeletePost = (postId: string) => {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
   };
 
   const formatSalary = (min: number | null, max: number | null, currency: string | null) => {
@@ -163,18 +350,42 @@ export default function CompanyProfile() {
                     )}
                   </div>
                   
-                  {company.website && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={company.website} target="_blank" rel="noopener noreferrer">
-                        <Globe className="w-4 h-4 mr-2" />
-                        Visit Website
-                        <ExternalLink className="w-3 h-3 ml-1" />
-                      </a>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={isFollowing ? 'outline' : 'default'}
+                      size="sm"
+                      onClick={handleToggleFollow}
+                      disabled={followLoading}
+                    >
+                      {isFollowing ? (
+                        <>
+                          <UserMinus className="w-4 h-4 mr-2" />
+                          Following
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Follow
+                        </>
+                      )}
                     </Button>
-                  )}
+                    {company.website && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={company.website} target="_blank" rel="noopener noreferrer">
+                          <Globe className="w-4 h-4 mr-2" />
+                          Visit Website
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    <span>{followerCount} {followerCount === 1 ? 'follower' : 'followers'}</span>
+                  </div>
                   {company.location && (
                     <div className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
@@ -244,6 +455,53 @@ export default function CompanyProfile() {
             </CardContent>
           </Card>
         )}
+
+        {/* Updates -- posts this company has shared */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Rss className="w-5 h-5 text-primary" />
+              Updates
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {postsLoading ? (
+              <div className="p-6 space-y-3">
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="text-center py-8 px-6 text-muted-foreground">
+                <Rss className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p>No updates yet.</p>
+                <p className="text-sm">Follow {company.name} to see their posts in your feed.</p>
+              </div>
+            ) : (
+              <div className="feed">
+                {posts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    id={post.id}
+                    user={{ id: company.id, name: company.name, avatar: company.logo_url || undefined }}
+                    profileLink={`/company/${company.id}`}
+                    content={post.content}
+                    image={post.image_url || undefined}
+                    timestamp={post.created_at}
+                    postType={post.post_type}
+                    videoUrl={post.video_url || undefined}
+                    documentUrl={post.document_url || undefined}
+                    documentName={post.document_name || undefined}
+                    carouselUrls={post.carousel_urls || undefined}
+                    poll={buildPollSummary(post.polls, currentUserProfileId)}
+                    onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
+                    reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}
+                    onReact={(type) => handleReact(post.id, type)}
+                    onDelete={() => handleDeletePost(post.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Open Jobs */}
         <Card>

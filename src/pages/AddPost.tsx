@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Image, Video as VideoIcon, FileText, X, Images, BarChart3, Plus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Image, Video as VideoIcon, FileText, X, Images, BarChart3, Plus, User, Building2 } from 'lucide-react';
 import BottomNavigation from '@/components/BottomNavigation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -16,14 +17,36 @@ import { useNavigate } from 'react-router-dom';
 // entry point into post creation.
 type AttachmentMode = 'none' | 'image' | 'carousel' | 'video' | 'document' | 'poll';
 
+interface OwnedCompany {
+  id: string;
+  name: string;
+  logo_url: string | null;
+}
+
 const MAX_CAROUSEL_IMAGES = 10;
 const MAX_POLL_OPTIONS = 6;
 const MIN_POLL_OPTIONS = 2;
+const POST_AS_SELF = 'self';
 
 const AddPost = () => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AttachmentMode>('none');
+
+  const [ownedCompanies, setOwnedCompanies] = useState<OwnedCompany[]>([]);
+  const [postAsCompanyId, setPostAsCompanyId] = useState<string>(POST_AS_SELF);
+
+  useEffect(() => {
+    const loadOwnedCompanies = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', authUser.id).single();
+      if (!profile) return;
+      const { data } = await supabase.from('companies').select('id, name, logo_url').eq('owner_id', profile.id);
+      setOwnedCompanies(data || []);
+    };
+    loadOwnedCompanies();
+  }, []);
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -197,10 +220,16 @@ const AddPost = () => {
         });
         if (error) throw error;
       } else if (mode === 'poll') {
+        const postingAsCompany = postAsCompanyId !== POST_AS_SELF
+          ? ownedCompanies.find((c) => c.id === postAsCompanyId)
+          : undefined;
         const validOptions = pollOptions.map((o) => sanitizeTextContent(o.trim())).filter(Boolean);
         const { error } = await supabase.rpc('create_poll_post', {
           p_content: sanitizedContent,
           p_options: validOptions,
+          ...(postingAsCompany
+            ? { p_company_id: postingAsCompany.id, p_company_name: postingAsCompany.name, p_company_logo: postingAsCompany.logo_url || undefined }
+            : {}),
         });
         if (error) throw error;
       } else {
@@ -239,6 +268,10 @@ const AddPost = () => {
           postType = 'document';
         }
 
+        const postingAsCompany = postAsCompanyId !== POST_AS_SELF
+          ? ownedCompanies.find((c) => c.id === postAsCompanyId)
+          : undefined;
+
         const { error } = await supabase.from('posts').insert({
           user_id: user.id,
           content: sanitizedContent,
@@ -249,6 +282,9 @@ const AddPost = () => {
           carousel_urls: carouselUrls,
           post_type: postType,
           status: 'published',
+          ...(postingAsCompany
+            ? { posted_as: 'company', company_id: postingAsCompany.id, company_name: postingAsCompany.name, company_logo: postingAsCompany.logo_url }
+            : {}),
         });
         if (error) throw error;
       }
@@ -287,6 +323,31 @@ const AddPost = () => {
             <CardTitle>Share an update</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {ownedCompanies.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0">Posting as</span>
+                <Select value={postAsCompanyId} onValueChange={setPostAsCompanyId}>
+                  <SelectTrigger className="h-8 w-auto text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={POST_AS_SELF}>
+                      <span className="flex items-center gap-2">
+                        <User className="h-4 w-4" /> Myself
+                      </span>
+                    </SelectItem>
+                    {ownedCompanies.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" /> {c.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <Textarea
               placeholder={mode === 'poll' ? 'Ask a question…' : 'What do you want to talk about?'}
               className="min-h-32 resize-none"

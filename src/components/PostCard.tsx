@@ -47,6 +47,10 @@ interface PostCardProps {
   onReact?: (type: ReactionType | null) => void;
   onDelete?: () => void;
   onHide?: () => void;
+  // Overrides where clicking the header identity navigates to -- used for
+  // posts published as a company, which should open the company page
+  // instead of a personal profile.
+  profileLink?: string;
 }
 
 const PostCard = ({
@@ -66,6 +70,7 @@ const PostCard = ({
   onReact,
   onDelete,
   onHide,
+  profileLink,
 }: PostCardProps) => {
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -148,7 +153,9 @@ const PostCard = ({
   };
 
   const handleProfileClick = () => {
-    if (user.id) {
+    if (profileLink) {
+      navigate(profileLink);
+    } else if (user.id) {
       navigate(`/profile/${user.id}`);
     }
   };

@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Camera, FileText, User, X, Video as VideoIcon, Images, BarChart3, Plus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Camera, FileText, User, X, Video as VideoIcon, Images, BarChart3, Plus, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
@@ -22,14 +23,39 @@ interface PostInputProps {
 // selected before.
 type AttachmentMode = 'none' | 'image' | 'carousel' | 'video' | 'document' | 'poll';
 
+interface OwnedCompany {
+  id: string;
+  name: string;
+  logo_url: string | null;
+}
+
 const MAX_CAROUSEL_IMAGES = 10;
 const MAX_POLL_OPTIONS = 6;
 const MIN_POLL_OPTIONS = 2;
+const POST_AS_SELF = 'self';
 
 const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   const [postContent, setPostContent] = useState('');
   const [mode, setMode] = useState<AttachmentMode>('none');
   const [isPosting, setIsPosting] = useState(false);
+
+  // "Post as" -- only shown when the current user owns at least one company
+  // (mirrors CompanySelector.tsx's owner_id-only scoping used elsewhere for
+  // job posting; doesn't yet extend to company_members/admin roles).
+  const [ownedCompanies, setOwnedCompanies] = useState<OwnedCompany[]>([]);
+  const [postAsCompanyId, setPostAsCompanyId] = useState<string>(POST_AS_SELF);
+
+  useEffect(() => {
+    const loadOwnedCompanies = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', authUser.id).single();
+      if (!profile) return;
+      const { data } = await supabase.from('companies').select('id, name, logo_url').eq('owner_id', profile.id);
+      setOwnedCompanies(data || []);
+    };
+    loadOwnedCompanies();
+  }, []);
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -196,6 +222,10 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
       const { sanitizeTextContent } = await import('@/lib/input-sanitizer');
       const sanitizedContent = sanitizeTextContent(postContent);
 
+      const postingAsCompany = postAsCompanyId !== POST_AS_SELF
+        ? ownedCompanies.find((c) => c.id === postAsCompanyId)
+        : undefined;
+
       if (mode === 'poll') {
         const validOptions = pollOptions.map((o) => sanitizeTextContent(o.trim())).filter(Boolean);
         // Posts + poll + options are created atomically server-side, so a
@@ -204,6 +234,9 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
         const { error } = await supabase.rpc('create_poll_post', {
           p_content: sanitizedContent,
           p_options: validOptions,
+          ...(postingAsCompany
+            ? { p_company_id: postingAsCompany.id, p_company_name: postingAsCompany.name, p_company_logo: postingAsCompany.logo_url || undefined }
+            : {}),
         });
         if (error) throw error;
       } else {
@@ -251,6 +284,9 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
           carousel_urls: carouselUrls,
           post_type: postType,
           user_id: currentUser.id,
+          ...(postingAsCompany
+            ? { posted_as: 'company', company_id: postingAsCompany.id, company_name: postingAsCompany.name, company_logo: postingAsCompany.logo_url }
+            : {}),
         });
 
         if (error) throw error;
@@ -278,6 +314,31 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   return (
     <Card className="bg-card shadow-card rounded-xl border-border">
       <CardContent className="p-4 sm:p-5">
+        {ownedCompanies.length > 0 && (
+          <div className="mb-3 flex items-center gap-2">
+            <span className="text-xs text-muted-foreground shrink-0">Posting as</span>
+            <Select value={postAsCompanyId} onValueChange={setPostAsCompanyId}>
+              <SelectTrigger className="h-8 w-auto text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={POST_AS_SELF}>
+                  <span className="flex items-center gap-2">
+                    <User className="h-4 w-4" /> Myself
+                  </span>
+                </SelectItem>
+                {ownedCompanies.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    <span className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" /> {c.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Post Input Area */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Avatar className="h-12 w-12 shrink-0">

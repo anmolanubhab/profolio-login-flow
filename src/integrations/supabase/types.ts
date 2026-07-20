@@ -2470,10 +2470,18 @@ export type Database = {
         }
         Returns: string
       }
-      create_poll_post: {
-        Args: { p_content: string; p_options: string[] }
-        Returns: string
-      }
+      create_poll_post:
+        | { Args: { p_content: string; p_options: string[] }; Returns: string }
+        | {
+            Args: {
+              p_company_id?: string
+              p_company_logo?: string
+              p_company_name?: string
+              p_content: string
+              p_options: string[]
+            }
+            Returns: string
+          }
       current_profile_id: { Args: never; Returns: string }
       get_company_follower_count: {
         Args: { company_uuid: string }

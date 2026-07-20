@@ -1,27 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import PostCard, { PollSummary } from './PostCard';
+import PostCard from './PostCard';
 import { useToast } from '@/hooks/use-toast';
-import { ReactionType, ReactionSummary } from './ReactionBar';
-
-interface PollOption {
-  id: string;
-  option_text: string;
-  position: number;
-}
-
-interface PollVote {
-  id: string;
-  option_id: string;
-  user_id: string;
-}
-
-interface PollData {
-  id: string;
-  question: string;
-  poll_options: PollOption[];
-  poll_votes: PollVote[];
-}
+import { ReactionType } from './ReactionBar';
+import { PollData, buildPollSummary, buildReactionSummary, REACTION_WEIGHTS } from '@/lib/postAggregation';
 
 interface Post {
   id: string;
@@ -34,6 +16,10 @@ interface Post {
   document_url: string | null;
   document_name: string | null;
   carousel_urls: string[] | null;
+  company_id: string | null;
+  company_name: string | null;
+  company_logo: string | null;
+  posted_as: string;
   profiles: {
     id: string;
     display_name: string | null;
@@ -46,66 +32,6 @@ interface Post {
   // embeds it as a single object (null for non-poll posts), not an array.
   polls: PollData | null;
 }
-
-const buildPollSummary = (poll: PollData | null | undefined, myProfileId: string | null): PollSummary | null => {
-  if (!poll) return null;
-
-  const votesByOption = new Map<string, number>();
-  let userOptionId: string | null = null;
-
-  poll.poll_votes.forEach((v) => {
-    votesByOption.set(v.option_id, (votesByOption.get(v.option_id) || 0) + 1);
-    if (myProfileId && v.user_id === myProfileId) {
-      userOptionId = v.option_id;
-    }
-  });
-
-  const options = [...poll.poll_options]
-    .sort((a, b) => a.position - b.position)
-    .map((o) => ({ id: o.id, text: o.option_text, votes: votesByOption.get(o.id) || 0 }));
-
-  return {
-    id: poll.id,
-    question: poll.question,
-    totalVotes: poll.poll_votes.length,
-    userOptionId,
-    options,
-  };
-};
-
-// Phase 5: reaction weight feeding into "For You" ranking. Insightful and
-// Support carry the most algorithmic weight, per spec. "Love" wasn't given
-// an explicit weight in the spec -- grouped with "Celebrate" as a strong
-// but casual positive signal.
-const REACTION_WEIGHTS: Record<ReactionType, number> = {
-  like: 1,
-  funny: 2,
-  celebrate: 3,
-  love: 3,
-  support: 4,
-  insightful: 5,
-};
-
-const buildReactionSummary = (
-  reactions: { user_id: string; reaction_type: ReactionType }[],
-  myProfileId: string | null
-): ReactionSummary => {
-  const counts: Partial<Record<ReactionType, number>> = {};
-  let mine: ReactionType | null = null;
-
-  reactions.forEach((r) => {
-    counts[r.reaction_type] = (counts[r.reaction_type] || 0) + 1;
-    if (myProfileId && r.user_id === myProfileId) {
-      mine = r.reaction_type;
-    }
-  });
-
-  return {
-    total_reactions: reactions.length,
-    user_reaction: mine,
-    reactions: counts,
-  };
-};
 
 // Reddit/HN-style decayed score: weighted reaction sum divided by an
 // increasing power of age in hours, so a heavily-reacted-to post can rank
@@ -145,6 +71,11 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
       // Auth user ids (posts.user_id) of people this user follows or is
       // connected with -- only populated/used when mode === 'following'.
       let followingAuthUserIds: string[] | null = null;
+      // Companies this user follows -- their posts show up in "Following"
+      // too, alongside people. Posts made "as a company" still carry the
+      // posting admin's own auth id in posts.user_id, so this needs its own
+      // filter rather than folding into followingAuthUserIds.
+      let followedCompanyIds: string[] | null = null;
 
       if (user) {
         const { data: profile } = await supabase
@@ -197,8 +128,9 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
 
           if (mode === 'following') {
             // "Following" audience = people you're connected with (accepted,
-            // either direction) UNION people you explicitly follow.
-            const [{ data: connectionsData }, { data: followingData }] = await Promise.all([
+            // either direction) UNION people you explicitly follow, UNION
+            // companies you follow.
+            const [{ data: connectionsData }, { data: followingData }, { data: companyFollowsData }] = await Promise.all([
               supabase
                 .from('connections')
                 .select('user_id, connection_id')
@@ -208,6 +140,10 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
                 .from('followers')
                 .select('following_id')
                 .eq('follower_id', currentUserProfileId),
+              supabase
+                .from('company_followers')
+                .select('company_id')
+                .eq('user_id', currentUserProfileId),
             ]);
 
             const connectedProfileIds = (connectionsData || []).map((c) =>
@@ -215,22 +151,27 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
             );
             const followedProfileIds = (followingData || []).map((f) => f.following_id);
             const audienceProfileIds = [...new Set([...connectedProfileIds, ...followedProfileIds])];
+            followedCompanyIds = [...new Set((companyFollowsData || []).map((c) => c.company_id))];
 
-            if (audienceProfileIds.length === 0) {
-              // Nobody to show yet -- skip the posts query entirely.
+            if (audienceProfileIds.length === 0 && followedCompanyIds.length === 0) {
+              // Nobody and nothing to show yet -- skip the posts query entirely.
               setPosts([]);
               setFollowingIsEmpty(true);
               setLoading(false);
               return;
             }
 
-            const { data: audienceProfiles } = await supabase
-              .from('profiles')
-              .select('user_id')
-              .in('id', audienceProfileIds);
-            followingAuthUserIds = (audienceProfiles || []).map((p) => p.user_id);
+            if (audienceProfileIds.length > 0) {
+              const { data: audienceProfiles } = await supabase
+                .from('profiles')
+                .select('user_id')
+                .in('id', audienceProfileIds);
+              followingAuthUserIds = (audienceProfiles || []).map((p) => p.user_id);
+            } else {
+              followingAuthUserIds = [];
+            }
 
-            if (followingAuthUserIds.length === 0) {
+            if (followingAuthUserIds.length === 0 && followedCompanyIds.length === 0) {
               setPosts([]);
               setFollowingIsEmpty(true);
               setLoading(false);
@@ -259,8 +200,21 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         .eq('status', 'published')
         .order('created_at', { ascending: false });
 
-      if (mode === 'following' && followingAuthUserIds) {
-        postsQuery = postsQuery.in('user_id', followingAuthUserIds);
+      if (mode === 'following') {
+        // Combine "posts by people I follow/am connected with" with "posts
+        // by companies I follow" -- either clause can be empty (e.g. you
+        // follow companies but no people yet), so build the .or() string
+        // from whichever ones actually have entries.
+        const orClauses: string[] = [];
+        if (followingAuthUserIds && followingAuthUserIds.length > 0) {
+          orClauses.push(`user_id.in.(${followingAuthUserIds.join(',')})`);
+        }
+        if (followedCompanyIds && followedCompanyIds.length > 0) {
+          orClauses.push(`company_id.in.(${followedCompanyIds.join(',')})`);
+        }
+        if (orClauses.length > 0) {
+          postsQuery = postsQuery.or(orClauses.join(','));
+        }
       }
 
       const { data: postsData, error: postsError } = await postsQuery;
@@ -486,11 +440,12 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         <PostCard
           key={post.id}
           id={post.id}
-          user={{
-            id: post.profiles?.id,
-            name: post.profiles?.display_name || 'Unknown User',
-            avatar: post.profiles?.avatar_url,
-          }}
+          user={
+            post.posted_as === 'company'
+              ? { id: post.company_id || undefined, name: post.company_name || 'Company', avatar: post.company_logo || undefined }
+              : { id: post.profiles?.id, name: post.profiles?.display_name || 'Unknown User', avatar: post.profiles?.avatar_url }
+          }
+          profileLink={post.posted_as === 'company' && post.company_id ? `/company/${post.company_id}` : undefined}
           content={post.content}
           image={post.image_url || undefined}
           timestamp={post.created_at}
