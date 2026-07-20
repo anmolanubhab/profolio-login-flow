@@ -1,8 +1,27 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import PostCard from './PostCard';
+import PostCard, { PollSummary } from './PostCard';
 import { useToast } from '@/hooks/use-toast';
 import { ReactionType, ReactionSummary } from './ReactionBar';
+
+interface PollOption {
+  id: string;
+  option_text: string;
+  position: number;
+}
+
+interface PollVote {
+  id: string;
+  option_id: string;
+  user_id: string;
+}
+
+interface PollData {
+  id: string;
+  question: string;
+  poll_options: PollOption[];
+  poll_votes: PollVote[];
+}
 
 interface Post {
   id: string;
@@ -10,6 +29,11 @@ interface Post {
   image_url: string | null;
   created_at: string;
   user_id: string;
+  post_type: string;
+  video_url: string | null;
+  document_url: string | null;
+  document_name: string | null;
+  carousel_urls: string[] | null;
   profiles: {
     id: string;
     display_name: string | null;
@@ -18,7 +42,36 @@ interface Post {
   // post_reactions.user_id is a profiles.id (unlike the old post_likes.user_id,
   // which stored a raw auth uid).
   post_reactions: { id: string; user_id: string; reaction_type: ReactionType }[];
+  // post_id is UNIQUE on polls -- PostgREST detects the 1:1 relationship and
+  // embeds it as a single object (null for non-poll posts), not an array.
+  polls: PollData | null;
 }
+
+const buildPollSummary = (poll: PollData | null | undefined, myProfileId: string | null): PollSummary | null => {
+  if (!poll) return null;
+
+  const votesByOption = new Map<string, number>();
+  let userOptionId: string | null = null;
+
+  poll.poll_votes.forEach((v) => {
+    votesByOption.set(v.option_id, (votesByOption.get(v.option_id) || 0) + 1);
+    if (myProfileId && v.user_id === myProfileId) {
+      userOptionId = v.option_id;
+    }
+  });
+
+  const options = [...poll.poll_options]
+    .sort((a, b) => a.position - b.position)
+    .map((o) => ({ id: o.id, text: o.option_text, votes: votesByOption.get(o.id) || 0 }));
+
+  return {
+    id: poll.id,
+    question: poll.question,
+    totalVotes: poll.poll_votes.length,
+    userOptionId,
+    options,
+  };
+};
 
 // Phase 5: reaction weight feeding into "For You" ranking. Insightful and
 // Support carry the most algorithmic weight, per spec. "Love" wasn't given
@@ -187,13 +240,23 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         }
       }
 
-      // First get posts, then get profile info for each post
+      // First get posts, then get profile info for each post.
+      // status='published' matters here: posts.status defaults to
+      // 'published', but AddPost.tsx can also save a 'draft' -- without this
+      // filter, drafts were showing up in everyone's feed.
       let postsQuery = supabase
         .from('posts')
         .select(`
           *,
-          post_reactions (id, user_id, reaction_type)
+          post_reactions (id, user_id, reaction_type),
+          polls (
+            id,
+            question,
+            poll_options ( id, option_text, position ),
+            poll_votes ( id, option_id, user_id )
+          )
         `)
+        .eq('status', 'published')
         .order('created_at', { ascending: false });
 
       if (mode === 'following' && followingAuthUserIds) {
@@ -331,6 +394,48 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
     }
   };
 
+  // Poll votes are immutable server-side (no UPDATE/DELETE RLS policy on
+  // poll_votes) -- once cast, a vote can't be changed, matching real poll
+  // UX. A duplicate-vote race (e.g. two tabs) is caught below rather than
+  // shown as a generic error.
+  const handleVote = async (pollId: string, optionId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      if (!profile) return;
+
+      const { error } = await supabase.from('poll_votes').insert({
+        poll_id: pollId,
+        option_id: optionId,
+        user_id: profile.id,
+      });
+
+      if (error) {
+        if (error.code === '23505') {
+          // Already voted -- just refresh so the UI reflects the existing vote.
+          fetchPosts();
+          return;
+        }
+        throw error;
+      }
+
+      fetchPosts();
+    } catch (error) {
+      console.error('Error casting vote:', error);
+      toast({
+        title: "Error",
+        description: "Could not cast your vote. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeletePost = (postId: string) => {
     setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
   };
@@ -389,6 +494,13 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
           content={post.content}
           image={post.image_url || undefined}
           timestamp={post.created_at}
+          postType={post.post_type}
+          videoUrl={post.video_url || undefined}
+          documentUrl={post.document_url || undefined}
+          documentName={post.document_name || undefined}
+          carouselUrls={post.carousel_urls || undefined}
+          poll={buildPollSummary(post.polls, currentUserProfileId)}
+          onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
           reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}
           onReact={(type) => handleReact(post.id, type)}
           onDelete={() => handleDeletePost(post.id)}

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { MessageCircle, Share, User, Facebook, Twitter, Copy } from 'lucide-react';
+import { MessageCircle, Share, User, Facebook, Twitter, Copy, FileText, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -14,8 +14,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { PostOptionsMenu } from './PostOptionsMenu';
 import { ReactionBar, ReactionCountSummary, ReactionType, ReactionSummary, REACTION_META, REACTION_ORDER } from './ReactionBar';
+
+export interface PollSummary {
+  id: string;
+  question: string;
+  totalVotes: number;
+  userOptionId: string | null;
+  options: { id: string; text: string; votes: number }[];
+}
 
 interface PostCardProps {
   id: string;
@@ -27,13 +36,37 @@ interface PostCardProps {
   content: string;
   image?: string;
   timestamp: string;
+  postType?: string;
+  videoUrl?: string;
+  documentUrl?: string;
+  documentName?: string;
+  carouselUrls?: string[];
+  poll?: PollSummary | null;
+  onVote?: (optionId: string) => void;
   reactionSummary: ReactionSummary;
   onReact?: (type: ReactionType | null) => void;
   onDelete?: () => void;
   onHide?: () => void;
 }
 
-const PostCard = ({ id, user, content, image, timestamp, reactionSummary, onReact, onDelete, onHide }: PostCardProps) => {
+const PostCard = ({
+  id,
+  user,
+  content,
+  image,
+  timestamp,
+  postType = 'text',
+  videoUrl,
+  documentUrl,
+  documentName,
+  carouselUrls,
+  poll,
+  onVote,
+  reactionSummary,
+  onReact,
+  onDelete,
+  onHide,
+}: PostCardProps) => {
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
@@ -99,6 +132,19 @@ const PostCard = ({ id, user, content, image, timestamp, reactionSummary, onReac
       return;
     }
     onReact?.(type);
+  };
+
+  const handleVote = (optionId: string) => {
+    if (!currentUser) {
+      toast({
+        title: 'Sign in required',
+        description: 'Please sign in to vote.',
+        variant: 'destructive',
+      });
+      navigate('/register');
+      return;
+    }
+    onVote?.(optionId);
   };
 
   const handleProfileClick = () => {
@@ -467,11 +513,96 @@ const PostCard = ({ id, user, content, image, timestamp, reactionSummary, onReac
 
       {image && (
         <div className="px-0 mb-3">
-          <img 
-            src={image} 
-            alt="Post content" 
+          <img
+            src={image}
+            alt="Post content"
             className="w-full h-auto object-cover"
           />
+        </div>
+      )}
+
+      {postType === 'carousel' && carouselUrls && carouselUrls.length > 0 && (
+        <div className="px-4 sm:px-5 mb-3">
+          <Carousel className="w-full">
+            <CarouselContent>
+              {carouselUrls.map((url, i) => (
+                <CarouselItem key={i}>
+                  <img src={url} alt={`Slide ${i + 1}`} className="w-full h-auto max-h-96 object-cover rounded-lg" />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            {carouselUrls.length > 1 && (
+              <>
+                <CarouselPrevious className="left-2" />
+                <CarouselNext className="right-2" />
+              </>
+            )}
+          </Carousel>
+        </div>
+      )}
+
+      {postType === 'video' && videoUrl && (
+        <div className="px-0 mb-3">
+          <video src={videoUrl} controls className="w-full max-h-[32rem] bg-black" />
+        </div>
+      )}
+
+      {postType === 'document' && documentUrl && (
+        <div className="px-4 sm:px-5 mb-3 space-y-2">
+          <div className="flex items-center gap-3 rounded-lg bg-secondary p-3">
+            <FileText className="h-8 w-8 text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium truncate">{documentName || 'Document'}</div>
+            </div>
+            <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="shrink-0">
+              <Button variant="outline" size="sm">
+                <ExternalLink className="h-4 w-4 mr-1.5" />
+                Open
+              </Button>
+            </a>
+          </div>
+          <iframe src={documentUrl} title={documentName || 'Document preview'} className="w-full h-72 rounded-lg border border-border" />
+        </div>
+      )}
+
+      {postType === 'poll' && poll && (
+        <div className="px-4 sm:px-5 mb-3 space-y-2">
+          {poll.options.map((option) => {
+            const pct = poll.totalVotes > 0 ? Math.round((option.votes / poll.totalVotes) * 100) : 0;
+            const isMine = poll.userOptionId === option.id;
+            const hasVoted = poll.userOptionId !== null;
+
+            if (!hasVoted) {
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className="w-full text-left rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:border-primary hover:bg-secondary/50 transition-colors"
+                  onClick={() => handleVote(option.id)}
+                >
+                  {option.text}
+                </button>
+              );
+            }
+
+            return (
+              <div key={option.id} className={`relative w-full rounded-lg border px-4 py-2.5 text-sm overflow-hidden ${isMine ? 'border-primary' : 'border-border'}`}>
+                <div
+                  className={`absolute inset-y-0 left-0 ${isMine ? 'bg-primary/15' : 'bg-secondary'}`}
+                  style={{ width: `${pct}%` }}
+                />
+                <div className="relative flex items-center justify-between">
+                  <span className={`font-medium ${isMine ? 'text-primary' : ''}`}>
+                    {option.text}{isMine ? ' ✓' : ''}
+                  </span>
+                  <span className="text-muted-foreground">{pct}%</span>
+                </div>
+              </div>
+            );
+          })}
+          <p className="text-xs text-muted-foreground">
+            {poll.totalVotes} {poll.totalVotes === 1 ? 'vote' : 'votes'}
+          </p>
         </div>
       )}
 

@@ -4,13 +4,19 @@ import { supabase } from '@/integrations/supabase/client';
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const ALLOWED_DOCUMENT_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 const ALLOWED_CERTIFICATE_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES];
+// Post "document" attachments are scoped to PDF only, unlike certificates/
+// resumes which also accept Word docs -- keeps the inline preview in
+// PostCard simple (browsers can render a PDF in an <iframe> natively).
+const ALLOWED_POST_DOCUMENT_TYPES = ['application/pdf'];
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
 // File size limits (in bytes)
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 
 export interface SecureUploadOptions {
-  bucket: 'avatars' | 'post-images' | 'certificates' | 'resumes' | 'stories';
+  bucket: 'avatars' | 'post-images' | 'certificates' | 'resumes' | 'stories' | 'post-videos' | 'post-documents';
   file: File;
   userId: string;
   allowedTypes?: string[];
@@ -78,6 +84,14 @@ export async function secureUpload({
       case 'resumes':
         defaultAllowedTypes = ALLOWED_DOCUMENT_TYPES;
         defaultMaxSize = MAX_DOCUMENT_SIZE;
+        break;
+      case 'post-documents':
+        defaultAllowedTypes = ALLOWED_POST_DOCUMENT_TYPES;
+        defaultMaxSize = MAX_DOCUMENT_SIZE;
+        break;
+      case 'post-videos':
+        defaultAllowedTypes = ALLOWED_VIDEO_TYPES;
+        defaultMaxSize = MAX_VIDEO_SIZE;
         break;
       default:
         return { success: false, error: 'Invalid bucket specified' };

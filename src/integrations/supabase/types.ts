@@ -1518,6 +1518,110 @@ export type Database = {
           },
         ]
       }
+      poll_options: {
+        Row: {
+          id: string
+          option_text: string
+          poll_id: string
+          position: number
+        }
+        Insert: {
+          id?: string
+          option_text: string
+          poll_id: string
+          position?: number
+        }
+        Update: {
+          id?: string
+          option_text?: string
+          poll_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_id?: string
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          question: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          question: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polls_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_likes: {
         Row: {
           acted_as: string
@@ -1679,46 +1783,61 @@ export type Database = {
       }
       posts: {
         Row: {
+          carousel_urls: string[] | null
           company_id: string | null
           company_logo: string | null
           company_name: string | null
           content: string
           created_at: string
+          document_name: string | null
+          document_url: string | null
           id: string
           image_url: string | null
           media_type: string | null
+          post_type: string
           posted_as: string
           status: string
           updated_at: string
           user_id: string
+          video_url: string | null
         }
         Insert: {
+          carousel_urls?: string[] | null
           company_id?: string | null
           company_logo?: string | null
           company_name?: string | null
           content: string
           created_at?: string
+          document_name?: string | null
+          document_url?: string | null
           id?: string
           image_url?: string | null
           media_type?: string | null
+          post_type?: string
           posted_as?: string
           status?: string
           updated_at?: string
           user_id: string
+          video_url?: string | null
         }
         Update: {
+          carousel_urls?: string[] | null
           company_id?: string | null
           company_logo?: string | null
           company_name?: string | null
           content?: string
           created_at?: string
+          document_name?: string | null
+          document_url?: string | null
           id?: string
           image_url?: string | null
           media_type?: string | null
+          post_type?: string
           posted_as?: string
           status?: string
           updated_at?: string
           user_id?: string
+          video_url?: string | null
         }
         Relationships: [
           {
@@ -2349,6 +2468,10 @@ export type Database = {
           p_offer_letter_url?: string
           p_start_date?: string
         }
+        Returns: string
+      }
+      create_poll_post: {
+        Args: { p_content: string; p_options: string[] }
         Returns: string
       }
       current_profile_id: { Args: never; Returns: string }
