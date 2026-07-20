@@ -15,14 +15,27 @@ const BottomNavigation = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // notifications.user_id is a foreign key to profiles.id, not to the
+      // auth user id -- querying with the raw auth uid (as this used to)
+      // never matches any row, so the badge silently stayed at 0 forever.
+      // Resolve the actual profile id first, same as NotificationBell.tsx
+      // and the Notifications page already do.
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile) return;
+
       const { count, error } = await supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .eq('is_read', false);
 
-      if (!error && count) {
-        setUnreadCount(count);
+      if (!error) {
+        setUnreadCount(count || 0);
       }
     };
 

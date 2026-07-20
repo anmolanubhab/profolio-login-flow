@@ -46,6 +46,7 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
 
   useEffect(() => {
     fetchNotifications();
+    fetchUnreadCount();
     setupRealtimeSubscription();
 
     // Click outside handler
@@ -88,10 +89,36 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
       if (error) throw error;
 
       setNotifications((data || []) as Notification[]);
-      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
       setHasMore((data?.length || 0) === ITEMS_PER_PAGE);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+    }
+  };
+
+  // The unread badge needs the TRUE total unread count, not just how many
+  // of the first page (ITEMS_PER_PAGE = 10) happen to be unread -- a user
+  // with unread notifications older than the 10 most recent would otherwise
+  // see an undercounted (or "9+" clamped-looking-fine-but-wrong) badge.
+  const fetchUnreadCount = async () => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      if (!profile) return;
+
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', profile.id)
+        .eq('is_read', false);
+
+      if (error) throw error;
+      setUnreadCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
     }
   };
 
@@ -173,21 +200,23 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
 
       if (!profile) return;
 
-      const unreadNotifications = notifications
-        .filter(n => !n.is_read)
-        .map(n => n.id);
+      // Mark ALL unread notifications as read (scoped by is_read=false),
+      // not just the ones currently loaded into state. Previously this
+      // only updated the loaded page's unread ids but still zeroed the
+      // badge, so any unread notification older than the loaded page
+      // stayed unread in the DB and would reappear on the next refresh.
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', profile.id)
+        .eq('is_read', false);
 
-      if (unreadNotifications.length > 0) {
-        await supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .in('id', unreadNotifications);
+      if (error) throw error;
 
-        setNotifications(prev =>
-          prev.map(n => ({ ...n, is_read: true }))
-        );
-        setUnreadCount(0);
-      }
+      setNotifications(prev =>
+        prev.map(n => ({ ...n, is_read: true }))
+      );
+      setUnreadCount(0);
     } catch (error) {
       console.error('Error marking notifications as read:', error);
     }
