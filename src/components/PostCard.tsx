@@ -38,10 +38,17 @@ const PostCard = ({ id, user, content, image, timestamp, reactionSummary, onReac
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
-  const [comments, setComments] = useState<Array<{ id: string; user_id: string; content: string; created_at: string; user?: { name: string | null; avatar?: string | null } }>>([]);
+  const [comments, setComments] = useState<Array<{ id: string; user_id: string; content: string; created_at: string; parent_comment_id: string | null; user?: { name: string | null; avatar?: string | null } }>>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  // Threaded comments: which top-level comment (if any) is currently being
+  // replied to, the text of that reply, and which comments' reply lists are
+  // expanded. One level of nesting only -- a reply can't itself be replied to.
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -129,6 +136,7 @@ const PostCard = ({ id, user, content, image, timestamp, reactionSummary, onReac
         user_id: c.user_id,
         content: c.content,
         created_at: c.created_at,
+        parent_comment_id: c.parent_comment_id,
         user: profilesMap.get(c.user_id) || { name: 'Unknown User', avatar: undefined },
       }));
 
@@ -225,6 +233,7 @@ const PostCard = ({ id, user, content, image, timestamp, reactionSummary, onReac
           user_id: newCommentData.user_id,
           content: newCommentData.content,
           created_at: newCommentData.created_at,
+          parent_comment_id: null,
           user: {
             name: profile.display_name || currentUser.email?.split('@')[0] || 'You',
             avatar: profile.avatar_url,
@@ -235,12 +244,12 @@ const PostCard = ({ id, user, content, image, timestamp, reactionSummary, onReac
         // Fallback: refresh comments if we didn't get the new comment back
         await fetchComments();
       }
-      
+
       toast({
         title: 'Comment posted',
         description: 'Your comment has been added.',
       });
-      
+
     } catch (err: any) {
       console.error('Error adding comment:', err);
       toast({
@@ -252,6 +261,104 @@ const PostCard = ({ id, user, content, image, timestamp, reactionSummary, onReac
       setSubmittingComment(false);
     }
   };
+
+  const addReply = async (parentCommentId: string) => {
+    if (!currentUser) {
+      toast({
+        title: 'Sign in required',
+        description: 'Please sign in to reply.',
+        variant: 'destructive',
+      });
+      navigate('/register');
+      return;
+    }
+
+    const content = replyText.trim();
+    if (!content) return;
+
+    setSubmittingReply(true);
+
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      if (profileError) throw new Error(`Profile error: ${profileError.message}`);
+      if (!profile) throw new Error('Your profile was not found. Please try logging out and back in.');
+
+      const { data: newReplyData, error: insertError } = await supabase
+        .from('comments')
+        .insert({
+          post_id: id,
+          user_id: profile.id,
+          content,
+          parent_comment_id: parentCommentId,
+        })
+        .select('id, content, created_at, user_id, parent_comment_id')
+        .single();
+
+      if (insertError) throw new Error(insertError.message);
+
+      setReplyText('');
+      setReplyingTo(null);
+
+      if (newReplyData) {
+        setComments(prev => [
+          ...prev,
+          {
+            id: newReplyData.id,
+            user_id: newReplyData.user_id,
+            content: newReplyData.content,
+            created_at: newReplyData.created_at,
+            parent_comment_id: newReplyData.parent_comment_id,
+            user: {
+              name: profile.display_name || currentUser.email?.split('@')[0] || 'You',
+              avatar: profile.avatar_url,
+            },
+          },
+        ]);
+        // Auto-expand so the person immediately sees their own reply.
+        setExpandedReplies(prev => new Set(prev).add(parentCommentId));
+      } else {
+        await fetchComments();
+      }
+    } catch (err: any) {
+      console.error('Error adding reply:', err);
+      toast({
+        title: 'Could not post reply',
+        description: err?.message || 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  const toggleReplies = (commentId: string) => {
+    setExpandedReplies(prev => {
+      const next = new Set(prev);
+      if (next.has(commentId)) {
+        next.delete(commentId);
+      } else {
+        next.add(commentId);
+      }
+      return next;
+    });
+  };
+
+  // Group the flat fetched list into top-level comments + their replies --
+  // comments are only threaded one level deep (enforced server-side too).
+  const topLevelComments = comments.filter((c) => !c.parent_comment_id);
+  const repliesByParent = new Map<string, typeof comments>();
+  comments.forEach((c) => {
+    if (c.parent_comment_id) {
+      const arr = repliesByParent.get(c.parent_comment_id) || [];
+      arr.push(c);
+      repliesByParent.set(c.parent_comment_id, arr);
+    }
+  });
 
   const handleShare = async () => {
     const url = `${window.location.origin}/dashboard#post-${id}`;
@@ -420,22 +527,96 @@ const PostCard = ({ id, user, content, image, timestamp, reactionSummary, onReac
           <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
             {loadingComments ? (
               <div className="text-sm text-muted-foreground">Loading comments...</div>
-            ) : comments.length === 0 ? (
+            ) : topLevelComments.length === 0 ? (
               <div className="text-sm text-muted-foreground">No comments yet. Be the first to comment.</div>
             ) : (
-              comments.map((c) => (
-                <div key={c.id} className="flex items-start gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={c.user?.avatar} />
-                    <AvatarFallback>{(c.user?.name?.[0] || 'U').toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{c.user?.name || 'Unknown User'}</div>
-                    <div className="text-sm">{c.content}</div>
-                    <div className="text-xs text-muted-foreground">{formatTimeAgo(c.created_at)}</div>
+              topLevelComments.map((c) => {
+                const replies = repliesByParent.get(c.id) || [];
+                const isExpanded = expandedReplies.has(c.id);
+                return (
+                  <div key={c.id} className="space-y-2">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={c.user?.avatar} />
+                        <AvatarFallback>{(c.user?.name?.[0] || 'U').toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">{c.user?.name || 'Unknown User'}</div>
+                        <div className="text-sm">{c.content}</div>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <span className="text-xs text-muted-foreground">{formatTimeAgo(c.created_at)}</span>
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                              setReplyingTo(replyingTo === c.id ? null : c.id);
+                              setReplyText('');
+                            }}
+                          >
+                            Reply
+                          </button>
+                          {replies.length > 0 && (
+                            <button
+                              type="button"
+                              className="text-xs font-medium text-primary hover:underline"
+                              onClick={() => toggleReplies(c.id)}
+                            >
+                              {isExpanded ? 'Hide replies' : `View ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {replyingTo === c.id && (
+                      <div className="flex items-center gap-2 pl-11">
+                        <Input
+                          placeholder={`Reply to ${c.user?.name || 'this comment'}...`}
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          disabled={submittingReply}
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey && !submittingReply && replyText.trim().length > 0) {
+                              e.preventDefault();
+                              addReply(c.id);
+                            }
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          disabled={submittingReply || replyText.trim().length === 0}
+                          onClick={() => addReply(c.id)}
+                        >
+                          {submittingReply ? (
+                            <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                          ) : (
+                            'Reply'
+                          )}
+                        </Button>
+                      </div>
+                    )}
+
+                    {isExpanded && replies.length > 0 && (
+                      <div className="pl-11 space-y-3">
+                        {replies.map((r) => (
+                          <div key={r.id} className="flex items-start gap-2">
+                            <Avatar className="h-7 w-7">
+                              <AvatarImage src={r.user?.avatar} />
+                              <AvatarFallback>{(r.user?.name?.[0] || 'U').toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="text-sm font-medium">{r.user?.name || 'Unknown User'}</div>
+                              <div className="text-sm">{r.content}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">{formatTimeAgo(r.created_at)}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
           <div className="flex items-center gap-2 pt-2">

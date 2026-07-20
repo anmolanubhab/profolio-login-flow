@@ -242,6 +242,8 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
       }
       case 'comment':
         return `${senderName} commented on your post`;
+      case 'comment_reply':
+        return `${senderName} replied to your comment`;
       case 'share':
         return `${senderName} shared your post`;
       case 'connection_request':
@@ -270,6 +272,7 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
       case 'like':
       case 'post_reaction':
       case 'comment':
+      case 'comment_reply':
       case 'share':
         return `/dashboard?post=${payload.post_id}`;
       case 'connection_request':

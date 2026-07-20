@@ -215,6 +215,7 @@ const Notifications = () => {
       case 'post_reaction':
         return ThumbsUp;
       case 'comment':
+      case 'comment_reply':
         return MessageSquare;
       case 'share':
         return Share2;
@@ -255,6 +256,8 @@ const Notifications = () => {
       }
       case 'comment':
         return `${senderName} commented: "${payload?.message}"`;
+      case 'comment_reply':
+        return `${senderName} replied: "${payload?.message}"`;
       case 'share':
         return `${senderName} shared your post`;
       case 'connection_request':
@@ -291,6 +294,7 @@ const Notifications = () => {
       case 'like':
       case 'post_reaction':
       case 'comment':
+      case 'comment_reply':
       case 'share':
         navigate(`/dashboard?post=${payload?.post_id}`);
         break;
