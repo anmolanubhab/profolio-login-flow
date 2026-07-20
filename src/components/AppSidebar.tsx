@@ -10,7 +10,7 @@ import {
   MessageCircle,
   Building2
 } from "lucide-react"
-import { NavLink } from "react-router-dom"
+import { NavLink, useLocation } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 
@@ -48,12 +48,21 @@ const profileItems = [
 export function AppSidebar() {
   const { state, isMobile } = useSidebar()
   const { toast } = useToast()
+  const location = useLocation()
   const isCollapsed = state === "collapsed"
 
-  const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive
-      ? "sidebar-item active"
-      : "sidebar-item"
+  // Previously this rendered a "sidebar-item"/"sidebar-item active" className
+  // straight onto the NavLink, which sits *inside* SidebarMenuButton's own
+  // asChild/Slot merge. That meant two independent styling systems (the
+  // legacy .sidebar-item CSS and shadcn's sidebarMenuButtonVariants) were
+  // both applying padding/rounding/hover/background rules to the same
+  // element, fighting each other. On top of that, SidebarMenuButton's own
+  // isActive prop was never passed, so shadcn's built-in
+  // data-[active=true] styling never actually turned on -- the only thing
+  // driving "active" visuals was the legacy class. Fix: drive active state
+  // through SidebarMenuButton's own isActive prop (the way shadcn expects)
+  // and drop the legacy classNames entirely.
+  const isActive = (url: string) => location.pathname === url
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut()
@@ -102,8 +111,8 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={({ isActive }) => getNavCls({ isActive })}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                    <NavLink to={item.url}>
                       <item.icon className="h-4 w-4" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
@@ -124,8 +133,8 @@ export function AppSidebar() {
             <SidebarMenu>
               {profileItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={({ isActive }) => getNavCls({ isActive })}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                    <NavLink to={item.url}>
                       <item.icon className="h-4 w-4" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
