@@ -9,6 +9,7 @@ import { User } from '@supabase/supabase-js';
 import BottomNavigation from '@/components/BottomNavigation';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
+import { REACTION_META, ReactionType } from '@/components/ReactionBar';
 
 interface FriendRequest {
   id: string;
@@ -211,6 +212,7 @@ const Notifications = () => {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'like':
+      case 'post_reaction':
         return ThumbsUp;
       case 'comment':
         return MessageSquare;
@@ -242,6 +244,15 @@ const Notifications = () => {
     switch (type) {
       case 'like':
         return `${senderName} liked your post`;
+      case 'post_reaction': {
+        const count = payload?.reactor_count || 1;
+        if (count > 1) {
+          return `${count} people reacted to your post`;
+        }
+        const reactionType = payload?.latest_reaction_type as ReactionType | undefined;
+        const verb = reactionType ? REACTION_META[reactionType].verb : 'reacted to';
+        return `${senderName} ${verb} your post`;
+      }
       case 'comment':
         return `${senderName} commented: "${payload?.message}"`;
       case 'share':
@@ -278,6 +289,7 @@ const Notifications = () => {
     const { type, payload } = notification;
     switch (type) {
       case 'like':
+      case 'post_reaction':
       case 'comment':
       case 'share':
         navigate(`/dashboard?post=${payload?.post_id}`);

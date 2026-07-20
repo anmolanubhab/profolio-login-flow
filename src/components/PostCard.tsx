@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Heart, MessageCircle, Share, User, Facebook, Twitter, Copy } from 'lucide-react';
+import { MessageCircle, Share, User, Facebook, Twitter, Copy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PostOptionsMenu } from './PostOptionsMenu';
+import { ReactionBar, ReactionCountSummary, ReactionType, ReactionSummary, REACTION_META, REACTION_ORDER } from './ReactionBar';
 
 interface PostCardProps {
   id: string;
@@ -26,16 +27,14 @@ interface PostCardProps {
   content: string;
   image?: string;
   timestamp: string;
-  likes: number;
-  initialIsLiked?: boolean;
-  onLike?: (isLiked: boolean) => void;
+  reactionSummary: ReactionSummary;
+  onReact?: (type: ReactionType | null) => void;
   onDelete?: () => void;
   onHide?: () => void;
 }
 
-const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialIsLiked = false, onDelete, onHide }: PostCardProps) => {
-  const [isLiked, setIsLiked] = useState(initialIsLiked);
-  const [localLikes, setLocalLikes] = useState(likes);
+const PostCard = ({ id, user, content, image, timestamp, reactionSummary, onReact, onDelete, onHide }: PostCardProps) => {
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
@@ -67,14 +66,6 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
     checkUser();
   }, []);
 
-  useEffect(() => {
-    setIsLiked(initialIsLiked);
-  }, [initialIsLiked]);
-
-  useEffect(() => {
-    setLocalLikes(likes);
-  }, [likes]);
-
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date();
     const postTime = new Date(timestamp);
@@ -90,20 +81,17 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
     return `${diffInDays}d ago`;
   };
 
-  const handleLike = () => {
+  const handleReact = (type: ReactionType | null) => {
     if (!currentUser) {
       toast({
         title: 'Sign in required',
-        description: 'Please sign in to like posts.',
+        description: 'Please sign in to react to posts.',
         variant: 'destructive',
       });
       navigate('/register');
       return;
     }
-    const nextLiked = !isLiked;
-    setIsLiked(nextLiked);
-    setLocalLikes((prev) => (nextLiked ? prev + 1 : Math.max(0, prev - 1)));
-    onLike?.(nextLiked);
+    onReact?.(type);
   };
 
   const handleProfileClick = () => {
@@ -382,12 +370,7 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
 
       <div className="px-4 sm:px-5 pb-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {localLikes > 0 && (
-            <span className="flex items-center gap-1">
-              <Heart className="h-3 w-3 fill-current text-red-500" />
-              {localLikes}
-            </span>
-          )}
+          <ReactionCountSummary summary={reactionSummary} onClick={() => setBreakdownOpen(true)} />
         </div>
       </div>
 
@@ -395,14 +378,7 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
 
       <div className="px-2 sm:px-3 py-1">
         <div className="flex items-center justify-around">
-          <button 
-            type="button" 
-            className={`action-btn ${isLiked ? 'active text-primary' : ''}`} 
-            onClick={handleLike}
-          >
-            <Heart className={`icon ${isLiked ? 'fill-current' : ''}`} />
-            <span>Like</span>
-          </button>
+          <ReactionBar summary={reactionSummary} onReact={handleReact} />
           <button type="button" className="action-btn" onClick={openComments}>
             <MessageCircle className="icon" />
             <span>Comment</span>
@@ -488,6 +464,28 @@ const PostCard = ({ id, user, content, image, timestamp, likes, onLike, initialI
                 'Post'
               )}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={breakdownOpen} onOpenChange={setBreakdownOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reactions</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {REACTION_ORDER.filter((t) => (reactionSummary.reactions[t] || 0) > 0).map((type) => (
+              <div key={type} className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-sm">
+                  <span className="text-lg">{REACTION_META[type].emoji}</span>
+                  {REACTION_META[type].label}
+                </span>
+                <span className="text-sm font-medium">{reactionSummary.reactions[type]}</span>
+              </div>
+            ))}
+            {reactionSummary.total_reactions === 0 && (
+              <p className="text-sm text-muted-foreground">No reactions yet.</p>
+            )}
           </div>
         </DialogContent>
       </Dialog>

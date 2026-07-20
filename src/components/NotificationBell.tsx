@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { REACTION_META, ReactionType } from './ReactionBar';
 
 interface NotificationPayload {
   sender_name?: string;
@@ -21,6 +22,8 @@ interface NotificationPayload {
   connection_id?: string;
   skill_name?: string;
   endorser_id?: string;
+  reactor_count?: number;
+  latest_reaction_type?: ReactionType;
 }
 
 interface Notification {
@@ -225,6 +228,18 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
     switch (type) {
       case 'like':
         return `${senderName} liked your post`;
+      case 'post_reaction': {
+        // Bundled: "Rahul celebrated your post." for the first reactor,
+        // "5 people reacted to your post." once more people pile on -- never
+        // one notification per reaction (see notify_post_reaction()).
+        const count = payload.reactor_count || 1;
+        if (count > 1) {
+          return `${count} people reacted to your post`;
+        }
+        const reactionType = payload.latest_reaction_type;
+        const verb = reactionType ? REACTION_META[reactionType].verb : 'reacted to';
+        return `${senderName} ${verb} your post`;
+      }
       case 'comment':
         return `${senderName} commented on your post`;
       case 'share':
@@ -253,6 +268,7 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
 
     switch (type) {
       case 'like':
+      case 'post_reaction':
       case 'comment':
       case 'share':
         return `/dashboard?post=${payload.post_id}`;

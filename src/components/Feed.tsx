@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import PostCard from './PostCard';
 import { useToast } from '@/hooks/use-toast';
+import { ReactionType, ReactionSummary } from './ReactionBar';
 
 interface Post {
   id: string;
@@ -14,8 +15,56 @@ interface Post {
     display_name: string | null;
     avatar_url: string | null;
   } | null;
-  post_likes: { id: string; user_id: string }[];
+  // post_reactions.user_id is a profiles.id (unlike the old post_likes.user_id,
+  // which stored a raw auth uid).
+  post_reactions: { id: string; user_id: string; reaction_type: ReactionType }[];
 }
+
+// Phase 5: reaction weight feeding into "For You" ranking. Insightful and
+// Support carry the most algorithmic weight, per spec. "Love" wasn't given
+// an explicit weight in the spec -- grouped with "Celebrate" as a strong
+// but casual positive signal.
+const REACTION_WEIGHTS: Record<ReactionType, number> = {
+  like: 1,
+  funny: 2,
+  celebrate: 3,
+  love: 3,
+  support: 4,
+  insightful: 5,
+};
+
+const buildReactionSummary = (
+  reactions: { user_id: string; reaction_type: ReactionType }[],
+  myProfileId: string | null
+): ReactionSummary => {
+  const counts: Partial<Record<ReactionType, number>> = {};
+  let mine: ReactionType | null = null;
+
+  reactions.forEach((r) => {
+    counts[r.reaction_type] = (counts[r.reaction_type] || 0) + 1;
+    if (myProfileId && r.user_id === myProfileId) {
+      mine = r.reaction_type;
+    }
+  });
+
+  return {
+    total_reactions: reactions.length,
+    user_reaction: mine,
+    reactions: counts,
+  };
+};
+
+// Reddit/HN-style decayed score: weighted reaction sum divided by an
+// increasing power of age in hours, so a heavily-reacted-to post can rank
+// above a slightly newer one, but recency still matters.
+const computeForYouScore = (post: Post) => {
+  const weightedSum = (post.post_reactions || []).reduce(
+    (sum, r) => sum + (REACTION_WEIGHTS[r.reaction_type] || 1),
+    0
+  );
+  const hoursOld = Math.max(0, (Date.now() - new Date(post.created_at).getTime()) / 36e5);
+  return (weightedSum + 1) / Math.pow(hoursOld + 2, 1.5);
+};
 
 interface FeedProps {
   refresh?: number;
@@ -26,6 +75,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
   const [followingIsEmpty, setFollowingIsEmpty] = useState(false);
   const { toast } = useToast();
 
@@ -142,7 +192,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         .from('posts')
         .select(`
           *,
-          post_likes (id, user_id)
+          post_reactions (id, user_id, reaction_type)
         `)
         .order('created_at', { ascending: false });
 
@@ -187,6 +237,14 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
           profiles: profilesMap.get(post.user_id) || null
         })) || [];
 
+      // Phase 5: "For You" is reaction-weighted + recency-decayed, not
+      // strictly chronological. "Following" stays purely chronological --
+      // it's meant to be a reliable "everything from people I follow", not
+      // an algorithmic re-ordering.
+      if (mode === 'foryou') {
+        postsWithProfiles.sort((a, b) => computeForYouScore(b) - computeForYouScore(a));
+      }
+
       setPosts(postsWithProfiles);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -205,38 +263,69 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
   }, [refresh, mode]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id ?? null));
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null);
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+        setCurrentUserProfileId(profile?.id ?? null);
+      }
+    });
   }, []);
 
-  const handleLike = async (postId: string, isLiked: boolean) => {
+  // Phase 1 rules: one active reaction per user per post -- switching
+  // reaction UPDATEs the existing row (never a second insert), and
+  // reacting with `null` (or picking the already-active reaction again)
+  // removes it.
+  const handleReact = async (postId: string, type: ReactionType | null) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      if (isLiked) {
-        // Like
-        await supabase
-          .from('post_likes')
-          .insert({
-            post_id: postId,
-            user_id: user.id,
-          });
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      if (!profile) return;
+
+      const { data: existing } = await supabase
+        .from('post_reactions')
+        .select('id, reaction_type')
+        .eq('post_id', postId)
+        .eq('user_id', profile.id)
+        .maybeSingle();
+
+      if (type === null) {
+        if (existing) {
+          await supabase.from('post_reactions').delete().eq('id', existing.id);
+        }
+      } else if (existing) {
+        if (existing.reaction_type === type) {
+          // Same reaction picked again -- remove it.
+          await supabase.from('post_reactions').delete().eq('id', existing.id);
+        } else {
+          // Switching reaction -- update the existing row in place.
+          await supabase.from('post_reactions').update({ reaction_type: type }).eq('id', existing.id);
+        }
       } else {
-        // Unlike
-        await supabase
-          .from('post_likes')
-          .delete()
-          .eq('post_id', postId)
-          .eq('user_id', user.id);
+        await supabase.from('post_reactions').insert({
+          post_id: postId,
+          user_id: profile.id,
+          reaction_type: type,
+        });
       }
 
-      // Refresh posts to update like counts
+      // Refresh posts to update reaction counts
       fetchPosts();
     } catch (error) {
-      console.error('Error toggling like:', error);
+      console.error('Error updating reaction:', error);
       toast({
         title: "Error",
-        description: "Could not update like. Please try again.",
+        description: "Could not update your reaction. Please try again.",
         variant: "destructive",
       });
     }
@@ -300,9 +389,8 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
           content={post.content}
           image={post.image_url || undefined}
           timestamp={post.created_at}
-          likes={post.post_likes.length}
-          initialIsLiked={currentUserId ? post.post_likes.some((l) => l.user_id === currentUserId) : false}
-          onLike={(isLiked) => handleLike(post.id, isLiked)}
+          reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}
+          onReact={(type) => handleReact(post.id, type)}
           onDelete={() => handleDeletePost(post.id)}
           onHide={handleHidePost}
         />
