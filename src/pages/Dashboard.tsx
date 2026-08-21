@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -7,15 +8,18 @@ import PostInput from '@/components/PostInput';
 import Feed from '@/components/Feed';
 import FloatingCreatePost from '@/components/FloatingCreatePost';
 import Stories from '@/components/Stories';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { JobsFeed } from '@/components/jobs/JobsFeed';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { MyApplications } from '@/components/jobs/MyApplications';
-import { PostJobDialog } from '@/components/jobs/PostJobDialog';
-import { ApplyJobDialog } from '@/components/jobs/ApplyJobDialog';
-import { JobDetailsDialog } from '@/components/jobs/JobDetailsDialog';
 import { MyDrafts } from '@/components/jobs/MyDrafts';
-import { Plus } from 'lucide-react';
+import { ProfileSummaryCard } from '@/components/ProfileSummaryCard';
+import { FeedRightRail } from '@/components/FeedRightRail';
+
+// Which /dashboard "view" is active is carried in the URL (?tab=...) instead
+// of only in component state, so the left-sidebar navigation (a sibling
+// component) can link directly to a specific view and highlight itself as
+// active -- same route, same TabsContent panels, just addressable.
+const VALID_TABS = ['feed', 'applications', 'drafts'] as const;
+type DashboardTab = typeof VALID_TABS[number];
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -23,15 +27,23 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [feedRefresh, setFeedRefresh] = useState(0);
   const [feedMode, setFeedMode] = useState<'foryou' | 'following'>('foryou');
-  const [profileId, setProfileId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
-  const [postJobOpen, setPostJobOpen] = useState(false);
-  const [applyJobOpen, setApplyJobOpen] = useState(false);
-  const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
-  const [selectedJobId, setSelectedJobId] = useState<string>('');
-  const [selectedJobTitle, setSelectedJobTitle] = useState<string>('');
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+
+  const tabParam = searchParams.get('tab');
+  const activeTab: DashboardTab = (VALID_TABS as readonly string[]).includes(tabParam || '')
+    ? (tabParam as DashboardTab)
+    : 'feed';
+
+  const handleTabChange = (value: string) => {
+    if (value === 'feed') {
+      searchParams.delete('tab');
+    } else {
+      searchParams.set('tab', value);
+    }
+    setSearchParams(searchParams, { replace: false });
+  };
 
   useEffect(() => {
     // Set up auth state listener
@@ -43,7 +55,6 @@ const Dashboard = () => {
         if (session?.user) {
           setTimeout(() => {
             fetchUserProfile(session.user.id);
-            fetchAppliedJobs(session.user.id);
           }, 0);
         }
       }
@@ -56,7 +67,6 @@ const Dashboard = () => {
       setLoading(false);
       if (session?.user) {
         fetchUserProfile(session.user.id);
-        fetchAppliedJobs(session.user.id);
       }
     });
 
@@ -72,7 +82,6 @@ const Dashboard = () => {
         .single();
 
       if (error) throw error;
-      setProfileId(data.id);
 
       // Check if user owns a company
       const { data: companyData } = await supabase
@@ -86,57 +95,6 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
-    }
-  };
-
-  const fetchAppliedJobs = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('applications')
-        .select('job_id')
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      setAppliedJobIds(new Set(data.map(app => app.job_id)));
-    } catch (error) {
-      console.error('Error fetching applications:', error);
-    }
-  };
-
-  const handleApply = async (jobId: string) => {
-    if (!user) {
-      toast({
-        title: 'Authentication required',
-        description: 'Please log in to apply for jobs',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('title')
-        .eq('id', jobId)
-        .single();
-
-      if (error) throw error;
-      setSelectedJobId(jobId);
-      setSelectedJobTitle(data.title);
-      setApplyJobOpen(true);
-    } catch (error) {
-      console.error('Error fetching job:', error);
-    }
-  };
-
-  const handleViewDetails = (jobId: string) => {
-    setSelectedJobId(jobId);
-    setJobDetailsOpen(true);
-  };
-
-  const handleApplicationSubmitted = () => {
-    if (user) {
-      fetchAppliedJobs(user.id);
     }
   };
 
@@ -173,17 +131,38 @@ const Dashboard = () => {
   }
 
   return (
-    <Layout user={user} onSignOut={handleSignOut}>
-      <div className="max-w-4xl mx-auto w-full">
-        <Tabs defaultValue="feed" className="w-full">
-          <TabsList className="w-full flex overflow-x-auto scrollbar-hide gap-1 p-1">
-            <TabsTrigger value="feed" className="flex-shrink-0 whitespace-nowrap">Social Feed</TabsTrigger>
-            <TabsTrigger value="jobs" className="flex-shrink-0 whitespace-nowrap">Jobs</TabsTrigger>
-            <TabsTrigger value="applications" className="flex-shrink-0 whitespace-nowrap">My Applications</TabsTrigger>
-            {companyId && <TabsTrigger value="drafts" className="flex-shrink-0 whitespace-nowrap">My Drafts</TabsTrigger>}
-          </TabsList>
+    <Layout user={user} onSignOut={handleSignOut} fullWidth>
+      {/* Social Feed / My Applications / My Drafts navigate here via the
+          left sidebar now (Jobs lives only in the top nav, at /jobs) --
+          Tabs is controlled by the ?tab= URL param instead of rendering its
+          own trigger row, so the exact same TabsContent panels/components
+          stay addressable and highlightable from the sidebar. */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full max-w-[1128px] mx-auto px-3 sm:px-4">
+        {/* Professional 3-column workspace: profile summary (left, persists
+            across tabs) / feed & job tools (center) / insights & suggestions
+            (right, persists across tabs) -- collapses to a single column
+            below lg, and the right column additionally drops below xl since
+            it needs more room than a plain 3-way split leaves at that size.
+            Flexbox, not CSS Grid: a grid item's sticky containing block is
+            the grid AREA (spanning the full row height across all three
+            columns). position:sticky is on the flex ITEM itself (the
+            <aside>), not on a nested wrapper div inside it -- isolated,
+            minimal reproductions (cleared page, no app CSS) proved sticky
+            works correctly as a direct flex-item child in this rendering
+            engine but silently fails to stick one level deeper, regardless
+            of tag name or any ancestor overflow/transform/filter/contain
+            property (all checked and clean). Since aside itself is a flex
+            item, `space-y-4` (which needs to apply to >1 child) is
+            replicated by wrapping ProfileSummaryCard's own children instead
+            -- it only ever renders one child here, so this is a no-op
+            simplification, not a behavior change. */}
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
+          <aside className="hidden lg:block lg:w-[240px] lg:shrink-0 sticky top-[calc(var(--nav-height)+1rem)]">
+            <ProfileSummaryCard activeTab={activeTab} hasCompany={!!companyId} />
+          </aside>
 
-          <TabsContent value="feed" className="space-y-4">
+          <div className="min-w-0 w-full flex-1">
+          <TabsContent value="feed" className="space-y-3 mt-0">
             <Stories />
             <PostInput
               user={{
@@ -219,25 +198,7 @@ const Dashboard = () => {
             <Feed refresh={feedRefresh} mode={feedMode} />
           </TabsContent>
 
-          <TabsContent value="jobs" className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Job Openings</h2>
-              {companyId && profileId && (
-                <Button onClick={() => setPostJobOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Post Job
-                </Button>
-              )}
-            </div>
-            <JobsFeed 
-              onApply={handleApply}
-              onViewDetails={handleViewDetails}
-              appliedJobIds={appliedJobIds}
-              refresh={feedRefresh}
-            />
-          </TabsContent>
-
-          <TabsContent value="applications">
+          <TabsContent value="applications" className="mt-0">
             <div className="mb-4">
               <h2 className="text-2xl font-bold">My Applications</h2>
               <p className="text-sm text-muted-foreground">Track your job applications</p>
@@ -246,7 +207,7 @@ const Dashboard = () => {
           </TabsContent>
 
           {companyId && (
-            <TabsContent value="drafts">
+            <TabsContent value="drafts" className="mt-0">
               <div className="mb-4">
                 <h2 className="text-2xl font-bold">My Drafts</h2>
                 <p className="text-sm text-muted-foreground">Manage your draft job postings</p>
@@ -254,35 +215,15 @@ const Dashboard = () => {
               <MyDrafts companyId={companyId} onPublish={() => setFeedRefresh(prev => prev + 1)} />
             </TabsContent>
           )}
-        </Tabs>
-      </div>
+          </div>
+
+          <aside className="hidden xl:block xl:w-[300px] xl:shrink-0 sticky top-[calc(var(--nav-height)+1rem)]">
+            <FeedRightRail />
+          </aside>
+        </div>
+      </Tabs>
 
       <FloatingCreatePost />
-
-      {profileId && (
-        <PostJobDialog
-          open={postJobOpen}
-          onOpenChange={setPostJobOpen}
-          profileId={profileId}
-          onJobPosted={() => {
-            setFeedRefresh(prev => prev + 1);
-          }}
-        />
-      )}
-
-      <ApplyJobDialog
-        open={applyJobOpen}
-        onOpenChange={setApplyJobOpen}
-        jobId={selectedJobId}
-        jobTitle={selectedJobTitle}
-        onApplicationSubmitted={handleApplicationSubmitted}
-      />
-
-      <JobDetailsDialog
-        open={jobDetailsOpen}
-        onOpenChange={setJobDetailsOpen}
-        jobId={selectedJobId}
-      />
     </Layout>
   );
 };

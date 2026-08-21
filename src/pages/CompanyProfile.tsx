@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { User } from '@supabase/supabase-js';
 import { Layout } from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import PostCard from '@/components/PostCard';
+import HiringPipeline from '@/components/jobs/HiringPipeline';
+import { CompanyTeamManager } from '@/components/jobs/CompanyTeamManager';
 import { ReactionType } from '@/components/ReactionBar';
 import { PollData, buildPollSummary, buildReactionSummary } from '@/lib/postAggregation';
 import {
@@ -67,12 +70,14 @@ interface CompanyPost {
 
 export default function CompanyProfile() {
   const { companyId } = useParams<{ companyId: string }>();
+  const [searchParams] = useSearchParams();
   const [company, setCompany] = useState<Company | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
@@ -80,13 +85,44 @@ export default function CompanyProfile() {
   const [posts, setPosts] = useState<CompanyPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
 
+  const [isTeamAdmin, setIsTeamAdmin] = useState(false);
+  const [showTeamManager, setShowTeamManager] = useState(false);
+
   useEffect(() => {
     if (companyId) {
       fetchCompanyData();
       fetchCompanyPosts();
       fetchFollowState();
+      fetchAdminState();
     }
+    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUser(user));
   }, [companyId]);
+
+  const fetchAdminState = async () => {
+    if (!companyId) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase.rpc('is_company_admin', {
+        _user_id: user.id,
+        _company_id: companyId,
+      });
+      if (error) throw error;
+      setIsTeamAdmin(!!data);
+      if (data && searchParams.get('manageTeam') === '1') {
+        setShowTeamManager(true);
+      }
+    } catch (error) {
+      console.error('Error checking company admin state:', error);
+    }
+  };
+
+  const navigate = useNavigate();
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
 
   const fetchCompanyData = async () => {
     setLoading(true);
@@ -199,6 +235,7 @@ export default function CompanyProfile() {
         .from('posts')
         .select(`
           id, content, image_url, video_url, document_url, document_name, carousel_urls, post_type, created_at,
+          cta_enabled, cta_label, cta_url, cta_open_new_tab,
           post_reactions ( id, user_id, reaction_type ),
           polls (
             id,
@@ -228,23 +265,22 @@ export default function CompanyProfile() {
       const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).single();
       if (!profile) return;
 
-      const { data: existing } = await supabase
-        .from('post_reactions')
-        .select('id, reaction_type')
-        .eq('post_id', postId)
-        .eq('user_id', profile.id)
-        .maybeSingle();
-
       if (type === null) {
-        if (existing) await supabase.from('post_reactions').delete().eq('id', existing.id);
-      } else if (existing) {
-        if (existing.reaction_type === type) {
-          await supabase.from('post_reactions').delete().eq('id', existing.id);
-        } else {
-          await supabase.from('post_reactions').update({ reaction_type: type }).eq('id', existing.id);
-        }
+        // Removing a reaction -- no upsert needed.
+        await supabase
+          .from('post_reactions')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', profile.id);
       } else {
-        await supabase.from('post_reactions').insert({ post_id: postId, user_id: profile.id, reaction_type: type });
+        // Reacting for the first time or switching reaction -- a single
+        // atomic upsert (post_reactions has a UNIQUE(post_id, user_id)
+        // constraint) instead of select-then-branch, which could race
+        // under rapid double-clicks or two open tabs.
+        await supabase.from('post_reactions').upsert(
+          { post_id: postId, user_id: profile.id, reaction_type: type },
+          { onConflict: 'post_id,user_id' }
+        );
       }
 
       fetchCompanyPosts();
@@ -293,7 +329,7 @@ export default function CompanyProfile() {
 
   if (loading) {
     return (
-      <Layout>
+      <Layout user={currentUser} onSignOut={handleSignOut}>
         <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
           <Skeleton className="h-48 w-full" />
           <Skeleton className="h-32 w-full" />
@@ -305,7 +341,7 @@ export default function CompanyProfile() {
 
   if (!company) {
     return (
-      <Layout>
+      <Layout user={currentUser} onSignOut={handleSignOut}>
         <div className="max-w-4xl mx-auto py-16 px-4 text-center">
           <Building2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-foreground mb-2">Company Not Found</h1>
@@ -378,6 +414,16 @@ export default function CompanyProfile() {
                         </a>
                       </Button>
                     )}
+                    {isTeamAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowTeamManager((prev) => !prev)}
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        {showTeamManager ? 'Hide Team' : 'Manage Team'}
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -419,6 +465,9 @@ export default function CompanyProfile() {
             )}
           </CardContent>
         </Card>
+
+        {/* Team management -- owner/admin only */}
+        {isTeamAdmin && showTeamManager && <CompanyTeamManager companyId={company.id} />}
 
         {/* Culture & Values */}
         {(company.culture || (company.values && company.values.length > 0)) && (
@@ -496,6 +545,8 @@ export default function CompanyProfile() {
                     reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}
                     onReact={(type) => handleReact(post.id, type)}
                     onDelete={() => handleDeletePost(post.id)}
+                    cta={post.cta_enabled && post.cta_label && post.cta_url ? { label: post.cta_label, url: post.cta_url, openNewTab: post.cta_open_new_tab } : null}
+                    companyId={company.id}
                   />
                 ))}
               </div>
@@ -560,6 +611,11 @@ export default function CompanyProfile() {
             )}
           </CardContent>
         </Card>
+
+        {/* Candidate Pipeline (Beta) -- separate ATS-style flow, admin-only */}
+        {company && jobs.length > 0 && (
+          <HiringPipeline companyId={company.id} jobs={jobs.map((j) => ({ id: j.id, title: j.title }))} />
+        )}
       </div>
     </Layout>
   );

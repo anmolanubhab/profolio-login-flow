@@ -36,6 +36,14 @@ export const MyApplications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile) return;
+
       const { data, error } = await supabase
         .from('applications')
         .select(`
@@ -51,7 +59,7 @@ export const MyApplications = () => {
             )
           )
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .order('applied_at', { ascending: false });
 
       if (error) throw error;

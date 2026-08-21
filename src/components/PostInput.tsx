@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Camera, FileText, User, X, Video as VideoIcon, Images, BarChart3, Plus, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
+import { rateLimiter, RATE_LIMITS, isServerRateLimitError, SERVER_RATE_LIMIT_MESSAGE } from '@/lib/rate-limiter';
 
 interface PostInputProps {
   user?: {
@@ -301,11 +301,19 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
 
     } catch (error: any) {
       console.error('Error creating post:', error);
-      toast({
-        title: "Error creating post",
-        description: error?.message || "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
+      if (isServerRateLimitError(error)) {
+        toast({
+          title: "Slow down",
+          description: SERVER_RATE_LIMIT_MESSAGE,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error creating post",
+          description: error?.message || "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsPosting(false);
     }

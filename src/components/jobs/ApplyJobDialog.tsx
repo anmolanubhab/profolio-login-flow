@@ -30,6 +30,14 @@ export const ApplyJobDialog = ({ open, onOpenChange, jobId, jobTitle, onApplicat
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError || !profile) throw new Error('Profile not found');
+
       let resumeUrl = null;
       if (resumeFile) {
         const fileExt = resumeFile.name.split('.').pop();
@@ -49,7 +57,7 @@ export const ApplyJobDialog = ({ open, onOpenChange, jobId, jobTitle, onApplicat
 
       const { error } = await supabase.from('applications').insert({
         job_id: jobId,
-        user_id: user.id,
+        user_id: profile.id,
         cover_letter: coverLetter,
         status: 'applied',
       });

@@ -28,6 +28,7 @@ interface ExperienceSectionProps {
 const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionProps) => {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
@@ -49,30 +50,43 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
 
   const fetchExperiences = async () => {
     try {
-      // Get profile data directly
-      const { data: profileData, error } = await supabase
+      // Resolve the profiles.id for this profile owner (experience.user_id is an FK to profiles.id)
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('experience' as any)
+        .select('id')
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (error) throw error;
-      const experienceArray = (profileData as any)?.experience || [];
+      if (profileError) throw profileError;
+      if (!profileData) {
+        setExperiences([]);
+        setProfileId(null);
+        return;
+      }
 
-      // Convert to proper format with IDs
-      const formattedExperiences = experienceArray.map((exp: any, index: number) => ({
-        id: exp.id || `exp_${index}`,
-        company: exp.company || '',
-        role: exp.role || '',
-        start_date: exp.start_date || '',
-        end_date: exp.end_date || '',
-        is_current: exp.is_current || false,
-        employment_type: exp.employment_type || '',
-        location: exp.location || '',
-        description: exp.description || ''
-      }));
-      
-      setExperiences(formattedExperiences);
+      setProfileId(profileData.id);
+
+      const { data, error } = await supabase
+        .from('experience')
+        .select('*')
+        .eq('user_id', profileData.id)
+        .order('start_date', { ascending: false });
+
+      if (error) throw error;
+
+      setExperiences(
+        (data || []).map((exp) => ({
+          id: exp.id,
+          company: exp.company,
+          role: exp.role,
+          start_date: exp.start_date || '',
+          end_date: exp.end_date || '',
+          is_current: exp.is_current || false,
+          employment_type: exp.employment_type || '',
+          location: exp.location || '',
+          description: exp.description || ''
+        }))
+      );
     } catch (error: any) {
       toast({
         title: "Error",
@@ -117,39 +131,33 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
   };
 
   const handleSave = async () => {
+    if (!profileId) return;
     try {
-      // Get current experiences
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('experience' as any)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!profile) throw new Error('Profile not found');
-
-      let updatedExperiences = [...((profile as any).experience || [])];
-
       const saveData = {
-        ...editData,
-        id: editingId || `exp_${Date.now()}`,
-        end_date: editData.is_current ? null : editData.end_date || null
+        company: editData.company,
+        role: editData.role,
+        start_date: editData.start_date || null,
+        end_date: editData.is_current ? null : editData.end_date || null,
+        is_current: editData.is_current,
+        employment_type: editData.employment_type || null,
+        location: editData.location || null,
+        description: editData.description || null,
       };
 
       if (isAdding) {
-        updatedExperiences.push(saveData);
+        const { error } = await supabase
+          .from('experience')
+          .insert({ ...saveData, user_id: profileId });
+
+        if (error) throw error;
       } else if (editingId) {
-        const index = updatedExperiences.findIndex((exp: any) => exp.id === editingId);
-        if (index !== -1) {
-          updatedExperiences[index] = saveData;
-        }
+        const { error } = await supabase
+          .from('experience')
+          .update(saveData)
+          .eq('id', editingId);
+
+        if (error) throw error;
       }
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({ experience: updatedExperiences } as any)
-        .eq('user_id', userId);
-
-      if (error) throw error;
 
       fetchExperiences();
       setIsAdding(false);
@@ -171,21 +179,10 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
 
   const handleDelete = async (id: string) => {
     try {
-      // Get current experiences
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('experience' as any)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!profile) throw new Error('Profile not found');
-
-      const updatedExperiences = ((profile as any).experience || []).filter((exp: any) => exp.id !== id);
-
       const { error } = await supabase
-        .from('profiles')
-        .update({ experience: updatedExperiences } as any)
-        .eq('user_id', userId);
+        .from('experience')
+        .delete()
+        .eq('id', id);
 
       if (error) throw error;
 
@@ -258,7 +255,7 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
                   onChange={(e) => setEditData(prev => ({ ...prev, role: e.target.value }))}
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   placeholder="Employment Type"
@@ -297,8 +294,8 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
                   id="current"
                   checked={editData.is_current}
                   onCheckedChange={(checked) => {
-                    setEditData(prev => ({ 
-                      ...prev, 
+                    setEditData(prev => ({
+                      ...prev,
                       is_current: checked as boolean,
                       end_date: checked ? '' : prev.end_date
                     }));
@@ -346,7 +343,7 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
                   </p>
                   <p className="text-muted-foreground text-sm">
                     {formatDate(experience.start_date)} - {
-                      experience.is_current ? 'Present' : 
+                      experience.is_current ? 'Present' :
                       experience.end_date ? formatDate(experience.end_date) : 'Present'
                     }
                   </p>
@@ -366,7 +363,7 @@ const ExperienceSection = ({ userId, isOwnProfile = false }: ExperienceSectionPr
                     </p>
                   )}
                 </div>
-                
+
                 {isOwnProfile && (
                   <div className="flex gap-2 ml-4">
                     <Button

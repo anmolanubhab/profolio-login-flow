@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { MessageCircle, Share, User, Facebook, Twitter, Copy, FileText, ExternalLink } from 'lucide-react';
+import { MessageCircle, Share, User, Facebook, Twitter, Copy, FileText, ExternalLink, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { isServerRateLimitError, SERVER_RATE_LIMIT_MESSAGE } from '@/lib/rate-limiter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +52,10 @@ interface PostCardProps {
   // posts published as a company, which should open the company page
   // instead of a personal profile.
   profileLink?: string;
+  cta?: { label: string; url: string; openNewTab: boolean } | null;
+  // Only set for posts published as a company -- drives the "Edit CTA"
+  // admin check in PostOptionsMenu. Absent/undefined for personal posts.
+  companyId?: string | null;
 }
 
 const PostCard = ({
@@ -71,7 +76,11 @@ const PostCard = ({
   onDelete,
   onHide,
   profileLink,
+  cta,
+  companyId,
 }: PostCardProps) => {
+  const [ctaState, setCtaState] = useState(cta ?? null);
+  useEffect(() => { setCtaState(cta ?? null); }, [cta]);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
@@ -305,11 +314,19 @@ const PostCard = ({
 
     } catch (err: any) {
       console.error('Error adding comment:', err);
-      toast({
-        title: 'Could not add comment',
-        description: err?.message || 'An unexpected error occurred. Please try again.',
-        variant: 'destructive',
-      });
+      if (isServerRateLimitError(err)) {
+        toast({
+          title: 'Slow down',
+          description: SERVER_RATE_LIMIT_MESSAGE,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Could not add comment',
+          description: err?.message || 'An unexpected error occurred. Please try again.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setSubmittingComment(false);
     }
@@ -379,13 +396,49 @@ const PostCard = ({
       }
     } catch (err: any) {
       console.error('Error adding reply:', err);
+      if (isServerRateLimitError(err)) {
+        toast({
+          title: 'Slow down',
+          description: SERVER_RATE_LIMIT_MESSAGE,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Could not post reply',
+          description: err?.message || 'An unexpected error occurred. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  const deleteComment = async (commentId: string, commentUserId: string) => {
+    if (!currentUserProfileId || commentUserId !== currentUserProfileId) return;
+    if (!window.confirm('Delete this comment? This action cannot be undone.')) return;
+
+    try {
+      const { error } = await supabase
+        .from('comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', currentUserProfileId);
+
+      if (error) throw error;
+
+      setComments(prev => prev.filter((c) => c.id !== commentId && c.parent_comment_id !== commentId));
+
       toast({
-        title: 'Could not post reply',
+        title: 'Comment deleted',
+      });
+    } catch (err: any) {
+      console.error('Error deleting comment:', err);
+      toast({
+        title: 'Could not delete comment',
         description: err?.message || 'An unexpected error occurred. Please try again.',
         variant: 'destructive',
       });
-    } finally {
-      setSubmittingReply(false);
     }
   };
 
@@ -511,6 +564,16 @@ const PostCard = ({
           isOwnPost={isOwnPost}
           onDelete={onDelete}
           onHide={onHide}
+          companyId={companyId}
+          cta={{
+            cta_enabled: !!ctaState,
+            cta_label: ctaState?.label ?? null,
+            cta_url: ctaState?.url ?? null,
+            cta_open_new_tab: ctaState?.openNewTab ?? true,
+          }}
+          onCtaChange={(next) =>
+            setCtaState(next ? { label: next.cta_label!, url: next.cta_url!, openNewTab: next.cta_open_new_tab } : null)
+          }
         />
       </div>
 
@@ -613,6 +676,8 @@ const PostCard = ({
         </div>
       )}
 
+      {ctaState && <PostCta {...ctaState} />}
+
       <div className="px-4 sm:px-5 pb-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <ReactionCountSummary summary={reactionSummary} onClick={() => setBreakdownOpen(true)} />
@@ -702,6 +767,16 @@ const PostCard = ({
                               {isExpanded ? 'Hide replies' : `View ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}
                             </button>
                           )}
+                          {currentUserProfileId && c.user_id === currentUserProfileId && (
+                            <button
+                              type="button"
+                              className="text-xs font-medium text-muted-foreground hover:text-destructive flex items-center gap-1"
+                              onClick={() => deleteComment(c.id, c.user_id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -746,7 +821,19 @@ const PostCard = ({
                             <div className="flex-1">
                               <div className="text-sm font-medium">{r.user?.name || 'Unknown User'}</div>
                               <div className="text-sm">{r.content}</div>
-                              <div className="text-xs text-muted-foreground mt-0.5">{formatTimeAgo(r.created_at)}</div>
+                              <div className="flex items-center gap-3 mt-0.5">
+                                <span className="text-xs text-muted-foreground">{formatTimeAgo(r.created_at)}</span>
+                                {currentUserProfileId && r.user_id === currentUserProfileId && (
+                                  <button
+                                    type="button"
+                                    className="text-xs font-medium text-muted-foreground hover:text-destructive flex items-center gap-1"
+                                    onClick={() => deleteComment(r.id, r.user_id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -812,5 +899,36 @@ const PostCard = ({
     </div>
   );
 };
+
+// The company-post CTA, rendered as a compact link-preview strip (domain +
+// button) rather than a floating button -- matches how the destination
+// itself is always a real, validated http(s) URL (the DB check constraint
+// `posts_cta_consistency` guarantees this even if a row got here some other
+// way), so a plain <a> with a real href is used, never
+// dangerouslySetInnerHTML or a raw string interpolated into markup.
+function PostCta({ label, url, openNewTab }: { label: string; url: string; openNewTab: boolean }) {
+  let hostname = url;
+  try {
+    hostname = new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    // Malformed CTA URLs shouldn't exist (validated at write time), but if
+    // one somehow slipped through, fall back to showing the raw string
+    // rather than crashing the whole post card.
+  }
+
+  return (
+    <div className="mx-4 sm:mx-5 mb-3 rounded-lg border border-border bg-secondary/40 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+      <span className="text-xs text-muted-foreground truncate min-w-0">{hostname}</span>
+      <a
+        href={url}
+        target={openNewTab ? '_blank' : undefined}
+        rel={openNewTab ? 'noopener noreferrer' : undefined}
+        className="inline-flex items-center justify-center shrink-0 rounded-full bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        {label}
+      </a>
+    </div>
+  );
+}
 
 export default PostCard;

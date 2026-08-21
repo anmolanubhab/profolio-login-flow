@@ -8,7 +8,9 @@ import {
   User,
   LogOut,
   MessageCircle,
-  Building2
+  Building2,
+  Users2,
+  Bookmark
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
@@ -36,6 +38,7 @@ const mainItems = [
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Jobs", url: "/jobs", icon: Briefcase },
   { title: "Companies", url: "/companies", icon: Building2 },
+  { title: "Groups", url: "/groups", icon: Users2 },
 ]
 
 const profileItems = [
@@ -43,6 +46,7 @@ const profileItems = [
   { title: "Connect", url: "/connect", icon: MessageCircle },
   { title: "Certificates", url: "/certificates", icon: Award },
   { title: "Resume", url: "/resume", icon: FileText },
+  { title: "Saved Posts", url: "/saved-posts", icon: Bookmark },
 ]
 
 export function AppSidebar() {

@@ -13,14 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 interface Profile {
   id: string;
-  display_name?: string;
-  bio?: string;
-  profession?: string;
-  location?: string;
-  avatar_url?: string;
-  phone?: string;
-  website?: string;
-  profile_visibility?: string;
+  display_name?: string | null;
+  bio?: string | null;
+  profession?: string | null;
+  location?: string | null;
+  avatar_url?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  profile_visibility?: string | null;
   [key: string]: any;
 }
 
@@ -61,15 +61,15 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
       if (error) throw error;
 
       if (data) {
-        setProfile(data as any);
+        setProfile(data);
         setEditData({
-          display_name: (data as any).display_name || '',
-          bio: (data as any).bio || '',
-          profession: (data as any).profession || '',
-          location: (data as any).location || '',
-          phone: (data as any).phone || '',
-          website: (data as any).website || '',
-          profile_visibility: (data as any).profile_visibility || 'public'
+          display_name: data.display_name || '',
+          bio: data.bio || '',
+          profession: data.profession || '',
+          location: data.location || '',
+          phone: data.phone || '',
+          website: data.website || '',
+          profile_visibility: data.profile_visibility || 'public'
         });
       } else {
         // Create a new profile if it doesn't exist
@@ -81,7 +81,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
 
         if (createError) throw createError;
 
-        setProfile(newProfile as any);
+        setProfile(newProfile);
         setEditData({
           display_name: '',
           bio: '',
@@ -150,7 +150,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(editData as any)
+        .update(editData)
         .eq('user_id', userId);
 
       if (error) throw error;

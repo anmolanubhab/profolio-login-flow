@@ -32,6 +32,7 @@ const ResumeBuilder = () => {
 
   useEffect(() => {
     loadResumes();
+    prefillFromProfile();
   }, []);
 
   const loadResumes = async () => {
@@ -51,6 +52,83 @@ const ResumeBuilder = () => {
       console.error('Error loading resumes:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Pre-fill a fresh (unsaved, not-yet-edited) resume with the user's
+  // profile data. Only touches the form when the user hasn't started
+  // editing an existing saved resume.
+  const prefillFromProfile = async (force = false) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      let educationArr: { degree: string | null; field_of_study: string | null; institution: string }[] = [];
+      let experienceArr: { role: string; company: string; start_date: string | null; end_date: string | null; is_current: boolean; description: string | null }[] = [];
+      let skillsText = '';
+
+      if (profile?.id) {
+        const [{ data: educationData }, { data: experienceData }, { data: skillsData }] = await Promise.all([
+          supabase
+            .from('education')
+            .select('*')
+            .eq('user_id', profile.id)
+            .order('start_date', { ascending: false }),
+          supabase
+            .from('experience')
+            .select('*')
+            .eq('user_id', profile.id)
+            .order('start_date', { ascending: false }),
+          supabase
+            .from('skills')
+            .select('skill_name')
+            .eq('user_id', profile.id),
+        ]);
+
+        educationArr = educationData || [];
+        experienceArr = experienceData || [];
+        skillsText = (skillsData || []).map((s) => s.skill_name).join(', ');
+      }
+
+      const experienceText = experienceArr
+        .map((exp) => {
+          const period = `${exp.start_date || ''} - ${exp.is_current ? 'Present' : exp.end_date || 'Present'}`;
+          const header = [exp.role, exp.company].filter(Boolean).join(' at ');
+          return [header, period, exp.description].filter(Boolean).join('\n');
+        })
+        .join('\n\n');
+
+      const educationText = educationArr
+        .map((edu) => {
+          const degreeLine = [edu.degree, edu.field_of_study].filter(Boolean).join(' in ');
+          return [degreeLine, edu.institution].filter(Boolean).join(' - ');
+        })
+        .join('\n');
+
+      setFormData((prev) => {
+        // Don't clobber a resume the user is already editing.
+        if (editingId && !force) return prev;
+        return {
+          ...prev,
+          personalInfo: {
+            name: prev.personalInfo.name || profile?.display_name || '',
+            email: prev.personalInfo.email || profile?.email || user.email || '',
+            phone: prev.personalInfo.phone || profile?.phone || '',
+            location: prev.personalInfo.location || profile?.location || '',
+          },
+          experience: prev.experience || experienceText,
+          education: prev.education || educationText,
+          skills: prev.skills || skillsText,
+        };
+      });
+    } catch (error) {
+      console.error('Error prefilling resume from profile:', error);
     }
   };
 
@@ -167,7 +245,15 @@ const ResumeBuilder = () => {
       doc.text(`Email: ${content.personalInfo.email}`, 20, yPos);
       yPos += 10;
     }
-    
+    if (content.personalInfo?.phone) {
+      doc.text(`Phone: ${content.personalInfo.phone}`, 20, yPos);
+      yPos += 10;
+    }
+    if (content.personalInfo?.location) {
+      doc.text(`Location: ${content.personalInfo.location}`, 20, yPos);
+      yPos += 10;
+    }
+
     // Summary
     if (content.summary) {
       yPos += 10;
@@ -179,7 +265,7 @@ const ResumeBuilder = () => {
       doc.text(summaryLines, 20, yPos);
       yPos += summaryLines.length * 7;
     }
-    
+
     // Experience
     if (content.experience) {
       yPos += 10;
@@ -191,7 +277,19 @@ const ResumeBuilder = () => {
       doc.text(expLines, 20, yPos);
       yPos += expLines.length * 7;
     }
-    
+
+    // Education
+    if (content.education) {
+      yPos += 10;
+      doc.setFontSize(16);
+      doc.text('Education', 20, yPos);
+      yPos += 10;
+      doc.setFontSize(12);
+      const eduLines = doc.splitTextToSize(content.education, 170);
+      doc.text(eduLines, 20, yPos);
+      yPos += eduLines.length * 7;
+    }
+
     // Skills
     if (content.skills) {
       yPos += 10;
@@ -216,6 +314,7 @@ const ResumeBuilder = () => {
       skills: '',
     });
     setEditingId(null);
+    prefillFromProfile(true);
   };
 
   return (
@@ -331,6 +430,22 @@ const ResumeBuilder = () => {
                 personalInfo: { ...formData.personalInfo, email: e.target.value }
               })}
             />
+            <Input
+              placeholder="Phone"
+              value={formData.personalInfo.phone}
+              onChange={(e) => setFormData({
+                ...formData,
+                personalInfo: { ...formData.personalInfo, phone: e.target.value }
+              })}
+            />
+            <Input
+              placeholder="Location"
+              value={formData.personalInfo.location}
+              onChange={(e) => setFormData({
+                ...formData,
+                personalInfo: { ...formData.personalInfo, location: e.target.value }
+              })}
+            />
           </CardContent>
         </Card>
 
@@ -358,6 +473,20 @@ const ResumeBuilder = () => {
               value={formData.experience}
               onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
               rows={6}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Education</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              placeholder="List your education history..."
+              value={formData.education}
+              onChange={(e) => setFormData({ ...formData, education: e.target.value })}
+              rows={4}
             />
           </CardContent>
         </Card>

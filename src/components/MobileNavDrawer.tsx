@@ -8,6 +8,8 @@ import {
   User,
   MessageCircle,
   Building2,
+  Users2,
+  Bookmark,
   Menu,
   X
 } from "lucide-react"
@@ -31,6 +33,7 @@ const mainItems = [
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Jobs", url: "/jobs", icon: Briefcase },
   { title: "Companies", url: "/companies", icon: Building2 },
+  { title: "Groups", url: "/groups", icon: Users2 },
 ]
 
 const profileItems = [
@@ -38,6 +41,7 @@ const profileItems = [
   { title: "Connect", url: "/connect", icon: MessageCircle },
   { title: "Certificates", url: "/certificates", icon: Award },
   { title: "Resume", url: "/resume", icon: FileText },
+  { title: "Saved Posts", url: "/saved-posts", icon: Bookmark },
 ]
 
 export function MobileNavDrawer() {

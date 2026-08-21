@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { User } from '@supabase/supabase-js';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,6 +16,7 @@ export default function Companies() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [showCompanyDialog, setShowCompanyDialog] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [deletingCompanyId, setDeletingCompanyId] = useState<string | null>(null);
@@ -37,6 +39,7 @@ export default function Companies() {
       navigate('/');
       return;
     }
+    setUser(user);
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -47,6 +50,11 @@ export default function Companies() {
     if (profile) {
       setProfileId(profile.id);
     }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
   };
 
   const fetchCompanies = async () => {
@@ -130,7 +138,7 @@ export default function Companies() {
   };
 
   return (
-    <Layout>
+    <Layout user={user} onSignOut={handleSignOut}>
       <div className="max-w-6xl mx-auto py-8 px-4">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -278,6 +286,15 @@ export default function Companies() {
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
                       View Jobs
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 border-[#E5E7EB] hover:bg-[#F3F6F9]"
+                      onClick={() => navigate(`/company/${company.id}?manageTeam=1`)}
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Manage Team
                     </Button>
                   </div>
                 </CardContent>
