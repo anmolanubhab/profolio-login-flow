@@ -1,0 +1,45 @@
+-- ============================================================================
+-- DOCUMENTATION-ONLY RECORD (ALREADY APPLIED LIVE VIA execute_sql, NOT DDL)
+-- ============================================================================
+-- Recorded 2026-08-21 against the LIVE production schema of Supabase project
+-- ajbhpqbfcpmztjtxqxxk ("Profolio"). This file does NOT need to run anything
+-- destructive or re-apply the backfill -- it documents, for repo/schema
+-- history completeness, a data backfill that was already executed live in
+-- this session via a direct (non-migration) SQL statement.
+--
+-- CONTEXT: the app previously had two competing representations of a user's
+-- education/experience:
+--   1. Normalized `public.education` / `public.experience` tables -- correct
+--      FK to profiles.id, owner-only RLS on SELECT and ALL -- but empty and
+--      unused by the UI.
+--   2. JSON blobs on `profiles.education` / `profiles.experience` -- what the
+--      UI actually read/wrote (via `as any` casts, since these JSON columns
+--      are not part of the generated TypeScript types).
+--
+-- WHAT WAS DONE: every existing JSON entry in `profiles.education` and
+-- `profiles.experience` was copied into the corresponding row(s) in the real
+-- `public.education` / `public.experience` tables, preserving field values
+-- (institution/degree/field_of_study/start_date/end_date/grade/description
+-- for education; company/role/employment_type/location/start_date/end_date/
+-- is_current/description for experience) and scoping each new row to the
+-- owning profiles.id. This was purely additive: no rows in the normalized
+-- tables were overwritten, and the source JSON columns on `profiles` were
+-- NOT cleared or dropped -- they remain in place as a safety net.
+--
+-- RESULT (verified by direct query at the time of this record):
+--   * public.education now has 1 row.
+--   * public.experience now has 2 rows.
+--   * These 3 rows match the 3 total entries that previously existed across
+--     `profiles.education` / `profiles.experience` JSON for the app's 3 real
+--     user profiles.
+--
+-- FOLLOW-UP (done in the same change as this file): the UI components
+-- (EducationSection.tsx, ExperienceSection.tsx, ResumeBuilder.tsx) were
+-- updated to read/write `public.education` / `public.experience` directly
+-- instead of the `profiles` JSON columns, making the normalized tables the
+-- single source of truth for the UI.
+--
+-- No DDL or DML is executed by this file. It is intentionally a no-op.
+-- ============================================================================
+
+SELECT 1;

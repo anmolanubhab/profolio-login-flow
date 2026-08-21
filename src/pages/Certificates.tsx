@@ -1,21 +1,46 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { Layout } from '@/components/Layout';
 import CertificateVault from '@/components/CertificateVault';
-import BottomNavigation from '@/components/BottomNavigation';
 
 const Certificates = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) {
+        navigate('/');
+        return;
+      }
+      setUser(session.user);
+      setLoading(false);
+    });
+  }, [navigate]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="bg-primary text-primary-foreground sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
-          <h1 className="text-xl font-bold">Certificate Vault</h1>
-        </div>
-      </header>
-      
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
+    <Layout user={user} onSignOut={handleSignOut}>
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <h1 className="text-2xl font-bold mb-6">Certificate Vault</h1>
         <CertificateVault />
       </div>
-      
-      <BottomNavigation />
-    </div>
+    </Layout>
   );
 };
 

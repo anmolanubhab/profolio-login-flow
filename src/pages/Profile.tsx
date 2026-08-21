@@ -16,25 +16,32 @@ const Profile = () => {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/');
-        return;
-      }
-      setUser(user);
-      
-      // Fetch profile ID
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (profile) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate('/');
+          return;
+        }
+        setUser(user);
+
+        // Fetch profile ID
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) throw error;
         setProfileId(profile.id);
+      } catch (error: any) {
+        toast({
+          title: "Error loading profile",
+          description: error.message || "Could not load your profile. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     getUser();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -48,7 +48,10 @@ import {
   ThumbsDown,
   Trash2,
   MoreHorizontal,
+  Megaphone,
 } from 'lucide-react';
+import { CtaFields } from '@/components/CtaFields';
+import { validateCtaUrl, EMPTY_CTA, type CtaConfig } from '@/lib/cta';
 
 interface PostOptionsMenuProps {
   postId: string;
@@ -58,6 +61,12 @@ interface PostOptionsMenuProps {
   isOwnPost: boolean;
   onDelete?: () => void;
   onHide?: () => void;
+  // Only present for company posts -- drives the "Edit CTA" admin check and
+  // the edit dialog. undefined/null for personal posts, which never show
+  // CTA controls at all (matches the composer's own "posting as" gating).
+  companyId?: string | null;
+  cta?: CtaConfig | null;
+  onCtaChange?: (cta: CtaConfig | null) => void;
 }
 
 export const PostOptionsMenu = ({
@@ -68,6 +77,9 @@ export const PostOptionsMenu = ({
   isOwnPost,
   onDelete,
   onHide,
+  companyId,
+  cta,
+  onCtaChange,
 }: PostOptionsMenuProps) => {
   const [open, setOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -75,11 +87,80 @@ export const PostOptionsMenu = ({
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [canManageCta, setCanManageCta] = useState(false);
+  const [ctaDialogOpen, setCtaDialogOpen] = useState(false);
+  const [ctaDraft, setCtaDraft] = useState<CtaConfig>(cta ?? EMPTY_CTA);
+  const [ctaUrlError, setCtaUrlError] = useState<string | null>(null);
+  const [savingCta, setSavingCta] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
+  useEffect(() => {
+    // Only the company's own admin/owner can add or change a CTA -- other
+    // viewers (including the post's own author, if they're not an admin of
+    // the posting company) can only view and click it. Mirrors the same
+    // is_company_admin check already used for "Manage Team" elsewhere.
+    if (!companyId) return;
+    const check = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.rpc('is_company_admin', { _user_id: user.id, _company_id: companyId });
+      setCanManageCta(!!data);
+    };
+    check();
+  }, [companyId]);
+
   const closeMenu = () => setOpen(false);
+
+  const openCtaDialog = () => {
+    closeMenu();
+    setCtaDraft(cta ?? EMPTY_CTA);
+    setCtaUrlError(null);
+    setCtaDialogOpen(true);
+  };
+
+  const handleSaveCta = async () => {
+    if (!ctaDraft.cta_label) {
+      toast({ title: 'Choose a button label', variant: 'destructive' });
+      return;
+    }
+    const check = validateCtaUrl(ctaDraft.cta_url || '');
+    if (!check.valid) {
+      setCtaUrlError(check.error);
+      return;
+    }
+    setSavingCta(true);
+    try {
+      const next: CtaConfig = { cta_enabled: true, cta_label: ctaDraft.cta_label, cta_url: check.normalized, cta_open_new_tab: ctaDraft.cta_open_new_tab };
+      const { error } = await supabase.from('posts').update(next).eq('id', postId);
+      if (error) throw error;
+      onCtaChange?.(next);
+      toast({ title: 'Call-to-action saved' });
+      setCtaDialogOpen(false);
+    } catch (err) {
+      console.error('Error saving CTA:', err);
+      toast({ title: 'Failed to save call-to-action', variant: 'destructive' });
+    } finally {
+      setSavingCta(false);
+    }
+  };
+
+  const handleRemoveCta = async () => {
+    setSavingCta(true);
+    try {
+      const { error } = await supabase.from('posts').update(EMPTY_CTA).eq('id', postId);
+      if (error) throw error;
+      onCtaChange?.(null);
+      toast({ title: 'Call-to-action removed' });
+      setCtaDialogOpen(false);
+    } catch (err) {
+      console.error('Error removing CTA:', err);
+      toast({ title: 'Failed to remove call-to-action', variant: 'destructive' });
+    } finally {
+      setSavingCta(false);
+    }
+  };
 
   const handleSavePost = async () => {
     if (!currentUserProfileId) return;
@@ -388,6 +469,15 @@ export const PostOptionsMenu = ({
         </>
       )}
       
+      {canManageCta && (
+        <>
+          <div className="h-px bg-border my-1" />
+          <MenuItem icon={Megaphone} onClick={openCtaDialog}>
+            {cta?.cta_enabled ? 'Edit call-to-action' : 'Add call-to-action'}
+          </MenuItem>
+        </>
+      )}
+
       {isOwnPost && (
         <>
           <div className="h-px bg-border my-1" />
@@ -396,7 +486,7 @@ export const PostOptionsMenu = ({
           </MenuItem>
         </>
       )}
-      
+
       <div className="h-px bg-border my-1" />
       <MenuItem onClick={handleManageFeed}>
         Manage your Feed
@@ -477,10 +567,20 @@ export const PostOptionsMenu = ({
               </>
             )}
             
+            {canManageCta && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={openCtaDialog}>
+                  <Megaphone className="h-4 w-4 mr-2" />
+                  {cta?.cta_enabled ? 'Edit call-to-action' : 'Add call-to-action'}
+                </DropdownMenuItem>
+              </>
+            )}
+
             {isOwnPost && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => { closeMenu(); setDeleteDialogOpen(true); }}
                   className="text-destructive focus:text-destructive"
                 >
@@ -489,7 +589,7 @@ export const PostOptionsMenu = ({
                 </DropdownMenuItem>
               </>
             )}
-            
+
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleManageFeed}>
               Manage your Feed
@@ -511,6 +611,19 @@ export const PostOptionsMenu = ({
           setReportReason={setReportReason}
           onSubmit={handleReportSubmit}
           isSubmitting={isSubmitting}
+        />
+
+        <CtaEditDialog
+          open={ctaDialogOpen}
+          onOpenChange={setCtaDialogOpen}
+          draft={ctaDraft}
+          setDraft={setCtaDraft}
+          urlError={ctaUrlError}
+          setUrlError={setCtaUrlError}
+          hasExisting={!!cta?.cta_enabled}
+          saving={savingCta}
+          onSave={handleSaveCta}
+          onRemove={handleRemoveCta}
         />
       </>
     );
@@ -663,6 +776,64 @@ const ReportDialog = ({
         >
           {isSubmitting ? 'Submitting...' : 'Submit Report'}
         </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+);
+
+const CtaEditDialog = ({
+  open,
+  onOpenChange,
+  draft,
+  setDraft,
+  urlError,
+  setUrlError,
+  hasExisting,
+  saving,
+  onSave,
+  onRemove,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  draft: CtaConfig;
+  setDraft: (updater: (prev: CtaConfig) => CtaConfig) => void;
+  urlError: string | null;
+  setUrlError: (error: string | null) => void;
+  hasExisting: boolean;
+  saving: boolean;
+  onSave: () => void;
+  onRemove: () => void;
+}) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Call-to-action</DialogTitle>
+      </DialogHeader>
+      <div className="py-2">
+        <CtaFields
+          label={draft.cta_label || ''}
+          url={draft.cta_url || ''}
+          openNewTab={draft.cta_open_new_tab}
+          urlError={urlError}
+          onLabelChange={(v) => setDraft((prev) => ({ ...prev, cta_label: v }))}
+          onUrlChange={(v) => { setDraft((prev) => ({ ...prev, cta_url: v })); setUrlError(null); }}
+          onOpenNewTabChange={(v) => setDraft((prev) => ({ ...prev, cta_open_new_tab: v }))}
+        />
+      </div>
+      <DialogFooter className="sm:justify-between">
+        {hasExisting ? (
+          <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={onRemove} disabled={saving}>
+            Remove CTA
+          </Button>
+        ) : <span />}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={onSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save CTA'}
+          </Button>
+        </div>
       </DialogFooter>
     </DialogContent>
   </Dialog>

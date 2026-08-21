@@ -23,6 +23,7 @@ interface Story {
 const Stories = () => {
   const [stories, setStories] = useState<Story[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentProfile, setCurrentProfile] = useState<{ avatar_url: string | null; display_name: string | null } | null>(null);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -36,6 +37,14 @@ const Stories = () => {
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUser(user);
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url, display_name')
+        .eq('user_id', user.id)
+        .single();
+      if (profile) setCurrentProfile(profile);
+    }
   };
 
   const fetchStories = async () => {
@@ -141,7 +150,7 @@ const Stories = () => {
         .eq('user_id', currentUser.id)
         .single();
 
-      if (profile) {
+      if (currentUser) {
         await supabase.from('story_views').insert({
           story_id: story.id,
           viewer_id: currentUser.id,
@@ -165,38 +174,76 @@ const Stories = () => {
 
   return (
     <>
-      <div className="mb-6 overflow-x-auto">
-        <div className="flex gap-4 pb-2">
-          {/* Add Story Button */}
-          <div className="flex flex-col items-center gap-2 min-w-[80px]">
-            <button
-              onClick={() => setShowUpload(true)}
-              className="relative w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center hover:scale-105 transition-transform duration-200 border-4 border-background shadow-lg"
-            >
-              <Plus className="h-6 w-6 text-white" />
-            </button>
-            <span className="text-xs font-medium text-center">Add Story</span>
-          </div>
+      <div className="rounded-xl border border-border bg-card shadow-card overflow-x-auto">
+        <div className="flex gap-2 sm:gap-2.5 p-3">
+          {/* Add Story -- a card of the exact same shape/size as the real
+              story cards below (not a standalone circular button floating
+              above them), so the row reads as one continuous carousel. */}
+          <button
+            onClick={() => setShowUpload(true)}
+            className="relative shrink-0 w-[76px] h-[128px] sm:w-24 sm:h-[158px] rounded-xl overflow-hidden group"
+          >
+            {currentProfile?.avatar_url ? (
+              <img
+                src={currentProfile.avatar_url}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary/60" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/0 to-black/10 group-hover:from-black/55 transition-colors" />
 
-          {/* Stories */}
-          {Object.entries(groupedStories).map(([userId, data]) => (
-            <div key={userId} className="flex flex-col items-center gap-2 min-w-[80px]">
+            <div className="absolute left-1/2 -translate-x-1/2 top-[64%] sm:top-[68%] w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-background border-2 border-card shadow-md flex items-center justify-center">
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-primary" strokeWidth={2.5} />
+            </div>
+
+            <div className="absolute bottom-0 inset-x-0 bg-card py-1.5 sm:py-2">
+              <span className="text-[10px] sm:text-[12px] font-semibold text-foreground">Add Story</span>
+            </div>
+          </button>
+
+          {/* Stories -- same card shape, own media as the background, small
+              avatar badge top-left and name overlaid at the bottom, matching
+              the Add Story card's dimensions so the whole row aligns. */}
+          {Object.entries(groupedStories).map(([userId, data]) => {
+            const story = data.stories[0];
+            return (
               <button
-                onClick={() => handleStoryClick(data.stories[0])}
-                className="relative w-16 h-16 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 p-[3px] hover:scale-105 transition-transform duration-200 shadow-lg"
+                key={userId}
+                onClick={() => handleStoryClick(story)}
+                className="relative shrink-0 w-[76px] h-[128px] sm:w-24 sm:h-[158px] rounded-xl overflow-hidden group"
               >
-                <Avatar className="w-full h-full border-2 border-background">
+                {story.media_type === 'image' ? (
+                  <img
+                    src={story.media_url}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
+                ) : (
+                  <video
+                    src={story.media_url}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-black/20" />
+
+                <Avatar className="absolute top-2 left-2 h-7 w-7 sm:h-8 sm:w-8 ring-2 ring-primary">
                   <AvatarImage src={data.profile?.avatar_url} />
-                  <AvatarFallback>
+                  <AvatarFallback className="text-[10px]">
                     {data.profile?.display_name?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
+
+                <span className="absolute bottom-1.5 sm:bottom-2 inset-x-1.5 text-[10px] sm:text-[12px] font-semibold text-white text-left line-clamp-2 leading-tight drop-shadow">
+                  {data.profile?.display_name || 'User'}
+                </span>
               </button>
-              <span className="text-xs font-medium text-center line-clamp-1 max-w-[80px]">
-                {data.profile?.display_name || 'User'}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

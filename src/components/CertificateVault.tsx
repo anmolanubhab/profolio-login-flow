@@ -334,7 +334,7 @@ const CertificateVault = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDelete(cert.id, cert.file_url.split('/').pop() || '')}
+                    onClick={() => handleDelete(cert.id, cert.file_url)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

@@ -32,17 +32,17 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('linkedin_url, github_url, twitter_url, website' as any)
+        .select('linkedin_url, github_url, twitter_url, website')
         .eq('user_id', userId)
         .maybeSingle();
 
       if (error) throw error;
-      
+
       setSocialLinks({
-        linkedin_url: (data as any)?.linkedin_url || '',
-        github_url: (data as any)?.github_url || '',
-        twitter_url: (data as any)?.twitter_url || '',
-        website: (data as any)?.website || ''
+        linkedin_url: data?.linkedin_url || '',
+        github_url: data?.github_url || '',
+        twitter_url: data?.twitter_url || '',
+        website: data?.website || ''
       });
     } catch (error: any) {
       toast({
@@ -60,7 +60,7 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(socialLinks as any)
+        .update(socialLinks)
         .eq('user_id', userId);
 
       if (error) throw error;

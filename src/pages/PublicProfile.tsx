@@ -86,8 +86,12 @@ const PublicProfile = () => {
         return;
       }
 
-      // Check if profile is accessible
-      if (data.profile_visibility === 'private' && data.user_id !== currentUser?.id) {
+      // Check if profile is accessible. 'private' and 'connections_only' both
+      // strip sensitive fields client-side as defense-in-depth; the real
+      // gate for connections_only is `isRestricted` at render time, which
+      // also depends on connectionStatus (resolved async below).
+      if (data.user_id !== currentUser?.id &&
+          (data.profile_visibility === 'private' || data.profile_visibility === 'connections_only')) {
         setProfile({ ...data, bio: undefined, phone: undefined, website: undefined });
       } else {
         setProfile(data);
@@ -446,6 +450,11 @@ const PublicProfile = () => {
   }
 
   const isPrivate = profile?.profile_visibility === 'private' && profile?.user_id !== currentUser?.id;
+  const isConnectionsOnlyLocked =
+    profile?.profile_visibility === 'connections_only' &&
+    profile?.user_id !== currentUser?.id &&
+    connectionStatus !== 'accepted';
+  const isRestricted = isPrivate || isConnectionsOnlyLocked;
 
   return (
     <Layout user={currentUser!} onSignOut={handleSignOut}>
@@ -545,12 +554,16 @@ const PublicProfile = () => {
               </div>
 
               <div className="flex-1 space-y-6">
-                {isPrivate ? (
+                {isRestricted ? (
                   <div className="text-center py-8">
                     <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-foreground mb-2">Private Profile</h3>
+                    <h3 className="text-xl font-semibold text-foreground mb-2">
+                      {isPrivate ? 'Private Profile' : 'Connections Only'}
+                    </h3>
                     <p className="text-muted-foreground">
-                      This user's profile is private. Connect with them to view their full profile.
+                      {isPrivate
+                        ? "This user's profile is private."
+                        : "This user only shares their full profile with connections. Send a connection request to view it."}
                     </p>
                   </div>
                 ) : (
@@ -617,7 +630,7 @@ const PublicProfile = () => {
           </CardContent>
         </Card>
 
-        {!isPrivate && profile && (
+        {!isRestricted && profile && (
           <ProfileTabs userId={profile.user_id} profileId={profile.id} isOwnProfile={false} />
         )}
       </div>

@@ -116,21 +116,36 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
-  /* Prevent horizontal overflow on mobile */
-  html, body {
+  /* Prevent horizontal overflow on mobile. overflow-x-hidden lives ONLY on
+     html, not body: when both have a non-visible overflow, the CSS spec's
+     rule that propagates body's overflow up to the viewport doesn't apply
+     (it only fires when html's own overflow is `visible`), so body ends up
+     as its own independent scroll-containment box -- exactly the kind of
+     ancestor that breaks position:sticky for every descendant, since the
+     sticky elements are then scrolling within body's box instead of the
+     true viewport. Keeping it on html alone still clips horizontal
+     overflow at the real viewport, without creating that extra layer. */
+  html {
     @apply w-full max-w-full overflow-x-hidden;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply w-full max-w-full bg-background text-foreground;
     background-image: var(--bg-gradient);
     background-attachment: fixed;
     background-size: cover;
     padding-top: var(--nav-height);
   }
 
+  /* No overflow-x-hidden here: #root is not the viewport, so setting it
+     established a new scroll-containment ancestor for every descendant --
+     which silently breaks position:sticky (e.g. the dashboard's left/right
+     rails) for anything nested inside it, per the CSS spec's sticky
+     containing-block rules. html/body above already guard against runaway
+     horizontal scroll at the true viewport level; width/max-width here is
+     enough on this element. */
   #root {
-    @apply w-full max-w-full overflow-x-hidden;
+    @apply w-full max-w-full;
   }
 
   /* Ensure images don't overflow */

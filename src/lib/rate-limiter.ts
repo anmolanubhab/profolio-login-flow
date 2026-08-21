@@ -82,3 +82,30 @@ export const RATE_LIMITS = {
 
 // Cleanup expired entries every 5 minutes
 setInterval(() => rateLimiter.cleanup(), 5 * 60 * 1000);
+
+/**
+ * Server-side rate limiting (defense-in-depth backstop).
+ *
+ * The client-side limiter above is a UX nicety only -- it lives in memory
+ * per tab and is trivially bypassed by a refresh or a direct API call.
+ * Real enforcement lives in Postgres: RLS INSERT policies on posts/comments
+ * call public.check_and_record_rate_limit(...) inside their WITH CHECK
+ * clause, so a caller that blows through the limit gets a standard
+ * "new row violates row-level security policy" (Postgres code 42501)
+ * rejection instead of a successful insert.
+ *
+ * We can't tell from that error alone *which* WITH CHECK condition failed
+ * (Postgres doesn't say), but in practice the UI only ever attempts inserts
+ * it believes are otherwise permitted, so a 42501 on these tables is almost
+ * always the rate limit kicking in. Treat it as such for a friendlier toast.
+ */
+export function isServerRateLimitError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as { code?: string; message?: string };
+  if (err.code === '42501') return true;
+  const message = err.message || '';
+  return /row-level security policy/i.test(message);
+}
+
+export const SERVER_RATE_LIMIT_MESSAGE =
+  "You're posting too fast — please wait a moment and try again.";

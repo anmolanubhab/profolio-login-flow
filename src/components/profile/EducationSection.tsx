@@ -26,6 +26,7 @@ interface EducationSectionProps {
 const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProps) => {
   const [educations, setEducations] = useState<Education[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
@@ -46,29 +47,42 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
 
   const fetchEducations = async () => {
     try {
-      // Get education data from profile
-      const { data: profileData, error } = await supabase
+      // Resolve the profiles.id for this profile owner (education.user_id is an FK to profiles.id)
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('education' as any)
+        .select('id')
         .eq('user_id', userId)
         .maybeSingle();
 
+      if (profileError) throw profileError;
+      if (!profileData) {
+        setEducations([]);
+        setProfileId(null);
+        return;
+      }
+
+      setProfileId(profileData.id);
+
+      const { data, error } = await supabase
+        .from('education')
+        .select('*')
+        .eq('user_id', profileData.id)
+        .order('start_date', { ascending: false });
+
       if (error) throw error;
-      const educationArray = (profileData as any)?.education || [];
-      
-      // Convert to proper format with IDs
-      const formattedEducations = educationArray.map((edu: any, index: number) => ({
-        id: edu.id || `edu_${index}`,
-        institution: edu.institution || '',
-        degree: edu.degree || '',
-        field_of_study: edu.field_of_study || '',
-        start_date: edu.start_date || '',
-        end_date: edu.end_date || '',
-        grade: edu.grade || '',
-        description: edu.description || ''
-      }));
-      
-      setEducations(formattedEducations);
+
+      setEducations(
+        (data || []).map((edu) => ({
+          id: edu.id,
+          institution: edu.institution,
+          degree: edu.degree || '',
+          field_of_study: edu.field_of_study || '',
+          start_date: edu.start_date || '',
+          end_date: edu.end_date || '',
+          grade: edu.grade || '',
+          description: edu.description || ''
+        }))
+      );
     } catch (error: any) {
       toast({
         title: "Error",
@@ -111,40 +125,32 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
   };
 
   const handleSave = async () => {
+    if (!profileId) return;
     try {
-      // Get current education
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('education' as any)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!profile) throw new Error('Profile not found');
-
-      let updatedEducations = [...((profile as any).education || [])];
-
       const saveData = {
-        ...editData,
-        id: editingId || `edu_${Date.now()}`,
+        institution: editData.institution,
+        degree: editData.degree || null,
+        field_of_study: editData.field_of_study || null,
         start_date: editData.start_date || null,
-        end_date: editData.end_date || null
+        end_date: editData.end_date || null,
+        grade: editData.grade || null,
+        description: editData.description || null,
       };
 
       if (isAdding) {
-        updatedEducations.push(saveData);
+        const { error } = await supabase
+          .from('education')
+          .insert({ ...saveData, user_id: profileId });
+
+        if (error) throw error;
       } else if (editingId) {
-        const index = updatedEducations.findIndex((edu: any) => edu.id === editingId);
-        if (index !== -1) {
-          updatedEducations[index] = saveData;
-        }
+        const { error } = await supabase
+          .from('education')
+          .update(saveData)
+          .eq('id', editingId);
+
+        if (error) throw error;
       }
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({ education: updatedEducations } as any)
-        .eq('user_id', userId);
-
-      if (error) throw error;
 
       fetchEducations();
       setIsAdding(false);
@@ -166,21 +172,10 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
 
   const handleDelete = async (id: string) => {
     try {
-      // Get current education
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('education' as any)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!profile) throw new Error('Profile not found');
-
-      const updatedEducations = ((profile as any).education || []).filter((edu: any) => edu.id !== id);
-
       const { error } = await supabase
-        .from('profiles')
-        .update({ education: updatedEducations } as any)
-        .eq('user_id', userId);
+        .from('education')
+        .delete()
+        .eq('id', id);
 
       if (error) throw error;
 
@@ -246,7 +241,7 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
                 value={editData.institution}
                 onChange={(e) => setEditData(prev => ({ ...prev, institution: e.target.value }))}
               />
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   placeholder="Degree"
@@ -340,7 +335,7 @@ const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProp
                     </p>
                   )}
                 </div>
-                
+
                 {isOwnProfile && (
                   <div className="flex gap-2 ml-4">
                     <Button

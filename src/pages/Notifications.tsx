@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bell, MessageCircle, UserPlus, Award, Check, X, ThumbsUp, MessageSquare, Share2, Eye, Briefcase, Star } from 'lucide-react';
+import { Bell, Check, X, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { User } from '@supabase/supabase-js';
-import BottomNavigation from '@/components/BottomNavigation';
+import { Layout } from '@/components/Layout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { REACTION_META, ReactionType } from '@/components/ReactionBar';
+import { getNotificationMessage, getNotificationIcon, getNotificationLink } from '@/lib/notifications';
 
 interface FriendRequest {
   id: string;
@@ -31,10 +31,19 @@ interface Notification {
   created_at: string;
 }
 
+interface CompanyInvite {
+  id: string;
+  role: string;
+  status: string;
+  created_at: string;
+  companies: { name: string; logo_url: string | null } | null;
+}
+
 const Notifications = () => {
   const [user, setUser] = useState<User | null>(null);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [companyInvites, setCompanyInvites] = useState<CompanyInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const { toast } = useToast();
@@ -57,6 +66,7 @@ const Notifications = () => {
     if (user) {
       fetchFriendRequests();
       fetchNotifications();
+      fetchCompanyInvites();
 
       // Set up real-time subscription for notifications
       const channel = supabase
@@ -125,6 +135,11 @@ const Notifications = () => {
       setFriendRequests(requestsWithProfiles);
     } catch (error: any) {
       console.error('Error fetching friend requests:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not load friend requests.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -151,6 +166,11 @@ const Notifications = () => {
       setNotifications(data || []);
     } catch (error: any) {
       console.error('Error fetching notifications:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not load notifications.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -209,73 +229,20 @@ const Notifications = () => {
     }
   };
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'like':
-      case 'post_reaction':
-        return ThumbsUp;
-      case 'comment':
-      case 'comment_reply':
-        return MessageSquare;
-      case 'share':
-        return Share2;
-      case 'connection_request':
-      case 'connection_accepted':
-        return UserPlus;
-      case 'profile_view':
-      case 'profile_save':
-        return Eye;
-      case 'new_job':
-        return Briefcase;
-      case 'message':
-        return MessageCircle;
-      case 'certificate':
-        return Award;
-      case 'skill_endorsement':
-        return Star;
-      default:
-        return Bell;
-    }
-  };
+  const fetchCompanyInvites = async () => {
+    try {
+      // RLS lets a user select company_invitations rows whose email matches
+      // their own auth email -- this is a read-only informational surface.
+      const { data, error } = await supabase
+        .from('company_invitations')
+        .select('id, role, status, created_at, companies(name, logo_url)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
 
-  const getNotificationMessage = (notification: Notification) => {
-    const { type, payload } = notification;
-    const senderName = payload?.sender_name || 'Someone';
-
-    switch (type) {
-      case 'like':
-        return `${senderName} liked your post`;
-      case 'post_reaction': {
-        const count = payload?.reactor_count || 1;
-        if (count > 1) {
-          return `${count} people reacted to your post`;
-        }
-        const reactionType = payload?.latest_reaction_type as ReactionType | undefined;
-        const verb = reactionType ? REACTION_META[reactionType].verb : 'reacted to';
-        return `${senderName} ${verb} your post`;
-      }
-      case 'comment':
-        return `${senderName} commented: "${payload?.message}"`;
-      case 'comment_reply':
-        return `${senderName} replied: "${payload?.message}"`;
-      case 'share':
-        return `${senderName} shared your post`;
-      case 'connection_request':
-        return `${senderName} sent you a connection request`;
-      case 'connection_accepted':
-        return `${senderName} accepted your connection request`;
-      case 'profile_view':
-        return `${senderName} viewed your profile`;
-      case 'profile_save':
-        return `${senderName} saved your profile`;
-      case 'new_job':
-        return `New job posted: ${payload?.job_title}`;
-      case 'message':
-        return `${senderName}: ${payload?.message}`;
-      case 'skill_endorsement':
-        return `${senderName} endorsed your ${payload?.skill_name || 'skill'}`;
-      default:
-        return payload?.message || 'New notification';
+      if (error) throw error;
+      setCompanyInvites((data as unknown as CompanyInvite[]) || []);
+    } catch (error: any) {
+      console.error('Error fetching company invitations:', error);
     }
   };
 
@@ -289,65 +256,65 @@ const Notifications = () => {
     }
 
     // Navigate based on type
-    const { type, payload } = notification;
-    switch (type) {
-      case 'like':
-      case 'post_reaction':
-      case 'comment':
-      case 'comment_reply':
-      case 'share':
-        navigate(`/dashboard?post=${payload?.post_id}`);
-        break;
-      case 'connection_request':
-      case 'connection_accepted':
-        navigate('/network');
-        break;
-      case 'profile_view':
-      case 'profile_save':
-      case 'skill_endorsement':
-        navigate('/profile');
-        break;
-      case 'new_job':
-        navigate('/jobs');
-        break;
-      case 'message':
-        navigate('/connect');
-        break;
-      default:
-        break;
-    }
+    navigate(getNotificationLink(notification));
   };
 
   const formatTime = (dateString: string) => {
     return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pb-20">
-        <header className="bg-primary text-primary-foreground sticky top-0 z-40">
-          <div className="container mx-auto px-4 py-3">
-            <h1 className="text-xl font-bold">Notifications</h1>
-          </div>
-        </header>
+      <Layout user={user} onSignOut={handleSignOut}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
-        <BottomNavigation />
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="bg-primary text-primary-foreground sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
-          <h1 className="text-xl font-bold">Notifications</h1>
-        </div>
-      </header>
-
+    <Layout user={user} onSignOut={handleSignOut}>
       <main className="container mx-auto px-4 py-6 max-w-2xl">
+        <h1 className="text-xl font-bold mb-4">Notifications</h1>
         <div className="space-y-4">
+          {/* Company Invitations Section */}
+          {companyInvites.length > 0 && (
+            <>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Company Invitations</h2>
+              {companyInvites.map((invite) => (
+                <Card key={invite.id} className="bg-primary/5 border-primary/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={invite.companies?.logo_url || undefined} />
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          <Building2 className="h-5 w-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-sm">
+                          {invite.companies?.name || 'A company'} invited you
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Role: {invite.role === 'super_admin' ? 'Super Admin' : 'Content Admin'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Use the invite link the admin sent you to accept &mdash; {formatTime(invite.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          )}
+
           {/* Friend Requests Section */}
           {friendRequests.length > 0 && (
             <>
@@ -437,7 +404,7 @@ const Notifications = () => {
             </>
           )}
 
-          {friendRequests.length === 0 && notifications.length === 0 && (
+          {friendRequests.length === 0 && notifications.length === 0 && companyInvites.length === 0 && (
             <Card className="p-12 text-center">
               <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">No notifications yet</p>
@@ -445,9 +412,7 @@ const Notifications = () => {
           )}
         </div>
       </main>
-
-      <BottomNavigation />
-    </div>
+    </Layout>
   );
 };
 

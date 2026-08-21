@@ -4,11 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Image, Video as VideoIcon, FileText, X, Images, BarChart3, Plus, User, Building2 } from 'lucide-react';
-import BottomNavigation from '@/components/BottomNavigation';
+import { Image, Video as VideoIcon, FileText, X, Images, BarChart3, Plus, User as UserIcon, Building2 } from 'lucide-react';
+import { User } from '@supabase/supabase-js';
+import { Layout } from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { rateLimiter, RATE_LIMITS, isServerRateLimitError, SERVER_RATE_LIMIT_MESSAGE } from '@/lib/rate-limiter';
+import { CtaFields } from '@/components/CtaFields';
+import { validateCtaUrl } from '@/lib/cta';
+import { Megaphone } from 'lucide-react';
 
 // A post carries at most one kind of rich attachment at a time (matches how
 // LinkedIn's own composer works) -- picking a new one clears whatever was
@@ -32,21 +37,35 @@ const AddPost = () => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AttachmentMode>('none');
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [ownedCompanies, setOwnedCompanies] = useState<OwnedCompany[]>([]);
   const [postAsCompanyId, setPostAsCompanyId] = useState<string>(POST_AS_SELF);
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     const loadOwnedCompanies = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
-      const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', authUser.id).single();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        navigate('/');
+        return;
+      }
+      setAuthUser(session.user);
+      setAuthChecked(true);
+      const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', session.user.id).single();
       if (!profile) return;
       const { data } = await supabase.from('companies').select('id, name, logo_url').eq('owner_id', profile.id);
       setOwnedCompanies(data || []);
     };
     loadOwnedCompanies();
-  }, []);
+  }, [navigate]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
 
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -61,13 +80,31 @@ const AddPost = () => {
 
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
 
+  // CTA (call-to-action) -- only ever attached to company posts (see
+  // `postAsCompanyId !== POST_AS_SELF` gating below). ctaOpen just controls
+  // whether the config panel is expanded; cta_enabled (sent to the DB) is
+  // derived from whether the company actually filled it in, not from this
+  // UI-only flag.
+  const [ctaOpen, setCtaOpen] = useState(false);
+  const [ctaLabel, setCtaLabel] = useState('');
+  const [ctaUrl, setCtaUrl] = useState('');
+  const [ctaOpenNewTab, setCtaOpenNewTab] = useState(true);
+  const [ctaUrlError, setCtaUrlError] = useState<string | null>(null);
+
+  const resetCta = () => {
+    setCtaOpen(false);
+    setCtaLabel('');
+    setCtaUrl('');
+    setCtaOpenNewTab(true);
+    setCtaUrlError(null);
+  };
+
   const imageInputRef = useRef<HTMLInputElement>(null);
   const carouselInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const clearAttachments = () => {
     setSelectedImage(null);
@@ -178,9 +215,16 @@ const AddPost = () => {
     setPollOptions((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // A CTA that's open but incomplete (label chosen with no URL yet, or vice
+  // versa) shouldn't silently get dropped OR silently block the whole post
+  // -- it blocks submission with a visible error instead, same as any other
+  // required field.
+  const ctaBlocksSubmit = ctaOpen && (!ctaLabel || validateCtaUrl(ctaUrl).valid === false);
+
   const canSubmit = (isDraft: boolean) => {
     if (loading) return false;
     if (isDraft) return content.trim().length > 0;
+    if (ctaBlocksSubmit) return false;
     if (mode === 'poll') {
       const validOptions = pollOptions.map((o) => o.trim()).filter(Boolean);
       return content.trim().length > 0 && validOptions.length >= MIN_POLL_OPTIONS;
@@ -192,6 +236,19 @@ const AddPost = () => {
   };
 
   const handlePost = async (isDraft = false) => {
+    if (!isDraft && ctaOpen) {
+      if (!ctaLabel) {
+        toast({ title: 'Call-to-action incomplete', description: 'Choose a button label, or remove the CTA.', variant: 'destructive' });
+        return;
+      }
+      const check = validateCtaUrl(ctaUrl);
+      if (!check.valid) {
+        setCtaUrlError(check.error);
+        toast({ title: 'Call-to-action incomplete', description: check.error, variant: 'destructive' });
+        return;
+      }
+    }
+
     if (!canSubmit(isDraft)) {
       toast({
         title: 'Validation Error',
@@ -206,6 +263,17 @@ const AddPost = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
+
+      if (rateLimiter.isRateLimited(`post_create_${user.id}`, RATE_LIMITS.POST_CREATE)) {
+        const resetTime = rateLimiter.getTimeUntilReset(`post_create_${user.id}`);
+        toast({
+          title: 'Rate limit exceeded',
+          description: `Please wait ${Math.ceil(resetTime / 1000)} seconds before posting again.`,
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
 
       const { sanitizeTextContent } = await import('@/lib/input-sanitizer');
       const sanitizedContent = sanitizeTextContent(content);
@@ -272,6 +340,16 @@ const AddPost = () => {
           ? ownedCompanies.find((c) => c.id === postAsCompanyId)
           : undefined;
 
+        // CTA is only ever attached when actually posting as a company --
+        // the UI already hides the config panel for personal posts, this is
+        // the corresponding client-side guarantee so a personal post can
+        // never carry a leftover CTA from a prior company-post attempt (the
+        // `posts_cta_consistency` DB check constraint is the real backstop).
+        const ctaCheck = ctaOpen ? validateCtaUrl(ctaUrl) : null;
+        const ctaFields = postingAsCompany && ctaOpen && ctaLabel && ctaCheck?.valid
+          ? { cta_enabled: true, cta_label: ctaLabel, cta_url: ctaCheck.normalized, cta_open_new_tab: ctaOpenNewTab }
+          : { cta_enabled: false, cta_label: null, cta_url: null, cta_open_new_tab: true };
+
         const { error } = await supabase.from('posts').insert({
           user_id: user.id,
           content: sanitizedContent,
@@ -282,6 +360,7 @@ const AddPost = () => {
           carousel_urls: carouselUrls,
           post_type: postType,
           status: 'published',
+          ...ctaFields,
           ...(postingAsCompany
             ? { posted_as: 'company', company_id: postingAsCompany.id, company_name: postingAsCompany.name, company_logo: postingAsCompany.logo_url }
             : {}),
@@ -297,27 +376,39 @@ const AddPost = () => {
       setContent('');
       clearAttachments();
       setMode('none');
+      resetCta();
       navigate('/dashboard');
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      if (isServerRateLimitError(error)) {
+        toast({
+          title: 'Slow down',
+          description: SERVER_RATE_LIMIT_MESSAGE,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="bg-primary text-primary-foreground sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
-          <h1 className="text-xl font-bold">Create Post</h1>
-        </div>
-      </header>
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
+  return (
+    <Layout user={authUser} onSignOut={handleSignOut}>
       <main className="container mx-auto px-4 py-6 max-w-2xl">
+        <h1 className="text-xl font-bold mb-4">Create Post</h1>
         <Card>
           <CardHeader>
             <CardTitle>Share an update</CardTitle>
@@ -326,14 +417,20 @@ const AddPost = () => {
             {ownedCompanies.length > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground shrink-0">Posting as</span>
-                <Select value={postAsCompanyId} onValueChange={setPostAsCompanyId}>
+                <Select
+                  value={postAsCompanyId}
+                  onValueChange={(v) => {
+                    setPostAsCompanyId(v);
+                    if (v === POST_AS_SELF) resetCta();
+                  }}
+                >
                   <SelectTrigger className="h-8 w-auto text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={POST_AS_SELF}>
                       <span className="flex items-center gap-2">
-                        <User className="h-4 w-4" /> Myself
+                        <UserIcon className="h-4 w-4" /> Myself
                       </span>
                     </SelectItem>
                     {ownedCompanies.map((c) => (
@@ -500,6 +597,40 @@ const AddPost = () => {
               </Button>
             </div>
 
+            {/* Only ever offered when posting as a company -- personal
+                posts never show CTA controls at all, not just a disabled
+                one. */}
+            {postAsCompanyId !== POST_AS_SELF && (
+              <div className="rounded-lg border p-3">
+                {!ctaOpen ? (
+                  <Button variant="ghost" size="sm" className="text-muted-foreground -m-1" onClick={() => setCtaOpen(true)} disabled={loading}>
+                    <Megaphone className="h-4 w-4 mr-2" />
+                    Add call-to-action
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium flex items-center gap-2">
+                        <Megaphone className="h-4 w-4" /> Call-to-action
+                      </span>
+                      <Button variant="ghost" size="sm" className="h-7 text-muted-foreground" onClick={resetCta} disabled={loading}>
+                        Remove CTA
+                      </Button>
+                    </div>
+                    <CtaFields
+                      label={ctaLabel}
+                      url={ctaUrl}
+                      openNewTab={ctaOpenNewTab}
+                      urlError={ctaUrlError}
+                      onLabelChange={setCtaLabel}
+                      onUrlChange={(v) => { setCtaUrl(v); setCtaUrlError(null); }}
+                      onOpenNewTabChange={setCtaOpenNewTab}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 pt-4">
               <Button
                 variant="outline"
@@ -518,9 +649,7 @@ const AddPost = () => {
           </CardContent>
         </Card>
       </main>
-
-      <BottomNavigation />
-    </div>
+    </Layout>
   );
 };
 

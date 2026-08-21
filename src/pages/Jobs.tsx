@@ -300,7 +300,7 @@ const Jobs = () => {
 
   return (
     <Layout user={user!} onSignOut={handleSignOut}>
-      <div className="container mx-auto max-w-4xl">
+      <div className="container mx-auto max-w-6xl">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Next Opportunity</h1>
@@ -336,7 +336,7 @@ const Jobs = () => {
             </p>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredJobs.map((job) => {
               const hasApplied = appliedJobs.has(job.id);
               return (

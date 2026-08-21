@@ -1,6 +1,4 @@
 import { ReactNode } from "react"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebar } from "./AppSidebar"
 import NavBar from "./NavBar"
 import BottomNavigation from "./BottomNavigation"
 import { User } from "@supabase/supabase-js"
@@ -9,22 +7,29 @@ interface LayoutProps {
   children: ReactNode
   user?: User | null
   onSignOut?: () => void
+  // Pages that build their own multi-column layout (e.g. the 3-column feed)
+  // need the full viewport width, not the single-column ".layout" max-width
+  // wrapper -- they opt out and manage their own max-width/columns.
+  fullWidth?: boolean
 }
 
-export function Layout({ children, user, onSignOut }: LayoutProps) {
+export function Layout({ children, user, onSignOut, fullWidth }: LayoutProps) {
   return (
-    <SidebarProvider>
-      {/* Fixed top navbar */}
+    <>
+      {/* Fixed top navbar -- carries all primary navigation now (desktop
+          icon tabs + mobile drawer trigger), replacing the old collapsible
+          side rail so every page gets its full content width back. */}
       <NavBar user={user} onSignOut={onSignOut} />
 
-      {/* Sidebar (desktop) */}
-      <div className="hidden lg:block">
-        <AppSidebar />
-      </div>
-
-      {/* Main content */}
-      <div className="layout content w-full max-w-full overflow-x-hidden">
-        <main className="feed pb-24 w-full max-w-full">
+      {/* Main content -- no overflow-x-hidden on this wrapper (or on
+          #root, see index.css): a non-viewport ancestor with overflow set
+          to anything but visible becomes its own scroll-containment
+          context, which breaks position:sticky for every descendant (e.g.
+          the dashboard's sticky left/right rails). html/body's own
+          overflow-x-hidden already guards the real viewport against
+          horizontal scroll; width/max-width here is enough on this level. */}
+      <div className={fullWidth ? "content w-full max-w-full" : "layout content w-full max-w-full"}>
+        <main className="feed pb-24 lg:pb-8 w-full max-w-full">
           {children}
         </main>
       </div>
@@ -33,6 +38,6 @@ export function Layout({ children, user, onSignOut }: LayoutProps) {
       <div className="lg:hidden">
         <BottomNavigation />
       </div>
-    </SidebarProvider>
+    </>
   )
 }

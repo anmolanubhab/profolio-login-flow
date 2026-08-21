@@ -1789,6 +1789,10 @@ export type Database = {
           company_name: string | null
           content: string
           created_at: string
+          cta_enabled: boolean
+          cta_label: string | null
+          cta_open_new_tab: boolean
+          cta_url: string | null
           document_name: string | null
           document_url: string | null
           id: string
@@ -1808,6 +1812,10 @@ export type Database = {
           company_name?: string | null
           content: string
           created_at?: string
+          cta_enabled?: boolean
+          cta_label?: string | null
+          cta_open_new_tab?: boolean
+          cta_url?: string | null
           document_name?: string | null
           document_url?: string | null
           id?: string
@@ -1827,6 +1835,10 @@ export type Database = {
           company_name?: string | null
           content?: string
           created_at?: string
+          cta_enabled?: boolean
+          cta_label?: string | null
+          cta_open_new_tab?: boolean
+          cta_url?: string | null
           document_name?: string | null
           document_url?: string | null
           id?: string
@@ -1982,6 +1994,27 @@ export type Database = {
           updated_at?: string
           user_id?: string
           website?: string | null
+        }
+        Relationships: []
+      }
+      rate_limit_events: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -2444,6 +2477,14 @@ export type Database = {
       apply_to_job: {
         Args: { p_cover_note?: string; p_job_id: string; p_resume_id?: string }
         Returns: string
+      }
+      check_and_record_rate_limit: {
+        Args: {
+          p_action: string
+          p_max_count: number
+          p_window_seconds: number
+        }
+        Returns: boolean
       }
       compute_match_score: {
         Args: { p_candidate_profile_id: string; p_job_id: string }

@@ -7,24 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-import { REACTION_META, ReactionType } from './ReactionBar';
-
-interface NotificationPayload {
-  sender_name?: string;
-  sender_avatar?: string;
-  message?: string;
-  job_title?: string;
-  post_id?: string;
-  profile_id?: string;
-  company_name?: string;
-  location?: string;
-  conversation_id?: string;
-  connection_id?: string;
-  skill_name?: string;
-  endorser_id?: string;
-  reactor_count?: number;
-  latest_reaction_type?: ReactionType;
-}
+import { getNotificationMessage, getNotificationLink, NotificationPayload } from '@/lib/notifications';
 
 interface Notification {
   id: string;
@@ -218,76 +201,6 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
     setIsOpen(open);
     if (open) {
       markAsRead();
-    }
-  };
-
-  const getNotificationMessage = (notification: Notification): string => {
-    const { type, payload } = notification;
-    const senderName = payload.sender_name || 'Someone';
-
-    switch (type) {
-      case 'like':
-        return `${senderName} liked your post`;
-      case 'post_reaction': {
-        // Bundled: "Rahul celebrated your post." for the first reactor,
-        // "5 people reacted to your post." once more people pile on -- never
-        // one notification per reaction (see notify_post_reaction()).
-        const count = payload.reactor_count || 1;
-        if (count > 1) {
-          return `${count} people reacted to your post`;
-        }
-        const reactionType = payload.latest_reaction_type;
-        const verb = reactionType ? REACTION_META[reactionType].verb : 'reacted to';
-        return `${senderName} ${verb} your post`;
-      }
-      case 'comment':
-        return `${senderName} commented on your post`;
-      case 'comment_reply':
-        return `${senderName} replied to your comment`;
-      case 'share':
-        return `${senderName} shared your post`;
-      case 'connection_request':
-        return `${senderName} sent you a connection request`;
-      case 'connection_accepted':
-        return `${senderName} accepted your connection request`;
-      case 'profile_view':
-        return `${senderName} viewed your profile`;
-      case 'profile_save':
-        return `${senderName} saved your profile`;
-      case 'new_job':
-        return `New job posted: ${payload.job_title || 'Check it out'}`;
-      case 'message':
-        return `${senderName} sent you a message`;
-      case 'skill_endorsement':
-        return `${senderName} endorsed your ${payload.skill_name || 'skill'}`;
-      default:
-        return payload.message || 'New notification';
-    }
-  };
-
-  const getNotificationLink = (notification: Notification): string => {
-    const { type, payload } = notification;
-
-    switch (type) {
-      case 'like':
-      case 'post_reaction':
-      case 'comment':
-      case 'comment_reply':
-      case 'share':
-        return `/dashboard?post=${payload.post_id}`;
-      case 'connection_request':
-      case 'connection_accepted':
-        return '/network';
-      case 'profile_view':
-      case 'profile_save':
-      case 'skill_endorsement':
-        return '/profile';
-      case 'new_job':
-        return '/jobs';
-      case 'message':
-        return '/connect';
-      default:
-        return '/notifications';
     }
   };
 
