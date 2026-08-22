@@ -73,10 +73,18 @@ interface FilterContext {
   hiddenPostIds: string[];
   blockedUserIds: string[];
   snoozedUserIds: string[];
+  blockedCompanyIds: string[];
+  snoozedCompanyIds: string[];
   followingAuthUserIds: string[] | null;
   followedCompanyIds: string[] | null;
   interestedPostIds: string[];
   notInterestedPostIds: string[];
+  dismissedPostIds: string[];
+  // Always populated (both modes) -- profiles.id / companies.id the current
+  // user already follows, used to mark a card "Suggested" and to seed its
+  // Follow/Following button without a per-card fetch.
+  followedProfileIds: string[];
+  followedCompanyIdSet: string[];
 }
 
 // Keyset cursor for pagination: (created_at, id) instead of a bare offset
@@ -140,10 +148,13 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         hiddenPostIds,
         blockedUserIds,
         snoozedUserIds,
+        blockedCompanyIds,
+        snoozedCompanyIds,
         followingAuthUserIds,
         followedCompanyIds,
         interestedPostIds,
         notInterestedPostIds,
+        dismissedPostIds,
       } = ctx;
 
       // First get posts, then get profile info for each post.
@@ -242,9 +253,16 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
           if (blockedUserIds.includes(post.user_id)) return false;
           // Filter out posts from snoozed users
           if (snoozedUserIds.includes(post.user_id)) return false;
+          // Filter out posts from blocked/snoozed companies (company posts
+          // only -- post.company_id is null for personal posts).
+          if (post.company_id && blockedCompanyIds.includes(post.company_id)) return false;
+          if (post.company_id && snoozedCompanyIds.includes(post.company_id)) return false;
           // "Not Interested" posts are filtered out of the 'foryou' feed
           // entirely, not just down-ranked.
           if (mode === 'foryou' && notInterestedPostIds.includes(post.id)) return false;
+          // Dismissed via the "Suggested" card's X -- stays out of the feed
+          // (any mode) until the user undoes it, same lifetime as Hide Post.
+          if (dismissedPostIds.includes(post.id)) return false;
           return true;
         })
         .map(post => ({
@@ -304,10 +322,15 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
       hiddenPostIds: [],
       blockedUserIds: [],
       snoozedUserIds: [],
+      blockedCompanyIds: [],
+      snoozedCompanyIds: [],
       followingAuthUserIds: null,
       followedCompanyIds: null,
       interestedPostIds: [],
       notInterestedPostIds: [],
+      dismissedPostIds: [],
+      followedProfileIds: [],
+      followedCompanyIdSet: [],
     };
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -351,6 +374,40 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
       .select('snoozed_user_id')
       .eq('user_id', ctx.currentUserProfileId)
       .gt('snoozed_until', new Date().toISOString());
+
+    // Fetch blocked companies
+    const { data: blockedCompaniesData } = await supabase
+      .from('blocked_companies')
+      .select('blocked_company_id')
+      .eq('user_id', ctx.currentUserProfileId);
+    ctx.blockedCompanyIds = blockedCompaniesData?.map((b) => b.blocked_company_id) || [];
+
+    // Fetch snoozed companies (not expired, covers both "Snooze" and "Hide
+    // all from" -- both write to this table, only the duration differs)
+    const { data: snoozedCompaniesData } = await supabase
+      .from('snoozed_companies')
+      .select('snoozed_company_id')
+      .eq('user_id', ctx.currentUserProfileId)
+      .gt('snoozed_until', new Date().toISOString());
+    ctx.snoozedCompanyIds = snoozedCompaniesData?.map((s) => s.snoozed_company_id) || [];
+
+    // Dismissed suggested posts -- filtered out of the feed entirely,
+    // regardless of mode (once dismissed, stays dismissed until undone).
+    const { data: dismissedData } = await supabase
+      .from('dismissed_suggested_posts')
+      .select('post_id')
+      .eq('user_id', ctx.currentUserProfileId);
+    ctx.dismissedPostIds = dismissedData?.map((d) => d.post_id) || [];
+
+    // Who the user already follows -- needed in BOTH modes (not just
+    // 'following') so every post card can render "Suggested" + the correct
+    // Follow/Following state without a per-card fetch.
+    const [{ data: followedProfilesData }, { data: followedCompaniesData }] = await Promise.all([
+      supabase.from('followers').select('following_id').eq('follower_id', ctx.currentUserProfileId),
+      supabase.from('company_followers').select('company_id').eq('user_id', ctx.currentUserProfileId),
+    ]);
+    ctx.followedProfileIds = followedProfilesData?.map((f) => f.following_id) || [];
+    ctx.followedCompanyIdSet = followedCompaniesData?.map((c) => c.company_id) || [];
 
     // Fetch "Interested"/"Not Interested" feed preferences (set via
     // PostOptionsMenu) -- only relevant to 'foryou' ranking below.
@@ -565,6 +622,38 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
     fetchPosts(false);
   };
 
+  // "X" on a Suggested card -- removes just that card from the current
+  // screen immediately (no refetch/scroll reset needed, unlike Hide Post,
+  // since dismissal only ever affects this one already-loaded row) and
+  // persists it so it stays gone on refresh. Rolls back on failure instead
+  // of pretending it worked.
+  const handleDismissSuggested = async (postId: string) => {
+    if (!currentUserProfileId) return;
+    const removed = posts.find((p) => p.id === postId);
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+    try {
+      const { error } = await supabase.from('dismissed_suggested_posts').insert({
+        user_id: currentUserProfileId,
+        post_id: postId,
+      });
+      if (error && error.code !== '23505') throw error;
+    } catch (error) {
+      console.error('Error dismissing suggested post:', error);
+      // Roll back -- put the card back where it was rather than leaving the
+      // user thinking dismissal succeeded when it didn't persist.
+      if (removed) {
+        setPosts((prev) => (prev.some((p) => p.id === postId) ? prev : [...prev, removed].sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )));
+      }
+      toast({
+        title: 'Error',
+        description: 'Could not dismiss this suggestion. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleLoadMore = () => {
     if (!loadingMore && hasMore) {
       fetchPosts(true);
@@ -606,6 +695,23 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
     );
   }
 
+  const ctx = filterCtxRef.current;
+  const isSuggestedPost = (post: Post) => {
+    if (!ctx) return false;
+    if (post.posted_as === 'company') {
+      return !!post.company_id && !ctx.followedCompanyIdSet.includes(post.company_id);
+    }
+    if (post.user_id === currentUserId) return false; // own post
+    return !!post.profiles?.id && !ctx.followedProfileIds.includes(post.profiles.id);
+  };
+  const isFollowingAuthorOf = (post: Post) => {
+    if (!ctx) return false;
+    if (post.posted_as === 'company') {
+      return !!post.company_id && ctx.followedCompanyIdSet.includes(post.company_id);
+    }
+    return !!post.profiles?.id && ctx.followedProfileIds.includes(post.profiles.id);
+  };
+
   return (
     <div className="feed">
       {posts.map((post) => (
@@ -634,6 +740,9 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
           onHide={handleHidePost}
           cta={post.cta_enabled && post.cta_label && post.cta_url ? { label: post.cta_label, url: post.cta_url, openNewTab: post.cta_open_new_tab } : null}
           companyId={post.posted_as === 'company' ? post.company_id : null}
+          isSuggested={isSuggestedPost(post)}
+          isFollowingAuthor={isFollowingAuthorOf(post)}
+          onDismissSuggested={() => handleDismissSuggested(post.id)}
         />
       ))}
 

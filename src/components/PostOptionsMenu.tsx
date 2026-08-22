@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -30,17 +30,23 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { supabase } from '@/integrations/supabase/client';
 import {
   BookmarkPlus,
+  Bookmark,
   EyeOff,
   Flag,
   Link2,
   Bell,
+  BellOff,
   UserX,
   Clock,
   Info,
@@ -49,6 +55,7 @@ import {
   Trash2,
   MoreHorizontal,
   Megaphone,
+  Loader2,
 } from 'lucide-react';
 import { CtaFields } from '@/components/CtaFields';
 import { validateCtaUrl, EMPTY_CTA, type CtaConfig } from '@/lib/cta';
@@ -69,6 +76,44 @@ interface PostOptionsMenuProps {
   onCtaChange?: (cta: CtaConfig | null) => void;
 }
 
+const REPORT_REASONS: { value: string; label: string }[] = [
+  { value: 'spam', label: 'Spam' },
+  { value: 'harassment', label: 'Harassment' },
+  { value: 'hate', label: 'Hate or abusive content' },
+  { value: 'misinformation', label: 'False/misleading information' },
+  { value: 'inappropriate', label: 'Inappropriate content' },
+  { value: 'scam', label: 'Scam/fraud' },
+  { value: 'other', label: 'Other' },
+];
+
+// A snoozed_until further out than this counts as "Hide all from" (an
+// effectively-indefinite mute) rather than the 30-day "Snooze" -- both
+// actions write to the same snoozed_users/snoozed_companies row, so the
+// distinction is read back from how far out the timestamp is.
+const HIDE_ALL_THRESHOLD_MS = 365 * 24 * 60 * 60 * 1000;
+
+interface MenuState {
+  loaded: boolean;
+  isSaved: boolean;
+  notifOn: boolean;
+  isInterested: boolean;
+  isNotInterested: boolean;
+  isSnoozed: boolean;
+  isHiddenAll: boolean;
+  isBlocked: boolean;
+}
+
+const EMPTY_STATE: MenuState = {
+  loaded: false,
+  isSaved: false,
+  notifOn: false,
+  isInterested: false,
+  isNotInterested: false,
+  isSnoozed: false,
+  isHiddenAll: false,
+  isBlocked: false,
+};
+
 export const PostOptionsMenu = ({
   postId,
   postUserId,
@@ -85,16 +130,32 @@ export const PostOptionsMenu = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('');
+  const [reportReason, setReportReason] = useState('spam');
+  const [reportDescription, setReportDescription] = useState('');
+  const [alreadyReported, setAlreadyReported] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [canManageCta, setCanManageCta] = useState(false);
   const [ctaDialogOpen, setCtaDialogOpen] = useState(false);
   const [ctaDraft, setCtaDraft] = useState<CtaConfig>(cta ?? EMPTY_CTA);
   const [ctaUrlError, setCtaUrlError] = useState<string | null>(null);
   const [savingCta, setSavingCta] = useState(false);
+  const [whyDialogOpen, setWhyDialogOpen] = useState(false);
+  const [whyReason, setWhyReason] = useState<string>('Loading…');
+  const [state, setState] = useState<MenuState>(EMPTY_STATE);
+  const [pending, setPending] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  // Company posts identify their "author" in the UI via companyId, not a
+  // profiles.id -- isOwnPost (computed by the caller from profiles.id) is
+  // therefore always false for a company post even when the current user
+  // authored/administers it. A company admin can manage (incl. delete) any
+  // post published as their company; treat that the same as "own post" for
+  // menu purposes so Delete Post appears and Snooze/Hide/Block (targeting
+  // your own company) don't.
+  const isSelfAuthored = isOwnPost || (!!companyId && canManageCta);
+  const canDeletePost = isSelfAuthored;
 
   useEffect(() => {
     // Only the company's own admin/owner can add or change a CTA -- other
@@ -110,6 +171,74 @@ export const PostOptionsMenu = ({
     };
     check();
   }, [companyId]);
+
+  const setBusy = (key: string, value: boolean) =>
+    setPending((prev) => ({ ...prev, [key]: value }));
+
+  // Loads every toggle-able state this menu displays in one pass, so labels
+  // read "Unsave Post" / "Turn Off Notifications" / etc. correctly as soon
+  // as the menu opens, and survive a refresh.
+  const loadMenuState = useCallback(async () => {
+    if (!currentUserProfileId) {
+      setState({ ...EMPTY_STATE, loaded: true });
+      return;
+    }
+    try {
+      const targetIsCompany = !!companyId && !isSelfAuthored;
+      const [
+        savedRes,
+        notifRes,
+        prefsRes,
+        snoozeRes,
+        blockRes,
+      ] = await Promise.all([
+        supabase.from('saved_posts').select('id').eq('user_id', currentUserProfileId).eq('post_id', postId).maybeSingle(),
+        supabase.from('post_notifications_enabled').select('id').eq('user_id', currentUserProfileId).eq('post_id', postId).maybeSingle(),
+        supabase.from('user_feed_preferences').select('interested_posts, not_interested_posts').eq('user_id', currentUserProfileId).maybeSingle(),
+        !isSelfAuthored
+          ? targetIsCompany
+            ? supabase.from('snoozed_companies').select('snoozed_until').eq('user_id', currentUserProfileId).eq('snoozed_company_id', companyId!).maybeSingle()
+            : supabase.from('snoozed_users').select('snoozed_until').eq('user_id', currentUserProfileId).eq('snoozed_user_id', postUserId).maybeSingle()
+          : Promise.resolve({ data: null }),
+        !isSelfAuthored
+          ? targetIsCompany
+            ? supabase.from('blocked_companies').select('id').eq('user_id', currentUserProfileId).eq('blocked_company_id', companyId!).maybeSingle()
+            : supabase.from('blocked_users').select('id').eq('user_id', currentUserProfileId).eq('blocked_user_id', postUserId).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+
+      const snoozedUntil = (snoozeRes as { data: { snoozed_until: string } | null }).data?.snoozed_until;
+      const snoozeActive = snoozedUntil ? new Date(snoozedUntil).getTime() > Date.now() : false;
+      const isHiddenAll = snoozeActive && new Date(snoozedUntil!).getTime() - Date.now() > HIDE_ALL_THRESHOLD_MS;
+
+      setState({
+        loaded: true,
+        isSaved: !!savedRes.data,
+        notifOn: !!notifRes.data,
+        isInterested: (prefsRes.data?.interested_posts || []).includes(postId),
+        isNotInterested: (prefsRes.data?.not_interested_posts || []).includes(postId),
+        isSnoozed: snoozeActive && !isHiddenAll,
+        isHiddenAll,
+        isBlocked: !!blockRes.data,
+      });
+
+      const reported = await supabase
+        .from('post_reports')
+        .select('id')
+        .eq('reporter_id', currentUserProfileId)
+        .eq('post_id', postId)
+        .maybeSingle();
+      setAlreadyReported(!!reported.data);
+    } catch (err) {
+      console.error('Error loading post menu state:', err);
+      setState((prev) => ({ ...prev, loaded: true }));
+    }
+  }, [currentUserProfileId, postId, postUserId, companyId, isSelfAuthored]);
+
+  useEffect(() => {
+    loadMenuState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserProfileId, postId, isSelfAuthored]);
 
   const closeMenu = () => setOpen(false);
 
@@ -127,7 +256,7 @@ export const PostOptionsMenu = ({
     }
     const check = validateCtaUrl(ctaDraft.cta_url || '');
     if (!check.valid) {
-      setCtaUrlError(check.error);
+      setCtaUrlError((check as { error: string }).error);
       return;
     }
     setSavingCta(true);
@@ -162,48 +291,72 @@ export const PostOptionsMenu = ({
     }
   };
 
-  const handleSavePost = async () => {
-    if (!currentUserProfileId) return;
+  const handleToggleSave = async () => {
+    if (!currentUserProfileId || pending.save) return;
+    setBusy('save', true);
+    const wasSaved = state.isSaved;
     try {
-      const { error } = await supabase.from('saved_posts').insert({
-        user_id: currentUserProfileId,
-        post_id: postId,
-      });
-      if (error) {
-        if (error.code === '23505') {
-          toast({ title: 'Post already saved' });
-        } else {
-          throw error;
-        }
+      if (wasSaved) {
+        const { error } = await supabase.from('saved_posts').delete()
+          .eq('user_id', currentUserProfileId).eq('post_id', postId);
+        if (error) throw error;
+        setState((prev) => ({ ...prev, isSaved: false }));
+        toast({ title: 'Post removed from Saved Posts' });
       } else {
+        const { error } = await supabase.from('saved_posts').insert({
+          user_id: currentUserProfileId,
+          post_id: postId,
+        });
+        if (error && error.code !== '23505') throw error;
+        setState((prev) => ({ ...prev, isSaved: true }));
         toast({ title: 'Post saved successfully' });
       }
       closeMenu();
     } catch (err) {
-      console.error('Error saving post:', err);
-      toast({ title: 'Failed to save post', variant: 'destructive' });
+      console.error('Error toggling save:', err);
+      toast({ title: 'Failed to update saved post', variant: 'destructive' });
+    } finally {
+      setBusy('save', false);
     }
   };
 
   const handleHidePost = async () => {
-    if (!currentUserProfileId) return;
+    if (!currentUserProfileId || pending.hide) return;
+    setBusy('hide', true);
     try {
       const { error } = await supabase.from('hidden_posts').insert({
         user_id: currentUserProfileId,
         post_id: postId,
       });
-      if (error) throw error;
-      toast({ title: 'Post hidden successfully' });
+      if (error && error.code !== '23505') throw error;
       closeMenu();
       onHide?.();
+      toast({
+        title: 'Post hidden',
+        description: "You won't see this post in your feed.",
+        action: (
+          <ToastAction
+            altText="Undo"
+            onClick={async () => {
+              await supabase.from('hidden_posts').delete()
+                .eq('user_id', currentUserProfileId).eq('post_id', postId);
+              onHide?.();
+            }}
+          >
+            Undo
+          </ToastAction>
+        ),
+      });
     } catch (err) {
       console.error('Error hiding post:', err);
       toast({ title: 'Failed to hide post', variant: 'destructive' });
+    } finally {
+      setBusy('hide', false);
     }
   };
 
   const handleCopyLink = async () => {
-    const url = `${window.location.origin}/dashboard#post-${postId}`;
+    const url = `${window.location.origin}/post/${postId}`;
     try {
       await navigator.clipboard.writeText(url);
       toast({ title: 'Link copied to clipboard' });
@@ -214,211 +367,383 @@ export const PostOptionsMenu = ({
     }
   };
 
-  const handleTurnOnNotifications = async () => {
-    if (!currentUserProfileId) return;
+  const handleToggleNotifications = async () => {
+    if (!currentUserProfileId || pending.notif) return;
+    setBusy('notif', true);
+    const wasOn = state.notifOn;
     try {
-      const { error } = await supabase.from('post_notifications_enabled').insert({
-        user_id: currentUserProfileId,
-        post_id: postId,
-      });
-      if (error) {
-        if (error.code === '23505') {
-          toast({ title: 'Notifications already enabled' });
-        } else {
-          throw error;
-        }
+      if (wasOn) {
+        const { error } = await supabase.from('post_notifications_enabled').delete()
+          .eq('user_id', currentUserProfileId).eq('post_id', postId);
+        if (error) throw error;
+        setState((prev) => ({ ...prev, notifOn: false }));
+        toast({ title: 'Notifications turned off for this post' });
       } else {
+        const { error } = await supabase.from('post_notifications_enabled').insert({
+          user_id: currentUserProfileId,
+          post_id: postId,
+        });
+        if (error && error.code !== '23505') throw error;
+        setState((prev) => ({ ...prev, notifOn: true }));
         toast({ title: 'Notifications enabled for this post' });
       }
       closeMenu();
     } catch (err) {
-      console.error('Error enabling notifications:', err);
-      toast({ title: 'Failed to enable notifications', variant: 'destructive' });
+      console.error('Error toggling notifications:', err);
+      toast({ title: 'Failed to update notifications', variant: 'destructive' });
+    } finally {
+      setBusy('notif', false);
     }
   };
 
-  const handleSnoozeUser = async () => {
-    if (!currentUserProfileId || postUserId === currentUserProfileId) return;
+  const targetIsCompany = !!companyId && !isSelfAuthored;
+
+  const handleSnoozeTarget = async () => {
+    if (!currentUserProfileId || isSelfAuthored || pending.snooze) return;
+    setBusy('snooze', true);
     try {
       const snoozedUntil = new Date();
       snoozedUntil.setDate(snoozedUntil.getDate() + 30);
-      
-      const { error } = await supabase.from('snoozed_users').upsert({
-        user_id: currentUserProfileId,
-        snoozed_user_id: postUserId,
-        snoozed_until: snoozedUntil.toISOString(),
-      }, { onConflict: 'user_id,snoozed_user_id' });
-      
+
+      const table = targetIsCompany ? 'snoozed_companies' : 'snoozed_users';
+      const conflictCol = targetIsCompany ? 'snoozed_company_id' : 'snoozed_user_id';
+      const payload = targetIsCompany
+        ? { user_id: currentUserProfileId, snoozed_company_id: companyId, snoozed_until: snoozedUntil.toISOString() }
+        : { user_id: currentUserProfileId, snoozed_user_id: postUserId, snoozed_until: snoozedUntil.toISOString() };
+
+      const { error } = await supabase.from(table).upsert(payload, { onConflict: `user_id,${conflictCol}` });
       if (error) throw error;
-      toast({ title: `Snoozed ${postUserName} for 30 days` });
+
+      setState((prev) => ({ ...prev, isSnoozed: true, isHiddenAll: false }));
       closeMenu();
       onHide?.();
+      toast({
+        title: `Snoozed ${postUserName} for 30 days`,
+        description: "You'll stop seeing their posts until then.",
+        action: (
+          <ToastAction altText="Undo" onClick={() => undoTarget(table)}>
+            Undo
+          </ToastAction>
+        ),
+      });
     } catch (err) {
-      console.error('Error snoozing user:', err);
-      toast({ title: 'Failed to snooze user', variant: 'destructive' });
+      console.error('Error snoozing:', err);
+      toast({ title: 'Failed to snooze', variant: 'destructive' });
+    } finally {
+      setBusy('snooze', false);
     }
   };
 
-  const handleHideAllFromUser = async () => {
-    if (!currentUserProfileId || postUserId === currentUserProfileId) return;
+  const handleHideAllFromTarget = async () => {
+    if (!currentUserProfileId || isSelfAuthored || pending.hideAll) return;
+    setBusy('hideAll', true);
     try {
       const snoozedUntil = new Date();
       snoozedUntil.setFullYear(snoozedUntil.getFullYear() + 100);
-      
-      const { error } = await supabase.from('snoozed_users').upsert({
-        user_id: currentUserProfileId,
-        snoozed_user_id: postUserId,
-        snoozed_until: snoozedUntil.toISOString(),
-      }, { onConflict: 'user_id,snoozed_user_id' });
-      
+
+      const table = targetIsCompany ? 'snoozed_companies' : 'snoozed_users';
+      const conflictCol = targetIsCompany ? 'snoozed_company_id' : 'snoozed_user_id';
+      const payload = targetIsCompany
+        ? { user_id: currentUserProfileId, snoozed_company_id: companyId, snoozed_until: snoozedUntil.toISOString() }
+        : { user_id: currentUserProfileId, snoozed_user_id: postUserId, snoozed_until: snoozedUntil.toISOString() };
+
+      const { error } = await supabase.from(table).upsert(payload, { onConflict: `user_id,${conflictCol}` });
       if (error) throw error;
-      toast({ title: `Hiding all posts from ${postUserName}` });
+
+      setState((prev) => ({ ...prev, isHiddenAll: true, isSnoozed: false }));
       closeMenu();
       onHide?.();
-    } catch (err) {
-      console.error('Error hiding user posts:', err);
-      toast({ title: 'Failed to hide posts', variant: 'destructive' });
-    }
-  };
-
-  const handleBlockUser = async () => {
-    if (!currentUserProfileId || postUserId === currentUserProfileId) return;
-    try {
-      const { error } = await supabase.from('blocked_users').insert({
-        user_id: currentUserProfileId,
-        blocked_user_id: postUserId,
+      toast({
+        title: `Hiding all posts from ${postUserName}`,
+        action: (
+          <ToastAction altText="Undo" onClick={() => undoTarget(table)}>
+            Undo
+          </ToastAction>
+        ),
       });
-      if (error) {
-        if (error.code === '23505') {
-          toast({ title: 'User already blocked' });
-        } else {
-          throw error;
-        }
-      } else {
-        toast({ title: `Blocked ${postUserName}` });
-      }
-      closeMenu();
-      onHide?.();
     } catch (err) {
-      console.error('Error blocking user:', err);
-      toast({ title: 'Failed to block user', variant: 'destructive' });
+      console.error('Error hiding all from target:', err);
+      toast({ title: 'Failed to hide posts', variant: 'destructive' });
+    } finally {
+      setBusy('hideAll', false);
     }
   };
 
-  const handleMarkInterested = async () => {
+  const undoTarget = async (table: 'snoozed_users' | 'snoozed_companies') => {
     if (!currentUserProfileId) return;
+    if (table === 'snoozed_companies') {
+      await supabase.from('snoozed_companies').delete()
+        .eq('user_id', currentUserProfileId).eq('snoozed_company_id', companyId!);
+    } else {
+      await supabase.from('snoozed_users').delete()
+        .eq('user_id', currentUserProfileId).eq('snoozed_user_id', postUserId);
+    }
+    setState((prev) => ({ ...prev, isSnoozed: false, isHiddenAll: false }));
+    onHide?.();
+  };
+
+  const handleToggleBlock = async () => {
+    if (!currentUserProfileId || isSelfAuthored || pending.block) return;
+    setBusy('block', true);
+    const wasBlocked = state.isBlocked;
+    try {
+      const table = targetIsCompany ? 'blocked_companies' : 'blocked_users';
+      if (wasBlocked) {
+        if (targetIsCompany) {
+          await supabase.from('blocked_companies').delete()
+            .eq('user_id', currentUserProfileId).eq('blocked_company_id', companyId!);
+        } else {
+          await supabase.from('blocked_users').delete()
+            .eq('user_id', currentUserProfileId).eq('blocked_user_id', postUserId);
+        }
+        setState((prev) => ({ ...prev, isBlocked: false }));
+        toast({ title: `Unblocked ${postUserName}` });
+      } else {
+        const payload = targetIsCompany
+          ? { user_id: currentUserProfileId, blocked_company_id: companyId }
+          : { user_id: currentUserProfileId, blocked_user_id: postUserId };
+        const { error } = await supabase.from(table).insert(payload);
+        if (error && error.code !== '23505') throw error;
+        setState((prev) => ({ ...prev, isBlocked: true }));
+        closeMenu();
+        onHide?.();
+        toast({ title: `Blocked ${postUserName}`, description: 'You can manage blocked accounts in Settings.' });
+      }
+    } catch (err) {
+      console.error('Error toggling block:', err);
+      toast({ title: 'Failed to update block', variant: 'destructive' });
+    } finally {
+      setBusy('block', false);
+    }
+  };
+
+  const handleToggleInterested = async () => {
+    if (!currentUserProfileId || pending.interested) return;
+    setBusy('interested', true);
     try {
       const { data: prefs, error: fetchError } = await supabase
         .from('user_feed_preferences')
-        .select('interested_posts')
+        .select('interested_posts, not_interested_posts')
         .eq('user_id', currentUserProfileId)
-        .single();
+        .maybeSingle();
+      if (fetchError) throw fetchError;
 
-      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-
-      const interestedPosts = prefs?.interested_posts || [];
-      if (!interestedPosts.includes(postId)) {
-        interestedPosts.push(postId);
+      const interested = new Set(prefs?.interested_posts || []);
+      const notInterested = new Set(prefs?.not_interested_posts || []);
+      const turningOn = !interested.has(postId);
+      if (turningOn) {
+        interested.add(postId);
+        notInterested.delete(postId);
+      } else {
+        interested.delete(postId);
       }
 
-      const { error: upsertError } = await supabase
-        .from('user_feed_preferences')
-        .upsert({
-          user_id: currentUserProfileId,
-          interested_posts: interestedPosts,
-        }, { onConflict: 'user_id' });
-
+      const { error: upsertError } = await supabase.from('user_feed_preferences').upsert({
+        user_id: currentUserProfileId,
+        interested_posts: Array.from(interested),
+        not_interested_posts: Array.from(notInterested),
+      }, { onConflict: 'user_id' });
       if (upsertError) throw upsertError;
-      toast({ title: "Marked as interested - You'll see more posts like this" });
+
+      setState((prev) => ({ ...prev, isInterested: turningOn, isNotInterested: false }));
+      toast({ title: turningOn ? "Marked as interested — you'll see more posts like this" : 'Removed from Interested' });
       closeMenu();
     } catch (err) {
       console.error('Error marking interested:', err);
       toast({ title: 'Failed to update preference', variant: 'destructive' });
+    } finally {
+      setBusy('interested', false);
     }
   };
 
-  const handleMarkNotInterested = async () => {
-    if (!currentUserProfileId) return;
+  const handleToggleNotInterested = async () => {
+    if (!currentUserProfileId || pending.notInterested) return;
+    setBusy('notInterested', true);
     try {
       const { data: prefs, error: fetchError } = await supabase
         .from('user_feed_preferences')
-        .select('not_interested_posts')
+        .select('interested_posts, not_interested_posts')
         .eq('user_id', currentUserProfileId)
-        .single();
+        .maybeSingle();
+      if (fetchError) throw fetchError;
 
-      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-
-      const notInterestedPosts = prefs?.not_interested_posts || [];
-      if (!notInterestedPosts.includes(postId)) {
-        notInterestedPosts.push(postId);
+      const interested = new Set(prefs?.interested_posts || []);
+      const notInterested = new Set(prefs?.not_interested_posts || []);
+      const turningOn = !notInterested.has(postId);
+      if (turningOn) {
+        notInterested.add(postId);
+        interested.delete(postId);
+      } else {
+        notInterested.delete(postId);
       }
 
-      const { error: upsertError } = await supabase
-        .from('user_feed_preferences')
-        .upsert({
-          user_id: currentUserProfileId,
-          not_interested_posts: notInterestedPosts,
-        }, { onConflict: 'user_id' });
-
+      const { error: upsertError } = await supabase.from('user_feed_preferences').upsert({
+        user_id: currentUserProfileId,
+        interested_posts: Array.from(interested),
+        not_interested_posts: Array.from(notInterested),
+      }, { onConflict: 'user_id' });
       if (upsertError) throw upsertError;
-      toast({ title: "Marked as not interested - You'll see fewer posts like this" });
-      closeMenu();
+
+      setState((prev) => ({ ...prev, isNotInterested: turningOn, isInterested: false }));
+
+      if (turningOn) {
+        closeMenu();
+        onHide?.();
+        toast({
+          title: "Marked as not interested — you'll see fewer posts like this",
+          description: 'Removed from your feed.',
+          action: (
+            <ToastAction
+              altText="Undo"
+              onClick={async () => {
+                const { data: p } = await supabase
+                  .from('user_feed_preferences')
+                  .select('not_interested_posts')
+                  .eq('user_id', currentUserProfileId)
+                  .maybeSingle();
+                const next = (p?.not_interested_posts || []).filter((id: string) => id !== postId);
+                await supabase.from('user_feed_preferences')
+                  .update({ not_interested_posts: next })
+                  .eq('user_id', currentUserProfileId);
+                setState((prev) => ({ ...prev, isNotInterested: false }));
+                onHide?.();
+              }}
+            >
+              Undo
+            </ToastAction>
+          ),
+        });
+      } else {
+        closeMenu();
+      }
     } catch (err) {
       console.error('Error marking not interested:', err);
       toast({ title: 'Failed to update preference', variant: 'destructive' });
+    } finally {
+      setBusy('notInterested', false);
     }
   };
 
-  const handleWhySeeingThis = () => {
-    toast({
-      title: 'Why am I seeing this post?',
-      description: `You follow ${postUserName} or are connected with them.`,
-    });
+  const handleWhySeeingThis = async () => {
     closeMenu();
+    setWhyDialogOpen(true);
+    setWhyReason('Loading…');
+    try {
+      if (!currentUserProfileId) {
+        setWhyReason(`This post appears in your feed because it's public content from your network.`);
+        return;
+      }
+      if (companyId) {
+        const { data } = await supabase
+          .from('company_followers')
+          .select('id')
+          .eq('user_id', currentUserProfileId)
+          .eq('company_id', companyId)
+          .maybeSingle();
+        if (data) {
+          setWhyReason(`Because you follow ${postUserName}.`);
+          return;
+        }
+        setWhyReason(`This post from ${postUserName} matches your interests or is popular in your network.`);
+        return;
+      }
+
+      if (postUserId === currentUserProfileId) {
+        setWhyReason('This is your own post.');
+        return;
+      }
+
+      const { data: followData } = await supabase
+        .from('followers')
+        .select('id')
+        .eq('follower_id', currentUserProfileId)
+        .eq('following_id', postUserId)
+        .maybeSingle();
+      if (followData) {
+        setWhyReason(`Because you follow ${postUserName}.`);
+        return;
+      }
+
+      const { data: connData } = await supabase
+        .from('connections')
+        .select('id')
+        .eq('status', 'accepted')
+        .or(`and(user_id.eq.${currentUserProfileId},connection_id.eq.${postUserId}),and(user_id.eq.${postUserId},connection_id.eq.${currentUserProfileId})`)
+        .maybeSingle();
+      if (connData) {
+        setWhyReason(`Because you are connected with ${postUserName}.`);
+        return;
+      }
+
+      if (state.isInterested) {
+        setWhyReason(`Because you marked a similar post as "Interested".`);
+        return;
+      }
+
+      setWhyReason(`This post is popular in your network or matches topics you engage with.`);
+    } catch (err) {
+      console.error('Error computing why-seeing-this reason:', err);
+      setWhyReason('This post is showing based on your network and activity on Profolio.');
+    }
   };
 
   const handleManageFeed = () => {
     closeMenu();
-    navigate('/dashboard');
-    toast({ title: 'Feed settings', description: 'Manage your preferences from your profile settings.' });
+    navigate('/settings');
   };
 
   const handleDeletePost = async () => {
-    if (!currentUserProfileId) return;
+    if (!currentUserProfileId || !canDeletePost) return;
     try {
       setIsDeleting(true);
-      const { error } = await supabase
+      // Ownership/authorization is enforced by RLS (auth.uid() = user_id, or
+      // is_company_admin() for company posts) -- no need to (and no correct
+      // way to) re-check it client-side against a mismatched id column here.
+      const { error, count } = await supabase
         .from('posts')
-        .delete()
-        .eq('id', postId)
-        .eq('user_id', currentUserProfileId);
+        .delete({ count: 'exact' })
+        .eq('id', postId);
 
       if (error) throw error;
+      if (!count) {
+        throw new Error('You are not authorized to delete this post.');
+      }
 
       toast({ title: 'Post deleted successfully' });
       setDeleteDialogOpen(false);
       onDelete?.();
     } catch (err) {
       console.error('Error deleting post:', err);
-      toast({ title: 'Failed to delete post', variant: 'destructive' });
+      toast({ title: 'Failed to delete post', description: err instanceof Error ? err.message : undefined, variant: 'destructive' });
     } finally {
       setIsDeleting(false);
     }
   };
 
   const handleReportSubmit = async () => {
-    if (!currentUserProfileId || !reportReason.trim()) return;
+    if (!currentUserProfileId || isSubmitting) return;
     try {
       setIsSubmitting(true);
       const { error } = await supabase.from('post_reports').insert({
         reporter_id: currentUserProfileId,
         post_id: postId,
         reason: reportReason,
+        description: reportDescription.trim() || null,
       });
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          setAlreadyReported(true);
+          toast({ title: "You've already reported this post" });
+          setReportDialogOpen(false);
+          return;
+        }
+        throw error;
+      }
+      setAlreadyReported(true);
       toast({ title: 'Report submitted', description: 'Thank you for helping keep our community safe.' });
       setReportDialogOpen(false);
-      setReportReason('');
+      setReportReason('spam');
+      setReportDescription('');
     } catch (err) {
       console.error('Error submitting report:', err);
       toast({ title: 'Failed to submit report', variant: 'destructive' });
@@ -427,48 +752,50 @@ export const PostOptionsMenu = ({
     }
   };
 
+  const busy = (key: string) => !!pending[key];
+
   const menuItems = (
     <>
       <MenuItem icon={Info} onClick={handleWhySeeingThis}>
         Why am I seeing this?
       </MenuItem>
-      <MenuItem icon={ThumbsUp} onClick={handleMarkInterested}>
-        Interested
+      <MenuItem icon={ThumbsUp} onClick={handleToggleInterested} loading={busy('interested')} active={state.isInterested}>
+        {state.isInterested ? 'Marked as Interested' : 'Interested'}
       </MenuItem>
-      <MenuItem icon={ThumbsDown} onClick={handleMarkNotInterested}>
-        Not Interested
+      <MenuItem icon={ThumbsDown} onClick={handleToggleNotInterested} loading={busy('notInterested')} active={state.isNotInterested}>
+        {state.isNotInterested ? 'Marked as Not Interested' : 'Not Interested'}
       </MenuItem>
-      <MenuItem icon={BookmarkPlus} onClick={handleSavePost}>
-        Save Post
+      <MenuItem icon={state.isSaved ? Bookmark : BookmarkPlus} onClick={handleToggleSave} loading={busy('save')}>
+        {state.isSaved ? 'Unsave Post' : 'Save Post'}
       </MenuItem>
-      <MenuItem icon={EyeOff} onClick={handleHidePost}>
+      <MenuItem icon={EyeOff} onClick={handleHidePost} loading={busy('hide')}>
         Hide Post
       </MenuItem>
       <MenuItem icon={Flag} onClick={() => { closeMenu(); setReportDialogOpen(true); }}>
-        Report Post
+        {alreadyReported ? 'Reported' : 'Report Post'}
       </MenuItem>
-      <MenuItem icon={Bell} onClick={handleTurnOnNotifications}>
-        Turn On Notifications
+      <MenuItem icon={state.notifOn ? BellOff : Bell} onClick={handleToggleNotifications} loading={busy('notif')}>
+        {state.notifOn ? 'Turn Off Notifications' : 'Turn On Notifications'}
       </MenuItem>
       <MenuItem icon={Link2} onClick={handleCopyLink}>
         Copy Link
       </MenuItem>
-      
-      {!isOwnPost && (
+
+      {!isSelfAuthored && (
         <>
           <div className="h-px bg-border my-1" />
-          <MenuItem icon={Clock} onClick={handleSnoozeUser}>
-            Snooze {postUserName} for 30 days
+          <MenuItem icon={Clock} onClick={handleSnoozeTarget} loading={busy('snooze')} active={state.isSnoozed}>
+            {state.isSnoozed ? `Snoozed` : `Snooze ${postUserName} for 30 days`}
           </MenuItem>
-          <MenuItem icon={EyeOff} onClick={handleHideAllFromUser}>
-            Hide all from {postUserName}
+          <MenuItem icon={EyeOff} onClick={handleHideAllFromTarget} loading={busy('hideAll')} active={state.isHiddenAll}>
+            {state.isHiddenAll ? `Hiding all from ${postUserName}` : `Hide all from ${postUserName}`}
           </MenuItem>
-          <MenuItem icon={UserX} onClick={handleBlockUser} destructive>
-            Block {postUserName}
+          <MenuItem icon={UserX} onClick={handleToggleBlock} loading={busy('block')} destructive>
+            {state.isBlocked ? `Unblock ${postUserName}` : `Block ${postUserName}`}
           </MenuItem>
         </>
       )}
-      
+
       {canManageCta && (
         <>
           <div className="h-px bg-border my-1" />
@@ -478,7 +805,7 @@ export const PostOptionsMenu = ({
         </>
       )}
 
-      {isOwnPost && (
+      {canDeletePost && (
         <>
           <div className="h-px bg-border my-1" />
           <MenuItem icon={Trash2} onClick={() => { closeMenu(); setDeleteDialogOpen(true); }} destructive>
@@ -498,75 +825,76 @@ export const PostOptionsMenu = ({
   if (!isMobile) {
     return (
       <>
-        <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenu open={open} onOpenChange={(next) => { setOpen(next); if (next) loadMenuState(); }}>
           <DropdownMenuTrigger asChild>
-            <button 
+            <button
               className="menu-button hover:bg-secondary transition-colors rounded-full p-2"
               aria-label="Post options"
             >
               <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            align="end" 
-            className="w-64 max-h-[70vh] overflow-y-auto z-50 bg-popover"
+          <DropdownMenuContent
+            align="end"
+            className="w-72 max-h-[70vh] overflow-y-auto z-50 bg-popover"
             sideOffset={5}
           >
             <DropdownMenuItem onClick={handleWhySeeingThis}>
               <Info className="h-4 w-4 mr-2" />
               Why am I seeing this?
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleMarkInterested}>
-              <ThumbsUp className="h-4 w-4 mr-2" />
-              Interested
+            <DropdownMenuItem onClick={handleToggleInterested} disabled={busy('interested')} className={state.isInterested ? 'bg-secondary/60' : ''}>
+              {busy('interested') ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ThumbsUp className="h-4 w-4 mr-2" />}
+              {state.isInterested ? 'Marked as Interested' : 'Interested'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleMarkNotInterested}>
-              <ThumbsDown className="h-4 w-4 mr-2" />
-              Not Interested
+            <DropdownMenuItem onClick={handleToggleNotInterested} disabled={busy('notInterested')} className={state.isNotInterested ? 'bg-secondary/60' : ''}>
+              {busy('notInterested') ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ThumbsDown className="h-4 w-4 mr-2" />}
+              {state.isNotInterested ? 'Marked as Not Interested' : 'Not Interested'}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSavePost}>
-              <BookmarkPlus className="h-4 w-4 mr-2" />
-              Save Post
+            <DropdownMenuItem onClick={handleToggleSave} disabled={busy('save')}>
+              {busy('save') ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : (state.isSaved ? <Bookmark className="h-4 w-4 mr-2" /> : <BookmarkPlus className="h-4 w-4 mr-2" />)}
+              {state.isSaved ? 'Unsave Post' : 'Save Post'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleHidePost}>
-              <EyeOff className="h-4 w-4 mr-2" />
+            <DropdownMenuItem onClick={handleHidePost} disabled={busy('hide')}>
+              {busy('hide') ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <EyeOff className="h-4 w-4 mr-2" />}
               Hide Post
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => { closeMenu(); setReportDialogOpen(true); }}>
               <Flag className="h-4 w-4 mr-2" />
-              Report Post
+              {alreadyReported ? 'Reported' : 'Report Post'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleTurnOnNotifications}>
-              <Bell className="h-4 w-4 mr-2" />
-              Turn On Notifications
+            <DropdownMenuItem onClick={handleToggleNotifications} disabled={busy('notif')}>
+              {busy('notif') ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : (state.notifOn ? <BellOff className="h-4 w-4 mr-2" /> : <Bell className="h-4 w-4 mr-2" />)}
+              {state.notifOn ? 'Turn Off Notifications' : 'Turn On Notifications'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleCopyLink}>
               <Link2 className="h-4 w-4 mr-2" />
               Copy Link
             </DropdownMenuItem>
-            
-            {!isOwnPost && (
+
+            {!isSelfAuthored && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSnoozeUser}>
-                  <Clock className="h-4 w-4 mr-2" />
-                  Snooze {postUserName} for 30 days
+                <DropdownMenuItem onClick={handleSnoozeTarget} disabled={busy('snooze')}>
+                  {busy('snooze') ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Clock className="h-4 w-4 mr-2" />}
+                  {state.isSnoozed ? 'Snoozed' : `Snooze ${postUserName} for 30 days`}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleHideAllFromUser}>
-                  <EyeOff className="h-4 w-4 mr-2" />
-                  Hide all from {postUserName}
+                <DropdownMenuItem onClick={handleHideAllFromTarget} disabled={busy('hideAll')}>
+                  {busy('hideAll') ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <EyeOff className="h-4 w-4 mr-2" />}
+                  {state.isHiddenAll ? `Hiding all from ${postUserName}` : `Hide all from ${postUserName}`}
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={handleBlockUser}
+                <DropdownMenuItem
+                  onClick={handleToggleBlock}
+                  disabled={busy('block')}
                   className="text-destructive focus:text-destructive"
                 >
-                  <UserX className="h-4 w-4 mr-2" />
-                  Block {postUserName}
+                  {busy('block') ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserX className="h-4 w-4 mr-2" />}
+                  {state.isBlocked ? `Unblock ${postUserName}` : `Block ${postUserName}`}
                 </DropdownMenuItem>
               </>
             )}
-            
+
             {canManageCta && (
               <>
                 <DropdownMenuSeparator />
@@ -577,7 +905,7 @@ export const PostOptionsMenu = ({
               </>
             )}
 
-            {isOwnPost && (
+            {canDeletePost && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -607,11 +935,15 @@ export const PostOptionsMenu = ({
         <ReportDialog
           open={reportDialogOpen}
           onOpenChange={setReportDialogOpen}
-          reportReason={reportReason}
-          setReportReason={setReportReason}
+          reason={reportReason}
+          setReason={setReportReason}
+          description={reportDescription}
+          setDescription={setReportDescription}
           onSubmit={handleReportSubmit}
           isSubmitting={isSubmitting}
         />
+
+        <WhyDialog open={whyDialogOpen} onOpenChange={setWhyDialogOpen} reason={whyReason} />
 
         <CtaEditDialog
           open={ctaDialogOpen}
@@ -632,11 +964,12 @@ export const PostOptionsMenu = ({
   // Mobile: Use bottom sheet
   return (
     <>
-      <button 
+      <button
         className="menu-button hover:bg-secondary transition-colors rounded-full p-2"
         onClick={(e) => {
           e.stopPropagation();
           setOpen(true);
+          loadMenuState();
         }}
         aria-label="Post options"
       >
@@ -644,9 +977,9 @@ export const PostOptionsMenu = ({
       </button>
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent 
-          side="bottom" 
-          className="max-h-[60vh] overflow-y-auto rounded-t-xl"
+        <SheetContent
+          side="bottom"
+          className="max-h-[75vh] overflow-y-auto rounded-t-xl"
         >
           <SheetHeader className="pb-2">
             <SheetTitle className="text-base">Post Options</SheetTitle>
@@ -667,34 +1000,43 @@ export const PostOptionsMenu = ({
       <ReportDialog
         open={reportDialogOpen}
         onOpenChange={setReportDialogOpen}
-        reportReason={reportReason}
-        setReportReason={setReportReason}
+        reason={reportReason}
+        setReason={setReportReason}
+        description={reportDescription}
+        setDescription={setReportDescription}
         onSubmit={handleReportSubmit}
         isSubmitting={isSubmitting}
       />
+
+      <WhyDialog open={whyDialogOpen} onOpenChange={setWhyDialogOpen} reason={whyReason} />
     </>
   );
 };
 
 // Helper component for mobile menu items
-const MenuItem = ({ 
-  icon: Icon, 
-  children, 
-  onClick, 
-  destructive = false 
-}: { 
+const MenuItem = ({
+  icon: Icon,
+  children,
+  onClick,
+  destructive = false,
+  loading = false,
+  active = false,
+}: {
   icon?: React.ElementType;
   children: React.ReactNode;
   onClick: () => void;
   destructive?: boolean;
+  loading?: boolean;
+  active?: boolean;
 }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted rounded-lg transition-colors text-left ${
-      destructive ? 'text-destructive hover:bg-destructive/10' : ''
+    disabled={loading}
+    className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted rounded-lg transition-colors text-left disabled:opacity-60 ${
+      destructive ? 'text-destructive hover:bg-destructive/10' : active ? 'bg-secondary/60' : ''
     }`}
   >
-    {Icon && <Icon className="h-5 w-5 flex-shrink-0" />}
+    {loading ? <Loader2 className="h-5 w-5 flex-shrink-0 animate-spin" /> : Icon && <Icon className="h-5 w-5 flex-shrink-0" />}
     <span className="text-sm">{children}</span>
   </button>
 );
@@ -714,9 +1056,9 @@ const DeleteConfirmDialog = ({
   <AlertDialog open={open} onOpenChange={onOpenChange}>
     <AlertDialogContent>
       <AlertDialogHeader>
-        <AlertDialogTitle>Delete Post</AlertDialogTitle>
+        <AlertDialogTitle>Delete this post?</AlertDialogTitle>
         <AlertDialogDescription>
-          Are you sure you want to delete this post? This action cannot be undone.
+          This action cannot be undone.
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
@@ -733,19 +1075,46 @@ const DeleteConfirmDialog = ({
   </AlertDialog>
 );
 
+// "Why am I seeing this?" explanation dialog
+const WhyDialog = ({
+  open,
+  onOpenChange,
+  reason,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  reason: string;
+}) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="sm:max-w-sm">
+      <DialogHeader>
+        <DialogTitle>Why am I seeing this post?</DialogTitle>
+      </DialogHeader>
+      <DialogDescription className="text-foreground">{reason}</DialogDescription>
+      <DialogFooter>
+        <Button onClick={() => onOpenChange(false)}>Done</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+);
+
 // Report dialog
 const ReportDialog = ({
   open,
   onOpenChange,
-  reportReason,
-  setReportReason,
+  reason,
+  setReason,
+  description,
+  setDescription,
   onSubmit,
   isSubmitting,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  reportReason: string;
-  setReportReason: (value: string) => void;
+  reason: string;
+  setReason: (value: string) => void;
+  description: string;
+  setDescription: (value: string) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
 }) => (
@@ -753,14 +1122,27 @@ const ReportDialog = ({
     <DialogContent className="sm:max-w-md">
       <DialogHeader>
         <DialogTitle>Report Post</DialogTitle>
+        <DialogDescription>Tell us what's wrong with this post.</DialogDescription>
       </DialogHeader>
-      <div className="py-4">
-        <Textarea
-          placeholder="Please describe why you're reporting this post..."
-          value={reportReason}
-          onChange={(e) => setReportReason(e.target.value)}
-          className="min-h-[120px]"
-        />
+      <div className="py-2 space-y-4">
+        <RadioGroup value={reason} onValueChange={setReason} className="space-y-2">
+          {REPORT_REASONS.map((r) => (
+            <div key={r.value} className="flex items-center space-x-2">
+              <RadioGroupItem value={r.value} id={`report-${r.value}`} />
+              <Label htmlFor={`report-${r.value}`} className="font-normal cursor-pointer">{r.label}</Label>
+            </div>
+          ))}
+        </RadioGroup>
+        <div className="space-y-1.5">
+          <Label htmlFor="report-description">Additional details (optional)</Label>
+          <Textarea
+            id="report-description"
+            placeholder="Add any extra context..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="min-h-[80px]"
+          />
+        </div>
       </div>
       <DialogFooter>
         <Button
@@ -772,7 +1154,7 @@ const ReportDialog = ({
         </Button>
         <Button
           onClick={onSubmit}
-          disabled={!reportReason.trim() || isSubmitting}
+          disabled={isSubmitting}
         >
           {isSubmitting ? 'Submitting...' : 'Submit Report'}
         </Button>
