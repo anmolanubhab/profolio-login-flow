@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { MessageCircle, Share, User, Facebook, Twitter, Copy, FileText, ExternalLink, Trash2 } from 'lucide-react';
+import { MessageCircle, Share, User, Facebook, Twitter, Copy, FileText, ExternalLink, Trash2, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isServerRateLimitError, SERVER_RATE_LIMIT_MESSAGE } from '@/lib/rate-limiter';
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { PostOptionsMenu } from './PostOptionsMenu';
+import { SuggestedFollowControl } from './SuggestedFollowControl';
 import { ReactionBar, ReactionCountSummary, ReactionType, ReactionSummary, REACTION_META, REACTION_ORDER } from './ReactionBar';
 
 export interface PollSummary {
@@ -56,6 +57,14 @@ interface PostCardProps {
   // Only set for posts published as a company -- drives the "Edit CTA"
   // admin check in PostOptionsMenu. Absent/undefined for personal posts.
   companyId?: string | null;
+  // "Suggested" treatment (LinkedIn-style): the author isn't followed yet --
+  // shows a Follow/Following control and a top-right X to dismiss just this
+  // card. Computed once per feed fetch by the caller (Feed.tsx), not
+  // re-derived here, so it stays fixed for the card's lifetime in this
+  // session even after the user follows the author from this same card.
+  isSuggested?: boolean;
+  isFollowingAuthor?: boolean;
+  onDismissSuggested?: () => void;
 }
 
 const PostCard = ({
@@ -78,6 +87,9 @@ const PostCard = ({
   profileLink,
   cta,
   companyId,
+  isSuggested,
+  isFollowingAuthor,
+  onDismissSuggested,
 }: PostCardProps) => {
   const [ctaState, setCtaState] = useState(cta ?? null);
   useEffect(() => { setCtaState(cta ?? null); }, [cta]);
@@ -467,7 +479,7 @@ const PostCard = ({
   });
 
   const handleShare = async () => {
-    const url = `${window.location.origin}/dashboard#post-${id}`;
+    const url = `${window.location.origin}/post/${id}`;
     const title = `${user.name} on Profolio`;
     const text = content;
 
@@ -495,27 +507,27 @@ const PostCard = ({
   };
 
   const shareOnWhatsApp = () => {
-    const url = `${window.location.origin}/dashboard#post-${id}`;
+    const url = `${window.location.origin}/post/${id}`;
     const text = encodeURIComponent(`${user.name} on Profolio: ${content}\n\n${url}`);
     const whatsappUrl = `https://wa.me/?text=${text}`;
     window.open(whatsappUrl, '_blank');
   };
 
   const shareOnFacebook = () => {
-    const url = encodeURIComponent(`${window.location.origin}/dashboard#post-${id}`);
+    const url = encodeURIComponent(`${window.location.origin}/post/${id}`);
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
     window.open(facebookUrl, '_blank');
   };
 
   const shareOnTwitter = () => {
-    const url = encodeURIComponent(`${window.location.origin}/dashboard#post-${id}`);
+    const url = encodeURIComponent(`${window.location.origin}/post/${id}`);
     const text = encodeURIComponent(`${user.name} on Profolio: ${content}`);
     const twitterUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
     window.open(twitterUrl, '_blank');
   };
 
   const copyLink = async () => {
-    const url = `${window.location.origin}/dashboard#post-${id}`;
+    const url = `${window.location.origin}/post/${id}`;
     try {
       await navigator.clipboard.writeText(url);
       toast({
@@ -534,10 +546,49 @@ const PostCard = ({
 
   const isOwnPost = !!(currentUserProfileId && user.id === currentUserProfileId);
 
+  const optionsMenu = (
+    <PostOptionsMenu
+      postId={id}
+      postUserId={user.id || ''}
+      postUserName={user.name}
+      currentUserProfileId={currentUserProfileId}
+      isOwnPost={isOwnPost}
+      onDelete={onDelete}
+      onHide={onHide}
+      companyId={companyId}
+      cta={{
+        cta_enabled: !!ctaState,
+        cta_label: ctaState?.label ?? null,
+        cta_url: ctaState?.url ?? null,
+        cta_open_new_tab: ctaState?.openNewTab ?? true,
+      }}
+      onCtaChange={(next) =>
+        setCtaState(next ? { label: next.cta_label!, url: next.cta_url!, openNewTab: next.cta_open_new_tab } : null)
+      }
+    />
+  );
+
   return (
     <div className="post-card w-full max-w-full overflow-hidden" id={`post-${id}`}>
+      {isSuggested && (
+        <div className="flex items-center justify-between px-4 sm:px-5 pt-3">
+          <span className="text-[13px] font-medium text-muted-foreground">Suggested</span>
+          <div className="flex items-center gap-1 shrink-0">
+            {optionsMenu}
+            <button
+              type="button"
+              className="menu-button hover:bg-secondary transition-colors rounded-full p-2"
+              aria-label="Dismiss suggested post"
+              onClick={(e) => { e.stopPropagation(); onDismissSuggested?.(); }}
+            >
+              <X className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="post-header">
-        <div 
+        <div
           className="flex items-center gap-3 cursor-pointer group flex-1"
           onClick={handleProfileClick}
         >
@@ -547,7 +598,7 @@ const PostCard = ({
               {user.name.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
             </AvatarFallback>
           </Avatar>
-          
+
           <div className="flex-1 min-w-0">
             <div className="post-title group-hover:text-primary transition-colors">
               {user.name}
@@ -556,25 +607,19 @@ const PostCard = ({
           </div>
         </div>
 
-        <PostOptionsMenu
-          postId={id}
-          postUserId={user.id || ''}
-          postUserName={user.name}
-          currentUserProfileId={currentUserProfileId}
-          isOwnPost={isOwnPost}
-          onDelete={onDelete}
-          onHide={onHide}
-          companyId={companyId}
-          cta={{
-            cta_enabled: !!ctaState,
-            cta_label: ctaState?.label ?? null,
-            cta_url: ctaState?.url ?? null,
-            cta_open_new_tab: ctaState?.openNewTab ?? true,
-          }}
-          onCtaChange={(next) =>
-            setCtaState(next ? { label: next.cta_label!, url: next.cta_url!, openNewTab: next.cta_open_new_tab } : null)
-          }
-        />
+        <div className="flex items-center gap-1 shrink-0">
+          {isSuggested && !isOwnPost && user.id ? (
+            <SuggestedFollowControl
+              targetId={companyId || user.id}
+              targetName={user.name}
+              isCompany={!!companyId}
+              currentUserProfileId={currentUserProfileId}
+              initialFollowing={!!isFollowingAuthor}
+            />
+          ) : (
+            optionsMenu
+          )}
+        </div>
       </div>
 
       <div className="post-body">

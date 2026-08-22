@@ -102,6 +102,42 @@ export type Database = {
           },
         ]
       }
+      blocked_companies: {
+        Row: {
+          blocked_company_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          blocked_company_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          blocked_company_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_companies_blocked_company_id_fkey"
+            columns: ["blocked_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_companies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_search_index: {
         Row: {
           full_name: string | null
@@ -815,6 +851,42 @@ export type Database = {
           },
         ]
       }
+      dismissed_suggested_posts: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissed_suggested_posts_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissed_suggested_posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hiring_application_events: {
         Row: {
           actor_profile_id: string | null
@@ -1435,6 +1507,7 @@ export type Database = {
           is_read: boolean | null
           message_type: string | null
           sender_id: string | null
+          story_id: string | null
         }
         Insert: {
           content: string
@@ -1446,6 +1519,7 @@ export type Database = {
           is_read?: boolean | null
           message_type?: string | null
           sender_id?: string | null
+          story_id?: string | null
         }
         Update: {
           content?: string
@@ -1457,6 +1531,7 @@ export type Database = {
           is_read?: boolean | null
           message_type?: string | null
           sender_id?: string | null
+          story_id?: string | null
         }
         Relationships: [
           {
@@ -1464,6 +1539,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
             referencedColumns: ["id"]
           },
         ]
@@ -1745,6 +1827,7 @@ export type Database = {
       post_reports: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           post_id: string
           reason: string
@@ -1752,6 +1835,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           post_id: string
           reason: string
@@ -1759,6 +1843,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           post_id?: string
           reason?: string
@@ -2204,6 +2289,45 @@ export type Database = {
           },
         ]
       }
+      snoozed_companies: {
+        Row: {
+          created_at: string
+          id: string
+          snoozed_company_id: string
+          snoozed_until: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          snoozed_company_id: string
+          snoozed_until: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          snoozed_company_id?: string
+          snoozed_until?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "snoozed_companies_snoozed_company_id_fkey"
+            columns: ["snoozed_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "snoozed_companies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stories: {
         Row: {
           created_at: string | null
@@ -2259,6 +2383,94 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      story_reactions: {
+        Row: {
+          created_at: string
+          id: string
+          reaction_type: string
+          story_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reaction_type: string
+          story_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reaction_type?: string
+          story_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_reactions_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          story_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          story_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_reports_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      muted_story_authors: {
+        Row: {
+          created_at: string
+          id: string
+          muted_user_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          muted_user_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          muted_user_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       subscriptions: {
         Row: {
