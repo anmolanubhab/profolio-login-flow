@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { REACTION_META, ReactionType } from '@/components/ReactionBar';
+import { STAGE_LABELS, ApplicationStage } from '@/lib/applicationStages';
 
 export interface NotificationPayload {
   sender_name?: string;
@@ -37,6 +38,11 @@ export interface NotificationPayload {
   endorser_id?: string;
   reactor_count?: number;
   latest_reaction_type?: ReactionType;
+  application_id?: string;
+  from_stage?: ApplicationStage;
+  to_stage?: ApplicationStage;
+  candidate_name?: string;
+  company_id?: string;
 }
 
 export interface NotificationLike {
@@ -61,6 +67,8 @@ export const getNotificationIcon = (type: string): LucideIcon => {
     case 'profile_save':
       return Eye;
     case 'new_job':
+    case 'application_stage_changed':
+    case 'job_application_received':
       return Briefcase;
     case 'message':
       return MessageCircle;
@@ -108,6 +116,14 @@ export const getNotificationMessage = (notification: NotificationLike): string =
       return `${senderName} saved your profile`;
     case 'new_job':
       return `New job posted: ${payload?.job_title || 'Check it out'}`;
+    case 'job_application_received':
+      return `${payload?.candidate_name || 'A candidate'} applied to ${payload?.job_title || 'your job posting'}`;
+    case 'application_stage_changed': {
+      const stageLabel = payload?.to_stage ? STAGE_LABELS[payload.to_stage] : 'updated';
+      const jobPart = payload?.job_title ? `Your ${payload.job_title} application` : 'Your application';
+      const companyPart = payload?.company_name ? ` at ${payload.company_name}` : '';
+      return `${jobPart}${companyPart} is now "${stageLabel}"`;
+    }
     case 'message':
       return payload?.message ? `${senderName}: ${payload.message}` : `${senderName} sent you a message`;
     case 'skill_endorsement':
@@ -136,6 +152,10 @@ export const getNotificationLink = (notification: NotificationLike): string => {
       return '/profile';
     case 'new_job':
       return '/jobs';
+    case 'application_stage_changed':
+      return '/dashboard?tab=applications';
+    case 'job_application_received':
+      return payload?.company_id ? `/company/${payload.company_id}` : '/dashboard';
     case 'message':
       return '/connect';
     default:

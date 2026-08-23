@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { MapPin, Clock, Building, DollarSign, Briefcase, Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Link } from 'react-router-dom';
+import { MapPin, Clock, Building, DollarSign, Briefcase, Plus, MoreVertical, Edit, Trash2, FileText } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +72,8 @@ const Jobs = () => {
   const [coverLetter, setCoverLetter] = useState('');
   const [applying, setApplying] = useState(false);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
+  const [resumes, setResumes] = useState<{ id: string; title: string }[]>([]);
+  const [selectedResumeId, setSelectedResumeId] = useState<string>('');
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -102,6 +106,7 @@ const Jobs = () => {
     if (user) {
       fetchJobs();
       fetchApplications();
+      fetchResumes();
     }
   }, [user]);
 
@@ -170,23 +175,38 @@ const Jobs = () => {
 
   const fetchApplications = async () => {
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user?.id)
-        .single();
+      if (!user) return;
 
-      if (!profile) return;
-
+      // The candidate's own applications now live in hiring_applications --
+      // the same table the recruiter's Hiring Pipeline reads/writes -- so an
+      // application made here is immediately visible to the recruiter and to
+      // My Applications, instead of the old disconnected `applications` table.
       const { data, error } = await supabase
-        .from('applications')
+        .from('hiring_applications')
         .select('job_id')
-        .eq('user_id', profile.id);
+        .eq('candidate_user_id', user.id);
 
       if (error) throw error;
       setAppliedJobs(new Set(data?.map(app => app.job_id) || []));
     } catch (error: any) {
       console.error('Error fetching applications:', error);
+    }
+  };
+
+  const fetchResumes = async () => {
+    try {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('resumes')
+        .select('id, title')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      setResumes(data || []);
+      if (data && data.length > 0) setSelectedResumeId(data[0].id);
+    } catch (error: any) {
+      console.error('Error fetching resumes:', error);
     }
   };
 
@@ -201,22 +221,15 @@ const Jobs = () => {
     try {
       setApplying(true);
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!profile) throw new Error('Profile not found');
-
-      const { error } = await supabase
-        .from('applications')
-        .insert({
-          job_id: selectedJob.id,
-          user_id: profile.id,
-          cover_letter: coverLetter.trim() || null,
-          status: 'applied',
-        });
+      // apply_to_job() is the single authoritative write path for applying --
+      // it inserts into hiring_applications (+ a 'created' hiring_application_events
+      // row) under RLS/RPC rules shared with the recruiter pipeline, instead
+      // of inserting into the legacy `applications` table directly.
+      const { error } = await supabase.rpc('apply_to_job', {
+        p_job_id: selectedJob.id,
+        p_resume_id: selectedResumeId || undefined,
+        p_cover_note: coverLetter.trim() || undefined,
+      });
 
       if (error) throw error;
 
@@ -452,6 +465,28 @@ const Jobs = () => {
               <DialogTitle>Apply for {selectedJob?.title}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Resume</label>
+                {resumes.length > 0 ? (
+                  <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select a resume" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {resumes.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    No resume yet.{' '}
+                    <Link to="/resume" className="text-primary hover:underline">Build one</Link>
+                    {' '}(optional — you can still apply without it)
+                  </p>
+                )}
+              </div>
               <div>
                 <label className="text-sm font-medium">Cover Letter (Optional)</label>
                 <Textarea
