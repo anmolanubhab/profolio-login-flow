@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Camera, Edit3, Save, X, User, MapPin, Phone, Globe, Briefcase, Lock } from 'lucide-react';
+import { Camera, Edit3, Save, X, User, MapPin, Phone, Globe, Briefcase, Lock, Sparkles, ImagePlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,9 +18,11 @@ interface Profile {
   profession?: string | null;
   location?: string | null;
   avatar_url?: string | null;
+  cover_url?: string | null;
   phone?: string | null;
   website?: string | null;
   profile_visibility?: string | null;
+  open_to_work?: boolean | null;
   [key: string]: any;
 }
 
@@ -34,6 +36,7 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const { toast } = useToast();
 
   const [editData, setEditData] = useState({
@@ -145,6 +148,46 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
     }
   };
 
+  const handleCoverUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCover(true);
+    try {
+      const { secureUpload } = await import('@/lib/secure-upload');
+      const result = await secureUpload({
+        bucket: 'avatars',
+        file: file,
+        userId: userId
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ cover_url: result.url })
+        .eq('user_id', userId);
+
+      if (updateError) throw updateError;
+
+      setProfile(prev => prev ? { ...prev, cover_url: result.url } : null);
+      toast({
+        title: "Success",
+        description: "Cover photo updated successfully!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -187,13 +230,15 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
 
   if (loading) {
     return (
-      <Card className="p-6 mb-6 bg-gradient-card shadow-card">
-        <div className="animate-pulse flex space-x-4">
-          <div className="rounded-full bg-muted h-24 w-24"></div>
-          <div className="flex-1 space-y-2 py-1">
-            <div className="h-4 bg-muted rounded w-3/4"></div>
-            <div className="h-4 bg-muted rounded w-1/2"></div>
-            <div className="h-4 bg-muted rounded w-5/6"></div>
+      <Card className="mb-6 shadow-card border-0 overflow-hidden">
+        <div className="h-40 md:h-52 bg-muted animate-pulse" />
+        <div className="px-6 pb-6">
+          <div className="animate-pulse flex space-x-4 -mt-12">
+            <div className="rounded-full bg-muted h-24 w-24 border-4 border-background"></div>
+            <div className="flex-1 space-y-2 py-1 mt-14">
+              <div className="h-4 bg-muted rounded w-3/4"></div>
+              <div className="h-4 bg-muted rounded w-1/2"></div>
+            </div>
           </div>
         </div>
       </Card>
@@ -201,77 +246,98 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
   }
 
   return (
-    <Card className="mb-6 bg-gradient-card shadow-card border-0">
-      <CardHeader className="pb-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-foreground">Profile Information</h2>
-          <div className="flex gap-2">
-            {isEditing ? (
-              <>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="bg-success hover:bg-success/90 text-success-foreground shadow-elegant"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="border-muted-foreground/20 hover:bg-muted/50"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsEditing(true)}
-                className="border-primary/20 text-primary hover:bg-primary/5 hover:border-primary/40"
-              >
-                <Edit3 className="h-4 w-4 mr-2" />
-                Edit Profile
-              </Button>
-            )}
+    <Card className="mb-6 shadow-card border-0 overflow-hidden">
+      {/* Cover */}
+      <div
+        className="relative h-36 md:h-48 w-full"
+        style={
+          profile?.cover_url
+            ? { backgroundImage: `url(${profile.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+            : { background: 'var(--gradient-hero)' }
+        }
+      >
+        <div className="absolute top-3 right-3 flex gap-2">
+          {!isEditing && (
+            <Button
+              size="sm"
+              onClick={() => setIsEditing(true)}
+              className="bg-background/80 text-foreground hover:bg-background backdrop-blur-md shadow-elegant border-0"
+            >
+              <Edit3 className="h-4 w-4 mr-2" />
+              Edit Profile
+            </Button>
+          )}
+          <label
+            htmlFor="cover-upload"
+            className="inline-flex items-center gap-2 rounded-md bg-background/80 hover:bg-background text-foreground text-sm font-medium px-3 py-1.5 cursor-pointer backdrop-blur-md shadow-elegant transition-smooth"
+          >
+            <ImagePlus className="h-4 w-4" />
+            <span className="hidden sm:inline">{uploadingCover ? 'Uploading...' : 'Cover'}</span>
+            <input
+              id="cover-upload"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverUpload}
+              disabled={uploadingCover}
+            />
+          </label>
+        </div>
+
+        {/* Avatar, overlapping the cover/content boundary */}
+        <div className="absolute -bottom-12 left-6">
+          <div className="relative">
+            <Avatar className="h-24 w-24 md:h-28 md:w-28 border-4 border-background shadow-elegant ring-2 ring-primary/20">
+              <AvatarImage src={profile?.avatar_url} />
+              <AvatarFallback className="text-xl font-bold bg-primary text-primary-foreground">
+                {profile?.display_name?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <label htmlFor="photo-upload" className="absolute -bottom-1 -right-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-2 cursor-pointer transition-smooth shadow-elegant">
+              <Camera className="h-3.5 w-3.5" />
+              <input
+                id="photo-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoUpload}
+                disabled={uploadingPhoto}
+              />
+            </label>
           </div>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-6">
-        {/* Profile Photo Section */}
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="flex flex-col items-center space-y-2">
-            <div className="relative">
-              <Avatar className="h-28 w-28 md:h-32 md:w-32 border-4 border-background shadow-elegant">
-                <AvatarImage src={profile?.avatar_url} />
-                <AvatarFallback className="text-xl font-bold bg-primary text-primary-foreground">
-                  {profile?.display_name?.charAt(0) || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <label htmlFor="photo-upload" className="absolute -bottom-1 -right-1 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-2.5 cursor-pointer transition-smooth shadow-elegant">
-                <Camera className="h-4 w-4" />
-                <input
-                  id="photo-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                  disabled={uploadingPhoto}
-                />
-              </label>
-            </div>
-            {uploadingPhoto && (
-              <p className="text-sm text-muted-foreground">Uploading photo...</p>
-            )}
+      <CardContent className="pt-16 space-y-6">
+        {uploadingPhoto && (
+          <p className="text-sm text-muted-foreground -mt-4">Uploading photo...</p>
+        )}
+
+        {isEditing && (
+          <div className="flex justify-end gap-2 -mt-2">
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-success hover:bg-success/90 text-success-foreground shadow-elegant"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={saving}
+              className="border-muted-foreground/20 hover:bg-muted/50"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
           </div>
+        )}
 
-          <div className="flex-1 space-y-6">
+        <div className="flex-1 space-y-6">
             {isEditing ? (
               <div className="space-y-6">
                 {/* Privacy Settings */}
@@ -412,14 +478,22 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
               </div>
             ) : (
               /* Display Mode */
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {/* Basic Information Display */}
-                <div className="space-y-3">
-                  <h1 className="text-3xl font-bold text-foreground">
-                    {profile?.display_name || 'Your Name'}
-                  </h1>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                      {profile?.display_name || 'Your Name'}
+                    </h1>
+                    {profile?.open_to_work && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success text-xs font-semibold px-2.5 py-1 border border-success/20">
+                        <Sparkles className="h-3 w-3" />
+                        Open to work
+                      </span>
+                    )}
+                  </div>
                   {profile?.profession && (
-                    <p className="text-lg text-primary font-semibold">
+                    <p className="text-base text-primary font-semibold">
                       {profile.profession}
                     </p>
                   )}
@@ -427,53 +501,46 @@ const ProfileHeader = ({ userId }: ProfileHeaderProps) => {
 
                 {/* Contact Information Display */}
                 {(profile?.location || profile?.phone || profile?.website) && (
-                  <>
-                    <Separator className="bg-muted/30" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {profile?.location && (
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                          <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
-                          <span className="text-sm">{profile.location}</span>
-                        </div>
-                      )}
-                      {profile?.phone && (
-                        <div className="flex items-center gap-3 text-muted-foreground">
-                          <Phone className="h-4 w-4 text-primary flex-shrink-0" />
-                          <span className="text-sm">{profile.phone}</span>
-                        </div>
-                      )}
-                      {profile?.website && (
-                        <div className="flex items-center gap-3 text-muted-foreground md:col-span-2">
-                          <Globe className="h-4 w-4 text-primary flex-shrink-0" />
-                          <a 
-                            href={profile.website} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-sm text-primary hover:underline transition-smooth"
-                          >
-                            {profile.website}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </>
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                    {profile?.location && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        <span className="text-sm">{profile.location}</span>
+                      </div>
+                    )}
+                    {profile?.phone && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Phone className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        <span className="text-sm">{profile.phone}</span>
+                      </div>
+                    )}
+                    {profile?.website && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Globe className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        <a
+                          href={profile.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-primary hover:underline transition-smooth"
+                        >
+                          {profile.website}
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* Bio Display */}
                 {profile?.bio && (
-                  <>
-                    <Separator className="bg-muted/30" />
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-semibold text-foreground/80 uppercase tracking-wide">About</h4>
-                      <p className="text-foreground leading-relaxed text-sm">
-                        {profile.bio}
-                      </p>
-                    </div>
-                  </>
+                  <div className="rounded-lg bg-secondary/50 p-4 space-y-1.5">
+                    <h4 className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">About</h4>
+                    <p className="text-foreground leading-relaxed text-sm">
+                      {profile.bio}
+                    </p>
+                  </div>
                 )}
               </div>
             )}
-          </div>
         </div>
       </CardContent>
     </Card>

@@ -7,11 +7,10 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { 
-  MapPin, Phone, Globe, Briefcase, UserPlus, UserCheck, 
-  UserMinus, Eye, ArrowLeft, Lock, Clock, X 
+import {
+  MapPin, Phone, Globe, Briefcase, UserPlus, UserCheck,
+  UserMinus, Eye, ArrowLeft, Lock, Clock, X, Sparkles
 } from 'lucide-react';
 import ProfileTabs from '@/components/profile/ProfileTabs';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
@@ -24,9 +23,11 @@ interface Profile {
   profession?: string;
   location?: string;
   avatar_url?: string;
+  cover_url?: string;
   phone?: string;
   website?: string;
   profile_visibility?: string;
+  open_to_work?: boolean;
 }
 
 const PublicProfile = () => {
@@ -468,10 +469,27 @@ const PublicProfile = () => {
           Back to Dashboard
         </Button>
 
-        <Card className="mb-6 bg-gradient-card shadow-card border-0">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <h2 className="text-xl font-semibold text-foreground">Profile</h2>
+        <Card className="mb-6 shadow-card border-0 overflow-hidden">
+          <div
+            className="relative h-36 md:h-48 w-full"
+            style={
+              profile?.cover_url
+                ? { backgroundImage: `url(${profile.cover_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                : { background: 'var(--gradient-hero)' }
+            }
+          >
+            <div className="absolute -bottom-12 left-6">
+              <Avatar className="h-24 w-24 md:h-28 md:w-28 border-4 border-background shadow-elegant ring-2 ring-primary/20">
+                <AvatarImage src={profile?.avatar_url} />
+                <AvatarFallback className="text-xl font-bold bg-primary text-primary-foreground">
+                  {profile?.display_name?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
+
+          <CardHeader className="pb-4 pt-4">
+            <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4">
               <div className="flex flex-wrap gap-2">
                 {connectionStatus === 'none' && (
                   <Button
@@ -542,18 +560,8 @@ const PublicProfile = () => {
             </div>
           </CardHeader>
 
-          <CardContent className="space-y-6">
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex flex-col items-center space-y-2">
-                <Avatar className="h-28 w-28 md:h-32 md:w-32 border-4 border-background shadow-elegant">
-                  <AvatarImage src={profile?.avatar_url} />
-                  <AvatarFallback className="text-xl font-bold bg-primary text-primary-foreground">
-                    {profile?.display_name?.charAt(0) || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-
-              <div className="flex-1 space-y-6">
+          <CardContent className="pt-16 space-y-6">
+              <div className="flex-1 space-y-5">
                 {isRestricted ? (
                   <div className="text-center py-8">
                     <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -567,66 +575,67 @@ const PublicProfile = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <h1 className="text-3xl font-bold text-foreground">
-                        {profile?.display_name || 'User'}
-                      </h1>
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                          {profile?.display_name || 'User'}
+                        </h1>
+                        {profile?.open_to_work && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success text-xs font-semibold px-2.5 py-1 border border-success/20">
+                            <Sparkles className="h-3 w-3" />
+                            Open to work
+                          </span>
+                        )}
+                      </div>
                       {profile?.profession && (
-                        <p className="text-lg text-primary font-semibold">
+                        <p className="text-base text-primary font-semibold">
                           {profile.profession}
                         </p>
                       )}
                     </div>
 
                     {(profile?.location || profile?.phone || profile?.website) && (
-                      <>
-                        <Separator className="bg-muted/30" />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {profile?.location && (
-                            <div className="flex items-center gap-3 text-muted-foreground">
-                              <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
-                              <span className="text-sm">{profile.location}</span>
-                            </div>
-                          )}
-                          {profile?.phone && (
-                            <div className="flex items-center gap-3 text-muted-foreground">
-                              <Phone className="h-4 w-4 text-primary flex-shrink-0" />
-                              <span className="text-sm">{profile.phone}</span>
-                            </div>
-                          )}
-                          {profile?.website && (
-                            <div className="flex items-center gap-3 text-muted-foreground md:col-span-2">
-                              <Globe className="h-4 w-4 text-primary flex-shrink-0" />
-                              <a 
-                                href={profile.website} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="text-sm text-primary hover:underline"
-                              >
-                                {profile.website}
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      </>
+                      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                        {profile?.location && (
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                            <span className="text-sm">{profile.location}</span>
+                          </div>
+                        )}
+                        {profile?.phone && (
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Phone className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                            <span className="text-sm">{profile.phone}</span>
+                          </div>
+                        )}
+                        {profile?.website && (
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Globe className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                            <a
+                              href={profile.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-primary hover:underline"
+                            >
+                              {profile.website}
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {profile?.bio && (
-                      <>
-                        <Separator className="bg-muted/30" />
-                        <div className="space-y-2">
-                          <h4 className="text-sm font-semibold text-foreground/80 uppercase tracking-wide">About</h4>
-                          <p className="text-foreground leading-relaxed text-sm">
-                            {profile.bio}
-                          </p>
-                        </div>
-                      </>
+                      <div className="rounded-lg bg-secondary/50 p-4 space-y-1.5">
+                        <h4 className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">About</h4>
+                        <p className="text-foreground leading-relaxed text-sm">
+                          {profile.bio}
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}
               </div>
-            </div>
           </CardContent>
         </Card>
 
