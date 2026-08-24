@@ -1,0 +1,239 @@
+import {
+  UserCog,
+  ShieldCheck,
+  Eye,
+  Lock,
+  Megaphone,
+  Bell,
+  type LucideIcon,
+} from 'lucide-react';
+
+export type SettingsRowStatus = 'active' | 'placeholder';
+
+export interface SettingsRowConfig {
+  id: string;
+  label: string;
+  description?: string;
+  icon?: LucideIcon;
+  status: SettingsRowStatus;
+  /** Internal route to navigate to when the row is clicked (active rows only). */
+  route?: string;
+}
+
+export interface SettingsSectionConfig {
+  id: string;
+  title: string;
+  rows: SettingsRowConfig[];
+}
+
+export type SettingsCategoryId =
+  | 'account'
+  | 'security'
+  | 'visibility'
+  | 'privacy'
+  | 'advertising'
+  | 'notifications';
+
+export interface SettingsCategoryConfig {
+  id: SettingsCategoryId;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  path: string;
+}
+
+export const SETTINGS_CATEGORIES: SettingsCategoryConfig[] = [
+  {
+    id: 'account',
+    label: 'Account preferences',
+    description: 'Your profile information, general preferences and account status',
+    icon: UserCog,
+    path: '/settings/account',
+  },
+  {
+    id: 'security',
+    label: 'Sign in & security',
+    description: 'Password, account access and where you’re signed in',
+    icon: ShieldCheck,
+    path: '/settings/security',
+  },
+  {
+    id: 'visibility',
+    label: 'Visibility',
+    description: 'Control who can see your profile and activity',
+    icon: Eye,
+    path: '/settings/visibility',
+  },
+  {
+    id: 'privacy',
+    label: 'Data privacy',
+    description: 'How your data is used and shared',
+    icon: Lock,
+    path: '/settings/privacy',
+  },
+  {
+    id: 'advertising',
+    label: 'Advertising data',
+    description: 'Data used to personalize ads',
+    icon: Megaphone,
+    path: '/settings/advertising',
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    description: 'Choose what you’re notified about',
+    icon: Bell,
+    path: '/settings/notifications',
+  },
+];
+
+export const DEFAULT_SETTINGS_CATEGORY: SettingsCategoryId = 'account';
+
+// ---------------------------------------------------------------------------
+// Placeholder rows only. Rows backed by real, working functionality are
+// hand-authored directly in their category panel (see src/pages/settings/*)
+// so they can bind to live data/handlers -- this config exists purely to
+// declare the Phase 1 "coming soon" navigation architecture without any
+// fake persisted state. See src/components/settings/SettingsRow.tsx.
+// ---------------------------------------------------------------------------
+
+export const ACCOUNT_GENERAL_SECTION: SettingsSectionConfig = {
+  id: 'general-preferences',
+  title: 'General preferences',
+  rows: [
+    { id: 'language', label: 'Language', description: 'Choose the language you see the app in', status: 'placeholder' },
+    { id: 'content-language', label: 'Content language', description: 'Preferred language for posts and articles', status: 'placeholder' },
+    { id: 'autoplay-videos', label: 'Autoplay videos', description: 'Automatically play videos as you scroll', status: 'placeholder' },
+    { id: 'feed-preferences', label: 'Feed preferences', description: 'Tune what shows up in your feed', status: 'placeholder' },
+    { id: 'display-preferences', label: 'Display preferences', description: 'Theme and layout options', status: 'placeholder' },
+  ],
+};
+
+export const ACCOUNT_MANAGEMENT_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
+  { id: 'account-status', label: 'Account status', description: 'View your account standing', status: 'placeholder' },
+  { id: 'close-account', label: 'Close/deactivate account', description: 'Temporarily deactivate or permanently close your account', status: 'placeholder' },
+];
+
+export const SECURITY_ACCESS_SECTION: SettingsSectionConfig = {
+  id: 'account-access',
+  title: 'Account access',
+  rows: [
+    { id: 'email-addresses', label: 'Email addresses', status: 'placeholder' },
+    { id: 'phone-numbers', label: 'Phone numbers', status: 'placeholder' },
+    { id: 'passkeys', label: 'Passkeys', status: 'placeholder' },
+    { id: 'two-step-verification', label: 'Two-step verification', status: 'placeholder' },
+  ],
+};
+
+export const SECURITY_SECTION: SettingsSectionConfig = {
+  id: 'security',
+  title: 'Security',
+  rows: [
+    { id: 'where-signed-in', label: 'Where you’re signed in', status: 'placeholder' },
+    { id: 'remembered-devices', label: 'Remembered devices', status: 'placeholder' },
+    { id: 'account-recovery', label: 'Account recovery', description: 'Options for getting back into your account', status: 'placeholder' },
+  ],
+};
+
+export const VISIBILITY_ACTIVITY_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
+  { id: 'active-status', label: 'Active status', description: 'Show others when you’re active', status: 'placeholder' },
+  { id: 'profile-updates', label: 'Profile updates', description: 'Share when you update your profile', status: 'placeholder' },
+  { id: 'followers', label: 'Followers', status: 'placeholder' },
+  { id: 'mentions', label: 'Mentions & tags', status: 'placeholder' },
+];
+
+export const VISIBILITY_PROFILE_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
+  { id: 'connections-visibility', label: 'Connections visibility', status: 'placeholder' },
+  { id: 'last-name-visibility', label: 'Last name visibility', status: 'placeholder' },
+  { id: 'profile-discovery', label: 'Profile discovery', description: 'Let people find your profile via search', status: 'placeholder' },
+];
+
+export const DATA_USAGE_SECTION: SettingsSectionConfig = {
+  id: 'data-usage',
+  title: 'How the application uses your data',
+  rows: [
+    { id: 'manage-data', label: 'Manage your data', status: 'placeholder' },
+    { id: 'search-history', label: 'Search history', status: 'placeholder' },
+    { id: 'personalization-data', label: 'Personalization data', status: 'placeholder' },
+    { id: 'download-data', label: 'Download your data', status: 'placeholder' },
+  ],
+};
+
+export const JOB_SEEKING_PRIVACY_SECTION: SettingsSectionConfig = {
+  id: 'job-seeking-privacy',
+  title: 'Job seeking privacy',
+  rows: [
+    { id: 'job-application-settings', label: 'Job application settings', status: 'placeholder' },
+    { id: 'job-seeking-preferences', label: 'Job seeking preferences', status: 'placeholder' },
+    { id: 'stored-applicant-info', label: 'Stored applicant information', status: 'placeholder' },
+    { id: 'share-profile-recruiters', label: 'Sharing profile with recruiters', status: 'placeholder' },
+  ],
+};
+
+export const OTHER_PRIVACY_SECTION: SettingsSectionConfig = {
+  id: 'other-privacy',
+  title: 'Other privacy controls',
+  rows: [
+    { id: 'calendar-sync', label: 'Calendar & contact sync', status: 'placeholder' },
+    { id: 'connected-services', label: 'Connected services', status: 'placeholder' },
+    { id: 'data-sharing', label: 'Data sharing preferences', status: 'placeholder' },
+  ],
+};
+
+export const ADVERTISING_PERSONALIZATION_SECTION: SettingsSectionConfig = {
+  id: 'ad-personalization',
+  title: 'Data used for personalization',
+  rows: [
+    { id: 'ad-profile-data', label: 'Profile data', status: 'placeholder' },
+    { id: 'ad-activity-data', label: 'Activity data', status: 'placeholder' },
+    { id: 'ad-interests', label: 'Interests', status: 'placeholder' },
+    { id: 'ad-companies-followed', label: 'Companies followed', status: 'placeholder' },
+    { id: 'ad-groups', label: 'Groups', status: 'placeholder' },
+    { id: 'ad-education-skills', label: 'Education and skills', status: 'placeholder' },
+    { id: 'ad-job-info', label: 'Job information', status: 'placeholder' },
+    { id: 'ad-location', label: 'Location', status: 'placeholder' },
+  ],
+};
+
+export const ADVERTISING_EXTERNAL_SECTION: SettingsSectionConfig = {
+  id: 'ad-external',
+  title: 'External data',
+  rows: [
+    { id: 'ad-partner-data', label: 'Partner data', status: 'placeholder' },
+    { id: 'ad-device-info', label: 'Device information', status: 'placeholder' },
+    { id: 'ad-off-platform', label: 'Off-platform activity', status: 'placeholder' },
+  ],
+};
+
+export const NOTIFICATIONS_SECTIONS: SettingsSectionConfig[] = [
+  {
+    id: 'notifications-you',
+    title: 'You',
+    rows: [
+      { id: 'notif-jobs', label: 'Jobs', status: 'placeholder' },
+      { id: 'notif-network', label: 'Network', status: 'placeholder' },
+      { id: 'notif-posts-comments', label: 'Posts and comments', status: 'placeholder' },
+      { id: 'notif-messages', label: 'Messages', status: 'placeholder' },
+      { id: 'notif-mentions', label: 'Mentions', status: 'placeholder' },
+      { id: 'notif-profile-activity', label: 'Profile activity', status: 'placeholder' },
+    ],
+  },
+  {
+    id: 'notifications-around-you',
+    title: 'Around you',
+    rows: [
+      { id: 'notif-companies', label: 'Companies', status: 'placeholder' },
+      { id: 'notif-groups', label: 'Groups', status: 'placeholder' },
+      { id: 'notif-events', label: 'Events', status: 'placeholder' },
+      { id: 'notif-recommendations', label: 'Recommendations', status: 'placeholder' },
+    ],
+  },
+  {
+    id: 'notifications-account',
+    title: 'Account',
+    rows: [
+      { id: 'notif-security-alerts', label: 'Security alerts', status: 'placeholder' },
+      { id: 'notif-product-updates', label: 'Product updates', status: 'placeholder' },
+    ],
+  },
+];

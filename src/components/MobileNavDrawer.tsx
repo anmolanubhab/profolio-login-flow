@@ -10,6 +10,7 @@ import {
   Building2,
   Users2,
   Bookmark,
+  Settings,
   Menu,
   X
 } from "lucide-react"
@@ -42,6 +43,7 @@ const profileItems = [
   { title: "Certificates", url: "/certificates", icon: Award },
   { title: "Resume", url: "/resume", icon: FileText },
   { title: "Saved Posts", url: "/saved-posts", icon: Bookmark },
+  { title: "Settings", url: "/settings", icon: Settings },
 ]
 
 export function MobileNavDrawer() {
