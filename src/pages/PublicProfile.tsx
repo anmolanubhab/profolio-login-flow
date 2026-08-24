@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
   MapPin, Phone, Globe, Briefcase, UserPlus, UserCheck,
-  UserMinus, Eye, ArrowLeft, Lock, Clock, X, Sparkles
+  UserMinus, Eye, ArrowLeft, Lock, Clock, X, Sparkles, Mail
 } from 'lucide-react';
 import ProfileTabs from '@/components/profile/ProfileTabs';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
@@ -26,6 +26,8 @@ interface Profile {
   cover_url?: string;
   phone?: string;
   website?: string;
+  email?: string;
+  email_visibility?: string;
   profile_visibility?: string;
   open_to_work?: boolean;
 }
@@ -93,7 +95,7 @@ const PublicProfile = () => {
       // also depends on connectionStatus (resolved async below).
       if (data.user_id !== currentUser?.id &&
           (data.profile_visibility === 'private' || data.profile_visibility === 'connections_only')) {
-        setProfile({ ...data, bio: undefined, phone: undefined, website: undefined });
+        setProfile({ ...data, bio: undefined, phone: undefined, website: undefined, email: undefined });
       } else {
         setProfile(data);
       }
@@ -456,6 +458,10 @@ const PublicProfile = () => {
     profile?.user_id !== currentUser?.id &&
     connectionStatus !== 'accepted';
   const isRestricted = isPrivate || isConnectionsOnlyLocked;
+  const canSeeEmail =
+    profile?.user_id === currentUser?.id ||
+    profile?.email_visibility === 'public' ||
+    (profile?.email_visibility === 'connections_only' && connectionStatus === 'accepted');
 
   return (
     <Layout user={currentUser!} onSignOut={handleSignOut}>
@@ -595,12 +601,18 @@ const PublicProfile = () => {
                       )}
                     </div>
 
-                    {(profile?.location || profile?.phone || profile?.website) && (
+                    {(profile?.location || profile?.phone || profile?.website || (profile?.email && canSeeEmail)) && (
                       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                         {profile?.location && (
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <MapPin className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                             <span className="text-sm">{profile.location}</span>
+                          </div>
+                        )}
+                        {profile?.email && canSeeEmail && (
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Mail className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                            <span className="text-sm">{profile.email}</span>
                           </div>
                         )}
                         {profile?.phone && (

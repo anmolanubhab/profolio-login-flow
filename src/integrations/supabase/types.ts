@@ -66,42 +66,6 @@ export type Database = {
           },
         ]
       }
-      blocked_users: {
-        Row: {
-          blocked_user_id: string
-          created_at: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          blocked_user_id: string
-          created_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          blocked_user_id?: string
-          created_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "blocked_users_blocked_user_id_fkey"
-            columns: ["blocked_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "blocked_users_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       blocked_companies: {
         Row: {
           blocked_company_id: string
@@ -131,6 +95,42 @@ export type Database = {
           },
           {
             foreignKeyName: "blocked_companies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blocked_users: {
+        Row: {
+          blocked_user_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          blocked_user_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          blocked_user_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_users_blocked_user_id_fkey"
+            columns: ["blocked_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_users_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -563,6 +563,42 @@ export type Database = {
         }
         Relationships: []
       }
+      dismissed_suggested_posts: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissed_suggested_posts_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissed_suggested_posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       education: {
         Row: {
           created_at: string
@@ -844,42 +880,6 @@ export type Database = {
           },
           {
             foreignKeyName: "hidden_posts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dismissed_suggested_posts: {
-        Row: {
-          created_at: string
-          id: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dismissed_suggested_posts_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "posts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dismissed_suggested_posts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -1550,6 +1550,27 @@ export type Database = {
           },
         ]
       }
+      muted_story_authors: {
+        Row: {
+          created_at: string
+          id: string
+          muted_user_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          muted_user_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          muted_user_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1985,6 +2006,7 @@ export type Database = {
           display_name: string | null
           education: Json | null
           email: string | null
+          email_visibility: string
           expected_salary: string | null
           experience: Json | null
           full_name: string | null
@@ -2020,6 +2042,7 @@ export type Database = {
           display_name?: string | null
           education?: Json | null
           email?: string | null
+          email_visibility?: string
           expected_salary?: string | null
           experience?: Json | null
           full_name?: string | null
@@ -2055,6 +2078,7 @@ export type Database = {
           display_name?: string | null
           education?: Json | null
           email?: string | null
+          email_visibility?: string
           expected_salary?: string | null
           experience?: Json | null
           full_name?: string | null
@@ -2250,45 +2274,6 @@ export type Database = {
           },
         ]
       }
-      snoozed_users: {
-        Row: {
-          created_at: string
-          id: string
-          snoozed_until: string
-          snoozed_user_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          snoozed_until: string
-          snoozed_user_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          snoozed_until?: string
-          snoozed_user_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "snoozed_users_snoozed_user_id_fkey"
-            columns: ["snoozed_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "snoozed_users_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       snoozed_companies: {
         Row: {
           created_at: string
@@ -2328,6 +2313,45 @@ export type Database = {
           },
         ]
       }
+      snoozed_users: {
+        Row: {
+          created_at: string
+          id: string
+          snoozed_until: string
+          snoozed_user_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          snoozed_until: string
+          snoozed_user_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          snoozed_until?: string
+          snoozed_user_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "snoozed_users_snoozed_user_id_fkey"
+            columns: ["snoozed_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "snoozed_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stories: {
         Row: {
           created_at: string | null
@@ -2354,35 +2378,6 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
-      }
-      story_views: {
-        Row: {
-          id: string
-          story_id: string | null
-          viewed_at: string | null
-          viewer_id: string | null
-        }
-        Insert: {
-          id?: string
-          story_id?: string | null
-          viewed_at?: string | null
-          viewer_id?: string | null
-        }
-        Update: {
-          id?: string
-          story_id?: string | null
-          viewed_at?: string | null
-          viewer_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_views_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "stories"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       story_reactions: {
         Row: {
@@ -2451,26 +2446,34 @@ export type Database = {
           },
         ]
       }
-      muted_story_authors: {
+      story_views: {
         Row: {
-          created_at: string
           id: string
-          muted_user_id: string
-          user_id: string
+          story_id: string | null
+          viewed_at: string | null
+          viewer_id: string | null
         }
         Insert: {
-          created_at?: string
           id?: string
-          muted_user_id: string
-          user_id: string
+          story_id?: string | null
+          viewed_at?: string | null
+          viewer_id?: string | null
         }
         Update: {
-          created_at?: string
           id?: string
-          muted_user_id?: string
-          user_id?: string
+          story_id?: string | null
+          viewed_at?: string | null
+          viewer_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "story_views_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {

@@ -12,7 +12,9 @@ import Certificates from "./pages/Certificates";
 import Resume from "./pages/Resume";
 import Connect from "./pages/Connect";
 import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
+import SettingsPage from "./pages/settings/SettingsPage";
+import ChangePasswordPage from "./pages/settings/ChangePasswordPage";
+import ActiveSessionsPage from "./pages/settings/ActiveSessionsPage";
 import PublicProfile from "./pages/PublicProfile";
 import Network from "./pages/Network";
 import AddPost from "./pages/AddPost";
@@ -45,7 +47,10 @@ const App = () => (
           <Route path="/resume" element={<Resume />} />
           <Route path="/connect" element={<Connect />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings/:category" element={<SettingsPage />} />
+          <Route path="/settings/security/change-password" element={<ChangePasswordPage />} />
+          <Route path="/settings/security/active-sessions" element={<ActiveSessionsPage />} />
           <Route path="/profile/:userId" element={<PublicProfile />} />
           <Route path="/network" element={<Network />} />
           <Route path="/add-post" element={<AddPost />} />
