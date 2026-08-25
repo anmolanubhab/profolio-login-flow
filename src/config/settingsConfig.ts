@@ -103,9 +103,7 @@ export const ACCOUNT_GENERAL_SECTION: SettingsSectionConfig = {
   rows: [
     { id: 'language', label: 'Language', description: 'Choose the language you see the app in', status: 'placeholder' },
     { id: 'content-language', label: 'Content language', description: 'Preferred language for posts and articles', status: 'placeholder' },
-    { id: 'autoplay-videos', label: 'Autoplay videos', description: 'Automatically play videos as you scroll', status: 'placeholder' },
     { id: 'feed-preferences', label: 'Feed preferences', description: 'Tune what shows up in your feed', status: 'placeholder' },
-    { id: 'display-preferences', label: 'Display preferences', description: 'Theme and layout options', status: 'placeholder' },
   ],
 };
 
@@ -118,10 +116,8 @@ export const SECURITY_ACCESS_SECTION: SettingsSectionConfig = {
   id: 'account-access',
   title: 'Account access',
   rows: [
-    { id: 'email-addresses', label: 'Email addresses', status: 'placeholder' },
     { id: 'phone-numbers', label: 'Phone numbers', status: 'placeholder' },
     { id: 'passkeys', label: 'Passkeys', status: 'placeholder' },
-    { id: 'two-step-verification', label: 'Two-step verification', status: 'placeholder' },
   ],
 };
 
@@ -143,9 +139,6 @@ export const VISIBILITY_ACTIVITY_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
 ];
 
 export const VISIBILITY_PROFILE_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
-  { id: 'connections-visibility', label: 'Connections visibility', status: 'placeholder' },
-  { id: 'last-name-visibility', label: 'Last name visibility', status: 'placeholder' },
-  { id: 'profile-discovery', label: 'Profile discovery', description: 'Let people find your profile via search', status: 'placeholder' },
 ];
 
 export const DATA_USAGE_SECTION: SettingsSectionConfig = {

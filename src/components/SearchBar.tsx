@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { formatDisplayNameForViewer } from '@/lib/nameVisibility';
 
 interface SearchResult {
   id: string;
@@ -17,7 +18,26 @@ export const SearchBar = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
+  const [blockedIds, setBlockedIds] = useState<string[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchMyProfileId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('profiles').select('id').eq('user_id', user.id).single();
+      if (data) {
+        setMyProfileId(data.id);
+        // Keep people I've blocked out of my own search results too -- my
+        // own discovery experience, separate from the RLS-level rule that
+        // stops a blocked person from finding me at all.
+        const { data: blocked } = await supabase.from('blocked_users').select('blocked_user_id').eq('user_id', data.id);
+        setBlockedIds((blocked || []).map((b) => b.blocked_user_id));
+      }
+    };
+    fetchMyProfileId();
+  }, []);
 
   const searchContent = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -36,12 +56,36 @@ export const SearchBar = () => {
         .ilike('content', searchPattern)
         .limit(3);
 
-      // Search people
-      const { data: people } = await supabase
+      // Search people -- profile_discovery=false opts a profile out of
+      // listing/search surfaces specifically (direct /profile/:id access is
+      // unaffected, governed by profile_visibility alone).
+      let peopleQuery = supabase
         .from('profiles')
-        .select('id, display_name, profession')
-        .or(`display_name.ilike.${searchPattern},profession.ilike.${searchPattern}`)
-        .limit(3);
+        .select('id, display_name, profession, last_name_visibility')
+        .eq('profile_discovery', true)
+        .or(`display_name.ilike.${searchPattern},profession.ilike.${searchPattern}`);
+      if (blockedIds.length > 0) {
+        peopleQuery = peopleQuery.not('id', 'in', `(${blockedIds.join(',')})`);
+      }
+      const { data: people } = await peopleQuery.limit(3);
+
+      // Batched, single query for which of these ≤3 results the viewer has
+      // an accepted connection with -- needed for last_name_visibility's
+      // 'connections_only' case. Cheap because `people` is capped at 3.
+      const connectedIds = new Set<string>();
+      if (myProfileId && people && people.length > 0) {
+        const peopleIds = people.map((p) => p.id);
+        const { data: conns } = await supabase
+          .from('connections')
+          .select('user_id, connection_id')
+          .eq('status', 'accepted')
+          .or(
+            `and(user_id.eq.${myProfileId},connection_id.in.(${peopleIds.join(',')})),and(connection_id.eq.${myProfileId},user_id.in.(${peopleIds.join(',')}))`
+          );
+        (conns || []).forEach((c) => {
+          connectedIds.add(c.user_id === myProfileId ? c.connection_id : c.user_id);
+        });
+      }
 
       // Search jobs
       const { data: jobs } = await supabase
@@ -60,7 +104,11 @@ export const SearchBar = () => {
         ...(people || []).map(person => ({
           id: person.id,
           type: 'person' as const,
-          title: person.display_name || 'User',
+          title: formatDisplayNameForViewer(person.display_name, {
+            isOwner: person.id === myProfileId,
+            visibility: person.last_name_visibility,
+            isConnected: connectedIds.has(person.id),
+          }) || 'User',
           subtitle: person.profession || 'No profession',
         })),
         ...(jobs || []).map(job => ({
@@ -78,7 +126,7 @@ export const SearchBar = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [myProfileId, blockedIds]);
 
   useEffect(() => {
     const debounce = setTimeout(() => {

@@ -78,17 +78,25 @@ export function FeedRightRail() {
         // People to follow: other real profiles, excluding anyone already
         // connected/following, capped small -- a lightweight "who's on the
         // platform" surface, not a recommendation engine.
-        const [{ data: connections }, { data: follows }] = await Promise.all([
+        const [{ data: connections }, { data: follows }, { data: blocked }] = await Promise.all([
           supabase.from('connections').select('user_id, connection_id').or(`user_id.eq.${me.id},connection_id.eq.${me.id}`),
           supabase.from('followers').select('following_id').eq('follower_id', me.id),
+          supabase.from('blocked_users').select('blocked_user_id').eq('user_id', me.id),
         ]);
         const excluded = new Set<string>([me.id]);
         (connections || []).forEach((c: any) => { excluded.add(c.user_id); excluded.add(c.connection_id); });
         (follows || []).forEach((f: any) => excluded.add(f.following_id));
+        // Keep people I've blocked out of my own suggestions too -- purely
+        // my own discovery experience, unrelated to the RLS-level rule that
+        // stops a blocked person from seeing me (see is_blocked_by()).
+        (blocked || []).forEach((b: { blocked_user_id: string }) => excluded.add(b.blocked_user_id));
 
+        // profile_discovery=false opts a profile out of this suggestions
+        // list specifically -- it doesn't affect direct /profile/:id access.
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, display_name, avatar_url, profession')
+          .eq('profile_discovery', true)
           .limit(20);
         const filtered = (profiles || []).filter((p) => !excluded.has(p.id)).slice(0, 3);
         setSuggestions(filtered);

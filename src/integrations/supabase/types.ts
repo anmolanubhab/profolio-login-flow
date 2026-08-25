@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -460,6 +460,7 @@ export type Database = {
           company_id: string
           created_at: string
           id: string
+          is_recruiter: boolean
           role: Database["public"]["Enums"]["company_role"]
           updated_at: string
           user_id: string
@@ -468,6 +469,7 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
+          is_recruiter?: boolean
           role?: Database["public"]["Enums"]["company_role"]
           updated_at?: string
           user_id: string
@@ -476,6 +478,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           id?: string
+          is_recruiter?: boolean
           role?: Database["public"]["Enums"]["company_role"]
           updated_at?: string
           user_id?: string
@@ -1550,6 +1553,41 @@ export type Database = {
           },
         ]
       }
+      mfa_recovery_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          id: string
+          used_at: string | null
+          used_session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          used_session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          used_session_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mfa_recovery_codes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       muted_story_authors: {
         Row: {
           created_at: string
@@ -1999,8 +2037,12 @@ export type Database = {
         Row: {
           achievements: Json | null
           address: string | null
+          allow_recruiter_profile_view: boolean
+          allow_recruiter_search: boolean
+          autoplay_videos: boolean
           avatar_url: string | null
           bio: string | null
+          connections_visibility: string
           cover_url: string | null
           created_at: string
           display_name: string | null
@@ -2013,6 +2055,7 @@ export type Database = {
           github_url: string | null
           id: string
           job_type: string[] | null
+          last_name_visibility: string
           linkedin_url: string | null
           location: string | null
           notice_period: string | null
@@ -2020,10 +2063,12 @@ export type Database = {
           open_to_work: boolean | null
           open_to_work_visibility: string | null
           phone: string | null
+          phone_visibility: string
           photo_url: string | null
           preferences: Json | null
           preferred_locations: string[] | null
           profession: string | null
+          profile_discovery: boolean
           profile_visibility: string | null
           projects: Json | null
           skills: string[] | null
@@ -2035,8 +2080,12 @@ export type Database = {
         Insert: {
           achievements?: Json | null
           address?: string | null
+          allow_recruiter_profile_view?: boolean
+          allow_recruiter_search?: boolean
+          autoplay_videos?: boolean
           avatar_url?: string | null
           bio?: string | null
+          connections_visibility?: string
           cover_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -2049,6 +2098,7 @@ export type Database = {
           github_url?: string | null
           id?: string
           job_type?: string[] | null
+          last_name_visibility?: string
           linkedin_url?: string | null
           location?: string | null
           notice_period?: string | null
@@ -2056,10 +2106,12 @@ export type Database = {
           open_to_work?: boolean | null
           open_to_work_visibility?: string | null
           phone?: string | null
+          phone_visibility?: string
           photo_url?: string | null
           preferences?: Json | null
           preferred_locations?: string[] | null
           profession?: string | null
+          profile_discovery?: boolean
           profile_visibility?: string | null
           projects?: Json | null
           skills?: string[] | null
@@ -2071,8 +2123,12 @@ export type Database = {
         Update: {
           achievements?: Json | null
           address?: string | null
+          allow_recruiter_profile_view?: boolean
+          allow_recruiter_search?: boolean
+          autoplay_videos?: boolean
           avatar_url?: string | null
           bio?: string | null
+          connections_visibility?: string
           cover_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -2085,6 +2141,7 @@ export type Database = {
           github_url?: string | null
           id?: string
           job_type?: string[] | null
+          last_name_visibility?: string
           linkedin_url?: string | null
           location?: string | null
           notice_period?: string | null
@@ -2092,10 +2149,12 @@ export type Database = {
           open_to_work?: boolean | null
           open_to_work_visibility?: string | null
           phone?: string | null
+          phone_visibility?: string
           photo_url?: string | null
           preferences?: Json | null
           preferred_locations?: string[] | null
           profession?: string | null
+          profile_discovery?: boolean
           profile_visibility?: string | null
           projects?: Json | null
           skills?: string[] | null
@@ -2705,6 +2764,7 @@ export type Database = {
         Args: { p_candidate_profile_id: string; p_job_id: string }
         Returns: number
       }
+      consume_mfa_recovery_code: { Args: { code: string }; Returns: boolean }
       create_company_invitation: {
         Args: {
           company_id: string
@@ -2739,6 +2799,7 @@ export type Database = {
             Returns: string
           }
       current_profile_id: { Args: never; Returns: string }
+      generate_mfa_recovery_codes: { Args: never; Returns: string[] }
       get_company_follower_count: {
         Args: { company_uuid: string }
         Returns: number
@@ -2747,10 +2808,49 @@ export type Database = {
         Args: { company_uuid: string }
         Returns: number
       }
+      get_mfa_recovery_codes_status: {
+        Args: never
+        Returns: {
+          generated_at: string
+          remaining: number
+          total_generated: number
+        }[]
+      }
+      get_profile_contact_info: {
+        Args: { _profile_id: string }
+        Returns: {
+          email: string
+          phone: string
+        }[]
+      }
+      get_recruiter_candidate_disclosure: {
+        Args: { _candidate_profile_id: string; _company_id: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          certifications: string[]
+          cover_url: string
+          display_name: string
+          education: Json
+          experience: Json
+          headline: string
+          location: string
+          open_to_work: boolean
+          profile_id: string
+          projects: Json
+          skills: string[]
+          website: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_visible_connections_count: {
+        Args: { target_profile_id: string }
+        Returns: number
+      }
+      has_active_mfa_recovery_grant: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2759,12 +2859,22 @@ export type Database = {
         Returns: boolean
       }
       hash_token: { Args: { token_input: string }; Returns: string }
+      is_any_authorized_recruiter: { Args: never; Returns: boolean }
+      is_authorized_search_recruiter: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
+      is_blocked_by: { Args: { target_profile_id: string }; Returns: boolean }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
       is_company_member_safe: {
         Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_company_owner_or_super_admin: {
+        Args: { _company_id: string }
         Returns: boolean
       }
       is_company_recruiter: { Args: { _company_id: string }; Returns: boolean }
@@ -2792,10 +2902,19 @@ export type Database = {
           full_name: string
           headline: string
           location: string
+          open_to_work: boolean
           profile_id: string
           skills: string[]
           years_experience: number
         }[]
+      }
+      set_company_recruiter: {
+        Args: {
+          _company_id: string
+          _is_recruiter: boolean
+          _member_user_id: string
+        }
+        Returns: boolean
       }
       update_application_stage: {
         Args: {

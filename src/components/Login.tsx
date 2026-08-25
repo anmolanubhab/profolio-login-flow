@@ -76,6 +76,15 @@ const Login = () => {
           });
         }
       } else if (data.user) {
+        // Supabase itself reports whether this session still needs a step-up
+        // MFA challenge (currentLevel below nextLevel). Only navigate straight
+        // into the app when no further verification is required.
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalData && aalData.currentLevel === 'aal1' && aalData.nextLevel === 'aal2') {
+          navigate('/mfa-challenge');
+          return;
+        }
+
         toast({
           title: "Welcome back!",
           description: "You have been logged in successfully.",
