@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import Login from '@/components/Login';
-import Dashboard from './Dashboard';
 
 const Index = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -37,8 +37,10 @@ const Index = () => {
     );
   }
 
-  // Show dashboard if user is authenticated, otherwise show login
-  return user && session ? <Dashboard /> : <Login />;
+  // Route authenticated sessions through the guarded /dashboard route
+  // (RequireAal2) instead of rendering Dashboard inline here -- that guard is
+  // what enforces the MFA step-up check, so this path must not bypass it.
+  return user && session ? <Navigate to="/dashboard" replace /> : <Login />;
 };
 
 export default Index;

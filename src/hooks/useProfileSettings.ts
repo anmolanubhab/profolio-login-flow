@@ -2,12 +2,20 @@ import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { setCachedAutoplayPreference } from '@/hooks/useAutoplayPreference';
 
 interface ProfileSettings {
   profile_visibility: string;
   open_to_work: boolean;
   open_to_work_visibility: string;
   email_visibility: string;
+  phone_visibility: string;
+  connections_visibility: string;
+  last_name_visibility: string;
+  profile_discovery: boolean;
+  autoplay_videos: boolean;
+  allow_recruiter_search: boolean;
+  allow_recruiter_profile_view: boolean;
 }
 
 interface BlockedEntry {
@@ -45,6 +53,13 @@ export function useProfileSettings() {
     open_to_work: false,
     open_to_work_visibility: 'public',
     email_visibility: 'private',
+    phone_visibility: 'private',
+    connections_visibility: 'private',
+    last_name_visibility: 'private',
+    profile_discovery: true,
+    autoplay_videos: false,
+    allow_recruiter_search: false,
+    allow_recruiter_profile_view: false,
   });
   const [blocked, setBlocked] = useState<BlockedEntry[]>([]);
   const [snoozed, setSnoozed] = useState<SnoozedEntry[]>([]);
@@ -62,7 +77,7 @@ export function useProfileSettings() {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, profile_visibility, open_to_work, open_to_work_visibility, email_visibility, email')
+        .select('id, profile_visibility, open_to_work, open_to_work_visibility, email_visibility, phone_visibility, connections_visibility, last_name_visibility, profile_discovery, autoplay_videos, allow_recruiter_search, allow_recruiter_profile_view, email')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -72,23 +87,36 @@ export function useProfileSettings() {
           open_to_work: data.open_to_work || false,
           open_to_work_visibility: data.open_to_work_visibility || 'public',
           email_visibility: data.email_visibility || 'private',
+          phone_visibility: data.phone_visibility || 'private',
+          connections_visibility: data.connections_visibility || 'private',
+          last_name_visibility: data.last_name_visibility || 'private',
+          // Booleans, not strings: `??` (not `||`) so an explicit `false`
+          // from the DB isn't coerced back to the default.
+          profile_discovery: data.profile_discovery ?? true,
+          autoplay_videos: data.autoplay_videos ?? false,
+          allow_recruiter_search: data.allow_recruiter_search ?? false,
+          allow_recruiter_profile_view: data.allow_recruiter_profile_view ?? false,
         });
         setProfileId(data.id);
         await fetchPrivacyLists(data.id);
 
-        // profiles.email has historically never been populated (no signup
-        // flow ever wrote it). Email visibility has nothing to show without
-        // it, so backfill it here from the authenticated user's own auth
-        // email -- own row only, and only when it's currently empty, so an
-        // existing value (or another user's row) is never touched/overwritten.
-        if (!data.email && user.email) {
+        // auth.users.email is the source of truth; profiles.email is a
+        // display-layer copy (what Email Visibility actually shows on the
+        // public profile). Reconcile them here whenever they differ -- this
+        // covers both the original never-populated case and a user
+        // completing an email change (they only get a fresh session with
+        // the new auth email once they've clicked the confirmation link, so
+        // this naturally fires only after the change is truly confirmed,
+        // never on the unconfirmed/pending address). Own row only, via
+        // user_id = the caller's own auth id; a plain equality check, not a
+        // blind overwrite, so a genuinely matching value is a no-op.
+        if (user.email && data.email !== user.email) {
           supabase
             .from('profiles')
             .update({ email: user.email })
             .eq('user_id', user.id)
-            .is('email', null)
-            .then(({ error: backfillError }) => {
-              if (backfillError) console.error('Error backfilling profile email:', backfillError);
+            .then(({ error: syncError }) => {
+              if (syncError) console.error('Error syncing profile email:', syncError);
             });
         }
       }
@@ -224,6 +252,63 @@ export function useProfileSettings() {
     }
   };
 
+  const updatePhoneVisibility = async (value: string) => {
+    if (!user) return;
+    setSettings((prev) => ({ ...prev, phone_visibility: value }));
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ phone_visibility: value })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Phone visibility updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateConnectionsVisibility = async (value: string) => {
+    if (!user) return;
+    setSettings((prev) => ({ ...prev, connections_visibility: value }));
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ connections_visibility: value })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Connections visibility updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateLastNameVisibility = async (value: string) => {
+    if (!user) return;
+    setSettings((prev) => ({ ...prev, last_name_visibility: value }));
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ last_name_visibility: value })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Last name visibility updated.' });
+    } catch (error) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const toggleOpenToWork = async (checked: boolean) => {
     if (!user) return;
     setSettings((prev) => ({ ...prev, open_to_work: checked }));
@@ -238,6 +323,101 @@ export function useProfileSettings() {
       toast({
         title: 'Success',
         description: checked ? "You're now marked as open to work." : 'Open to work turned off.',
+      });
+    } catch (error) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleProfileDiscovery = async (checked: boolean) => {
+    if (!user) return;
+    setSettings((prev) => ({ ...prev, profile_discovery: checked }));
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ profile_discovery: checked })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast({
+        title: 'Success',
+        description: checked
+          ? "You're now discoverable in search and suggestions."
+          : "You're now hidden from search and suggestions.",
+      });
+    } catch (error) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleAutoplayVideos = async (checked: boolean) => {
+    if (!user) return;
+    setSettings((prev) => ({ ...prev, autoplay_videos: checked }));
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ autoplay_videos: checked })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setCachedAutoplayPreference(checked);
+      toast({
+        title: 'Success',
+        description: checked ? 'Videos will now autoplay as you scroll.' : 'Videos will no longer autoplay.',
+      });
+    } catch (error) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleAllowRecruiterSearch = async (checked: boolean) => {
+    if (!user) return;
+    setSettings((prev) => ({ ...prev, allow_recruiter_search: checked }));
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ allow_recruiter_search: checked })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast({
+        title: 'Success',
+        description: checked
+          ? 'Authorized recruiters can now discover your profile in candidate search.'
+          : "You're no longer discoverable in recruiter candidate search.",
+      });
+    } catch (error) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleAllowRecruiterProfileView = async (checked: boolean) => {
+    if (!user) return;
+    setSettings((prev) => ({ ...prev, allow_recruiter_profile_view: checked }));
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ allow_recruiter_profile_view: checked })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast({
+        title: 'Success',
+        description: checked
+          ? 'Authorized recruiters can now view your professional profile details.'
+          : 'Recruiters can no longer view your professional profile details.',
       });
     } catch (error) {
       toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
@@ -275,7 +455,14 @@ export function useProfileSettings() {
     loadingPrivacyLists,
     updateVisibility,
     updateEmailVisibility,
+    updatePhoneVisibility,
+    updateConnectionsVisibility,
+    updateLastNameVisibility,
     toggleOpenToWork,
+    toggleProfileDiscovery,
+    toggleAutoplayVideos,
+    toggleAllowRecruiterSearch,
+    toggleAllowRecruiterProfileView,
     updateOpenToWorkVisibility,
     unblock,
     unsnooze,

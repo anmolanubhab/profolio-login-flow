@@ -97,9 +97,13 @@ export default function HiringPipeline({ companyId, jobs }: HiringPipelineProps)
         setIsAdmin(false);
         return;
       }
-      const { data, error } = await supabase.rpc('is_company_admin', {
+      // Unified recruiter model (Phase A/B1/B6): company owner or an
+      // explicit is_recruiter=true grant -- not is_company_admin's broader
+      // "any member" check, and not automatic for every super_admin/
+      // content_admin (that legacy behavior is now backfilled per-row, see
+      // the B6 migration, not re-derived from role here).
+      const { data, error } = await supabase.rpc('is_authorized_search_recruiter', {
         _company_id: companyId,
-        _user_id: user.id,
       });
       if (error) throw error;
       setIsAdmin(!!data);

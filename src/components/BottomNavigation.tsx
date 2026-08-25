@@ -75,7 +75,7 @@ const BottomNavigation = () => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border w-full max-w-full"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border w-full max-w-full"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="relative flex items-center justify-center h-16 px-1 xs:px-2 max-w-md mx-auto w-full">

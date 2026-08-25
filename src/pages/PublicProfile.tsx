@@ -14,6 +14,15 @@ import {
 } from 'lucide-react';
 import ProfileTabs from '@/components/profile/ProfileTabs';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
+import { formatDisplayNameForViewer } from '@/lib/nameVisibility';
+
+// Deliberately excludes email/phone -- those are fetched separately via
+// get_profile_contact_info(), which computes the caller's authorized view
+// server-side. This list must never be widened back to select('*') for a
+// sensitive field without adding the same server-side gating.
+const PUBLIC_PROFILE_COLUMNS =
+  'id, user_id, display_name, bio, profession, location, avatar_url, cover_url, website, ' +
+  'email_visibility, last_name_visibility, profile_visibility, open_to_work, open_to_work_visibility';
 
 interface Profile {
   id: string;
@@ -24,12 +33,12 @@ interface Profile {
   location?: string;
   avatar_url?: string;
   cover_url?: string;
-  phone?: string;
   website?: string;
-  email?: string;
   email_visibility?: string;
+  last_name_visibility?: string;
   profile_visibility?: string;
   open_to_work?: boolean;
+  open_to_work_visibility?: string;
 }
 
 const PublicProfile = () => {
@@ -41,9 +50,15 @@ const PublicProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'blocked'>('none');
+  const [connectionsCount, setConnectionsCount] = useState<number | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [viewRecorded, setViewRecorded] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [isAuthorizedRecruiter, setIsAuthorizedRecruiter] = useState(false);
+  // Populated only with values the server already determined the current
+  // viewer is authorized to see (get_profile_contact_info) -- absence here
+  // means "not authorized", not "not fetched".
+  const [contactInfo, setContactInfo] = useState<{ email: string | null; phone: string | null }>({ email: null, phone: null });
 
   useEffect(() => {
     const getUser = async () => {
@@ -64,10 +79,13 @@ const PublicProfile = () => {
   }, [currentUser, userId]);
 
   const fetchProfile = async () => {
+    // Never carry a previous profile's authorized contact info into a new
+    // one while the next fetch is in flight.
+    setContactInfo({ email: null, phone: null });
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select(PUBLIC_PROFILE_COLUMNS)
         .eq('id', userId)
         .maybeSingle();
 
@@ -89,16 +107,21 @@ const PublicProfile = () => {
         return;
       }
 
-      // Check if profile is accessible. 'private' and 'connections_only' both
+      // Check if profile is accessible. 'private' and 'connections_only'
       // strip sensitive fields client-side as defense-in-depth; the real
       // gate for connections_only is `isRestricted` at render time, which
-      // also depends on connectionStatus (resolved async below).
+      // also depends on connectionStatus (resolved async below). email/phone
+      // are never in `data` at all -- see fetchContactInfo.
       if (data.user_id !== currentUser?.id &&
           (data.profile_visibility === 'private' || data.profile_visibility === 'connections_only')) {
-        setProfile({ ...data, bio: undefined, phone: undefined, website: undefined, email: undefined });
+        setProfile({ ...data, bio: undefined, website: undefined });
       } else {
         setProfile(data);
       }
+
+      fetchConnectionsCount(data.id);
+      fetchContactInfo(data.id);
+      checkRecruiterAuthorization();
 
       // Record profile view
       if (!viewRecorded && currentUser && data.user_id !== currentUser.id) {
@@ -117,6 +140,33 @@ const PublicProfile = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchConnectionsCount = async (targetProfileId: string) => {
+    // Count-only RPC (get_visible_connections_count) -- server-side checks
+    // connections_visibility + the viewer's relationship to this profile
+    // and returns null when not permitted. It never exposes the raw
+    // connections rows, so the strict connections-table RLS (participants
+    // only) stays untouched.
+    const { data, error } = await supabase.rpc('get_visible_connections_count', {
+      target_profile_id: targetProfileId,
+    });
+    if (!error) {
+      setConnectionsCount(data);
+    }
+  };
+
+  const fetchContactInfo = async (targetProfileId: string) => {
+    // Server-side authorized view of email/phone -- get_profile_contact_info
+    // re-derives the same profile_visibility/blocking gate as the main
+    // profiles RLS policy, then applies email_visibility/phone_visibility.
+    // An unauthorized viewer's browser never receives the raw values at all.
+    const { data, error } = await supabase.rpc('get_profile_contact_info', {
+      _profile_id: targetProfileId,
+    });
+    if (!error && data && data.length > 0) {
+      setContactInfo({ email: data[0].email, phone: data[0].phone });
     }
   };
 
@@ -239,6 +289,18 @@ const PublicProfile = () => {
       setIsFollowing(!!data);
     } catch (error) {
       console.error('Error checking follow status:', error);
+    }
+  };
+
+  const checkRecruiterAuthorization = async () => {
+    try {
+      // Company-agnostic: true only if the viewer holds an explicit
+      // recruiter grant in at least one company (or owns one) -- never
+      // satisfied by plain company membership alone.
+      const { data } = await supabase.rpc('is_any_authorized_recruiter');
+      setIsAuthorizedRecruiter(!!data);
+    } catch (error) {
+      console.error('Error checking recruiter authorization:', error);
     }
   };
 
@@ -458,10 +520,29 @@ const PublicProfile = () => {
     profile?.user_id !== currentUser?.id &&
     connectionStatus !== 'accepted';
   const isRestricted = isPrivate || isConnectionsOnlyLocked;
-  const canSeeEmail =
+  // get_profile_contact_info() already applied email_visibility/
+  // phone_visibility (and re-checked profile_visibility/blocking) server
+  // side -- a non-null value here means the viewer is authorized; there is
+  // no client-side visibility decision left to make.
+  const canSeeEmail = contactInfo.email !== null;
+  const canSeePhone = contactInfo.phone !== null;
+  // Canonical Open-to-Work model: public / recruiters / private.
+  // 'recruiters' is gated by a real, formal recruiter authorization check
+  // (is_any_authorized_recruiter -- an explicit per-company grant, never
+  // plain company membership). 'connections_only' isn't a canonical value
+  // for this column, but is left in as a defensive no-op so any legacy row
+  // that happened to carry it keeps behaving exactly as before, not as a
+  // regression.
+  const canSeeOpenToWork =
     profile?.user_id === currentUser?.id ||
-    profile?.email_visibility === 'public' ||
-    (profile?.email_visibility === 'connections_only' && connectionStatus === 'accepted');
+    profile?.open_to_work_visibility === 'public' ||
+    (profile?.open_to_work_visibility === 'recruiters' && isAuthorizedRecruiter) ||
+    (profile?.open_to_work_visibility === 'connections_only' && connectionStatus === 'accepted');
+  const displayNameForViewer = formatDisplayNameForViewer(profile?.display_name, {
+    isOwner: profile?.user_id === currentUser?.id,
+    visibility: profile?.last_name_visibility,
+    isConnected: connectionStatus === 'accepted',
+  });
 
   return (
     <Layout user={currentUser!} onSignOut={handleSignOut}>
@@ -585,9 +666,9 @@ const PublicProfile = () => {
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2.5">
                         <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                          {profile?.display_name || 'User'}
+                          {displayNameForViewer || 'User'}
                         </h1>
-                        {profile?.open_to_work && (
+                        {profile?.open_to_work && canSeeOpenToWork && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success text-xs font-semibold px-2.5 py-1 border border-success/20">
                             <Sparkles className="h-3 w-3" />
                             Open to work
@@ -599,9 +680,14 @@ const PublicProfile = () => {
                           {profile.profession}
                         </p>
                       )}
+                      {connectionsCount !== null && (
+                        <p className="text-sm text-muted-foreground">
+                          {connectionsCount} connection{connectionsCount === 1 ? '' : 's'}
+                        </p>
+                      )}
                     </div>
 
-                    {(profile?.location || profile?.phone || profile?.website || (profile?.email && canSeeEmail)) && (
+                    {(profile?.location || canSeePhone || profile?.website || canSeeEmail) && (
                       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                         {profile?.location && (
                           <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -609,16 +695,16 @@ const PublicProfile = () => {
                             <span className="text-sm">{profile.location}</span>
                           </div>
                         )}
-                        {profile?.email && canSeeEmail && (
+                        {canSeeEmail && (
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <Mail className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                            <span className="text-sm">{profile.email}</span>
+                            <span className="text-sm">{contactInfo.email}</span>
                           </div>
                         )}
-                        {profile?.phone && (
+                        {canSeePhone && (
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <Phone className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-                            <span className="text-sm">{profile.phone}</span>
+                            <span className="text-sm">{contactInfo.phone}</span>
                           </div>
                         )}
                         {profile?.website && (

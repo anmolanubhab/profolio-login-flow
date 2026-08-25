@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Users, UserPlus, Copy, X, Loader2 } from 'lucide-react';
@@ -22,6 +23,7 @@ interface MemberRow {
   id: string;
   user_id: string;
   role: CompanyRole;
+  is_recruiter: boolean;
   created_at: string;
   profile: { full_name: string | null; avatar_url: string | null } | null;
 }
@@ -45,9 +47,16 @@ export const CompanyTeamManager = ({ companyId }: CompanyTeamManagerProps) => {
   const [inviting, setInviting] = useState(false);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [canManageRecruiters, setCanManageRecruiters] = useState(false);
+  const [recruiterTogglingId, setRecruiterTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTeamData();
+    // Owner or super_admin only -- content_admin cannot grant/revoke
+    // recruiter status, per the approved decision.
+    supabase.rpc('is_company_owner_or_super_admin', { _company_id: companyId }).then(({ data }) => {
+      setCanManageRecruiters(!!data);
+    });
   }, [companyId]);
 
   const fetchTeamData = async () => {
@@ -56,7 +65,7 @@ export const CompanyTeamManager = ({ companyId }: CompanyTeamManagerProps) => {
       const [{ data: memberData, error: memberError }, { data: inviteData, error: inviteError }] = await Promise.all([
         supabase
           .from('company_members')
-          .select('id, user_id, role, created_at, profiles!company_members_user_id_fkey(full_name, avatar_url)')
+          .select('id, user_id, role, is_recruiter, created_at, profiles!company_members_user_id_fkey(full_name, avatar_url)')
           .eq('company_id', companyId)
           .order('created_at', { ascending: false }),
         supabase
@@ -74,6 +83,7 @@ export const CompanyTeamManager = ({ companyId }: CompanyTeamManagerProps) => {
           id: m.id,
           user_id: m.user_id,
           role: m.role,
+          is_recruiter: m.is_recruiter,
           created_at: m.created_at,
           profile: m.profiles || null,
         }))
@@ -84,6 +94,26 @@ export const CompanyTeamManager = ({ companyId }: CompanyTeamManagerProps) => {
       toast({ title: 'Error', description: 'Could not load team information.', variant: 'destructive' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleRecruiter = async (member: MemberRow, next: boolean) => {
+    setRecruiterTogglingId(member.id);
+    try {
+      const { data: ok, error } = await supabase.rpc('set_company_recruiter', {
+        _company_id: companyId,
+        _member_user_id: member.user_id,
+        _is_recruiter: next,
+      });
+      if (error || !ok) throw error || new Error('Not permitted');
+
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, is_recruiter: next } : m)));
+      toast({ title: next ? 'Recruiter access granted' : 'Recruiter access revoked' });
+    } catch (error) {
+      console.error('Error updating recruiter status:', error);
+      toast({ title: 'Error', description: 'Could not update recruiter status.', variant: 'destructive' });
+    } finally {
+      setRecruiterTogglingId(null);
     }
   };
 
@@ -230,6 +260,18 @@ export const CompanyTeamManager = ({ companyId }: CompanyTeamManagerProps) => {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{member.profile?.full_name || 'Unknown user'}</p>
                   </div>
+                  {canManageRecruiters ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">Recruiter</span>
+                      <Switch
+                        checked={member.is_recruiter}
+                        disabled={recruiterTogglingId === member.id}
+                        onCheckedChange={(checked) => handleToggleRecruiter(member, checked)}
+                      />
+                    </div>
+                  ) : (
+                    member.is_recruiter && <Badge variant="outline">Recruiter</Badge>
+                  )}
                   <Badge variant="secondary">{member.role === 'super_admin' ? 'Super Admin' : 'Content Admin'}</Badge>
                 </div>
               ))}
