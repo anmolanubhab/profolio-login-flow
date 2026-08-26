@@ -965,7 +965,11 @@ export type Database = {
           id: string
           job_id: string
           rejection_reason: string | null
+          resume_file_path: string | null
           resume_id: string | null
+          resume_sharing_revoked: boolean
+          resume_snapshot: Json | null
+          resume_snapshot_created_at: string | null
           source: string | null
           stage_updated_at: string
           updated_at: string
@@ -980,7 +984,11 @@ export type Database = {
           id?: string
           job_id: string
           rejection_reason?: string | null
+          resume_file_path?: string | null
           resume_id?: string | null
+          resume_sharing_revoked?: boolean
+          resume_snapshot?: Json | null
+          resume_snapshot_created_at?: string | null
           source?: string | null
           stage_updated_at?: string
           updated_at?: string
@@ -995,7 +1003,11 @@ export type Database = {
           id?: string
           job_id?: string
           rejection_reason?: string | null
+          resume_file_path?: string | null
           resume_id?: string | null
+          resume_sharing_revoked?: boolean
+          resume_snapshot?: Json | null
+          resume_snapshot_created_at?: string | null
           source?: string | null
           stage_updated_at?: string
           updated_at?: string
@@ -1505,10 +1517,12 @@ export type Database = {
           conversation_id: string | null
           created_at: string | null
           file_name: string | null
+          file_size: number | null
           file_url: string | null
           id: string
           is_read: boolean | null
           message_type: string | null
+          mime_type: string | null
           sender_id: string | null
           story_id: string | null
         }
@@ -1517,10 +1531,12 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           file_name?: string | null
+          file_size?: number | null
           file_url?: string | null
           id?: string
           is_read?: boolean | null
           message_type?: string | null
+          mime_type?: string | null
           sender_id?: string | null
           story_id?: string | null
         }
@@ -1529,10 +1545,12 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           file_name?: string | null
+          file_size?: number | null
           file_url?: string | null
           id?: string
           is_read?: boolean | null
           message_type?: string | null
+          mime_type?: string | null
           sender_id?: string | null
           story_id?: string | null
         }
@@ -2012,6 +2030,47 @@ export type Database = {
           },
         ]
       }
+      professional_resources: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          profile_id: string
+          resource_type: string
+          sort_order: number
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          profile_id: string
+          resource_type: string
+          sort_order?: number
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          profile_id?: string
+          resource_type?: string
+          sort_order?: number
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_resources_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_views: {
         Row: {
           id: string
@@ -2071,6 +2130,9 @@ export type Database = {
           profile_discovery: boolean
           profile_visibility: string | null
           projects: Json | null
+          share_online_resume_with_recruiters: boolean
+          share_pdf_resume_with_recruiters: boolean
+          share_professional_links_with_recruiters: boolean
           skills: string[] | null
           twitter_url: string | null
           updated_at: string
@@ -2114,6 +2176,9 @@ export type Database = {
           profile_discovery?: boolean
           profile_visibility?: string | null
           projects?: Json | null
+          share_online_resume_with_recruiters?: boolean
+          share_pdf_resume_with_recruiters?: boolean
+          share_professional_links_with_recruiters?: boolean
           skills?: string[] | null
           twitter_url?: string | null
           updated_at?: string
@@ -2157,6 +2222,9 @@ export type Database = {
           profile_discovery?: boolean
           profile_visibility?: string | null
           projects?: Json | null
+          share_online_resume_with_recruiters?: boolean
+          share_pdf_resume_with_recruiters?: boolean
+          share_professional_links_with_recruiters?: boolean
           skills?: string[] | null
           twitter_url?: string | null
           updated_at?: string
@@ -2800,6 +2868,30 @@ export type Database = {
           }
       current_profile_id: { Args: never; Returns: string }
       generate_mfa_recovery_codes: { Args: never; Returns: string[] }
+      get_application_candidate_resources: {
+        Args: { p_application_id: string }
+        Returns: {
+          online_resume: Json
+          professional_links: Json
+          status: string
+        }[]
+      }
+      get_application_cover_note: {
+        Args: { p_application_id: string }
+        Returns: {
+          cover_note: string
+          status: string
+        }[]
+      }
+      get_application_resume: {
+        Args: { p_application_id: string }
+        Returns: {
+          candidate_name: string
+          resume_content: Json
+          resume_title: string
+          status: string
+        }[]
+      }
       get_company_follower_count: {
         Args: { company_uuid: string }
         Returns: number
@@ -2807,6 +2899,13 @@ export type Database = {
       get_company_member_count: {
         Args: { company_uuid: string }
         Returns: number
+      }
+      get_message_attachment: {
+        Args: { p_message_id: string }
+        Returns: {
+          status: string
+          storage_path: string
+        }[]
       }
       get_mfa_recovery_codes_status: {
         Args: never
@@ -2907,6 +3006,10 @@ export type Database = {
           skills: string[]
           years_experience: number
         }[]
+      }
+      set_application_resume_sharing: {
+        Args: { p_application_id: string; p_revoked: boolean }
+        Returns: boolean
       }
       set_company_recruiter: {
         Args: {

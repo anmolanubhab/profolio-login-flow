@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Eye, UserX, Clock, X, Mail, Phone, Users, UserCircle, Search, Briefcase } from 'lucide-react';
+import { Eye, UserX, Clock, X, Mail, Phone, Users, UserCircle, Search, Briefcase, FileText, Link as LinkIcon } from 'lucide-react';
 import { SettingsSection, SettingsConfigRows } from '@/components/settings/SettingsSection';
 import {
   VISIBILITY_PROFILE_PLACEHOLDER_ROWS,
@@ -28,6 +28,9 @@ export function VisibilitySettings() {
     toggleProfileDiscovery,
     toggleAllowRecruiterSearch,
     toggleAllowRecruiterProfileView,
+    toggleSharePdfResume,
+    toggleShareOnlineResume,
+    toggleShareProfessionalLinks,
     updateOpenToWorkVisibility,
     unblock,
     unsnooze,
@@ -212,6 +215,62 @@ export function VisibilitySettings() {
             id="allow_recruiter_profile_view"
             checked={settings.allow_recruiter_profile_view}
             onCheckedChange={toggleAllowRecruiterProfileView}
+            disabled={saving}
+          />
+        </div>
+
+        <div className="px-4 py-3.5 sm:px-5 flex items-center justify-between gap-4">
+          <div className="space-y-0.5 min-w-0">
+            <Label htmlFor="share_pdf_resume" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Allow recruiters to view my PDF resume
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              When you attach a PDF resume to a job application, this lets the authorized recruiter for
+              that job view it. Independent of your online resume and professional links below.
+            </p>
+          </div>
+          <Switch
+            id="share_pdf_resume"
+            checked={settings.share_pdf_resume_with_recruiters}
+            onCheckedChange={toggleSharePdfResume}
+            disabled={saving}
+          />
+        </div>
+
+        <div className="px-4 py-3.5 sm:px-5 flex items-center justify-between gap-4">
+          <div className="space-y-0.5 min-w-0">
+            <Label htmlFor="share_online_resume" className="flex items-center gap-2">
+              <LinkIcon className="h-4 w-4" />
+              Allow recruiters to view my online resume
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Lets an authorized recruiter you've applied to see your online resume link.
+            </p>
+          </div>
+          <Switch
+            id="share_online_resume"
+            checked={settings.share_online_resume_with_recruiters}
+            onCheckedChange={toggleShareOnlineResume}
+            disabled={saving}
+          />
+        </div>
+
+        <div className="px-4 py-3.5 sm:px-5 flex items-center justify-between gap-4">
+          <div className="space-y-0.5 min-w-0">
+            <Label htmlFor="share_professional_links" className="flex items-center gap-2">
+              <LinkIcon className="h-4 w-4" />
+              Allow recruiters to view my professional profile links
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Lets an authorized recruiter you've applied to see your LinkedIn, GitHub, portfolio, and
+              other professional links.
+            </p>
+          </div>
+          <Switch
+            id="share_professional_links"
+            checked={settings.share_professional_links_with_recruiters}
+            onCheckedChange={toggleShareProfessionalLinks}
             disabled={saving}
           />
         </div>
