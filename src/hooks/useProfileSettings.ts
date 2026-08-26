@@ -16,6 +16,9 @@ interface ProfileSettings {
   autoplay_videos: boolean;
   allow_recruiter_search: boolean;
   allow_recruiter_profile_view: boolean;
+  share_pdf_resume_with_recruiters: boolean;
+  share_online_resume_with_recruiters: boolean;
+  share_professional_links_with_recruiters: boolean;
 }
 
 interface BlockedEntry {
@@ -60,6 +63,9 @@ export function useProfileSettings() {
     autoplay_videos: false,
     allow_recruiter_search: false,
     allow_recruiter_profile_view: false,
+    share_pdf_resume_with_recruiters: false,
+    share_online_resume_with_recruiters: false,
+    share_professional_links_with_recruiters: false,
   });
   const [blocked, setBlocked] = useState<BlockedEntry[]>([]);
   const [snoozed, setSnoozed] = useState<SnoozedEntry[]>([]);
@@ -77,7 +83,7 @@ export function useProfileSettings() {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, profile_visibility, open_to_work, open_to_work_visibility, email_visibility, phone_visibility, connections_visibility, last_name_visibility, profile_discovery, autoplay_videos, allow_recruiter_search, allow_recruiter_profile_view, email')
+        .select('id, profile_visibility, open_to_work, open_to_work_visibility, email_visibility, phone_visibility, connections_visibility, last_name_visibility, profile_discovery, autoplay_videos, allow_recruiter_search, allow_recruiter_profile_view, share_pdf_resume_with_recruiters, share_online_resume_with_recruiters, share_professional_links_with_recruiters, email')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -96,6 +102,9 @@ export function useProfileSettings() {
           autoplay_videos: data.autoplay_videos ?? false,
           allow_recruiter_search: data.allow_recruiter_search ?? false,
           allow_recruiter_profile_view: data.allow_recruiter_profile_view ?? false,
+          share_pdf_resume_with_recruiters: data.share_pdf_resume_with_recruiters ?? false,
+          share_online_resume_with_recruiters: data.share_online_resume_with_recruiters ?? false,
+          share_professional_links_with_recruiters: data.share_professional_links_with_recruiters ?? false,
         });
         setProfileId(data.id);
         await fetchPrivacyLists(data.id);
@@ -426,6 +435,78 @@ export function useProfileSettings() {
     }
   };
 
+  const toggleSharePdfResume = async (checked: boolean) => {
+    if (!user) return;
+    setSettings((prev) => ({ ...prev, share_pdf_resume_with_recruiters: checked }));
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ share_pdf_resume_with_recruiters: checked })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast({
+        title: 'Success',
+        description: checked
+          ? 'Authorized recruiters can now view your PDF resume, where you share it on an application.'
+          : 'Recruiters can no longer view your PDF resume.',
+      });
+    } catch (error) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleShareOnlineResume = async (checked: boolean) => {
+    if (!user) return;
+    setSettings((prev) => ({ ...prev, share_online_resume_with_recruiters: checked }));
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ share_online_resume_with_recruiters: checked })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast({
+        title: 'Success',
+        description: checked
+          ? 'Authorized recruiters can now view your online resume link.'
+          : 'Recruiters can no longer view your online resume link.',
+      });
+    } catch (error) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleShareProfessionalLinks = async (checked: boolean) => {
+    if (!user) return;
+    setSettings((prev) => ({ ...prev, share_professional_links_with_recruiters: checked }));
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ share_professional_links_with_recruiters: checked })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast({
+        title: 'Success',
+        description: checked
+          ? 'Authorized recruiters can now view your professional profile links.'
+          : 'Recruiters can no longer view your professional profile links.',
+      });
+    } catch (error) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const updateOpenToWorkVisibility = async (value: string) => {
     if (!user) return;
     setSettings((prev) => ({ ...prev, open_to_work_visibility: value }));
@@ -463,6 +544,9 @@ export function useProfileSettings() {
     toggleAutoplayVideos,
     toggleAllowRecruiterSearch,
     toggleAllowRecruiterProfileView,
+    toggleSharePdfResume,
+    toggleShareOnlineResume,
+    toggleShareProfessionalLinks,
     updateOpenToWorkVisibility,
     unblock,
     unsnooze,

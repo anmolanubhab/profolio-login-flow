@@ -64,7 +64,7 @@ export const MyApplications = () => {
       const { data: apps, error: appsError } = await supabase
         .from('hiring_applications')
         .select(`
-          id, job_id, current_stage, stage_updated_at, created_at, cover_note, resume_id, source, rejection_reason,
+          id, job_id, current_stage, stage_updated_at, created_at, resume_id, resume_sharing_revoked, source, rejection_reason,
           jobs (
             id, title, location, employment_type, remote_option, salary_min, salary_max, currency, posted_at, company_id, company_name,
             companies ( name, logo_url )

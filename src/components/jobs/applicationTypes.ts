@@ -22,11 +22,27 @@ export interface ApplicationRow {
   current_stage: ApplicationStage;
   stage_updated_at: string;
   created_at: string;
-  cover_note: string | null;
   resume_id: string | null;
+  resume_sharing_revoked: boolean;
   source: string | null;
   rejection_reason: string | null;
   jobs: ApplicationJob;
+}
+
+export interface ApplicationResumeResult {
+  status: 'ok' | 'revoked' | 'no_resume' | 'not_authorized';
+  candidate_name: string | null;
+  resume_title: string | null;
+  resume_content: {
+    type?: string;
+    title?: string;
+    fileName?: string;
+    personalInfo?: { name?: string; location?: string };
+    summary?: string;
+    experience?: string;
+    education?: string;
+    skills?: string;
+  } | null;
 }
 
 export type InterviewRound = Database['public']['Tables']['hiring_interview_rounds']['Row'];
