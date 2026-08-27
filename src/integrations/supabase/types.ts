@@ -1042,6 +1042,7 @@ export type Database = {
           application_id: string
           created_at: string
           created_by_user_id: string | null
+          description: string | null
           duration_minutes: number | null
           feedback_score: number | null
           feedback_text: string | null
@@ -1049,16 +1050,21 @@ export type Database = {
           interviewer_profile_id: string | null
           interviewer_user_id: string | null
           meeting_link: string | null
+          mode: Database["public"]["Enums"]["interview_mode"]
+          provider: Database["public"]["Enums"]["meeting_provider"] | null
           round_no: number
           round_type: Database["public"]["Enums"]["interview_round_type"]
           scheduled_at: string | null
           status: Database["public"]["Enums"]["interview_round_status"]
+          timezone: string
+          title: string | null
           updated_at: string
         }
         Insert: {
           application_id: string
           created_at?: string
           created_by_user_id?: string | null
+          description?: string | null
           duration_minutes?: number | null
           feedback_score?: number | null
           feedback_text?: string | null
@@ -1066,16 +1072,21 @@ export type Database = {
           interviewer_profile_id?: string | null
           interviewer_user_id?: string | null
           meeting_link?: string | null
+          mode?: Database["public"]["Enums"]["interview_mode"]
+          provider?: Database["public"]["Enums"]["meeting_provider"] | null
           round_no: number
           round_type: Database["public"]["Enums"]["interview_round_type"]
           scheduled_at?: string | null
           status?: Database["public"]["Enums"]["interview_round_status"]
+          timezone?: string
+          title?: string | null
           updated_at?: string
         }
         Update: {
           application_id?: string
           created_at?: string
           created_by_user_id?: string | null
+          description?: string | null
           duration_minutes?: number | null
           feedback_score?: number | null
           feedback_text?: string | null
@@ -1083,10 +1094,14 @@ export type Database = {
           interviewer_profile_id?: string | null
           interviewer_user_id?: string | null
           meeting_link?: string | null
+          mode?: Database["public"]["Enums"]["interview_mode"]
+          provider?: Database["public"]["Enums"]["meeting_provider"] | null
           round_no?: number
           round_type?: Database["public"]["Enums"]["interview_round_type"]
           scheduled_at?: string | null
           status?: Database["public"]["Enums"]["interview_round_status"]
+          timezone?: string
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1116,6 +1131,100 @@ export type Database = {
             columns: ["interviewer_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hiring_interview_panelists: {
+        Row: {
+          created_at: string
+          id: string
+          panel_role: string | null
+          profile_id: string | null
+          round_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          panel_role?: string | null
+          profile_id?: string | null
+          round_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          panel_role?: string | null
+          profile_id?: string | null
+          round_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hiring_interview_panelists_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "hiring_interview_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hiring_interview_feedback: {
+        Row: {
+          communication: number | null
+          created_at: string
+          id: string
+          overall: number | null
+          panelist_profile_id: string | null
+          panelist_user_id: string
+          private_notes: string | null
+          problem_solving: number | null
+          recommendation:
+            | Database["public"]["Enums"]["interview_recommendation"]
+            | null
+          round_id: string
+          technical_skill: number | null
+          updated_at: string
+        }
+        Insert: {
+          communication?: number | null
+          created_at?: string
+          id?: string
+          overall?: number | null
+          panelist_profile_id?: string | null
+          panelist_user_id: string
+          private_notes?: string | null
+          problem_solving?: number | null
+          recommendation?:
+            | Database["public"]["Enums"]["interview_recommendation"]
+            | null
+          round_id: string
+          technical_skill?: number | null
+          updated_at?: string
+        }
+        Update: {
+          communication?: number | null
+          created_at?: string
+          id?: string
+          overall?: number | null
+          panelist_profile_id?: string | null
+          panelist_user_id?: string
+          private_notes?: string | null
+          problem_solving?: number | null
+          recommendation?:
+            | Database["public"]["Enums"]["interview_recommendation"]
+            | null
+          round_id?: string
+          technical_skill?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hiring_interview_feedback_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "hiring_interview_rounds"
             referencedColumns: ["id"]
           },
         ]
@@ -1522,6 +1631,7 @@ export type Database = {
           id: string
           is_read: boolean | null
           message_type: string | null
+          metadata: Json | null
           mime_type: string | null
           sender_id: string | null
           story_id: string | null
@@ -1536,6 +1646,7 @@ export type Database = {
           id?: string
           is_read?: boolean | null
           message_type?: string | null
+          metadata?: Json | null
           mime_type?: string | null
           sender_id?: string | null
           story_id?: string | null
@@ -1550,6 +1661,7 @@ export type Database = {
           id?: string
           is_read?: boolean | null
           message_type?: string | null
+          metadata?: Json | null
           mime_type?: string | null
           sender_id?: string | null
           story_id?: string | null
@@ -2320,6 +2432,35 @@ export type Database = {
           },
         ]
       }
+      saved_jobs: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_jobs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_endorsements: {
         Row: {
           created_at: string
@@ -2977,7 +3118,67 @@ export type Database = {
         Returns: boolean
       }
       is_company_recruiter: { Args: { _company_id: string }; Returns: boolean }
+      is_company_recruiter_user: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_job_recruiter: { Args: { _job_id: string }; Returns: boolean }
+      get_or_create_conversation: {
+        Args: { _user_a: string; _user_b: string }
+        Returns: string
+      }
+      invite_interview_round: {
+        Args: {
+          p_application_id: string
+          p_round_type: Database["public"]["Enums"]["interview_round_type"]
+          p_title: string
+          p_description: string
+          p_scheduled_at: string
+          p_duration_minutes: number
+          p_timezone: string
+          p_mode: Database["public"]["Enums"]["interview_mode"]
+          p_provider: Database["public"]["Enums"]["meeting_provider"] | null
+          p_meeting_link: string | null
+          p_panelist_user_ids?: string[]
+        }
+        Returns: string
+      }
+      respond_interview_invite: {
+        Args: {
+          p_round_id: string
+          p_accept: boolean
+          p_decline_reason?: string
+        }
+        Returns: undefined
+      }
+      reschedule_interview_round: {
+        Args: {
+          p_round_id: string
+          p_new_scheduled_at: string
+          p_new_meeting_link?: string
+        }
+        Returns: undefined
+      }
+      cancel_interview_round: {
+        Args: { p_round_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      mark_interview_outcome: {
+        Args: { p_round_id: string; p_outcome: string }
+        Returns: undefined
+      }
+      submit_interview_feedback: {
+        Args: {
+          p_round_id: string
+          p_technical: number
+          p_communication: number
+          p_problem_solving: number
+          p_overall: number
+          p_recommendation: Database["public"]["Enums"]["interview_recommendation"]
+          p_notes?: string
+        }
+        Returns: undefined
+      }
       schedule_interview_round: {
         Args: {
           p_application_id: string
@@ -3048,10 +3249,18 @@ export type Database = {
         | "offer_accepted"
         | "offer_declined"
         | "withdrawn"
+        | "interview_invited"
+        | "interview_accepted"
+        | "interview_declined"
+        | "interview_rescheduled"
+        | "interview_cancelled"
+        | "interview_no_show"
+        | "interview_completed"
       application_stage:
         | "applied"
         | "screening"
         | "shortlisted"
+        | "interview_offered"
         | "interview_scheduled"
         | "interview_completed"
         | "offer_extended"
@@ -3070,11 +3279,15 @@ export type Database = {
       company_role: "super_admin" | "content_admin"
       connection_status: "pending" | "accepted" | "blocked"
       friend_request_status: "pending" | "accepted" | "rejected"
+      interview_mode: "online" | "offline"
+      interview_recommendation: "strong_hire" | "hire" | "maybe" | "reject"
       interview_round_status:
         | "scheduled"
         | "completed"
         | "cancelled"
         | "no_show"
+        | "invited"
+        | "declined"
       interview_round_type:
         | "recruiter_screen"
         | "hiring_manager"
@@ -3082,6 +3295,7 @@ export type Database = {
         | "panel"
         | "culture"
         | "executive"
+      meeting_provider: "zoom" | "microsoft_teams" | "google_meet" | "other"
       offer_status:
         | "draft"
         | "extended"
@@ -3246,11 +3460,19 @@ export const Constants = {
         "offer_accepted",
         "offer_declined",
         "withdrawn",
+        "interview_invited",
+        "interview_accepted",
+        "interview_declined",
+        "interview_rescheduled",
+        "interview_cancelled",
+        "interview_no_show",
+        "interview_completed",
       ],
       application_stage: [
         "applied",
         "screening",
         "shortlisted",
+        "interview_offered",
         "interview_scheduled",
         "interview_completed",
         "offer_extended",
@@ -3271,11 +3493,15 @@ export const Constants = {
       company_role: ["super_admin", "content_admin"],
       connection_status: ["pending", "accepted", "blocked"],
       friend_request_status: ["pending", "accepted", "rejected"],
+      interview_mode: ["online", "offline"],
+      interview_recommendation: ["strong_hire", "hire", "maybe", "reject"],
       interview_round_status: [
         "scheduled",
         "completed",
         "cancelled",
         "no_show",
+        "invited",
+        "declined",
       ],
       interview_round_type: [
         "recruiter_screen",
@@ -3285,6 +3511,7 @@ export const Constants = {
         "culture",
         "executive",
       ],
+      meeting_provider: ["zoom", "microsoft_teams", "google_meet", "other"],
       offer_status: [
         "draft",
         "extended",
