@@ -35,7 +35,7 @@ export const JobCard = ({ job, onApply, onViewDetails, isApplied, isSaved, onTog
   const companyName = job.company?.name || job.company_name || 'Company';
 
   return (
-    <Card className="hover:shadow-lg transition-shadow relative">
+    <Card className="hover:shadow-lg transition-shadow relative h-full flex flex-col">
       {onToggleSave && (
         <Button
           variant="ghost"
@@ -94,7 +94,7 @@ export const JobCard = ({ job, onApply, onViewDetails, isApplied, isSaved, onTog
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 flex-1">
         <p className="text-sm text-muted-foreground line-clamp-2">
           {job.description}
         </p>
@@ -119,18 +119,18 @@ export const JobCard = ({ job, onApply, onViewDetails, isApplied, isSaved, onTog
           </p>
         )}
       </CardContent>
-      <CardFooter className="gap-2">
-        <Button 
+      <CardFooter className="gap-2 mt-auto">
+        <Button
           onClick={() => onViewDetails(job.id)}
           variant="outline"
-          className="flex-1"
+          className="flex-1 min-w-0 h-10"
         >
           View Details
         </Button>
-        <Button 
+        <Button
           onClick={() => onApply(job.id)}
           disabled={isApplied}
-          className="flex-1"
+          className="flex-1 min-w-0 h-10"
         >
           {isApplied ? 'Applied' : 'Apply Now'}
         </Button>

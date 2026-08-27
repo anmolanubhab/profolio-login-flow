@@ -23,27 +23,28 @@ export function JobSearchHeader({ keyword, location, onSearch }: JobSearchHeader
   return (
     <div className="rounded-xl border bg-card shadow-card p-4">
       <div className="flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative min-w-0 sm:flex-[3]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground shrink-0" />
           <Input
-            placeholder="What job do you want? (title, skill, or company)"
+            placeholder="What job do you want?"
+            title="Search by title, skill, or company"
             value={keywordInput}
             onChange={(e) => setKeywordInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="pl-9 h-11"
+            className="pl-9 h-11 w-full"
           />
         </div>
-        <div className="relative flex-1 sm:max-w-xs">
-          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative min-w-0 sm:flex-[2]">
+          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground shrink-0" />
           <Input
             placeholder="Location"
             value={locationInput}
             onChange={(e) => setLocationInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="pl-9 h-11"
+            className="pl-9 h-11 w-full"
           />
         </div>
-        <Button className="h-11 sm:px-8" onClick={submit}>
+        <Button className="h-11 shrink-0 sm:px-8" onClick={submit}>
           Search
         </Button>
       </div>
