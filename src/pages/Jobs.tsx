@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,13 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, Building, DollarSign, Briefcase, Plus, MoreVertical, Edit, Trash2, FileText } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { MapPin, DollarSign, Briefcase, Plus, FileText, Sparkles } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,8 +22,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Layout } from '@/components/Layout';
+import { ProfileSummaryCard } from '@/components/ProfileSummaryCard';
 import { PostJobDialog } from '@/components/jobs/PostJobDialog';
 import { JobFilters, JobFiltersState } from '@/components/jobs/JobFilters';
+import { JobCard } from '@/components/jobs/JobCard';
+import { JobSearchHeader } from '@/components/jobs/JobSearchHeader';
+import { JobInsightsRail } from '@/components/jobs/JobInsightsRail';
+import { useSavedJobs } from '@/hooks/useSavedJobs';
+import { hasAnySignal, rankJobsByPreference, CandidateSignals } from '@/lib/jobRecommendations';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Job {
   id: string;
@@ -57,8 +58,9 @@ interface Job {
 const Jobs = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profileId, setProfileId] = useState<string>('');
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
+  const [search, setSearch] = useState({ keyword: '', location: '' });
   const [filters, setFilters] = useState<JobFiltersState>({
     search: '',
     companyId: '',
@@ -66,18 +68,21 @@ const Jobs = () => {
     employmentType: '',
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [showPostJobDialog, setShowPostJobDialog] = useState(false);
   const [coverLetter, setCoverLetter] = useState('');
   const [applying, setApplying] = useState(false);
   const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
-  const [resumes, setResumes] = useState<{ id: string; title: string }[]>([]);
+  const [resumes, setResumes] = useState<{ id: string; title: string; content: { type?: string } | null }[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string>('');
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  const [signals, setSignals] = useState<CandidateSignals>({ openToRoles: null, preferredLocations: null, jobType: null, skills: null });
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { savedJobIds, toggleSave } = useSavedJobs();
 
   useEffect(() => {
     const getUser = async () => {
@@ -87,16 +92,31 @@ const Jobs = () => {
         return;
       }
       setUser(user);
-      
-      // FIXED: Get profile ID for job posting
+
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, open_to_roles, preferred_locations, job_type, skills')
         .eq('user_id', user.id)
         .single();
-      
+
       if (profile) {
         setProfileId(profile.id);
+        setSignals({
+          openToRoles: profile.open_to_roles,
+          preferredLocations: profile.preferred_locations,
+          jobType: profile.job_type,
+          skills: profile.skills,
+        });
+
+        // "Post a Job" / For Business entry only makes sense if this person
+        // actually owns or administers a company -- same gating Dashboard
+        // already uses for My Drafts.
+        const { data: ownedCompany } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('owner_id', profile.id)
+          .maybeSingle();
+        if (ownedCompany) setCompanyId(ownedCompany.id);
       }
     };
     getUser();
@@ -110,64 +130,19 @@ const Jobs = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    let filtered = [...jobs];
-
-    // Search filter
-    if (filters.search.trim()) {
-      const query = filters.search.toLowerCase();
-      filtered = filtered.filter(job => {
-        const companyName = job.company_name || job.company?.name || '';
-        return (
-          job.title.toLowerCase().includes(query) ||
-          companyName.toLowerCase().includes(query) ||
-          job.location?.toLowerCase().includes(query) ||
-          job.description?.toLowerCase().includes(query)
-        );
-      });
-    }
-
-    // Company filter
-    if (filters.companyId) {
-      filtered = filtered.filter(job => job.company_id === filters.companyId);
-    }
-
-    // Location filter
-    if (filters.location) {
-      filtered = filtered.filter(job => job.location === filters.location);
-    }
-
-    // Employment type filter
-    if (filters.employmentType) {
-      filtered = filtered.filter(job => 
-        job.employment_type?.toLowerCase() === filters.employmentType.toLowerCase()
-      );
-    }
-
-    setFilteredJobs(filtered);
-  }, [filters, jobs]);
-
   const fetchJobs = async () => {
     try {
-      // FIXED: Fetch jobs with optional company relation
+      setLoadError(null);
       const { data, error } = await supabase
         .from('jobs')
-        .select(`
-          *,
-          company:companies(name, logo_url)
-        `)
+        .select(`*, company:companies(name, logo_url)`)
         .eq('status', 'open')
         .order('posted_at', { ascending: false });
 
       if (error) throw error;
       setJobs(data || []);
-      setFilteredJobs(data || []);
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      setLoadError(error.message || 'Something went wrong loading jobs.');
     } finally {
       setLoading(false);
     }
@@ -176,18 +151,13 @@ const Jobs = () => {
   const fetchApplications = async () => {
     try {
       if (!user) return;
-
-      // The candidate's own applications now live in hiring_applications --
-      // the same table the recruiter's Hiring Pipeline reads/writes -- so an
-      // application made here is immediately visible to the recruiter and to
-      // My Applications, instead of the old disconnected `applications` table.
       const { data, error } = await supabase
         .from('hiring_applications')
         .select('job_id')
         .eq('candidate_user_id', user.id);
 
       if (error) throw error;
-      setAppliedJobs(new Set(data?.map(app => app.job_id) || []));
+      setAppliedJobs(new Set(data?.map((app) => app.job_id) || []));
     } catch (error: any) {
       console.error('Error fetching applications:', error);
     }
@@ -198,12 +168,12 @@ const Jobs = () => {
       if (!user) return;
       const { data, error } = await supabase
         .from('resumes')
-        .select('id, title')
+        .select('id, title, content')
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      setResumes(data || []);
+      setResumes((data || []) as { id: string; title: string; content: { type?: string } | null }[]);
       if (data && data.length > 0) setSelectedResumeId(data[0].id);
     } catch (error: any) {
       console.error('Error fetching resumes:', error);
@@ -215,54 +185,59 @@ const Jobs = () => {
     navigate('/');
   };
 
+  const filteredJobs = useMemo(() => {
+    let result = [...jobs];
+    const keyword = (search.keyword || filters.search).toLowerCase().trim();
+    const location = (search.location || filters.location).toLowerCase().trim();
+
+    if (keyword) {
+      result = result.filter((job) => {
+        const companyName = job.company_name || job.company?.name || '';
+        return (
+          job.title.toLowerCase().includes(keyword) ||
+          companyName.toLowerCase().includes(keyword) ||
+          job.description?.toLowerCase().includes(keyword)
+        );
+      });
+    }
+    if (location) {
+      result = result.filter((job) => job.location?.toLowerCase().includes(location));
+    }
+    if (filters.companyId) {
+      result = result.filter((job) => job.company_id === filters.companyId);
+    }
+    if (filters.employmentType) {
+      result = result.filter((job) => job.employment_type?.toLowerCase() === filters.employmentType.toLowerCase());
+    }
+    return result;
+  }, [jobs, search, filters]);
+
+  const recommended = useMemo(() => {
+    if (!hasAnySignal(signals)) return [];
+    return rankJobsByPreference(jobs.filter((j) => !appliedJobs.has(j.id)), signals).slice(0, 4);
+  }, [jobs, signals, appliedJobs]);
+
   const handleApply = async () => {
     if (!selectedJob || !user) return;
-
     try {
       setApplying(true);
-
-      // apply_to_job() is the single authoritative write path for applying --
-      // it inserts into hiring_applications (+ a 'created' hiring_application_events
-      // row) under RLS/RPC rules shared with the recruiter pipeline, instead
-      // of inserting into the legacy `applications` table directly.
       const { error } = await supabase.rpc('apply_to_job', {
         p_job_id: selectedJob.id,
         p_resume_id: selectedResumeId || undefined,
         p_cover_note: coverLetter.trim() || undefined,
       });
-
       if (error) throw error;
 
-      toast({
-        title: 'Success',
-        description: 'Application submitted successfully!',
-      });
-
-      setAppliedJobs(prev => new Set([...prev, selectedJob.id]));
+      toast({ title: 'Application submitted', description: `${selectedJob.title} at ${selectedJob.company_name || selectedJob.company?.name}` });
+      setAppliedJobs((prev) => new Set([...prev, selectedJob.id]));
       setShowApplyDialog(false);
       setCoverLetter('');
       setSelectedJob(null);
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setApplying(false);
     }
-  };
-
-  const formatTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const postTime = new Date(timestamp);
-    const diffInDays = Math.floor((now.getTime() - postTime.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffInDays === 0) return 'Today';
-    if (diffInDays === 1) return 'Yesterday';
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
-    return `${Math.floor(diffInDays / 30)} months ago`;
   };
 
   const formatSalary = (job: Job) => {
@@ -273,358 +248,310 @@ const Jobs = () => {
 
   const handleDeleteJob = async (jobId: string) => {
     try {
-      const { error } = await supabase
-        .from('jobs')
-        .delete()
-        .eq('id', jobId);
-
+      const { error } = await supabase.from('jobs').delete().eq('id', jobId);
       if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Job deleted successfully!',
-      });
-
+      toast({ title: 'Job deleted' });
       fetchJobs();
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
       setDeletingJobId(null);
     }
   };
 
-  const isJobOwner = (job: Job) => {
-    return job.posted_by === profileId;
-  };
+  const isJobOwner = (job: Job) => job.posted_by === profileId;
+
+  const renderJobCard = (job: Job, matchLabel?: string) => (
+    <JobCard
+      key={job.id}
+      job={job}
+      isApplied={appliedJobs.has(job.id)}
+      isSaved={savedJobIds.has(job.id)}
+      onToggleSave={toggleSave}
+      matchLabel={matchLabel}
+      onViewDetails={() => setSelectedJob(job)}
+      onApply={() => { setSelectedJob(job); setShowApplyDialog(true); }}
+    />
+  );
 
   if (loading) {
     return (
-      <Layout user={user!} onSignOut={handleSignOut}>
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <Layout user={user!} onSignOut={handleSignOut} fullWidth>
+        <div className="w-full max-w-[1128px] mx-auto px-3 sm:px-4 py-6 space-y-4">
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-64 w-full rounded-xl" />)}
+          </div>
         </div>
       </Layout>
     );
   }
 
   return (
-    <Layout user={user!} onSignOut={handleSignOut}>
-      <div className="container mx-auto max-w-6xl">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Next Opportunity</h1>
-            <p className="text-muted-foreground">Discover jobs that match your skills and interests</p>
-          </div>
-          {/* FIXED: Added Post Job button */}
-          <Button 
-            onClick={() => setShowPostJobDialog(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Post a Job
-          </Button>
-        </div>
-
-        <Card className="mb-6 bg-gradient-card shadow-card border-0">
-          <CardContent className="pt-6">
-            <JobFilters
-              filters={filters}
-              onFiltersChange={setFilters}
-              locations={jobs.map(job => job.location).filter(Boolean)}
-            />
-          </CardContent>
-        </Card>
-
-        {filteredJobs.length === 0 ? (
-          <Card className="p-12 text-center bg-gradient-card shadow-card border-0">
-            <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              {filters.search || filters.companyId || filters.location || filters.employmentType 
-                ? 'No jobs found matching your filters.' 
-                : 'No job openings available at the moment.'}
-            </p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredJobs.map((job) => {
-              const hasApplied = appliedJobs.has(job.id);
-              return (
-                <Card key={job.id} className="bg-gradient-card shadow-card border-0 hover:shadow-elegant transition-smooth">
-                  <CardContent className="p-6">
-                     <div className="space-y-4">
-                       <div className="flex items-start gap-4">
-                         {job.company?.logo_url && (
-                           <img 
-                             src={job.company.logo_url} 
-                             alt={job.company?.name || job.company_name}
-                             className="h-12 w-12 rounded object-cover"
-                           />
-                          )}
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg text-foreground">{job.title}</h3>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                              <Building className="h-4 w-4" />
-                              <span>{job.company_name || job.company?.name}</span>
-                            </div>
-                          </div>
-                         <div className="flex items-center gap-2">
-                           <Badge variant={hasApplied ? "secondary" : "outline"}>
-                             {hasApplied ? 'Applied' : job.employment_type}
-                           </Badge>
-                           {isJobOwner(job) && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                   <DropdownMenuItem onClick={() => {
-                                     setEditingJob(job);
-                                     setShowPostJobDialog(true);
-                                   }}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit Job
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => setDeletingJobId(job.id)}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete Job
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                         </div>
-                      </div>
-                      
-                      <p className="text-sm text-muted-foreground line-clamp-2">{job.description}</p>
-
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          <span>{job.location}</span>
-                        </div>
-                        {job.remote_option && (
-                          <Badge variant="secondary" className="text-xs">
-                            {job.remote_option}
-                          </Badge>
-                        )}
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          <span>{formatTimeAgo(job.posted_at)}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2">
-                        {formatSalary(job) && (
-                          <div className="flex items-center gap-1 text-primary font-medium">
-                            <DollarSign className="h-4 w-4" />
-                            <span>{formatSalary(job)}</span>
-                          </div>
-                        )}
-                        <div className="flex gap-2 ml-auto">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedJob(job);
-                            }}
-                          >
-                            View Details
-                          </Button>
-                          <Button 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedJob(job);
-                              setShowApplyDialog(true);
-                            }}
-                            disabled={hasApplied}
-                          >
-                            {hasApplied ? 'Applied' : 'Apply Now'}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Apply Dialog */}
-        <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Apply for {selectedJob?.title}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Resume</label>
-                {resumes.length > 0 ? (
-                  <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
-                    <SelectTrigger className="mt-2">
-                      <SelectValue placeholder="Select a resume" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {resumes.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    No resume yet.{' '}
-                    <Link to="/resume" className="text-primary hover:underline">Build one</Link>
-                    {' '}(optional — you can still apply without it)
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-sm font-medium">Cover Letter (Optional)</label>
-                <Textarea
-                  placeholder="Tell the employer why you're a great fit for this position..."
-                  value={coverLetter}
-                  onChange={(e) => setCoverLetter(e.target.value)}
-                  rows={6}
-                  className="mt-2"
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowApplyDialog(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleApply} disabled={applying}>
-                  {applying ? 'Submitting...' : 'Submit Application'}
+    <Layout user={user!} onSignOut={handleSignOut} fullWidth>
+      <div className="w-full max-w-[1128px] mx-auto px-3 sm:px-4">
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
+          <aside className="hidden lg:block lg:w-[240px] lg:shrink-0 sticky top-[calc(var(--nav-height)+1rem)]">
+            <ProfileSummaryCard hasCompany={!!companyId} />
+            {companyId && (
+              <div className="mt-4">
+                <Button className="w-full" variant="outline" onClick={() => setShowPostJobDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Post a Job
                 </Button>
               </div>
+            )}
+          </aside>
+
+          <div className="min-w-0 w-full flex-1 space-y-4 py-4">
+            <div className="flex items-center justify-between gap-2 lg:hidden">
+              <div>
+                <h1 className="text-xl font-bold text-foreground">Find Your Next Opportunity</h1>
+              </div>
+              {companyId && (
+                <Button size="sm" onClick={() => setShowPostJobDialog(true)}>
+                  <Plus className="h-4 w-4 mr-1" /> Post
+                </Button>
+              )}
             </div>
-          </DialogContent>
-        </Dialog>
+            <h1 className="hidden lg:block text-2xl font-bold text-foreground">Find Your Next Opportunity</h1>
 
-        {/* Job Details Dialog */}
-        <Dialog open={!!selectedJob && !showApplyDialog} onOpenChange={() => setSelectedJob(null)}>
-          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-            {selectedJob && (
-              <div className="space-y-6">
-                 <div>
-                   <div className="flex items-start gap-4 mb-4">
-                     {selectedJob.company?.logo_url && (
-                       <img 
-                         src={selectedJob.company.logo_url} 
-                         alt={selectedJob.company?.name || selectedJob.company_name}
-                         className="h-16 w-16 rounded object-cover"
-                       />
-                     )}
-                     <div className="flex-1">
-                       <h2 className="text-2xl font-bold">{selectedJob.title}</h2>
-                       {/* FIXED: Show company_name or fallback */}
-                       <p className="text-lg text-muted-foreground">{selectedJob.company_name || selectedJob.company?.name}</p>
-                     </div>
-                   </div>
+            <JobSearchHeader
+              keyword={search.keyword}
+              location={search.location}
+              onSearch={(keyword, location) => setSearch({ keyword, location })}
+            />
 
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <Badge>{selectedJob.employment_type}</Badge>
-                    {selectedJob.remote_option && <Badge variant="secondary">{selectedJob.remote_option}</Badge>}
-                    <Badge variant="outline">{selectedJob.location}</Badge>
+            <Card className="bg-gradient-card shadow-card border-0">
+              <CardContent className="pt-6">
+                <JobFilters
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  locations={jobs.map((job) => job.location).filter(Boolean)}
+                />
+              </CardContent>
+            </Card>
+
+            {loadError ? (
+              <Card className="p-10 text-center bg-gradient-card shadow-card border-0">
+                <p className="text-sm text-muted-foreground mb-4">{loadError}</p>
+                <Button onClick={fetchJobs}>Try Again</Button>
+              </Card>
+            ) : (
+              <>
+                {recommended.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <h2 className="text-lg font-semibold text-foreground">Jobs based on your preferences</h2>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">Based on your profile and job preferences.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 mb-6">
+                      {recommended.map(({ job }) => renderJobCard(job, 'Recommended'))}
+                    </div>
                   </div>
+                )}
 
-                  {formatSalary(selectedJob) && (
-                    <div className="flex items-center gap-2 text-primary font-semibold mb-4">
-                      <DollarSign className="h-5 w-5" />
-                      <span>{formatSalary(selectedJob)}</span>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground mb-3">
+                    {filteredJobs.length} job{filteredJobs.length === 1 ? '' : 's'} found
+                  </h2>
+                  {filteredJobs.length === 0 ? (
+                    <Card className="p-12 text-center bg-gradient-card shadow-card border-0">
+                      <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="font-medium text-foreground mb-1">No jobs found</p>
+                      <p className="text-sm text-muted-foreground">Try another title, skill, or location.</p>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                      {filteredJobs.map((job) => renderJobCard(job))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          <aside className="hidden xl:block xl:w-[300px] xl:shrink-0 sticky top-[calc(var(--nav-height)+1rem)] py-4">
+            <JobInsightsRail />
+          </aside>
+        </div>
+      </div>
+
+      {/* Apply Dialog */}
+      <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Apply for {selectedJob?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Resume</label>
+              {resumes.length > 0 ? (
+                <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select a resume" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {resumes.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.title} {r.content?.type === 'pdf' ? '(PDF)' : '(Structured)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  No resume yet.{' '}
+                  <Link to="/resume" className="text-primary hover:underline">Build one</Link>
+                  {' '}(optional — you can still apply without it)
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="text-sm font-medium">Cover Note (Optional)</label>
+              <Textarea
+                placeholder="Tell the employer why you're a great fit for this position..."
+                value={coverLetter}
+                onChange={(e) => setCoverLetter(e.target.value)}
+                rows={6}
+                className="mt-2"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowApplyDialog(false)}>Cancel</Button>
+              <Button onClick={handleApply} disabled={applying}>
+                {applying ? 'Submitting...' : 'Submit Application'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Job Details Dialog */}
+      <Dialog open={!!selectedJob && !showApplyDialog} onOpenChange={() => setSelectedJob(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          {selectedJob && (
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-start gap-4 mb-4">
+                  {selectedJob.company?.logo_url && (
+                    <img
+                      src={selectedJob.company.logo_url}
+                      alt={selectedJob.company?.name || selectedJob.company_name}
+                      className="h-16 w-16 rounded object-cover"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold">{selectedJob.title}</h2>
+                    <p className="text-lg text-muted-foreground">{selectedJob.company_name || selectedJob.company?.name}</p>
+                  </div>
+                  {isJobOwner(selectedJob) && (
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => { setEditingJob(selectedJob); setShowPostJobDialog(true); }}>Edit</Button>
+                      <Button variant="destructive" size="sm" onClick={() => setDeletingJobId(selectedJob.id)}>Delete</Button>
                     </div>
                   )}
                 </div>
 
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Job Description</h3>
-                  <p className="text-muted-foreground whitespace-pre-wrap">{selectedJob.description}</p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Badge>{selectedJob.employment_type}</Badge>
+                  {selectedJob.remote_option && <Badge variant="secondary">{selectedJob.remote_option}</Badge>}
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />{selectedJob.location}
+                  </Badge>
                 </div>
 
-                {selectedJob.requirements && (
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">Requirements</h3>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{selectedJob.requirements}</p>
+                {formatSalary(selectedJob) && (
+                  <div className="flex items-center gap-2 text-primary font-semibold mb-4">
+                    <DollarSign className="h-5 w-5" />
+                    <span>{formatSalary(selectedJob)}</span>
                   </div>
                 )}
+              </div>
 
-                 <div className="flex gap-2 pt-4 border-t">
-                   {selectedJob.apply_link ? (
-                     <Button 
-                       className="flex-1"
-                       onClick={() => {
-                         if (selectedJob.apply_link.includes('@')) {
-                           window.location.href = `mailto:${selectedJob.apply_link}`;
-                         } else {
-                           window.open(selectedJob.apply_link, '_blank');
-                         }
-                       }}
-                     >
-                       Apply Now
-                     </Button>
-                   ) : (
-                     <Button 
-                       className="flex-1"
-                       onClick={() => setShowApplyDialog(true)}
-                       disabled={appliedJobs.has(selectedJob.id)}
-                     >
-                       {appliedJobs.has(selectedJob.id) ? 'Already Applied' : 'Apply for this Job'}
-                     </Button>
-                   )}
-                 </div>
-               </div>
-             )}
-           </DialogContent>
-         </Dialog>
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Job Description</h3>
+                <p className="text-muted-foreground whitespace-pre-wrap">{selectedJob.description}</p>
+              </div>
 
-          {/* Post/Edit Job Dialog */}
-          {profileId && (
-            <PostJobDialog
-              open={showPostJobDialog}
-              onOpenChange={(open) => {
-                setShowPostJobDialog(open);
-                if (!open) setEditingJob(null);
-              }}
-              profileId={profileId}
-              editJob={editingJob}
-              onJobPosted={() => {
-                fetchJobs();
-                setEditingJob(null);
-              }}
-            />
+              {selectedJob.requirements && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">Requirements</h3>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{selectedJob.requirements}</p>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4 border-t sticky bottom-0 bg-background">
+                {selectedJob.apply_link ? (
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      if (selectedJob.apply_link.includes('@')) {
+                        window.location.href = `mailto:${selectedJob.apply_link}`;
+                      } else {
+                        window.open(selectedJob.apply_link, '_blank');
+                      }
+                    }}
+                  >
+                    Apply Now
+                  </Button>
+                ) : (
+                  <Button
+                    className="flex-1"
+                    onClick={() => setShowApplyDialog(true)}
+                    disabled={appliedJobs.has(selectedJob.id)}
+                  >
+                    {appliedJobs.has(selectedJob.id) ? 'Applied' : 'Apply'}
+                  </Button>
+                )}
+              </div>
+            </div>
           )}
+        </DialogContent>
+      </Dialog>
 
-          {/* Delete Confirmation Dialog */}
-          <AlertDialog open={!!deletingJobId} onOpenChange={() => setDeletingJobId(null)}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Job Post</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete this job posting? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={() => deletingJobId && handleDeleteJob(deletingJobId)}
-                  className="bg-destructive hover:bg-destructive/90"
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-       </div>
-     </Layout>
-   );
- };
- 
- export default Jobs;
+      {/* Post/Edit Job Dialog */}
+      {profileId && (
+        <PostJobDialog
+          open={showPostJobDialog}
+          onOpenChange={(open) => {
+            setShowPostJobDialog(open);
+            if (!open) setEditingJob(null);
+          }}
+          profileId={profileId}
+          editJob={editingJob}
+          onJobPosted={() => {
+            fetchJobs();
+            setEditingJob(null);
+            setSelectedJob(null);
+          }}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingJobId} onOpenChange={() => setDeletingJobId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Job Post</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this job posting? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingJobId && handleDeleteJob(deletingJobId)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Layout>
+  );
+};
+
+export default Jobs;

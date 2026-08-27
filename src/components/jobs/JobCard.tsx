@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Briefcase, Calendar, Building2 } from "lucide-react";
+import { MapPin, Briefcase, Calendar, Building2, Bookmark, BookmarkCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface JobCardProps {
@@ -26,13 +26,30 @@ interface JobCardProps {
   onApply: (jobId: string) => void;
   onViewDetails: (jobId: string) => void;
   isApplied?: boolean;
+  isSaved?: boolean;
+  onToggleSave?: (jobId: string) => void;
+  matchLabel?: string;
 }
 
-export const JobCard = ({ job, onApply, onViewDetails, isApplied }: JobCardProps) => {
+export const JobCard = ({ job, onApply, onViewDetails, isApplied, isSaved, onToggleSave, matchLabel }: JobCardProps) => {
   const companyName = job.company?.name || job.company_name || 'Company';
-  
+
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className="hover:shadow-lg transition-shadow relative">
+      {onToggleSave && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-3 right-3 h-8 w-8 p-0 z-10"
+          aria-label={isSaved ? 'Unsave job' : 'Save job'}
+          onClick={(e) => { e.stopPropagation(); onToggleSave(job.id); }}
+        >
+          {isSaved ? <BookmarkCheck className="h-4 w-4 text-primary" /> : <Bookmark className="h-4 w-4 text-muted-foreground" />}
+        </Button>
+      )}
+      {matchLabel && (
+        <Badge className="absolute top-3 left-3 z-10" variant="secondary">{matchLabel}</Badge>
+      )}
       <CardHeader>
         <div className="flex items-start gap-4">
           {job.company_id ? (

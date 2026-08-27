@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, ClipboardList, FilePlus2, FileText, Award, Bookmark, Users2 } from 'lucide-react';
+import { Home, ClipboardList, FilePlus2, FileText, Award, Bookmark, Users2, Settings2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -96,6 +96,7 @@ export function ProfileSummaryCard({ activeTab = 'feed', hasCompany = false }: P
       items: [
         { label: 'Resume Builder', icon: FileText, onClick: () => navigate('/resume'), isActive: isRoute('/resume') },
         { label: 'Certificate Vault', icon: Award, onClick: () => navigate('/certificates'), isActive: isRoute('/certificates') },
+        { label: 'Job Preferences', icon: Settings2, onClick: () => navigate('/settings/visibility'), isActive: isRoute('/settings/visibility') },
       ],
     },
     {
