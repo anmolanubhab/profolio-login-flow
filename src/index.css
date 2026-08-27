@@ -251,12 +251,14 @@ All colors MUST be HSL.
      same element, which is what caused the double/conflicting nav-item
      styling fixed in that component. */
 
-  /* Feed spacing */
-  .feed { @apply space-y-5 md:space-y-7; }
+  /* Feed spacing -- ~60% smaller than the previous space-y-5/space-y-7,
+     so posts read as compact/connected without merging into each other. */
+  .feed { @apply space-y-2 md:space-y-3; }
 
-  /* Card / Post */
+  /* Card / Post -- ~20% less rounded than rounded-xl (12px -> 10px);
+     no Tailwind step lands exactly there, hence the arbitrary value. */
   .post-card {
-    @apply rounded-xl border;
+    @apply rounded-[10px] border;
     background: hsl(var(--card));
     color: hsl(var(--card-foreground));
     box-shadow: var(--shadow-card);
