@@ -10,7 +10,8 @@ import {
   MessageCircle,
   Building2,
   Users2,
-  Bookmark
+  Bookmark,
+  CalendarDays
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
@@ -39,6 +40,7 @@ const mainItems = [
   { title: "Jobs", url: "/jobs", icon: Briefcase },
   { title: "Companies", url: "/companies", icon: Building2 },
   { title: "Groups", url: "/groups", icon: Users2 },
+  { title: "Events", url: "/events", icon: CalendarDays },
 ]
 
 const profileItems = [
