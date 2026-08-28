@@ -18,6 +18,7 @@ import {
   Eye,
   Briefcase,
   Star,
+  Repeat2,
   type LucideIcon,
 } from 'lucide-react';
 import { REACTION_META, ReactionType } from '@/components/ReactionBar';
@@ -58,6 +59,8 @@ export const getNotificationIcon = (type: string): LucideIcon => {
     case 'comment':
     case 'comment_reply':
       return MessageSquare;
+    case 'repost':
+      return Repeat2;
     case 'share':
       return Share2;
     case 'connection_request':
@@ -104,6 +107,10 @@ export const getNotificationMessage = (notification: NotificationLike): string =
       return payload?.message ? `${senderName} commented: "${payload.message}"` : `${senderName} commented on your post`;
     case 'comment_reply':
       return payload?.message ? `${senderName} replied: "${payload.message}"` : `${senderName} replied to your comment`;
+    case 'repost':
+      return payload?.message
+        ? `${senderName} reposted your post: "${payload.message}"`
+        : `${senderName} reposted your post`;
     case 'share':
       return `${senderName} shared your post`;
     case 'connection_request':
@@ -141,6 +148,7 @@ export const getNotificationLink = (notification: NotificationLike): string => {
     case 'post_reaction':
     case 'comment':
     case 'comment_reply':
+    case 'repost':
     case 'share':
       return `/dashboard?post=${payload?.post_id}`;
     case 'connection_request':
