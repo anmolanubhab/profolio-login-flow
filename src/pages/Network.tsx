@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Search, UserPlus, Eye, UserCheck, UserMinus, Clock, X } from 'lucide-react';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
+import { formatDisplayNameForViewer } from '@/lib/nameVisibility';
 
 interface Profile {
   id: string;
@@ -21,6 +22,7 @@ interface Profile {
   location?: string;
   avatar_url?: string;
   profile_visibility?: string;
+  last_name_visibility?: string;
 }
 
 type ConnectionStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted';
@@ -85,22 +87,36 @@ const Network = () => {
 
   const fetchProfiles = async () => {
     try {
+      // profile_discovery=false opts a profile out of this listing
+      // specifically -- it doesn't affect direct /profile/:id access.
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .neq('user_id', user?.id)
+        .eq('profile_discovery', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       // Filter out private profiles unless connected
-      const visibleProfiles = data?.filter(profile => 
-        profile.profile_visibility === 'public' || 
+      const visibleProfiles = data?.filter(profile =>
+        profile.profile_visibility === 'public' ||
         profile.profile_visibility === 'connections_only'
       ) || [];
 
-      setProfiles(visibleProfiles);
-      setFilteredProfiles(visibleProfiles);
+      // Keep people I've blocked out of my own suggestions too -- my own
+      // discovery experience, separate from the RLS-level rule that stops a
+      // blocked person from seeing me at all.
+      const { data: myProfile } = await supabase.from('profiles').select('id').eq('user_id', user?.id).single();
+      let finalProfiles = visibleProfiles;
+      if (myProfile) {
+        const { data: blocked } = await supabase.from('blocked_users').select('blocked_user_id').eq('user_id', myProfile.id);
+        const blockedIds = new Set((blocked || []).map((b) => b.blocked_user_id));
+        finalProfiles = visibleProfiles.filter((profile) => !blockedIds.has(profile.id));
+      }
+
+      setProfiles(finalProfiles);
+      setFilteredProfiles(finalProfiles);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -446,7 +462,11 @@ const Network = () => {
 
                     <div className="space-y-2 w-full">
                       <h3 className="font-semibold text-lg text-foreground">
-                        {profile.display_name || 'User'}
+                        {formatDisplayNameForViewer(profile.display_name, {
+                          isOwner: false,
+                          visibility: profile.last_name_visibility,
+                          isConnected: connectionStatuses[profile.id] === 'accepted',
+                        }) || 'User'}
                       </h3>
                       {profile.profession && (
                         <p className="text-sm text-primary font-medium">

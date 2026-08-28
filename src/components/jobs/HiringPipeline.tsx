@@ -3,8 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -12,7 +19,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Users2, Sparkles } from 'lucide-react';
+import { Users2, Sparkles, FileText, Loader2, ExternalLink } from 'lucide-react';
+import { ApplicationResumeResult } from './applicationTypes';
+import { ResumeSnapshotView } from './ResumeSnapshotView';
+
+interface CandidateResourcesResult {
+  status: 'ok' | 'not_authorized';
+  online_resume: { label: string | null; url: string } | null;
+  professional_links: { resource_type: string; label: string | null; url: string; sort_order: number }[] | null;
+}
+
+const LINK_TYPE_LABELS: Record<string, string> = {
+  linkedin: 'LinkedIn',
+  github: 'GitHub',
+  portfolio: 'Portfolio',
+  website: 'Personal Website',
+  other: 'Other',
+};
 
 type ApplicationStage =
   | 'applied'
@@ -72,6 +95,11 @@ export default function HiringPipeline({ companyId, jobs }: HiringPipelineProps)
   const [applications, setApplications] = useState<PipelineApplication[]>([]);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [resumeDialogAppId, setResumeDialogAppId] = useState<string | null>(null);
+  const [resumeResult, setResumeResult] = useState<ApplicationResumeResult | null>(null);
+  const [loadingResume, setLoadingResume] = useState(false);
+  const [candidateResources, setCandidateResources] = useState<CandidateResourcesResult | null>(null);
+  const [loadingPdfUrl, setLoadingPdfUrl] = useState(false);
 
   useEffect(() => {
     checkAdmin();
@@ -97,9 +125,13 @@ export default function HiringPipeline({ companyId, jobs }: HiringPipelineProps)
         setIsAdmin(false);
         return;
       }
-      const { data, error } = await supabase.rpc('is_company_admin', {
+      // Unified recruiter model (Phase A/B1/B6): company owner or an
+      // explicit is_recruiter=true grant -- not is_company_admin's broader
+      // "any member" check, and not automatic for every super_admin/
+      // content_admin (that legacy behavior is now backfilled per-row, see
+      // the B6 migration, not re-derived from role here).
+      const { data, error } = await supabase.rpc('is_authorized_search_recruiter', {
         _company_id: companyId,
-        _user_id: user.id,
       });
       if (error) throw error;
       setIsAdmin(!!data);
@@ -175,6 +207,48 @@ export default function HiringPipeline({ companyId, jobs }: HiringPipelineProps)
     }
   };
 
+  const handleViewResume = async (applicationId: string) => {
+    setResumeDialogAppId(applicationId);
+    setResumeResult(null);
+    setCandidateResources(null);
+    setLoadingResume(true);
+    try {
+      const [{ data, error }, resourcesRes] = await Promise.all([
+        supabase.rpc('get_application_resume', { p_application_id: applicationId }),
+        supabase.rpc('get_application_candidate_resources', { p_application_id: applicationId }),
+      ]);
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      setResumeResult(row ? (row as ApplicationResumeResult) : { status: 'not_authorized', candidate_name: null, resume_title: null, resume_content: null });
+
+      const resourcesRow = Array.isArray(resourcesRes.data) ? resourcesRes.data[0] : resourcesRes.data;
+      if (resourcesRow) setCandidateResources(resourcesRow as CandidateResourcesResult);
+    } catch (error: any) {
+      toast({ title: 'Error loading resume', description: error.message, variant: 'destructive' });
+      setResumeDialogAppId(null);
+    } finally {
+      setLoadingResume(false);
+    }
+  };
+
+  const handleViewPdf = async (applicationId: string) => {
+    setLoadingPdfUrl(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-recruiter-resume-url', {
+        body: { application_id: applicationId },
+      });
+      if (error || !data?.ok || !data?.url) {
+        toast({ title: 'Resume unavailable', description: 'Could not open the PDF resume.', variant: 'destructive' });
+        return;
+      }
+      window.open(data.url, '_blank');
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setLoadingPdfUrl(false);
+    }
+  };
+
   if (checkingAdmin || !isAdmin || jobs.length === 0) {
     return null;
   }
@@ -246,29 +320,103 @@ export default function HiringPipeline({ companyId, jobs }: HiringPipelineProps)
                   </div>
                 </div>
 
-                <div className="w-full sm:w-56 shrink-0">
-                  <Select
-                    value={app.current_stage}
-                    onValueChange={(value) => handleStageChange(app.id, value as ApplicationStage)}
-                    disabled={updatingId === app.id}
+                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleViewResume(app.id)}
+                    className="shrink-0"
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STAGE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <FileText className="w-4 h-4 mr-1.5" />
+                    View Resume
+                  </Button>
+                  <div className="w-full sm:w-56 shrink-0">
+                    <Select
+                      value={app.current_stage}
+                      onValueChange={(value) => handleStageChange(app.id, value as ApplicationStage)}
+                      disabled={updatingId === app.id}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STAGE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </CardContent>
+
+      <Dialog open={!!resumeDialogAppId} onOpenChange={(open) => !open && setResumeDialogAppId(null)}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{resumeResult?.candidate_name || 'Candidate'} — Resume</DialogTitle>
+          </DialogHeader>
+          {loadingResume ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : resumeResult ? (
+            <div className="space-y-4">
+              {resumeResult.status === 'ok' && resumeResult.resume_content?.type === 'pdf' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => resumeDialogAppId && handleViewPdf(resumeDialogAppId)}
+                  disabled={loadingPdfUrl}
+                >
+                  <FileText className="w-4 h-4 mr-1.5" />
+                  {loadingPdfUrl ? 'Opening…' : 'View PDF Resume'}
+                </Button>
+              )}
+              {!(resumeResult.status === 'ok' && resumeResult.resume_content?.type === 'pdf') && (
+                <ResumeSnapshotView result={resumeResult} />
+              )}
+
+              {candidateResources?.online_resume && (
+                <div>
+                  <h4 className="text-sm font-semibold mb-1">Online Resume</h4>
+                  <a
+                    href={candidateResources.online_resume.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary inline-flex items-center gap-1 hover:underline"
+                  >
+                    {candidateResources.online_resume.label || 'Open Resume'} <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+
+              {candidateResources?.professional_links && candidateResources.professional_links.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold mb-1">Professional Profiles</h4>
+                  <div className="space-y-1">
+                    {candidateResources.professional_links.map((link, i) => (
+                      <a
+                        key={i}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary flex items-center gap-1 hover:underline"
+                      >
+                        {link.label || LINK_TYPE_LABELS[link.resource_type] || link.resource_type} <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

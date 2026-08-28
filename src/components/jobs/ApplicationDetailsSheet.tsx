@@ -9,7 +9,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -20,7 +22,7 @@ import {
   STAGE_LABELS, STAGE_TONE, STAGE_TONE_CLASSES, canWithdrawApplication, getNextAction,
 } from '@/lib/applicationStages';
 import {
-  ApplicationRow, InterviewRound, Offer, MatchScore, ApplicationEvent,
+  ApplicationRow, InterviewRound, Offer, MatchScore, ApplicationEvent, ApplicationResumeResult,
   companyName, companyLogo, formatSalary,
 } from './applicationTypes';
 
@@ -58,9 +60,14 @@ export function ApplicationDetailsSheet({
   application, interviewRounds, offer, matchScore, open, onOpenChange, onWithdraw, onRespondToOffer,
 }: ApplicationDetailsSheetProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [events, setEvents] = useState<ApplicationEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
-  const [resumeTitle, setResumeTitle] = useState<string | null>(null);
+  const [resumeResult, setResumeResult] = useState<ApplicationResumeResult | null>(null);
+  const [loadingResume, setLoadingResume] = useState(false);
+  const [coverNote, setCoverNote] = useState<string | null>(null);
+  const [sharingRevoked, setSharingRevoked] = useState(false);
+  const [updatingSharing, setUpdatingSharing] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [respondingToOffer, setRespondingToOffer] = useState(false);
   const [showDeclineDialog, setShowDeclineDialog] = useState(false);
@@ -83,21 +90,58 @@ export function ApplicationDetailsSheet({
         }
       });
 
+    setSharingRevoked(application.resume_sharing_revoked);
+
+    setCoverNote(null);
+    supabase
+      .rpc('get_application_cover_note', { p_application_id: application.id })
+      .then(({ data }) => {
+        if (cancelled) return;
+        const row = Array.isArray(data) ? data[0] : data;
+        setCoverNote(row?.status === 'ok' ? row.cover_note : null);
+      });
+
     if (application.resume_id) {
+      setLoadingResume(true);
       supabase
-        .from('resumes')
-        .select('title')
-        .eq('id', application.resume_id)
-        .maybeSingle()
+        .rpc('get_application_resume', { p_application_id: application.id })
         .then(({ data }) => {
-          if (!cancelled) setResumeTitle(data?.title || null);
+          if (!cancelled) {
+            const row = Array.isArray(data) ? data[0] : data;
+            setResumeResult(row ? (row as ApplicationResumeResult) : null);
+            setLoadingResume(false);
+          }
         });
     } else {
-      setResumeTitle(null);
+      setResumeResult(null);
     }
 
     return () => { cancelled = true; };
   }, [open, application]);
+
+  const handleToggleSharing = async (checked: boolean) => {
+    if (!application) return;
+    const revoked = !checked;
+    setUpdatingSharing(true);
+    try {
+      const { error } = await supabase.rpc('set_application_resume_sharing', {
+        p_application_id: application.id,
+        p_revoked: revoked,
+      });
+      if (error) throw error;
+      setSharingRevoked(revoked);
+      toast({
+        title: revoked ? 'Resume sharing stopped' : 'Resume sharing resumed',
+        description: revoked
+          ? 'The recruiter can no longer view your submitted resume for this application.'
+          : 'The recruiter can view your submitted resume for this application again.',
+      });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setUpdatingSharing(false);
+    }
+  };
 
   if (!application) return null;
   const job = application.jobs;
@@ -175,15 +219,37 @@ export function ApplicationDetailsSheet({
               <Calendar className="h-3.5 w-3.5" />
               Applied {format(new Date(application.created_at), 'MMM d, yyyy')}
             </div>
-            {resumeTitle && (
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <FileText className="h-3.5 w-3.5" />
-                Resume: {resumeTitle}
+            {application.resume_id && (
+              <div className="rounded-lg border p-3 mt-2 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground min-w-0">
+                    <FileText className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">
+                      {loadingResume
+                        ? 'Loading resume…'
+                        : resumeResult?.resume_content?.title || resumeResult?.resume_title || 'Resume'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-muted-foreground">{sharingRevoked ? 'Sharing off' : 'Sharing on'}</span>
+                    <Switch
+                      checked={!sharingRevoked}
+                      onCheckedChange={handleToggleSharing}
+                      disabled={updatingSharing || loadingResume}
+                      aria-label="Share resume with recruiter"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {sharingRevoked
+                    ? "You've stopped sharing this resume with the recruiter. Your application stays active."
+                    : 'The recruiter for this job can view the resume you submitted with this application.'}
+                </p>
               </div>
             )}
-            {application.cover_note && (
+            {coverNote && (
               <p className="text-sm text-foreground leading-relaxed bg-secondary/50 rounded-lg p-3 mt-2">
-                {application.cover_note}
+                {coverNote}
               </p>
             )}
           </div>

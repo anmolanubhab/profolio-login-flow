@@ -8,6 +8,7 @@ export const STAGE_LABELS: Record<ApplicationStage, string> = {
   applied: 'Applied',
   screening: 'Under Review',
   shortlisted: 'Shortlisted',
+  interview_offered: 'Interview Invitation',
   interview_scheduled: 'Interview Scheduled',
   interview_completed: 'Interview Completed',
   offer_extended: 'Offer Received',
@@ -24,6 +25,7 @@ export const STAGE_TONE: Record<ApplicationStage, 'default' | 'success' | 'muted
   applied: 'default',
   screening: 'default',
   shortlisted: 'default',
+  interview_offered: 'default',
   interview_scheduled: 'default',
   interview_completed: 'default',
   offer_extended: 'success',
@@ -44,9 +46,9 @@ export const STAGE_TONE_CLASSES: Record<'default' | 'success' | 'muted' | 'destr
 export type ApplicationFilter = 'all' | 'active' | 'interviews' | 'offers' | 'closed';
 
 export const ACTIVE_STAGES: ApplicationStage[] = [
-  'applied', 'screening', 'shortlisted', 'interview_scheduled', 'interview_completed', 'offer_extended',
+  'applied', 'screening', 'shortlisted', 'interview_offered', 'interview_scheduled', 'interview_completed', 'offer_extended',
 ];
-export const INTERVIEW_STAGES: ApplicationStage[] = ['interview_scheduled', 'interview_completed'];
+export const INTERVIEW_STAGES: ApplicationStage[] = ['interview_offered', 'interview_scheduled', 'interview_completed'];
 export const OFFER_STAGES: ApplicationStage[] = ['offer_extended', 'offer_accepted', 'hired'];
 export const CLOSED_STAGES: ApplicationStage[] = ['rejected', 'withdrawn', 'offer_declined'];
 
@@ -95,7 +97,7 @@ export function progressSteps(stage: ApplicationStage): ProgressStep[] {
   const chain: { key: ApplicationStage[]; label: string }[] = [
     { key: ['applied'], label: 'Applied' },
     { key: ['screening'], label: 'Reviewed' },
-    { key: ['shortlisted', 'interview_scheduled', 'interview_completed'], label: 'Interview' },
+    { key: ['shortlisted', 'interview_offered', 'interview_scheduled', 'interview_completed'], label: 'Interview' },
     { key: ['offer_extended'], label: 'Offer' },
     { key: ['offer_accepted', 'hired'], label: stage === 'hired' ? 'Hired' : 'Accepted' },
   ];

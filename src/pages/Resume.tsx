@@ -4,6 +4,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Layout } from '@/components/Layout';
 import ResumeBuilder from '@/components/ResumeBuilder';
+import ProfessionalResourcesManager from '@/components/ProfessionalResourcesManager';
 
 const Resume = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -39,6 +40,9 @@ const Resume = () => {
       <div className="max-w-4xl mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold mb-6">Resume Builder</h1>
         <ResumeBuilder />
+
+        <h2 className="text-2xl font-bold mt-10 mb-6">Documents & Professional Links</h2>
+        <ProfessionalResourcesManager />
       </div>
     </Layout>
   );

@@ -41,6 +41,7 @@ import {
   Link as LinkIcon,
   Pencil,
   ChevronRight,
+  Search,
 } from 'lucide-react';
 
 interface Company {
@@ -115,6 +116,7 @@ export default function CompanyProfile() {
   const [isTeamAdmin, setIsTeamAdmin] = useState(false);
   const [showTeamManager, setShowTeamManager] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [isSearchRecruiter, setIsSearchRecruiter] = useState(false);
 
   const [tab, setTab] = useState('home');
 
@@ -126,9 +128,23 @@ export default function CompanyProfile() {
       fetchCompanyPosts();
       fetchFollowState();
       fetchAdminState();
+      fetchRecruiterState();
     }
     supabase.auth.getUser().then(({ data: { user } }) => setCurrentUser(user));
   }, [companyId]);
+
+  const fetchRecruiterState = async () => {
+    if (!companyId) return;
+    try {
+      // Distinct from isTeamAdmin -- Candidate Search requires an explicit
+      // recruiter grant (or ownership), never plain company membership.
+      const { data, error } = await supabase.rpc('is_authorized_search_recruiter', { _company_id: companyId });
+      if (error) throw error;
+      setIsSearchRecruiter(!!data);
+    } catch (error) {
+      console.error('Error checking recruiter search access:', error);
+    }
+  };
 
   const fetchAdminState = async () => {
     if (!companyId) return;
@@ -497,6 +513,14 @@ export default function CompanyProfile() {
                 <Button variant="outline" onClick={() => setShowTeamManager((prev) => !prev)}>
                   <Users className="mr-1.5 h-4 w-4" />
                   {showTeamManager ? 'Hide Team' : 'Manage Team'}
+                </Button>
+              )}
+
+              {isSearchRecruiter && (
+                <Button variant="outline" asChild>
+                  <Link to={`/company/${company.id}/candidates`}>
+                    <Search className="mr-1.5 h-4 w-4" /> Find Candidates
+                  </Link>
                 </Button>
               )}
 

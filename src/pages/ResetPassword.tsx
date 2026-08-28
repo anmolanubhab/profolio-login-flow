@@ -7,6 +7,7 @@ import { Lock, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeInput } from '@/lib/input-sanitizer';
+import { PASSWORD_MIN_LENGTH, getPasswordStrength } from '@/lib/password';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -17,16 +18,6 @@ const ResetPassword = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const getPasswordStrength = (pwd: string) => {
-    if (pwd.length === 0) return { strength: 0, label: '', color: '' };
-    if (pwd.length < 6) return { strength: 25, label: 'Weak', color: 'bg-destructive' };
-    if (pwd.length < 8) return { strength: 50, label: 'Fair', color: 'bg-warning' };
-    if (pwd.match(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/) && pwd.length >= 8) {
-      return { strength: 100, label: 'Strong', color: 'bg-success' };
-    }
-    return { strength: 75, label: 'Good', color: 'bg-primary' };
-  };
-
   const passwordStrength = getPasswordStrength(password);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,10 +25,10 @@ const ResetPassword = () => {
 
     const sanitizedPassword = sanitizeInput(password);
 
-    if (sanitizedPassword.length < 8) {
+    if (sanitizedPassword.length < PASSWORD_MIN_LENGTH) {
       toast({
         title: "Weak Password",
-        description: "Password must be at least 8 characters long.",
+        description: `Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`,
         variant: "destructive",
       });
       return;

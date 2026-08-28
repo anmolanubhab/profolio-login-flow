@@ -16,12 +16,26 @@ const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 
 export interface SecureUploadOptions {
-  bucket: 'avatars' | 'post-images' | 'certificates' | 'resumes' | 'stories' | 'post-videos' | 'post-documents';
+  bucket: 'avatars' | 'post-images' | 'certificates' | 'resumes' | 'stories' | 'post-videos' | 'post-documents' | 'message-attachments';
   file: File;
   userId: string;
   allowedTypes?: string[];
   maxSize?: number;
+  /** Optional folder segments prepended before `{userId}/`, e.g. [conversationId] for message-attachments. */
+  pathPrefix?: string[];
 }
+
+const ALLOWED_MESSAGE_DOCUMENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+  'text/csv',
+];
 
 export interface UploadResult {
   success: boolean;
@@ -63,13 +77,14 @@ export async function secureUpload({
   file,
   userId,
   allowedTypes,
-  maxSize
+  maxSize,
+  pathPrefix
 }: SecureUploadOptions): Promise<UploadResult> {
   try {
     // Set default validation rules based on bucket
     let defaultAllowedTypes: string[];
     let defaultMaxSize: number;
-    
+
     switch (bucket) {
       case 'avatars':
       case 'post-images':
@@ -93,6 +108,10 @@ export async function secureUpload({
         defaultAllowedTypes = ALLOWED_VIDEO_TYPES;
         defaultMaxSize = MAX_VIDEO_SIZE;
         break;
+      case 'message-attachments':
+        defaultAllowedTypes = ALLOWED_MESSAGE_DOCUMENT_TYPES;
+        defaultMaxSize = MAX_DOCUMENT_SIZE;
+        break;
       default:
         return { success: false, error: 'Invalid bucket specified' };
     }
@@ -108,7 +127,8 @@ export async function secureUpload({
 
     // Generate secure filename and path
     const secureFilename = generateSecureFilename(file.name);
-    const filePath = `${userId}/${secureFilename}`;
+    const prefix = pathPrefix && pathPrefix.length > 0 ? `${pathPrefix.join('/')}/` : '';
+    const filePath = `${prefix}${userId}/${secureFilename}`;
 
     // Upload to storage
     const { error: uploadError } = await supabase.storage
@@ -122,9 +142,11 @@ export async function secureUpload({
       return { success: false, error: uploadError.message };
     }
 
-    // For private buckets (certificates, resumes), store the file path instead of public URL
-    // Public URL won't work for private buckets
-    const isPrivateBucket = bucket === 'certificates' || bucket === 'resumes';
+    // For private buckets (certificates, resumes, message-attachments), store
+    // the file path instead of public URL -- public URL won't work for
+    // private buckets, and access happens exclusively through a signed URL
+    // minted server-side after authorization.
+    const isPrivateBucket = bucket === 'certificates' || bucket === 'resumes' || bucket === 'message-attachments';
     
     if (isPrivateBucket) {
       return {

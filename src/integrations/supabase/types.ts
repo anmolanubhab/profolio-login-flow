@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -66,42 +66,6 @@ export type Database = {
           },
         ]
       }
-      blocked_users: {
-        Row: {
-          blocked_user_id: string
-          created_at: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          blocked_user_id: string
-          created_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          blocked_user_id?: string
-          created_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "blocked_users_blocked_user_id_fkey"
-            columns: ["blocked_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "blocked_users_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       blocked_companies: {
         Row: {
           blocked_company_id: string
@@ -131,6 +95,42 @@ export type Database = {
           },
           {
             foreignKeyName: "blocked_companies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blocked_users: {
+        Row: {
+          blocked_user_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          blocked_user_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          blocked_user_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_users_blocked_user_id_fkey"
+            columns: ["blocked_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocked_users_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -472,6 +472,7 @@ export type Database = {
           company_id: string
           created_at: string
           id: string
+          is_recruiter: boolean
           role: Database["public"]["Enums"]["company_role"]
           updated_at: string
           user_id: string
@@ -480,6 +481,7 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
+          is_recruiter?: boolean
           role?: Database["public"]["Enums"]["company_role"]
           updated_at?: string
           user_id: string
@@ -488,6 +490,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           id?: string
+          is_recruiter?: boolean
           role?: Database["public"]["Enums"]["company_role"]
           updated_at?: string
           user_id?: string
@@ -574,6 +577,42 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      dismissed_suggested_posts: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissed_suggested_posts_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissed_suggested_posts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       education: {
         Row: {
@@ -934,42 +973,6 @@ export type Database = {
           },
         ]
       }
-      dismissed_suggested_posts: {
-        Row: {
-          created_at: string
-          id: string
-          post_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          post_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          post_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dismissed_suggested_posts_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "posts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dismissed_suggested_posts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       hiring_application_events: {
         Row: {
           actor_profile_id: string | null
@@ -1045,7 +1048,11 @@ export type Database = {
           id: string
           job_id: string
           rejection_reason: string | null
+          resume_file_path: string | null
           resume_id: string | null
+          resume_sharing_revoked: boolean
+          resume_snapshot: Json | null
+          resume_snapshot_created_at: string | null
           source: string | null
           stage_updated_at: string
           updated_at: string
@@ -1060,7 +1067,11 @@ export type Database = {
           id?: string
           job_id: string
           rejection_reason?: string | null
+          resume_file_path?: string | null
           resume_id?: string | null
+          resume_sharing_revoked?: boolean
+          resume_snapshot?: Json | null
+          resume_snapshot_created_at?: string | null
           source?: string | null
           stage_updated_at?: string
           updated_at?: string
@@ -1075,7 +1086,11 @@ export type Database = {
           id?: string
           job_id?: string
           rejection_reason?: string | null
+          resume_file_path?: string | null
           resume_id?: string | null
+          resume_sharing_revoked?: boolean
+          resume_snapshot?: Json | null
+          resume_snapshot_created_at?: string | null
           source?: string | null
           stage_updated_at?: string
           updated_at?: string
@@ -1110,6 +1125,7 @@ export type Database = {
           application_id: string
           created_at: string
           created_by_user_id: string | null
+          description: string | null
           duration_minutes: number | null
           feedback_score: number | null
           feedback_text: string | null
@@ -1117,16 +1133,21 @@ export type Database = {
           interviewer_profile_id: string | null
           interviewer_user_id: string | null
           meeting_link: string | null
+          mode: Database["public"]["Enums"]["interview_mode"]
+          provider: Database["public"]["Enums"]["meeting_provider"] | null
           round_no: number
           round_type: Database["public"]["Enums"]["interview_round_type"]
           scheduled_at: string | null
           status: Database["public"]["Enums"]["interview_round_status"]
+          timezone: string
+          title: string | null
           updated_at: string
         }
         Insert: {
           application_id: string
           created_at?: string
           created_by_user_id?: string | null
+          description?: string | null
           duration_minutes?: number | null
           feedback_score?: number | null
           feedback_text?: string | null
@@ -1134,16 +1155,21 @@ export type Database = {
           interviewer_profile_id?: string | null
           interviewer_user_id?: string | null
           meeting_link?: string | null
+          mode?: Database["public"]["Enums"]["interview_mode"]
+          provider?: Database["public"]["Enums"]["meeting_provider"] | null
           round_no: number
           round_type: Database["public"]["Enums"]["interview_round_type"]
           scheduled_at?: string | null
           status?: Database["public"]["Enums"]["interview_round_status"]
+          timezone?: string
+          title?: string | null
           updated_at?: string
         }
         Update: {
           application_id?: string
           created_at?: string
           created_by_user_id?: string | null
+          description?: string | null
           duration_minutes?: number | null
           feedback_score?: number | null
           feedback_text?: string | null
@@ -1151,10 +1177,14 @@ export type Database = {
           interviewer_profile_id?: string | null
           interviewer_user_id?: string | null
           meeting_link?: string | null
+          mode?: Database["public"]["Enums"]["interview_mode"]
+          provider?: Database["public"]["Enums"]["meeting_provider"] | null
           round_no?: number
           round_type?: Database["public"]["Enums"]["interview_round_type"]
           scheduled_at?: string | null
           status?: Database["public"]["Enums"]["interview_round_status"]
+          timezone?: string
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1184,6 +1214,100 @@ export type Database = {
             columns: ["interviewer_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hiring_interview_panelists: {
+        Row: {
+          created_at: string
+          id: string
+          panel_role: string | null
+          profile_id: string | null
+          round_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          panel_role?: string | null
+          profile_id?: string | null
+          round_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          panel_role?: string | null
+          profile_id?: string | null
+          round_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hiring_interview_panelists_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "hiring_interview_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hiring_interview_feedback: {
+        Row: {
+          communication: number | null
+          created_at: string
+          id: string
+          overall: number | null
+          panelist_profile_id: string | null
+          panelist_user_id: string
+          private_notes: string | null
+          problem_solving: number | null
+          recommendation:
+            | Database["public"]["Enums"]["interview_recommendation"]
+            | null
+          round_id: string
+          technical_skill: number | null
+          updated_at: string
+        }
+        Insert: {
+          communication?: number | null
+          created_at?: string
+          id?: string
+          overall?: number | null
+          panelist_profile_id?: string | null
+          panelist_user_id: string
+          private_notes?: string | null
+          problem_solving?: number | null
+          recommendation?:
+            | Database["public"]["Enums"]["interview_recommendation"]
+            | null
+          round_id: string
+          technical_skill?: number | null
+          updated_at?: string
+        }
+        Update: {
+          communication?: number | null
+          created_at?: string
+          id?: string
+          overall?: number | null
+          panelist_profile_id?: string | null
+          panelist_user_id?: string
+          private_notes?: string | null
+          problem_solving?: number | null
+          recommendation?:
+            | Database["public"]["Enums"]["interview_recommendation"]
+            | null
+          round_id?: string
+          technical_skill?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hiring_interview_feedback_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "hiring_interview_rounds"
             referencedColumns: ["id"]
           },
         ]
@@ -1585,10 +1709,13 @@ export type Database = {
           conversation_id: string | null
           created_at: string | null
           file_name: string | null
+          file_size: number | null
           file_url: string | null
           id: string
           is_read: boolean | null
           message_type: string | null
+          metadata: Json | null
+          mime_type: string | null
           sender_id: string | null
           story_id: string | null
         }
@@ -1597,10 +1724,13 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           file_name?: string | null
+          file_size?: number | null
           file_url?: string | null
           id?: string
           is_read?: boolean | null
           message_type?: string | null
+          metadata?: Json | null
+          mime_type?: string | null
           sender_id?: string | null
           story_id?: string | null
         }
@@ -1609,10 +1739,13 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string | null
           file_name?: string | null
+          file_size?: number | null
           file_url?: string | null
           id?: string
           is_read?: boolean | null
           message_type?: string | null
+          metadata?: Json | null
+          mime_type?: string | null
           sender_id?: string | null
           story_id?: string | null
         }
@@ -1632,6 +1765,62 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mfa_recovery_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          id: string
+          used_at: string | null
+          used_session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          used_session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          id?: string
+          used_at?: string | null
+          used_session_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mfa_recovery_codes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      muted_story_authors: {
+        Row: {
+          created_at: string
+          id: string
+          muted_user_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          muted_user_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          muted_user_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -2036,6 +2225,47 @@ export type Database = {
           },
         ]
       }
+      professional_resources: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          profile_id: string
+          resource_type: string
+          sort_order: number
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          profile_id: string
+          resource_type: string
+          sort_order?: number
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          profile_id?: string
+          resource_type?: string
+          sort_order?: number
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_resources_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_views: {
         Row: {
           id: string
@@ -2061,19 +2291,25 @@ export type Database = {
         Row: {
           achievements: Json | null
           address: string | null
+          allow_recruiter_profile_view: boolean
+          allow_recruiter_search: boolean
+          autoplay_videos: boolean
           avatar_url: string | null
           bio: string | null
+          connections_visibility: string
           cover_url: string | null
           created_at: string
           display_name: string | null
           education: Json | null
           email: string | null
+          email_visibility: string
           expected_salary: string | null
           experience: Json | null
           full_name: string | null
           github_url: string | null
           id: string
           job_type: string[] | null
+          last_name_visibility: string
           linkedin_url: string | null
           location: string | null
           notice_period: string | null
@@ -2081,12 +2317,17 @@ export type Database = {
           open_to_work: boolean | null
           open_to_work_visibility: string | null
           phone: string | null
+          phone_visibility: string
           photo_url: string | null
           preferences: Json | null
           preferred_locations: string[] | null
           profession: string | null
+          profile_discovery: boolean
           profile_visibility: string | null
           projects: Json | null
+          share_online_resume_with_recruiters: boolean
+          share_pdf_resume_with_recruiters: boolean
+          share_professional_links_with_recruiters: boolean
           skills: string[] | null
           twitter_url: string | null
           updated_at: string
@@ -2096,19 +2337,25 @@ export type Database = {
         Insert: {
           achievements?: Json | null
           address?: string | null
+          allow_recruiter_profile_view?: boolean
+          allow_recruiter_search?: boolean
+          autoplay_videos?: boolean
           avatar_url?: string | null
           bio?: string | null
+          connections_visibility?: string
           cover_url?: string | null
           created_at?: string
           display_name?: string | null
           education?: Json | null
           email?: string | null
+          email_visibility?: string
           expected_salary?: string | null
           experience?: Json | null
           full_name?: string | null
           github_url?: string | null
           id?: string
           job_type?: string[] | null
+          last_name_visibility?: string
           linkedin_url?: string | null
           location?: string | null
           notice_period?: string | null
@@ -2116,12 +2363,17 @@ export type Database = {
           open_to_work?: boolean | null
           open_to_work_visibility?: string | null
           phone?: string | null
+          phone_visibility?: string
           photo_url?: string | null
           preferences?: Json | null
           preferred_locations?: string[] | null
           profession?: string | null
+          profile_discovery?: boolean
           profile_visibility?: string | null
           projects?: Json | null
+          share_online_resume_with_recruiters?: boolean
+          share_pdf_resume_with_recruiters?: boolean
+          share_professional_links_with_recruiters?: boolean
           skills?: string[] | null
           twitter_url?: string | null
           updated_at?: string
@@ -2131,19 +2383,25 @@ export type Database = {
         Update: {
           achievements?: Json | null
           address?: string | null
+          allow_recruiter_profile_view?: boolean
+          allow_recruiter_search?: boolean
+          autoplay_videos?: boolean
           avatar_url?: string | null
           bio?: string | null
+          connections_visibility?: string
           cover_url?: string | null
           created_at?: string
           display_name?: string | null
           education?: Json | null
           email?: string | null
+          email_visibility?: string
           expected_salary?: string | null
           experience?: Json | null
           full_name?: string | null
           github_url?: string | null
           id?: string
           job_type?: string[] | null
+          last_name_visibility?: string
           linkedin_url?: string | null
           location?: string | null
           notice_period?: string | null
@@ -2151,12 +2409,17 @@ export type Database = {
           open_to_work?: boolean | null
           open_to_work_visibility?: string | null
           phone?: string | null
+          phone_visibility?: string
           photo_url?: string | null
           preferences?: Json | null
           preferred_locations?: string[] | null
           profession?: string | null
+          profile_discovery?: boolean
           profile_visibility?: string | null
           projects?: Json | null
+          share_online_resume_with_recruiters?: boolean
+          share_pdf_resume_with_recruiters?: boolean
+          share_professional_links_with_recruiters?: boolean
           skills?: string[] | null
           twitter_url?: string | null
           updated_at?: string
@@ -2252,6 +2515,35 @@ export type Database = {
           },
         ]
       }
+      saved_jobs: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_jobs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_endorsements: {
         Row: {
           created_at: string
@@ -2333,45 +2625,6 @@ export type Database = {
           },
         ]
       }
-      snoozed_users: {
-        Row: {
-          created_at: string
-          id: string
-          snoozed_until: string
-          snoozed_user_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          snoozed_until: string
-          snoozed_user_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          snoozed_until?: string
-          snoozed_user_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "snoozed_users_snoozed_user_id_fkey"
-            columns: ["snoozed_user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "snoozed_users_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       snoozed_companies: {
         Row: {
           created_at: string
@@ -2411,6 +2664,45 @@ export type Database = {
           },
         ]
       }
+      snoozed_users: {
+        Row: {
+          created_at: string
+          id: string
+          snoozed_until: string
+          snoozed_user_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          snoozed_until: string
+          snoozed_user_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          snoozed_until?: string
+          snoozed_user_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "snoozed_users_snoozed_user_id_fkey"
+            columns: ["snoozed_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "snoozed_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stories: {
         Row: {
           created_at: string | null
@@ -2437,35 +2729,6 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
-      }
-      story_views: {
-        Row: {
-          id: string
-          story_id: string | null
-          viewed_at: string | null
-          viewer_id: string | null
-        }
-        Insert: {
-          id?: string
-          story_id?: string | null
-          viewed_at?: string | null
-          viewer_id?: string | null
-        }
-        Update: {
-          id?: string
-          story_id?: string | null
-          viewed_at?: string | null
-          viewer_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_views_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "stories"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       story_reactions: {
         Row: {
@@ -2534,26 +2797,34 @@ export type Database = {
           },
         ]
       }
-      muted_story_authors: {
+      story_views: {
         Row: {
-          created_at: string
           id: string
-          muted_user_id: string
-          user_id: string
+          story_id: string | null
+          viewed_at: string | null
+          viewer_id: string | null
         }
         Insert: {
-          created_at?: string
           id?: string
-          muted_user_id: string
-          user_id: string
+          story_id?: string | null
+          viewed_at?: string | null
+          viewer_id?: string | null
         }
         Update: {
-          created_at?: string
           id?: string
-          muted_user_id?: string
-          user_id?: string
+          story_id?: string | null
+          viewed_at?: string | null
+          viewer_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "story_views_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -2785,6 +3056,7 @@ export type Database = {
         Args: { p_candidate_profile_id: string; p_job_id: string }
         Returns: number
       }
+      consume_mfa_recovery_code: { Args: { code: string }; Returns: boolean }
       create_company_invitation: {
         Args: {
           company_id: string
@@ -2819,6 +3091,31 @@ export type Database = {
             Returns: string
           }
       current_profile_id: { Args: never; Returns: string }
+      generate_mfa_recovery_codes: { Args: never; Returns: string[] }
+      get_application_candidate_resources: {
+        Args: { p_application_id: string }
+        Returns: {
+          online_resume: Json
+          professional_links: Json
+          status: string
+        }[]
+      }
+      get_application_cover_note: {
+        Args: { p_application_id: string }
+        Returns: {
+          cover_note: string
+          status: string
+        }[]
+      }
+      get_application_resume: {
+        Args: { p_application_id: string }
+        Returns: {
+          candidate_name: string
+          resume_content: Json
+          resume_title: string
+          status: string
+        }[]
+      }
       get_company_follower_count: {
         Args: { company_uuid: string }
         Returns: number
@@ -2827,10 +3124,56 @@ export type Database = {
         Args: { company_uuid: string }
         Returns: number
       }
+      get_message_attachment: {
+        Args: { p_message_id: string }
+        Returns: {
+          status: string
+          storage_path: string
+        }[]
+      }
+      get_mfa_recovery_codes_status: {
+        Args: never
+        Returns: {
+          generated_at: string
+          remaining: number
+          total_generated: number
+        }[]
+      }
+      get_profile_contact_info: {
+        Args: { _profile_id: string }
+        Returns: {
+          email: string
+          phone: string
+        }[]
+      }
+      get_recruiter_candidate_disclosure: {
+        Args: { _candidate_profile_id: string; _company_id: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          certifications: string[]
+          cover_url: string
+          display_name: string
+          education: Json
+          experience: Json
+          headline: string
+          location: string
+          open_to_work: boolean
+          profile_id: string
+          projects: Json
+          skills: string[]
+          website: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_visible_connections_count: {
+        Args: { target_profile_id: string }
+        Returns: number
+      }
+      has_active_mfa_recovery_grant: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2839,6 +3182,12 @@ export type Database = {
         Returns: boolean
       }
       hash_token: { Args: { token_input: string }; Returns: string }
+      is_any_authorized_recruiter: { Args: never; Returns: boolean }
+      is_authorized_search_recruiter: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
+      is_blocked_by: { Args: { target_profile_id: string }; Returns: boolean }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
@@ -2847,8 +3196,72 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_company_owner_or_super_admin: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
       is_company_recruiter: { Args: { _company_id: string }; Returns: boolean }
+      is_company_recruiter_user: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_job_recruiter: { Args: { _job_id: string }; Returns: boolean }
+      get_or_create_conversation: {
+        Args: { _user_a: string; _user_b: string }
+        Returns: string
+      }
+      invite_interview_round: {
+        Args: {
+          p_application_id: string
+          p_round_type: Database["public"]["Enums"]["interview_round_type"]
+          p_title: string
+          p_description: string
+          p_scheduled_at: string
+          p_duration_minutes: number
+          p_timezone: string
+          p_mode: Database["public"]["Enums"]["interview_mode"]
+          p_provider: Database["public"]["Enums"]["meeting_provider"] | null
+          p_meeting_link: string | null
+          p_panelist_user_ids?: string[]
+        }
+        Returns: string
+      }
+      respond_interview_invite: {
+        Args: {
+          p_round_id: string
+          p_accept: boolean
+          p_decline_reason?: string
+        }
+        Returns: undefined
+      }
+      reschedule_interview_round: {
+        Args: {
+          p_round_id: string
+          p_new_scheduled_at: string
+          p_new_meeting_link?: string
+        }
+        Returns: undefined
+      }
+      cancel_interview_round: {
+        Args: { p_round_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      mark_interview_outcome: {
+        Args: { p_round_id: string; p_outcome: string }
+        Returns: undefined
+      }
+      submit_interview_feedback: {
+        Args: {
+          p_round_id: string
+          p_technical: number
+          p_communication: number
+          p_problem_solving: number
+          p_overall: number
+          p_recommendation: Database["public"]["Enums"]["interview_recommendation"]
+          p_notes?: string
+        }
+        Returns: undefined
+      }
       schedule_interview_round: {
         Args: {
           p_application_id: string
@@ -2872,10 +3285,23 @@ export type Database = {
           full_name: string
           headline: string
           location: string
+          open_to_work: boolean
           profile_id: string
           skills: string[]
           years_experience: number
         }[]
+      }
+      set_application_resume_sharing: {
+        Args: { p_application_id: string; p_revoked: boolean }
+        Returns: boolean
+      }
+      set_company_recruiter: {
+        Args: {
+          _company_id: string
+          _is_recruiter: boolean
+          _member_user_id: string
+        }
+        Returns: boolean
       }
       update_application_stage: {
         Args: {
@@ -2906,10 +3332,18 @@ export type Database = {
         | "offer_accepted"
         | "offer_declined"
         | "withdrawn"
+        | "interview_invited"
+        | "interview_accepted"
+        | "interview_declined"
+        | "interview_rescheduled"
+        | "interview_cancelled"
+        | "interview_no_show"
+        | "interview_completed"
       application_stage:
         | "applied"
         | "screening"
         | "shortlisted"
+        | "interview_offered"
         | "interview_scheduled"
         | "interview_completed"
         | "offer_extended"
@@ -2928,11 +3362,15 @@ export type Database = {
       company_role: "super_admin" | "content_admin"
       connection_status: "pending" | "accepted" | "blocked"
       friend_request_status: "pending" | "accepted" | "rejected"
+      interview_mode: "online" | "offline"
+      interview_recommendation: "strong_hire" | "hire" | "maybe" | "reject"
       interview_round_status:
         | "scheduled"
         | "completed"
         | "cancelled"
         | "no_show"
+        | "invited"
+        | "declined"
       interview_round_type:
         | "recruiter_screen"
         | "hiring_manager"
@@ -2940,6 +3378,7 @@ export type Database = {
         | "panel"
         | "culture"
         | "executive"
+      meeting_provider: "zoom" | "microsoft_teams" | "google_meet" | "other"
       offer_status:
         | "draft"
         | "extended"
@@ -3104,11 +3543,19 @@ export const Constants = {
         "offer_accepted",
         "offer_declined",
         "withdrawn",
+        "interview_invited",
+        "interview_accepted",
+        "interview_declined",
+        "interview_rescheduled",
+        "interview_cancelled",
+        "interview_no_show",
+        "interview_completed",
       ],
       application_stage: [
         "applied",
         "screening",
         "shortlisted",
+        "interview_offered",
         "interview_scheduled",
         "interview_completed",
         "offer_extended",
@@ -3129,11 +3576,15 @@ export const Constants = {
       company_role: ["super_admin", "content_admin"],
       connection_status: ["pending", "accepted", "blocked"],
       friend_request_status: ["pending", "accepted", "rejected"],
+      interview_mode: ["online", "offline"],
+      interview_recommendation: ["strong_hire", "hire", "maybe", "reject"],
       interview_round_status: [
         "scheduled",
         "completed",
         "cancelled",
         "no_show",
+        "invited",
+        "declined",
       ],
       interview_round_type: [
         "recruiter_screen",
@@ -3143,6 +3594,7 @@ export const Constants = {
         "culture",
         "executive",
       ],
+      meeting_provider: ["zoom", "microsoft_teams", "google_meet", "other"],
       offer_status: [
         "draft",
         "extended",

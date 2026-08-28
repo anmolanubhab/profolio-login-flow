@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import {
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { PostOptionsMenu } from './PostOptionsMenu';
 import { SuggestedFollowControl } from './SuggestedFollowControl';
+import { useAutoplayPreference } from '@/hooks/useAutoplayPreference';
 import { ReactionBar, ReactionCountSummary, ReactionType, ReactionSummary, REACTION_META, REACTION_ORDER } from './ReactionBar';
 
 export interface PollSummary {
@@ -111,6 +112,39 @@ const PostCard = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const autoplayEnabled = useAutoplayPreference();
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Scroll-triggered autoplay: only wired up when the viewer has the
+  // Autoplay videos setting on, and only for this post's own <video> (not
+  // story videos or compose-time previews, which live in other components
+  // entirely and are untouched by this setting). Muted is required for
+  // browsers to allow autoplay without a user gesture.
+  //
+  // Deliberate hysteresis on play vs. pause: play as soon as the video is
+  // >=50% visible, but only pause once it's fully (0%) out of view. Using
+  // the same 50% threshold for both directions causes real flapping --
+  // confirmed while testing -- any minor layout shift from async content
+  // loading elsewhere on the page (an avatar, a suggested-post image) nudges
+  // the ratio a few percent and re-fires the observer, so a video sitting
+  // right at the boundary rapidly play/pause loops instead of just playing.
+  // Requiring full exit before pausing is the standard fix feed UIs use.
+  useEffect(() => {
+    if (!autoplayEnabled || postType !== 'video' || !videoRef.current) return;
+    const videoEl = videoRef.current;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.intersectionRatio >= 0.5) {
+          videoEl.play().catch(() => {});
+        } else if (entry.intersectionRatio === 0) {
+          videoEl.pause();
+        }
+      },
+      { threshold: [0, 0.5] }
+    );
+    observer.observe(videoEl);
+    return () => observer.disconnect();
+  }, [autoplayEnabled, postType]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -658,7 +692,14 @@ const PostCard = ({
 
       {postType === 'video' && videoUrl && (
         <div className="px-0 mb-3">
-          <video src={videoUrl} controls className="w-full max-h-[32rem] bg-black" />
+          <video
+            ref={videoRef}
+            src={videoUrl}
+            controls
+            muted={autoplayEnabled}
+            playsInline={autoplayEnabled}
+            className="w-full max-h-[32rem] bg-black"
+          />
         </div>
       )}
 
