@@ -19,6 +19,7 @@ import {
   Briefcase,
   Star,
   Repeat2,
+  AtSign,
   type LucideIcon,
 } from 'lucide-react';
 import { REACTION_META, ReactionType } from '@/components/ReactionBar';
@@ -39,6 +40,8 @@ export interface NotificationPayload {
   endorser_id?: string;
   reactor_count?: number;
   latest_reaction_type?: ReactionType;
+  reaction_type?: ReactionType;
+  comment_id?: string;
   application_id?: string;
   from_stage?: ApplicationStage;
   to_stage?: ApplicationStage;
@@ -55,10 +58,13 @@ export const getNotificationIcon = (type: string): LucideIcon => {
   switch (type) {
     case 'like':
     case 'post_reaction':
+    case 'comment_reaction':
       return ThumbsUp;
     case 'comment':
     case 'comment_reply':
       return MessageSquare;
+    case 'comment_mention':
+      return AtSign;
     case 'repost':
       return Repeat2;
     case 'share':
@@ -107,6 +113,15 @@ export const getNotificationMessage = (notification: NotificationLike): string =
       return payload?.message ? `${senderName} commented: "${payload.message}"` : `${senderName} commented on your post`;
     case 'comment_reply':
       return payload?.message ? `${senderName} replied: "${payload.message}"` : `${senderName} replied to your comment`;
+    case 'comment_reaction': {
+      const rt = payload?.reaction_type;
+      const verb = rt ? REACTION_META[rt].verb : 'reacted to';
+      return `${senderName} ${verb} your comment`;
+    }
+    case 'comment_mention':
+      return payload?.message
+        ? `${senderName} mentioned you: "${payload.message}"`
+        : `${senderName} mentioned you in a comment`;
     case 'repost':
       return payload?.message
         ? `${senderName} reposted your post: "${payload.message}"`
@@ -148,6 +163,8 @@ export const getNotificationLink = (notification: NotificationLike): string => {
     case 'post_reaction':
     case 'comment':
     case 'comment_reply':
+    case 'comment_reaction':
+    case 'comment_mention':
     case 'repost':
     case 'share':
       return `/dashboard?post=${payload?.post_id}`;

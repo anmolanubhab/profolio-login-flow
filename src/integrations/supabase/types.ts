@@ -221,6 +221,48 @@ export type Database = {
         }
         Relationships: []
       }
+      comment_reactions: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          reaction_type: Database["public"]["Enums"]["reaction_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          reaction_type?: Database["public"]["Enums"]["reaction_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          reaction_type?: Database["public"]["Enums"]["reaction_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_reactions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comment_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           acted_as: string
@@ -228,6 +270,8 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_url: string | null
+          is_edited: boolean
           parent_comment_id: string | null
           post_id: string
           updated_at: string
@@ -239,6 +283,8 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          image_url?: string | null
+          is_edited?: boolean
           parent_comment_id?: string | null
           post_id: string
           updated_at?: string
@@ -250,6 +296,8 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_url?: string | null
+          is_edited?: boolean
           parent_comment_id?: string | null
           post_id?: string
           updated_at?: string
@@ -3039,6 +3087,22 @@ export type Database = {
           p_offer_id: string
         }
         Returns: undefined
+      }
+      get_ranked_post_comments: {
+        Args: { p_post_id: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          id: string
+          post_id: string
+          user_id: string
+          content: string
+          image_url: string | null
+          created_at: string
+          is_edited: boolean
+          parent_comment_id: string | null
+          reaction_count: number
+          reply_count: number
+          relevance: number
+        }[]
       }
       apply_to_job: {
         Args: { p_cover_note?: string; p_job_id: string; p_resume_id?: string }

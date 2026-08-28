@@ -114,7 +114,7 @@ export function FeedRightRail() {
   }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="card-stack">
       <div className={WIDGET_CLASS}>
         <div className="px-4 py-3 border-b flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />

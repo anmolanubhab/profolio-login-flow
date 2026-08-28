@@ -162,7 +162,7 @@ const Dashboard = () => {
           </aside>
 
           <div className="min-w-0 w-full flex-1">
-          <TabsContent value="feed" className="space-y-3 mt-0">
+          <TabsContent value="feed" className="card-stack mt-0">
             <Stories />
             <PostInput
               user={{
