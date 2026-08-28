@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import PostCard from './PostCard';
+import PostCard, { type RepostContext } from './PostCard';
 import { useToast } from '@/hooks/use-toast';
 import { ReactionType } from './ReactionBar';
 import { PollData, buildPollSummary, buildReactionSummary, REACTION_WEIGHTS } from '@/lib/postAggregation';
@@ -31,7 +31,21 @@ interface Post {
   // post_id is UNIQUE on polls -- PostgREST detects the 1:1 relationship and
   // embeds it as a single object (null for non-poll posts), not an array.
   polls: PollData | null;
+  // post_reposts.user_id is a profiles.id.
+  post_reposts: { id: string; user_id: string; commentary: string | null }[];
 }
+
+interface RepostFeedItem {
+  repostId: string;
+  createdAt: string;
+  commentary: string | null;
+  reposter: { profileId: string; userId: string; name: string; avatar?: string };
+  post: Post;
+}
+
+type TimelineEntry =
+  | { kind: 'post'; key: string; ts: number; post: Post }
+  | { kind: 'repost'; key: string; ts: number; item: RepostFeedItem };
 
 // A post the user explicitly marked "Interested" (via PostOptionsMenu) gets
 // a flat boost to its weighted-reaction sum before decay is applied --
@@ -97,6 +111,7 @@ interface PostCursor {
 
 const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [repostItems, setRepostItems] = useState<RepostFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -113,6 +128,84 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
   // vulnerable to this; the keyset cursor already avoids most of it, this
   // is belt-and-suspenders).
   const seenPostIdsRef = useRef<Set<string>>(new Set());
+
+  // Recent reposts -> "<name> reposted this" cards, merged into the timeline
+  // by timestamp. Refreshed on first-page loads and after the viewer reposts
+  // / undoes from any card. Respects the same hidden/blocked/snoozed context.
+  const fetchRepostItems = useCallback(async () => {
+    // "<name> reposted this" cards are a For You surface. Following mode stays a
+    // strict chronological window of posts by people/companies you follow.
+    if (mode !== 'foryou') {
+      setRepostItems([]);
+      return;
+    }
+    try {
+      const ctx = filterCtxRef.current;
+      const { data, error } = await supabase
+        .from('post_reposts')
+        .select(
+          `id, commentary, created_at, user_id, post_id,
+           posts:posts!post_reposts_post_id_fkey (
+             *,
+             post_reactions (id, user_id, reaction_type),
+             post_reposts (id, user_id, commentary),
+             polls ( id, question, poll_options ( id, option_text, position ), poll_votes ( id, option_id, user_id ) )
+           )`,
+        )
+        .not('posts', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+
+      type Row = {
+        id: string; commentary: string | null; created_at: string; user_id: string; post_id: string;
+        posts: (Post & { post_reactions: Post['post_reactions']; polls: PollData | null }) | null;
+      };
+      const rows = ((data ?? []) as unknown as Row[]).filter((r) => r.posts);
+      if (rows.length === 0) {
+        setRepostItems([]);
+        return;
+      }
+
+      const reposterIds = [...new Set(rows.map((r) => r.user_id))];
+      const authorAuthIds = [...new Set(rows.map((r) => r.posts!.user_id))];
+      const [{ data: reposterProfiles }, { data: authorProfiles }] = await Promise.all([
+        supabase.from('profiles').select('id, user_id, display_name, avatar_url').in('id', reposterIds),
+        supabase.from('profiles').select('id, user_id, display_name, avatar_url').in('user_id', authorAuthIds),
+      ]);
+      const reposterMap = new Map((reposterProfiles ?? []).map((p) => [p.id, p]));
+      const authorMap = new Map((authorProfiles ?? []).map((p) => [p.user_id, p]));
+
+      const items: RepostFeedItem[] = [];
+      for (const r of rows) {
+        const op = r.posts!;
+        if (ctx) {
+          if (ctx.hiddenPostIds.includes(op.id)) continue;
+          if (ctx.blockedUserIds.includes(op.user_id)) continue;
+          if (ctx.snoozedUserIds.includes(op.user_id)) continue;
+          if (op.company_id && ctx.blockedCompanyIds.includes(op.company_id)) continue;
+          if (op.company_id && ctx.snoozedCompanyIds.includes(op.company_id)) continue;
+        }
+        const rp = reposterMap.get(r.user_id);
+        if (!rp) continue;
+        items.push({
+          repostId: r.id,
+          createdAt: r.created_at,
+          commentary: r.commentary ?? null,
+          reposter: {
+            profileId: rp.id,
+            userId: rp.user_id,
+            name: rp.display_name || 'Unknown User',
+            avatar: rp.avatar_url || undefined,
+          },
+          post: { ...op, profiles: authorMap.get(op.user_id) || null },
+        });
+      }
+      setRepostItems(items);
+    } catch (err) {
+      console.error('Error fetching reposts:', err);
+    }
+  }, [mode]);
 
   const fetchPosts = async (isLoadMore = false) => {
     try {
@@ -166,6 +259,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         .select(`
           *,
           post_reactions (id, user_id, reaction_type),
+          post_reposts (id, user_id, commentary),
           polls (
             id,
             question,
@@ -300,6 +394,13 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
       }
 
       setPosts(prev => (isLoadMore ? [...prev, ...newPostsWithProfiles] : newPostsWithProfiles));
+
+      // Recent "<someone> reposted this" activity is surfaced on the first
+      // page only (not appended per Load More) -- older reposts still reach
+      // the feed via their original post.
+      if (!isLoadMore) {
+        void fetchRepostItems();
+      }
     } catch (error) {
       console.error('Error fetching posts:', error);
       toast({
@@ -613,7 +714,34 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
 
   const handleDeletePost = (postId: string) => {
     setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+    setRepostItems(prev => prev.filter(r => r.post.id !== postId));
   };
+
+  const timeline = useMemo<TimelineEntry[]>(() => {
+    const entries: TimelineEntry[] = posts.map((post) => ({
+      kind: 'post' as const,
+      key: `p:${post.id}`,
+      ts: new Date(post.created_at).getTime(),
+      post,
+    }));
+    for (const item of repostItems) {
+      entries.push({
+        kind: 'repost',
+        key: `r:${item.repostId}`,
+        ts: new Date(item.createdAt).getTime(),
+        item,
+      });
+    }
+    return entries.sort((a, b) => b.ts - a.ts);
+  }, [posts, repostItems]);
+
+  const repostSeedFor = (post: Post) => ({
+    count: post.post_reposts?.length ?? 0,
+    hasReposted:
+      !!currentUserProfileId && (post.post_reposts || []).some((r) => r.user_id === currentUserProfileId),
+    commentary:
+      (post.post_reposts || []).find((r) => r.user_id === currentUserProfileId)?.commentary ?? null,
+  });
 
   const handleHidePost = () => {
     // Hiding changes the underlying filter set (hidden_posts), so reset and
@@ -680,7 +808,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
     );
   }
 
-  if (posts.length === 0) {
+  if (timeline.length === 0) {
     return (
       <div className="centered py-12 subtle">
         {mode === 'following' && followingIsEmpty ? (
@@ -712,39 +840,60 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
     return !!post.profiles?.id && ctx.followedProfileIds.includes(post.profiles.id);
   };
 
+  const renderPostCard = (post: Post, repostContext?: RepostContext) => {
+    const seed = repostSeedFor(post);
+    return (
+      <PostCard
+        key={repostContext ? `r:${repostContext.repostedAt}:${post.id}` : post.id}
+        id={post.id}
+        user={
+          post.posted_as === 'company'
+            ? { id: post.company_id || undefined, name: post.company_name || 'Company', avatar: post.company_logo || undefined }
+            : { id: post.profiles?.id, name: post.profiles?.display_name || 'Unknown User', avatar: post.profiles?.avatar_url }
+        }
+        profileLink={post.posted_as === 'company' && post.company_id ? `/company/${post.company_id}` : undefined}
+        content={post.content}
+        image={post.image_url || undefined}
+        timestamp={post.created_at}
+        postType={post.post_type}
+        videoUrl={post.video_url || undefined}
+        documentUrl={post.document_url || undefined}
+        documentName={post.document_name || undefined}
+        carouselUrls={post.carousel_urls || undefined}
+        poll={buildPollSummary(post.polls, currentUserProfileId)}
+        onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
+        reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}
+        onReact={(type) => handleReact(post.id, type)}
+        onDelete={() => handleDeletePost(post.id)}
+        onHide={handleHidePost}
+        cta={post.cta_enabled && post.cta_label && post.cta_url ? { label: post.cta_label, url: post.cta_url, openNewTab: post.cta_open_new_tab } : null}
+        companyId={post.posted_as === 'company' ? post.company_id : null}
+        isSuggested={!repostContext && isSuggestedPost(post)}
+        isFollowingAuthor={isFollowingAuthorOf(post)}
+        onDismissSuggested={() => handleDismissSuggested(post.id)}
+        repostCount={seed.count}
+        hasReposted={seed.hasReposted}
+        myRepostCommentary={seed.commentary}
+        repostContext={repostContext}
+        onRepostChange={fetchRepostItems}
+      />
+    );
+  };
+
   return (
     <div className="feed">
-      {posts.map((post) => (
-        <PostCard
-          key={post.id}
-          id={post.id}
-          user={
-            post.posted_as === 'company'
-              ? { id: post.company_id || undefined, name: post.company_name || 'Company', avatar: post.company_logo || undefined }
-              : { id: post.profiles?.id, name: post.profiles?.display_name || 'Unknown User', avatar: post.profiles?.avatar_url }
-          }
-          profileLink={post.posted_as === 'company' && post.company_id ? `/company/${post.company_id}` : undefined}
-          content={post.content}
-          image={post.image_url || undefined}
-          timestamp={post.created_at}
-          postType={post.post_type}
-          videoUrl={post.video_url || undefined}
-          documentUrl={post.document_url || undefined}
-          documentName={post.document_name || undefined}
-          carouselUrls={post.carousel_urls || undefined}
-          poll={buildPollSummary(post.polls, currentUserProfileId)}
-          onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
-          reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}
-          onReact={(type) => handleReact(post.id, type)}
-          onDelete={() => handleDeletePost(post.id)}
-          onHide={handleHidePost}
-          cta={post.cta_enabled && post.cta_label && post.cta_url ? { label: post.cta_label, url: post.cta_url, openNewTab: post.cta_open_new_tab } : null}
-          companyId={post.posted_as === 'company' ? post.company_id : null}
-          isSuggested={isSuggestedPost(post)}
-          isFollowingAuthor={isFollowingAuthorOf(post)}
-          onDismissSuggested={() => handleDismissSuggested(post.id)}
-        />
-      ))}
+      {timeline.map((entry) =>
+        entry.kind === 'post'
+          ? renderPostCard(entry.post)
+          : renderPostCard(entry.item.post, {
+              reposterName: entry.item.reposter.name,
+              reposterAvatar: entry.item.reposter.avatar,
+              reposterProfileId: entry.item.reposter.profileId,
+              commentary: entry.item.commentary,
+              repostedAt: entry.item.createdAt,
+              isMine: !!currentUserId && entry.item.reposter.userId === currentUserId,
+            }),
+      )}
 
       {hasMore ? (
         <div className="centered py-4">

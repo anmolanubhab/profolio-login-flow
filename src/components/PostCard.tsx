@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { MessageCircle, Share, User, Facebook, Twitter, Copy, FileText, ExternalLink, Trash2, X } from 'lucide-react';
+import { MessageCircle, Share, User, Facebook, Twitter, Copy, FileText, ExternalLink, Trash2, X, Repeat2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isServerRateLimitError, SERVER_RATE_LIMIT_MESSAGE } from '@/lib/rate-limiter';
@@ -18,6 +18,10 @@ import {
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { PostOptionsMenu } from './PostOptionsMenu';
 import { SuggestedFollowControl } from './SuggestedFollowControl';
+import PostText from './PostText';
+import RepostButton from './RepostButton';
+import type { RepostOriginalPost } from './RepostComposerDialog';
+import { usePostReposts } from '@/hooks/use-post-reposts';
 import { useAutoplayPreference } from '@/hooks/useAutoplayPreference';
 import { ReactionBar, ReactionCountSummary, ReactionType, ReactionSummary, REACTION_META, REACTION_ORDER } from './ReactionBar';
 
@@ -66,6 +70,23 @@ interface PostCardProps {
   isSuggested?: boolean;
   isFollowingAuthor?: boolean;
   onDismissSuggested?: () => void;
+  // Repost — seeds from the feed query so the button renders correct state
+  // with no extra round-trip.
+  repostCount?: number;
+  hasReposted?: boolean;
+  myRepostCommentary?: string | null;
+  // Set when this card represents "<someone> reposted this" in the feed.
+  repostContext?: RepostContext;
+  onRepostChange?: () => void;
+}
+
+export interface RepostContext {
+  reposterName: string;
+  reposterAvatar?: string;
+  reposterProfileId?: string;
+  commentary?: string | null;
+  repostedAt: string;
+  isMine?: boolean;
 }
 
 const PostCard = ({
@@ -91,6 +112,11 @@ const PostCard = ({
   isSuggested,
   isFollowingAuthor,
   onDismissSuggested,
+  repostCount: initialRepostCount = 0,
+  hasReposted: initialHasReposted = false,
+  myRepostCommentary = null,
+  repostContext,
+  onRepostChange,
 }: PostCardProps) => {
   const [ctaState, setCtaState] = useState(cta ?? null);
   useEffect(() => { setCtaState(cta ?? null); }, [cta]);
@@ -114,6 +140,43 @@ const PostCard = ({
   const isMobile = useIsMobile();
   const autoplayEnabled = useAutoplayPreference();
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const {
+    repostCount,
+    hasReposted,
+    myCommentary: myRepostText,
+    busy: repostBusy,
+    repost,
+    removeRepost,
+  } = usePostReposts(id, {
+    count: initialRepostCount,
+    hasReposted: initialHasReposted,
+    myCommentary: myRepostCommentary,
+  });
+
+  const handleRepost = async (commentary?: string | null) => {
+    const ok = await repost(commentary);
+    if (ok) onRepostChange?.();
+    return ok;
+  };
+
+  const handleRemoveRepost = async () => {
+    const ok = await removeRepost();
+    if (ok) onRepostChange?.();
+    return ok;
+  };
+
+  const repostOriginalPost: RepostOriginalPost = {
+    id,
+    author: { name: user.name, avatar: user.avatar },
+    content,
+    image,
+    postType,
+    videoUrl,
+    documentName,
+    carouselUrls,
+    createdAt: timestamp,
+  };
 
   // Scroll-triggered autoplay: only wired up when the viewer has the
   // Autoplay videos setting on, and only for this post's own <video> (not
@@ -604,6 +667,31 @@ const PostCard = ({
 
   return (
     <div className="post-card w-full max-w-full overflow-hidden" id={`post-${id}`}>
+      {repostContext && (
+        <div className="flex items-center gap-2 px-4 sm:px-5 pt-3 text-[13px] text-muted-foreground">
+          <Repeat2 className="h-4 w-4 shrink-0" />
+          <span className="truncate">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (repostContext.reposterProfileId) navigate(`/profile/${repostContext.reposterProfileId}`);
+              }}
+              className="font-semibold text-foreground hover:text-primary hover:underline"
+            >
+              {repostContext.isMine ? 'You' : repostContext.reposterName}
+            </button>{' '}
+            reposted this · {formatTimeAgo(repostContext.repostedAt)}
+          </span>
+        </div>
+      )}
+
+      {repostContext?.commentary ? (
+        <div className="post-body pb-2">
+          <PostText content={repostContext.commentary} />
+        </div>
+      ) : null}
+
       {isSuggested && (
         <div className="flex items-center justify-between px-4 sm:px-5 pt-3">
           <span className="text-[13px] font-medium text-muted-foreground">Suggested</span>
@@ -657,7 +745,7 @@ const PostCard = ({
       </div>
 
       <div className="post-body">
-        <p>{content}</p>
+        <PostText content={content} />
       </div>
 
       {image && (
@@ -765,8 +853,11 @@ const PostCard = ({
       {ctaState && <PostCta {...ctaState} />}
 
       <div className="px-4 sm:px-5 pb-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
           <ReactionCountSummary summary={reactionSummary} onClick={() => setBreakdownOpen(true)} />
+          {repostCount > 0 && (
+            <span>{repostCount} {repostCount === 1 ? 'repost' : 'reposts'}</span>
+          )}
         </div>
       </div>
 
@@ -779,6 +870,15 @@ const PostCard = ({
             <MessageCircle className="icon" />
             <span>Comment</span>
           </button>
+          <RepostButton
+            post={repostOriginalPost}
+            repostCount={repostCount}
+            hasReposted={hasReposted}
+            myCommentary={myRepostText}
+            busy={repostBusy}
+            onRepost={handleRepost}
+            onRemoveRepost={handleRemoveRepost}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button type="button" className="action-btn">
