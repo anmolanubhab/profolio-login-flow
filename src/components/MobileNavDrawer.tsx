@@ -11,6 +11,7 @@ import {
   Users2,
   Bookmark,
   Settings,
+  CalendarDays,
   Menu,
   X
 } from "lucide-react"
@@ -35,6 +36,7 @@ const mainItems = [
   { title: "Jobs", url: "/jobs", icon: Briefcase },
   { title: "Companies", url: "/companies", icon: Building2 },
   { title: "Groups", url: "/groups", icon: Users2 },
+  { title: "Events", url: "/events", icon: CalendarDays },
 ]
 
 const profileItems = [

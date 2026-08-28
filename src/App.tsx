@@ -28,11 +28,13 @@ import PostDetail from "./pages/PostDetail";
 import Story from "./pages/Story";
 import Jobs from "./pages/Jobs";
 import Companies from "./pages/Companies";
+import CreateCompany from "./pages/CreateCompany";
 import CompanyProfile from "./pages/CompanyProfile";
 import CandidateSearch from "./pages/CandidateSearch";
 import RecruiterCandidateProfile from "./pages/RecruiterCandidateProfile";
 import CompanyInviteAccept from "./pages/CompanyInviteAccept";
 import Groups from "./pages/Groups";
+import Events from "./pages/Events";
 import NotFound from "./pages/NotFound";
 import { RequireAal2 } from "./components/RequireAal2";
 
@@ -78,11 +80,13 @@ const App = () => (
               <Route path="/story/:storyId" element={<Story />} />
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/companies" element={<Companies />} />
+              <Route path="/companies/new" element={<CreateCompany />} />
               <Route path="/company/:companyId" element={<CompanyProfile />} />
               <Route path="/company/:companyId/candidates" element={<CandidateSearch />} />
               <Route path="/company/:companyId/candidates/:candidateId" element={<RecruiterCandidateProfile />} />
               <Route path="/company-invite/:invitationId/:token" element={<CompanyInviteAccept />} />
               <Route path="/groups" element={<Groups />} />
+              <Route path="/events" element={<Events />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

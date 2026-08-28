@@ -13,7 +13,9 @@ interface Company {
   id?: string;
   name: string;
   description: string;
+  tagline?: string;
   location: string;
+  headquarters?: string;
   website: string;
   logo_url: string;
   industry: string;
@@ -21,6 +23,7 @@ interface Company {
   founded_year: string;
   culture: string;
   values: string[];
+  specialties?: string[];
 }
 
 interface CompanyDialogProps {
@@ -37,44 +40,41 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
   const [logoPreview, setLogoPreview] = useState<string>('');
   const { toast } = useToast();
   
-  const [formData, setFormData] = useState({
+  const emptyForm = {
     name: '',
     description: '',
+    tagline: '',
     location: '',
+    headquarters: '',
     website: '',
     industry: '',
     employee_count: '',
     founded_year: '',
     culture: '',
     values: '',
-  });
+    specialties: '',
+  };
+  const [formData, setFormData] = useState(emptyForm);
 
   useEffect(() => {
     if (editCompany) {
       setFormData({
         name: editCompany.name,
         description: editCompany.description || '',
+        tagline: editCompany.tagline || '',
         location: editCompany.location || '',
+        headquarters: editCompany.headquarters || '',
         website: editCompany.website || '',
         industry: editCompany.industry || '',
         employee_count: editCompany.employee_count || '',
         founded_year: editCompany.founded_year || '',
         culture: editCompany.culture || '',
         values: editCompany.values?.join(', ') || '',
+        specialties: editCompany.specialties?.join(', ') || '',
       });
       setLogoPreview(editCompany.logo_url || '');
     } else {
-      setFormData({
-        name: '',
-        description: '',
-        location: '',
-        website: '',
-        industry: '',
-        employee_count: '',
-        founded_year: '',
-        culture: '',
-        values: '',
-      });
+      setFormData(emptyForm);
       setLogoPreview('');
       setLogoFile(null);
     }
@@ -151,6 +151,11 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
         .map(v => v.trim())
         .filter(v => v.length > 0);
 
+      const specialtiesArray = formData.specialties
+        .split(',')
+        .map(v => v.trim())
+        .filter(v => v.length > 0);
+
       let result;
       if (editCompany?.id) {
         // Build dynamic update payload - only include changed fields
@@ -159,7 +164,9 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
         // Only include fields that have changed
         if (formData.name !== editCompany.name) updateData.name = formData.name;
         if (formData.description !== (editCompany.description || '')) updateData.description = formData.description || null;
+        if (formData.tagline !== (editCompany.tagline || '')) updateData.tagline = formData.tagline || null;
         if (formData.location !== (editCompany.location || '')) updateData.location = formData.location || null;
+        if (formData.headquarters !== (editCompany.headquarters || '')) updateData.headquarters = formData.headquarters || null;
         if (formData.website !== (editCompany.website || '')) updateData.website = formData.website || null;
         if (formData.industry !== (editCompany.industry || '')) updateData.industry = formData.industry || null;
         if (formData.employee_count !== (editCompany.employee_count || '')) updateData.employee_count = formData.employee_count || null;
@@ -171,10 +178,15 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
         }
         
         const newValues = valuesArray.length > 0 ? valuesArray : null;
-        if (JSON.stringify(newValues) !== JSON.stringify(editCompany.values)) {
+        if (JSON.stringify(newValues) !== JSON.stringify(editCompany.values ?? null)) {
           updateData.values = newValues;
         }
-        
+
+        const newSpecialties = specialtiesArray.length > 0 ? specialtiesArray : null;
+        if (JSON.stringify(newSpecialties) !== JSON.stringify(editCompany.specialties ?? null)) {
+          updateData.specialties = newSpecialties;
+        }
+
         // Only add logo_url if a new file was uploaded
         if (newLogoUrl) {
           updateData.logo_url = newLogoUrl;
@@ -202,7 +214,9 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
           owner_id: profileId,
           name: formData.name,
           description: formData.description || null,
+          tagline: formData.tagline || null,
           location: formData.location || null,
+          headquarters: formData.headquarters || null,
           website: formData.website || null,
           logo_url: newLogoUrl || null,
           industry: formData.industry || null,
@@ -210,6 +224,7 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
           founded_year: formData.founded_year ? parseInt(formData.founded_year) : null,
           culture: formData.culture || null,
           values: valuesArray.length > 0 ? valuesArray : null,
+          specialties: specialtiesArray.length > 0 ? specialtiesArray : null,
         };
 
         result = await supabase
@@ -311,6 +326,19 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
                 />
               </div>
 
+              <div className="col-span-2">
+                <Label htmlFor="tagline" className="text-sm font-medium text-[#1D2226]">Tagline</Label>
+                <Input
+                  id="tagline"
+                  placeholder="e.g. Turning product data into decisions"
+                  value={formData.tagline}
+                  onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
+                  className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2]"
+                  maxLength={160}
+                />
+                <p className="text-xs text-[#5E6B7E] mt-1">Short line shown under the company name</p>
+              </div>
+
               <div>
                 <Label htmlFor="industry" className="text-sm font-medium text-[#1D2226]">Industry</Label>
                 <Select value={formData.industry} onValueChange={(value) => setFormData({ ...formData, industry: value })}>
@@ -353,6 +381,17 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
                   placeholder="e.g. San Francisco, CA"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2]"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="headquarters" className="text-sm font-medium text-[#1D2226]">Headquarters</Label>
+                <Input
+                  id="headquarters"
+                  placeholder="e.g. Bengaluru, Karnataka"
+                  value={formData.headquarters}
+                  onChange={(e) => setFormData({ ...formData, headquarters: e.target.value })}
                   className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2]"
                 />
               </div>
@@ -417,6 +456,18 @@ export const CompanyDialog = ({ open, onOpenChange, profileId, onCompanyCreated,
                   className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2]"
                 />
                 <p className="text-xs text-[#5E6B7E] mt-1">Separate values with commas</p>
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="specialties" className="text-sm font-medium text-[#1D2226]">Specialties</Label>
+                <Input
+                  id="specialties"
+                  placeholder="e.g. Dashboards, Data pipelines, Forecasting"
+                  value={formData.specialties}
+                  onChange={(e) => setFormData({ ...formData, specialties: e.target.value })}
+                  className="mt-1.5 border-[#E5E7EB] focus:border-[#0A66C2] focus:ring-1 focus:ring-[#0A66C2]"
+                />
+                <p className="text-xs text-[#5E6B7E] mt-1">Separate specialties with commas</p>
               </div>
             </div>
           </div>

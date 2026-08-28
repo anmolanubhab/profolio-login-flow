@@ -146,14 +146,11 @@ export default function Companies() {
             <p className="text-[#5E6B7E]">Manage your company profiles and job postings</p>
           </div>
           <Button
-            onClick={() => {
-              setEditingCompany(null);
-              setShowCompanyDialog(true);
-            }}
+            onClick={() => navigate('/companies/new')}
             className="bg-[#0A66C2] hover:bg-[#084c97] text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add Company
+            Create a company page
           </Button>
         </div>
 
@@ -172,11 +169,11 @@ export default function Companies() {
                 Create your first company profile to start posting jobs and building your employer brand
               </p>
               <Button
-                onClick={() => setShowCompanyDialog(true)}
+                onClick={() => navigate('/companies/new')}
                 className="bg-[#0A66C2] hover:bg-[#084c97] text-white"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Create Company Profile
+                Create a company page
               </Button>
             </CardContent>
           </Card>

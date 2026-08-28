@@ -288,11 +288,13 @@ export type Database = {
       }
       companies: {
         Row: {
+          cover_image_url: string | null
           created_at: string
           culture: string | null
           description: string | null
           employee_count: string | null
           founded_year: number | null
+          headquarters: string | null
           id: string
           industry: string | null
           location: string | null
@@ -300,15 +302,19 @@ export type Database = {
           name: string
           owner_id: string | null
           owner_profile_id: string | null
+          specialties: string[] | null
+          tagline: string | null
           values: string[] | null
           website: string | null
         }
         Insert: {
+          cover_image_url?: string | null
           created_at?: string
           culture?: string | null
           description?: string | null
           employee_count?: string | null
           founded_year?: number | null
+          headquarters?: string | null
           id?: string
           industry?: string | null
           location?: string | null
@@ -316,15 +322,19 @@ export type Database = {
           name: string
           owner_id?: string | null
           owner_profile_id?: string | null
+          specialties?: string[] | null
+          tagline?: string | null
           values?: string[] | null
           website?: string | null
         }
         Update: {
+          cover_image_url?: string | null
           created_at?: string
           culture?: string | null
           description?: string | null
           employee_count?: string | null
           founded_year?: number | null
+          headquarters?: string | null
           id?: string
           industry?: string | null
           location?: string | null
@@ -332,6 +342,8 @@ export type Database = {
           name?: string
           owner_id?: string | null
           owner_profile_id?: string | null
+          specialties?: string[] | null
+          tagline?: string | null
           values?: string[] | null
           website?: string | null
         }
@@ -695,6 +707,77 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          external_url: string | null
+          id: string
+          is_online: boolean
+          location: string | null
+          organizer_user_id: string
+          starts_at: string
+          title: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          external_url?: string | null
+          id?: string
+          is_online?: boolean
+          location?: string | null
+          organizer_user_id?: string
+          starts_at: string
+          title: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          external_url?: string | null
+          id?: string
+          is_online?: boolean
+          location?: string | null
+          organizer_user_id?: string
+          starts_at?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      event_attendees: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_attendees_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, Briefcase, MessageCircle, Bell, User as UserIcon, Building2, Users2, ChevronDown, ClipboardList, FilePlus2 } from 'lucide-react';
+import { Home, Users, Briefcase, MessageCircle, Bell, User as UserIcon, Building2, Users2, CalendarDays, ChevronDown, ClipboardList, FilePlus2, Plus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -109,6 +109,13 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/groups')}>
                 <Users2 className="h-4 w-4 mr-2" /> Groups
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/events')}>
+                <CalendarDays className="h-4 w-4 mr-2" /> Events
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/companies/new')}>
+                <Plus className="h-4 w-4 mr-2" /> Create a company page
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
