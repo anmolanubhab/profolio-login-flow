@@ -33,6 +33,9 @@ interface Post {
   polls: PollData | null;
   // post_reposts.user_id is a profiles.id.
   post_reposts: { id: string; user_id: string; commentary: string | null }[];
+  // Aggregate-only embed: PostgREST returns [{ count }] for comments(count).
+  // Used to seed the Comment button; the full thread loads on demand.
+  comments: { count: number }[];
 }
 
 interface RepostFeedItem {
@@ -149,6 +152,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
              *,
              post_reactions (id, user_id, reaction_type),
              post_reposts (id, user_id, commentary),
+             comments (count),
              polls ( id, question, poll_options ( id, option_text, position ), poll_votes ( id, option_id, user_id ) )
            )`,
         )
@@ -260,6 +264,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
           *,
           post_reactions (id, user_id, reaction_type),
           post_reposts (id, user_id, commentary),
+          comments (count),
           polls (
             id,
             question,
@@ -874,6 +879,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         repostCount={seed.count}
         hasReposted={seed.hasReposted}
         myRepostCommentary={seed.commentary}
+        commentCount={post.comments?.[0]?.count ?? 0}
         repostContext={repostContext}
         onRepostChange={fetchRepostItems}
       />

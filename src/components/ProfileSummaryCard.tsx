@@ -126,7 +126,7 @@ export function ProfileSummaryCard({ activeTab = 'feed', hasCompany = false }: P
 
   if (!profile) {
     return (
-      <div className="space-y-4">
+      <div className="card-stack">
         <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden animate-pulse">
           <div className="h-14 bg-muted" />
           <div className="p-4 -mt-8">
@@ -142,7 +142,7 @@ export function ProfileSummaryCard({ activeTab = 'feed', hasCompany = false }: P
   const initial = profile.display_name?.charAt(0).toUpperCase() || 'U';
 
   return (
-    <div className="space-y-4">
+    <div className="card-stack">
       <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
         <button
           onClick={() => navigate('/profile')}

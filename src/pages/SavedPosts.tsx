@@ -87,6 +87,7 @@ const SavedPosts = () => {
         .select(`
           *,
           post_reactions (id, user_id, reaction_type),
+          comments (count),
           polls (
             id,
             question,
@@ -237,6 +238,7 @@ const SavedPosts = () => {
                 poll={buildPollSummary(post.polls, currentUserProfileId)}
                 onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
                 reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}
+                commentCount={(post as { comments?: { count: number }[] }).comments?.[0]?.count ?? 0}
                 onReact={(type) => handleReact(post.id, type)}
                 onDelete={() => handleDeletePost(post.id)}
                 onHide={() => handleUnsave(post.id)}

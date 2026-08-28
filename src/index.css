@@ -42,7 +42,12 @@ All colors MUST be HSL.
     --gradient-glass: linear-gradient(145deg, hsl(0 0% 100% / 0.95), hsl(0 0% 100% / 0.85));
     --bg-gradient: linear-gradient(180deg, hsl(225 15% 96%), hsl(210 15% 98%));
     --nav-height: 3.5rem;
-    
+
+    /* One common outer vertical gap between every major stacked card/box on
+       the dashboard (feed posts, left-sidebar sections, right-rail widgets).
+       = the previous post-to-post gap (12px on desktop) reduced by ~25%. */
+    --feed-card-gap: 9px;
+
     --shadow-elegant: 0 6px 18px rgba(16, 24, 40, 0.08);
     --shadow-card: 0 6px 18px rgba(16, 24, 40, 0.08);
     --shadow-glow: 0 0 40px hsl(211 100% 50% / 0.15);
@@ -251,9 +256,14 @@ All colors MUST be HSL.
      same element, which is what caused the double/conflicting nav-item
      styling fixed in that component. */
 
-  /* Feed spacing -- ~60% smaller than the previous space-y-5/space-y-7,
-     so posts read as compact/connected without merging into each other. */
-  .feed { @apply space-y-2 md:space-y-3; }
+  /* Feed spacing -- one common outer gap (var(--feed-card-gap)) shared with
+     the left sidebar and right rail via .card-stack, so every major stacked
+     card on the dashboard has the same vertical rhythm on all breakpoints.
+     This is OUTER card-to-card spacing only; nothing inside a card changes. */
+  .feed > :not([hidden]) ~ :not([hidden]),
+  .card-stack > :not([hidden]) ~ :not([hidden]) {
+    margin-top: var(--feed-card-gap);
+  }
 
   /* Card / Post -- ~20% less rounded than rounded-xl (12px -> 10px);
      no Tailwind step lands exactly there, hence the arbitrary value. */
