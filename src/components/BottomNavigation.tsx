@@ -2,10 +2,12 @@ import { Home, Users, Plus, MessageCircle, Briefcase } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useMobileChromeHidden } from '@/hooks/use-mobile-scroll-direction';
 
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const hidden = useMobileChromeHidden();
 
   // Home / Network / Create / Messages / Jobs -- the five things a mobile user
   // needs one thumb-reach away. Alerts and Profile moved out: notifications
@@ -24,8 +26,11 @@ const BottomNavigation = () => {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border w-full max-w-full"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border w-full max-w-full transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
+      style={{
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        transform: hidden ? 'translateY(100%)' : 'translateY(0)',
+      }}
     >
       <div className="relative flex items-center justify-center h-16 px-1 xs:px-2 max-w-md mx-auto w-full">
         {navItems.map((item) => {

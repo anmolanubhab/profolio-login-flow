@@ -2,6 +2,7 @@ import { ReactNode } from "react"
 import NavBar from "./NavBar"
 import BottomNavigation from "./BottomNavigation"
 import { User } from "@supabase/supabase-js"
+import { MobileScrollDirectionProvider } from "@/hooks/use-mobile-scroll-direction"
 
 interface LayoutProps {
   children: ReactNode
@@ -15,10 +16,11 @@ interface LayoutProps {
 
 export function Layout({ children, user, onSignOut, fullWidth }: LayoutProps) {
   return (
-    <>
+    <MobileScrollDirectionProvider>
       {/* Fixed top navbar -- carries all primary navigation now (desktop
           icon tabs + mobile drawer trigger), replacing the old collapsible
-          side rail so every page gets its full content width back. */}
+          side rail so every page gets its full content width back. On mobile
+          it auto-hides on scroll-down (see use-mobile-scroll-direction). */}
       <NavBar user={user} onSignOut={onSignOut} />
 
       {/* Main content -- no overflow-x-hidden on this wrapper (or on
@@ -34,10 +36,10 @@ export function Layout({ children, user, onSignOut, fullWidth }: LayoutProps) {
         </main>
       </div>
 
-      {/* Bottom navigation - only visible on mobile */}
+      {/* Bottom navigation - only visible on mobile; auto-hides on scroll-down */}
       <div className="lg:hidden">
         <BottomNavigation />
       </div>
-    </>
+    </MobileScrollDirectionProvider>
   )
 }
