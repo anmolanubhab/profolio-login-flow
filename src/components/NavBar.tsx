@@ -38,9 +38,16 @@ const primaryNav = [
 const NavBar = ({ user, onSignOut }: NavBarProps) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [hasCompany, setHasCompany] = useState(false);
+  // Logged-in user's own profile photo + name for the top-right avatar. The
+  // `user` prop only carries the auth email, so the real photo comes from the
+  // profiles row here (and stays live via the realtime subscription below).
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
     const fetchUserId = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
@@ -48,13 +55,43 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
 
       // My Drafts (in the Me menu below) is a company-recruiter concern --
       // same gating as the sidebar's own "My Drafts" link on desktop.
-      const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', authUser.id).single();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, avatar_url, display_name')
+        .eq('user_id', authUser.id)
+        .single();
       if (!profile) return;
+      setAvatarUrl(profile.avatar_url);
+      setDisplayName(profile.display_name);
+
       const { data: company } = await supabase.from('companies').select('id').eq('owner_id', profile.id).maybeSingle();
       setHasCompany(!!company);
+
+      // Keep the avatar in sync when the user changes their profile photo.
+      channel = supabase
+        .channel('navbar-profile')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${profile.id}` },
+          (payload) => {
+            const next = payload.new as { avatar_url: string | null; display_name: string | null };
+            setAvatarUrl(next.avatar_url);
+            setDisplayName(next.display_name);
+          },
+        )
+        .subscribe();
     };
     fetchUserId();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, []);
+
+  const avatarInitial =
+    displayName?.trim()?.charAt(0).toUpperCase() ||
+    user?.email?.charAt(0).toUpperCase() ||
+    null;
 
   return (
     <nav className="navbar w-full max-w-full overflow-x-hidden">
@@ -126,9 +163,9 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
             <DropdownMenuTrigger asChild>
               <button className="flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-md hover:bg-secondary transition-colors" aria-label="Open profile menu">
                 <Avatar className="h-7 w-7">
-                  <AvatarImage src={user?.avatar} />
+                  <AvatarImage src={avatarUrl ?? undefined} alt={displayName ?? user?.email ?? 'Your profile'} />
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-                    {user?.email?.charAt(0).toUpperCase() || <UserIcon className="h-3.5 w-3.5" />}
+                    {avatarInitial || <UserIcon className="h-3.5 w-3.5" />}
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden lg:flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground">
@@ -139,13 +176,13 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
             <DropdownMenuContent align="end" className="dropdown-menu w-60">
               <div className="px-3 py-2 flex items-center gap-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={user?.avatar} />
+                  <AvatarImage src={avatarUrl ?? undefined} alt={displayName ?? user?.email ?? 'Your profile'} />
                   <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                    {user?.email?.charAt(0).toUpperCase() || <UserIcon className="h-4 w-4" />}
+                    {avatarInitial || <UserIcon className="h-4 w-4" />}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">{user?.email || 'Guest'}</div>
+                  <div className="text-sm font-medium truncate">{displayName || user?.email || 'Guest'}</div>
                   <div className="text-xs text-muted-foreground">Signed in</div>
                 </div>
               </div>
