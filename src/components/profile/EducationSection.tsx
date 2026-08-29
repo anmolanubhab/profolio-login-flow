@@ -1,383 +1,202 @@
-import { useState, useEffect } from 'react';
-import { Plus, Edit3, Save, X, Trash2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
+import { useCallback, useEffect, useState } from "react";
+import { Pencil, Trash2, GraduationCap } from "lucide-react";
 
-interface Education {
-  id: string;
-  institution: string;
-  degree?: string;
-  field_of_study?: string;
-  start_date?: string;
-  end_date?: string;
-  grade?: string;
-  description?: string;
-}
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
+import { EducationDialog } from "@/components/profile/EducationDialog";
+import { byRecency, formatRange, type EducationRow } from "@/components/profile/careerTypes";
 
 interface EducationSectionProps {
-  userId: string;
-  isOwnProfile?: boolean;
+  /** profiles.id */
+  profileId: string;
+  isOwner: boolean;
 }
 
-const EducationSection = ({ userId, isOwnProfile = false }: EducationSectionProps) => {
-  const [educations, setEducations] = useState<Education[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
+const EducationSection = ({ profileId, isOwner }: EducationSectionProps) => {
   const { toast } = useToast();
+  const [rows, setRows] = useState<EducationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [editData, setEditData] = useState({
-    institution: '',
-    degree: '',
-    field_of_study: '',
-    start_date: '',
-    end_date: '',
-    grade: '',
-    description: ''
-  });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<EducationRow | null>(null);
+  const [deleting, setDeleting] = useState<EducationRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const fetchRows = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error } = await supabase
+      .from("education")
+      .select("*")
+      .eq("user_id", profileId);
+    if (error) {
+      setError("Couldn’t load education.");
+      setRows([]);
+    } else {
+      setRows([...(data ?? [])].sort(byRecency));
+    }
+    setLoading(false);
+  }, [profileId]);
 
   useEffect(() => {
-    fetchEducations();
-  }, [userId]);
+    void fetchRows();
+  }, [fetchRows]);
 
-  const fetchEducations = async () => {
+  const openAdd = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+  const openEdit = (row: EducationRow) => {
+    setEditing(row);
+    setDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setDeleteBusy(true);
     try {
-      // Get education data from profile
-      const { data: profileData, error } = await supabase
-        .from('profiles')
-        .select('education' as any)
-        .eq('user_id', userId)
-        .maybeSingle();
-
+      const { error } = await supabase
+        .from("education")
+        .delete()
+        .eq("id", deleting.id);
       if (error) throw error;
-      const educationArray = (profileData as any)?.education || [];
-      
-      // Convert to proper format with IDs
-      const formattedEducations = educationArray.map((edu: any, index: number) => ({
-        id: edu.id || `edu_${index}`,
-        institution: edu.institution || '',
-        degree: edu.degree || '',
-        field_of_study: edu.field_of_study || '',
-        start_date: edu.start_date || '',
-        end_date: edu.end_date || '',
-        grade: edu.grade || '',
-        description: edu.description || ''
-      }));
-      
-      setEducations(formattedEducations);
-    } catch (error: any) {
+      toast({ title: "Education deleted" });
+      setDeleting(null);
+      void fetchRows();
+    } catch (err) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Couldn’t delete",
+        description: err instanceof Error ? err.message : "Please try again",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setDeleteBusy(false);
     }
   };
-
-  const resetEditData = () => {
-    setEditData({
-      institution: '',
-      degree: '',
-      field_of_study: '',
-      start_date: '',
-      end_date: '',
-      grade: '',
-      description: ''
-    });
-  };
-
-  const handleAdd = () => {
-    resetEditData();
-    setIsAdding(true);
-  };
-
-  const handleEdit = (education: Education) => {
-    setEditData({
-      institution: education.institution,
-      degree: education.degree || '',
-      field_of_study: education.field_of_study || '',
-      start_date: education.start_date || '',
-      end_date: education.end_date || '',
-      grade: education.grade || '',
-      description: education.description || ''
-    });
-    setEditingId(education.id);
-  };
-
-  const handleSave = async () => {
-    try {
-      // Get current education
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('education' as any)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!profile) throw new Error('Profile not found');
-
-      let updatedEducations = [...((profile as any).education || [])];
-
-      const saveData = {
-        ...editData,
-        id: editingId || `edu_${Date.now()}`,
-        start_date: editData.start_date || null,
-        end_date: editData.end_date || null
-      };
-
-      if (isAdding) {
-        updatedEducations.push(saveData);
-      } else if (editingId) {
-        const index = updatedEducations.findIndex((edu: any) => edu.id === editingId);
-        if (index !== -1) {
-          updatedEducations[index] = saveData;
-        }
-      }
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({ education: updatedEducations } as any)
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      fetchEducations();
-      setIsAdding(false);
-      setEditingId(null);
-      resetEditData();
-
-      toast({
-        title: "Success",
-        description: "Education saved successfully!",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      // Get current education
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('education' as any)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (!profile) throw new Error('Profile not found');
-
-      const updatedEducations = ((profile as any).education || []).filter((edu: any) => edu.id !== id);
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({ education: updatedEducations } as any)
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      fetchEducations();
-      toast({
-        title: "Success",
-        description: "Education deleted successfully!",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCancel = () => {
-    setIsAdding(false);
-    setEditingId(null);
-    resetEditData();
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-muted rounded w-3/4"></div>
-            <div className="h-4 bg-muted rounded w-1/2"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Education</h2>
-        {isOwnProfile && (
-          <Button onClick={handleAdd} disabled={isAdding || editingId !== null}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Education
-          </Button>
-        )}
-      </div>
-
-      {/* Add/Edit Form */}
-      {isOwnProfile && (isAdding || editingId) && (
-        <Card className="border-primary/20">
-          <CardContent className="p-6">
-            <div className="grid gap-4">
-              <Input
-                placeholder="Institution Name"
-                value={editData.institution}
-                onChange={(e) => setEditData(prev => ({ ...prev, institution: e.target.value }))}
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  placeholder="Degree"
-                  value={editData.degree}
-                  onChange={(e) => setEditData(prev => ({ ...prev, degree: e.target.value }))}
-                />
-                <Input
-                  placeholder="Field of Study"
-                  value={editData.field_of_study}
-                  onChange={(e) => setEditData(prev => ({ ...prev, field_of_study: e.target.value }))}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Start Date</label>
-                  <Input
-                    type="date"
-                    value={editData.start_date}
-                    onChange={(e) => setEditData(prev => ({ ...prev, start_date: e.target.value }))}
-                  />
+    <>
+      <ProfileSectionCard
+        id="education"
+        title="Education"
+        isOwner={isOwner}
+        onAdd={openAdd}
+        addLabel="Add education"
+        loading={loading}
+        error={error}
+        onRetry={fetchRows}
+        empty={rows.length === 0}
+        emptyText={
+          isOwner
+            ? "Add schools, degrees and courses you’ve completed."
+            : "No education added yet."
+        }
+      >
+        <ul className="divide-y divide-border">
+          {rows.map((row) => {
+            const line2 = [row.degree, row.field_of_study]
+              .filter(Boolean)
+              .join(", ");
+            return (
+              <li key={row.id} className="py-3 flex gap-3">
+                <div className="mt-0.5 h-9 w-9 rounded-md bg-secondary flex items-center justify-center shrink-0">
+                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">End Date</label>
-                  <Input
-                    type="date"
-                    value={editData.end_date}
-                    onChange={(e) => setEditData(prev => ({ ...prev, end_date: e.target.value }))}
-                  />
-                </div>
-                <Input
-                  placeholder="Grade/CGPA"
-                  value={editData.grade}
-                  onChange={(e) => setEditData(prev => ({ ...prev, grade: e.target.value }))}
-                />
-              </div>
-
-              <Textarea
-                placeholder="Description, achievements, activities..."
-                value={editData.description}
-                onChange={(e) => setEditData(prev => ({ ...prev, description: e.target.value }))}
-                rows={3}
-              />
-
-              <div className="flex gap-2">
-                <Button onClick={handleSave} className="bg-success hover:bg-success/90">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save
-                </Button>
-                <Button variant="outline" onClick={handleCancel}>
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Education List */}
-      <div className="space-y-4">
-        {educations.map((education) => (
-          <Card key={education.id} className="shadow-card">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-foreground">
-                    {education.institution}
-                  </h3>
-                  {education.degree && (
-                    <p className="text-primary font-medium">
-                      {education.degree}
-                      {education.field_of_study && ` in ${education.field_of_study}`}
-                    </p>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground break-words">
+                    {row.institution}
+                  </p>
+                  {line2 && (
+                    <p className="text-sm text-foreground/80 break-words">{line2}</p>
                   )}
-                  {(education.start_date || education.end_date) && (
-                    <p className="text-muted-foreground text-sm">
-                      {education.start_date ? formatDate(education.start_date) : ''} - {
-                        education.end_date ? formatDate(education.end_date) : 'Present'
-                      }
-                    </p>
-                  )}
-                  {education.grade && (
-                    <p className="text-muted-foreground text-sm">
-                      Grade: {education.grade}
-                    </p>
-                  )}
-                  {education.description && (
-                    <p className="text-foreground mt-3 leading-relaxed">
-                      {education.description}
+                  <p className="text-xs text-muted-foreground">
+                    {formatRange(row.start_date, row.end_date)}
+                    {row.grade ? ` · Grade: ${row.grade}` : ""}
+                  </p>
+                  {row.description && (
+                    <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap break-words">
+                      {row.description}
                     </p>
                   )}
                 </div>
-                
-                {isOwnProfile && (
-                  <div className="flex gap-2 ml-4">
+                {isOwner && (
+                  <div className="flex flex-col gap-1 shrink-0">
                     <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(education)}
-                      disabled={editingId !== null || isAdding}
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => openEdit(row)}
+                      aria-label="Edit education"
                     >
-                      <Edit3 className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(education.id)}
-                      disabled={editingId !== null || isAdding}
-                      className="text-destructive hover:text-destructive"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setDeleting(row)}
+                      aria-label="Delete education"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </li>
+            );
+          })}
+        </ul>
+      </ProfileSectionCard>
 
-        {educations.length === 0 && !isAdding && (
-          <Card>
-            <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground">
-                No education history added yet. Click "Add Education" to get started.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
+      {isOwner && (
+        <EducationDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          profileId={profileId}
+          existing={editing}
+          onSaved={fetchRows}
+        />
+      )}
+
+      <AlertDialog
+        open={Boolean(deleting)}
+        onOpenChange={(o) => !o && setDeleting(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this education entry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleting ? `“${deleting.institution}” will be removed. This can’t be undone.` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmDelete();
+              }}
+              disabled={deleteBusy}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteBusy ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
