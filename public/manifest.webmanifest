@@ -1,0 +1,28 @@
+{
+  "name": "Profolio",
+  "short_name": "Profolio",
+  "description": "Your career, verified. Portfolio, network, jobs and messaging for students and employers.",
+  "id": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "theme_color": "#ffffff",
+  "background_color": "#f2f3f5",
+  "categories": ["business", "productivity", "social"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
