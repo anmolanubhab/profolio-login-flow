@@ -29,3 +29,6 @@ dist-ssr
 
 # Supabase CLI temp
 supabase/.temp/
+
+# Claude Code local tooling
+.claude

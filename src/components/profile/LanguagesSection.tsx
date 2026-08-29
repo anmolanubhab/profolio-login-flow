@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, Trash2, Briefcase } from "lucide-react";
+import { Pencil, Trash2, Languages as LanguagesIcon } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,38 +15,43 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ProfileSectionCard } from "@/components/profile/ProfileSectionCard";
-import { ExperienceDialog } from "@/components/profile/ExperienceDialog";
-import { byRecency, formatRange, type ExperienceRow } from "@/components/profile/careerTypes";
+import { LanguageDialog } from "@/components/profile/LanguageDialog";
+import {
+  PROFICIENCY_LABEL,
+  type LanguageProficiency,
+  type LanguageRow,
+} from "@/components/profile/careerTypes";
 
-interface ExperienceSectionProps {
+interface LanguagesSectionProps {
   /** profiles.id */
   profileId: string;
   isOwner: boolean;
 }
 
-const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
+const LanguagesSection = ({ profileId, isOwner }: LanguagesSectionProps) => {
   const { toast } = useToast();
-  const [rows, setRows] = useState<ExperienceRow[]>([]);
+  const [rows, setRows] = useState<LanguageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<ExperienceRow | null>(null);
-  const [deleting, setDeleting] = useState<ExperienceRow | null>(null);
+  const [editing, setEditing] = useState<LanguageRow | null>(null);
+  const [deleting, setDeleting] = useState<LanguageRow | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
     setError(null);
     const { data, error } = await supabase
-      .from("experience")
+      .from("languages")
       .select("*")
-      .eq("user_id", profileId);
+      .eq("user_id", profileId)
+      .order("created_at", { ascending: true });
     if (error) {
-      setError("Couldn’t load experience.");
+      setError("Couldn’t load languages.");
       setRows([]);
     } else {
-      setRows([...(data ?? [])].sort(byRecency));
+      setRows(data ?? []);
     }
     setLoading(false);
   }, [profileId]);
@@ -59,7 +64,7 @@ const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
     setEditing(null);
     setDialogOpen(true);
   };
-  const openEdit = (row: ExperienceRow) => {
+  const openEdit = (row: LanguageRow) => {
     setEditing(row);
     setDialogOpen(true);
   };
@@ -69,11 +74,11 @@ const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
     setDeleteBusy(true);
     try {
       const { error } = await supabase
-        .from("experience")
+        .from("languages")
         .delete()
         .eq("id", deleting.id);
       if (error) throw error;
-      toast({ title: "Experience deleted" });
+      toast({ title: "Language removed" });
       setDeleting(null);
       void fetchRows();
     } catch (err) {
@@ -90,51 +95,40 @@ const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
   return (
     <>
       <ProfileSectionCard
-        id="experience"
-        title="Experience"
+        id="languages"
+        title="Languages"
         isOwner={isOwner}
         onAdd={openAdd}
-        addLabel="Add experience"
+        addLabel="Add language"
         loading={loading}
         error={error}
         onRetry={fetchRows}
         empty={rows.length === 0}
         emptyText={
-          isOwner
-            ? "Add roles you’ve held to show your career history."
-            : "No experience added yet."
+          isOwner ? "Add languages you speak and your proficiency." : "No languages added yet."
         }
       >
         <ul className="divide-y divide-border">
           {rows.map((row) => (
-            <li key={row.id} className="py-3 flex gap-3">
-              <div className="mt-0.5 h-9 w-9 rounded-md bg-secondary flex items-center justify-center shrink-0">
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
+            <li key={row.id} className="py-2.5 flex items-center gap-3">
+              <div className="h-8 w-8 rounded-md bg-secondary flex items-center justify-center shrink-0">
+                <LanguagesIcon className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-foreground break-words">{row.role}</p>
-                <p className="text-sm text-foreground/80 break-words">
-                  {row.company}
-                  {row.employment_type ? ` · ${row.employment_type}` : ""}
-                </p>
+                <p className="font-medium text-foreground break-words">{row.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatRange(row.start_date, row.end_date, row.is_current)}
-                  {row.location ? ` · ${row.location}` : ""}
+                  {PROFICIENCY_LABEL[row.proficiency as LanguageProficiency] ??
+                    row.proficiency}
                 </p>
-                {row.description && (
-                  <p className="text-sm text-foreground/90 mt-1 whitespace-pre-wrap break-words">
-                    {row.description}
-                  </p>
-                )}
               </div>
               {isOwner && (
-                <div className="flex flex-col gap-1 shrink-0">
+                <div className="flex gap-1 shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => openEdit(row)}
-                    aria-label="Edit experience"
+                    aria-label="Edit language"
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
@@ -143,7 +137,7 @@ const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
                     size="icon"
                     className="h-8 w-8 text-destructive hover:text-destructive"
                     onClick={() => setDeleting(row)}
-                    aria-label="Delete experience"
+                    aria-label="Delete language"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -155,7 +149,7 @@ const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
       </ProfileSectionCard>
 
       {isOwner && (
-        <ExperienceDialog
+        <LanguageDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           profileId={profileId}
@@ -170,9 +164,9 @@ const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this experience?</AlertDialogTitle>
+            <AlertDialogTitle>Remove this language?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleting ? `“${deleting.role} at ${deleting.company}” will be removed. This can’t be undone.` : ""}
+              {deleting ? `“${deleting.name}” will be removed from your profile.` : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -185,7 +179,7 @@ const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
               disabled={deleteBusy}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteBusy ? "Deleting…" : "Delete"}
+              {deleteBusy ? "Removing…" : "Remove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -194,4 +188,4 @@ const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
   );
 };
 
-export default ExperienceSection;
+export default LanguagesSection;

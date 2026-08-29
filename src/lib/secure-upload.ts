@@ -16,7 +16,7 @@ const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
 
 export interface SecureUploadOptions {
-  bucket: 'avatars' | 'post-images' | 'certificates' | 'resumes' | 'stories' | 'post-videos' | 'post-documents' | 'message-attachments';
+  bucket: 'avatars' | 'covers' | 'post-images' | 'certificates' | 'resumes' | 'stories' | 'post-videos' | 'post-documents' | 'message-attachments';
   file: File;
   userId: string;
   allowedTypes?: string[];
@@ -87,6 +87,7 @@ export async function secureUpload({
 
     switch (bucket) {
       case 'avatars':
+      case 'covers':
       case 'post-images':
       case 'stories':
         defaultAllowedTypes = ALLOWED_IMAGE_TYPES;
