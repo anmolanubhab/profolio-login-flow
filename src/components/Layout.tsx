@@ -31,7 +31,10 @@ export function Layout({ children, user, onSignOut, fullWidth }: LayoutProps) {
           overflow-x-hidden already guards the real viewport against
           horizontal scroll; width/max-width here is enough on this level. */}
       <div className={fullWidth ? "content w-full max-w-full" : "layout content w-full max-w-full"}>
-        <main className="feed pb-24 lg:pb-8 w-full max-w-full">
+        {/* Bottom padding clears the floating mobile bar AND the system inset
+            it sits above, so the last item is never trapped behind either --
+            while everything above still scrolls edge-to-edge behind them. */}
+        <main className="feed w-full max-w-full pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-8">
           {children}
         </main>
       </div>

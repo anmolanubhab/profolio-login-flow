@@ -76,15 +76,21 @@ const BottomNavigation = () => {
   return (
     <>
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border w-full max-w-full transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
+        className="fixed inset-x-0 z-50 w-full max-w-full border-t border-border bg-background transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
         style={{
-          // Keep clear of the Android/iOS system nav + landscape notches.
-          paddingBottom: 'env(safe-area-inset-bottom)',
+          // Edge-to-edge: the ONLY opaque layer is this h-16 bar, and it floats
+          // *above* the system inset. The strip behind the Android gesture
+          // handle / 3-button bar is left uncovered, so the feed + page
+          // background show through there (LinkedIn-style) -- we never paint
+          // `bg-background` into `env(safe-area-inset-bottom)`.
+          bottom: 'env(safe-area-inset-bottom)',
           paddingLeft: 'env(safe-area-inset-left)',
           paddingRight: 'env(safe-area-inset-right)',
-          // Extra offset so the FAB's overhang above the bar also clears the
-          // viewport when hidden -- it must never float there on its own.
-          transform: hidden ? 'translateY(calc(100% + 1.5rem))' : 'translateY(0)',
+          // Hide: clear the bar's own height + the inset it was floating above
+          // + the FAB's overhang, so nothing (not even the "+") is left behind.
+          transform: hidden
+            ? 'translateY(calc(100% + env(safe-area-inset-bottom) + 1.5rem))'
+            : 'translateY(0)',
         }}
       >
         <div className="relative mx-auto flex h-16 w-full max-w-md items-stretch px-1 xs:px-2">
