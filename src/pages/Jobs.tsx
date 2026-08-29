@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -82,6 +82,7 @@ const Jobs = () => {
   const [signals, setSignals] = useState<CandidateSignals>({ openToRoles: null, preferredLocations: null, jobType: null, skills: null });
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { savedJobIds, toggleSave } = useSavedJobs();
 
   useEffect(() => {
@@ -121,6 +122,17 @@ const Jobs = () => {
     };
     getUser();
   }, [navigate]);
+
+  // `?post=1` -- the mobile Create sheet deep-links here to open the existing
+  // Post-a-Job dialog. Wait until we know the user owns a company (same gate as
+  // the on-page "Post a Job" buttons), then consume the param.
+  useEffect(() => {
+    if (searchParams.get('post') !== '1' || !companyId) return;
+    setShowPostJobDialog(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('post');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, companyId, setSearchParams]);
 
   useEffect(() => {
     if (user) {
