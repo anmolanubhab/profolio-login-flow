@@ -78,7 +78,10 @@ const BottomNavigation = () => {
       <nav
         className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border w-full max-w-full transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
         style={{
+          // Keep clear of the Android/iOS system nav + landscape notches.
           paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingLeft: 'env(safe-area-inset-left)',
+          paddingRight: 'env(safe-area-inset-right)',
           // Extra offset so the FAB's overhang above the bar also clears the
           // viewport when hidden -- it must never float there on its own.
           transform: hidden ? 'translateY(calc(100% + 1.5rem))' : 'translateY(0)',

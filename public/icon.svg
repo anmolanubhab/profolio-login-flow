@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Maskable-safe: the blue fills the whole canvas; the "P" stays inside the
+       central ~80% safe zone so platform masks (circle / squircle) never clip it. -->
+  <rect width="512" height="512" fill="#0063cc"/>
+  <text x="50%" y="52%" text-anchor="middle" dominant-baseline="central"
+        font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700"
+        font-size="300" fill="#ffffff">P</text>
+</svg>
