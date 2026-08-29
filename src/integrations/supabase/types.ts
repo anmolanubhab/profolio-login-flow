@@ -566,6 +566,7 @@ export type Database = {
           created_at: string
           id: string
           status: Database["public"]["Enums"]["connection_status"]
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -573,6 +574,7 @@ export type Database = {
           created_at?: string
           id?: string
           status?: Database["public"]["Enums"]["connection_status"]
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -580,6 +582,7 @@ export type Database = {
           created_at?: string
           id?: string
           status?: Database["public"]["Enums"]["connection_status"]
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -656,6 +659,42 @@ export type Database = {
           {
             foreignKeyName: "dismissed_suggested_posts_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dismissed_suggestions: {
+        Row: {
+          created_at: string
+          dismissed_profile_id: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_profile_id: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_profile_id?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dismissed_suggestions_dismissed_profile_id_fkey"
+            columns: ["dismissed_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dismissed_suggestions_profile_id_fkey"
+            columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -3440,6 +3479,22 @@ export type Database = {
         Args: { p_outcome: string; p_round_id: string }
         Returns: undefined
       }
+      mutual_connections_count: {
+        Args: { other_profile_id: string }
+        Returns: number
+      }
+      network_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          connections_count: number
+          pending_received: number
+          pending_sent: number
+        }[]
+      }
+      remove_connection: {
+        Args: { other_profile_id: string }
+        Returns: boolean
+      }
       reschedule_interview_round: {
         Args: {
           p_new_meeting_link?: string
@@ -3483,6 +3538,37 @@ export type Database = {
           profile_id: string
           skills: string[]
           years_experience: number
+        }[]
+      }
+      search_connections: {
+        Args: { search?: string; lim?: number; off?: number }
+        Returns: {
+          profile_id: string
+          display_name: string
+          full_name: string
+          headline: string
+          profession: string
+          location: string
+          avatar_url: string
+          last_name_visibility: string
+          connected_at: string
+          mutual_count: number
+        }[]
+      }
+      search_people: {
+        Args: { search?: string; lim?: number; off?: number }
+        Returns: {
+          profile_id: string
+          display_name: string
+          full_name: string
+          headline: string
+          profession: string
+          location: string
+          avatar_url: string
+          last_name_visibility: string
+          mutual_count: number
+          relationship: string
+          request_id: string | null
         }[]
       }
       set_application_resume_sharing: {
