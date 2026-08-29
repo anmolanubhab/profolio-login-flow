@@ -9,7 +9,7 @@ import { User } from '@supabase/supabase-js';
 import { Layout } from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { rateLimiter, RATE_LIMITS, isServerRateLimitError, SERVER_RATE_LIMIT_MESSAGE } from '@/lib/rate-limiter';
 import { CtaFields } from '@/components/CtaFields';
 import { validateCtaUrl } from '@/lib/cta';
@@ -130,6 +130,29 @@ const AddPost = () => {
     clearAttachments();
     setMode(next);
   };
+
+  // `?compose=photo|video|poll` -- the mobile Create sheet deep-links here with
+  // a hint for which attachment to start on. Preselect that mode and, for the
+  // file-backed ones, open the native picker straight away. Consume the param
+  // so a re-render / refresh doesn't re-trigger it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const compose = searchParams.get('compose');
+    if (!compose) return;
+    if (compose === 'photo') {
+      setMode('image');
+      imageInputRef.current?.click();
+    } else if (compose === 'video') {
+      setMode('video');
+      videoInputRef.current?.click();
+    } else if (compose === 'poll') {
+      setMode('poll');
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('compose');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

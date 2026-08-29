@@ -40,6 +40,10 @@ All colors MUST be HSL.
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 15% 98%));
     --gradient-hero: linear-gradient(135deg, hsl(200 90% 55%), hsl(280 80% 60%), hsl(330 85% 65%));
     --gradient-glass: linear-gradient(145deg, hsl(0 0% 100% / 0.95), hsl(0 0% 100% / 0.85));
+    /* Soft pastel-rainbow for the mobile Create FAB. Kept high-lightness /
+       low-saturation so a white "+" stays clearly readable on top -- no neon,
+       no gaming-style bands. blue -> lavender -> pink -> peach -> soft yellow. */
+    --gradient-create-fab: linear-gradient(135deg, hsl(205 85% 80%), hsl(255 70% 82%), hsl(325 78% 84%), hsl(22 88% 82%), hsl(45 92% 80%));
     --bg-gradient: linear-gradient(180deg, hsl(225 15% 96%), hsl(210 15% 98%));
     --nav-height: 3.5rem;
 
@@ -115,6 +119,8 @@ All colors MUST be HSL.
     --gradient-primary: linear-gradient(135deg, hsl(211 90% 58%), hsl(240 65% 65%));
     --gradient-card: linear-gradient(145deg, hsl(222 40% 9%), hsl(222.2 84% 4.9%));
     --bg-gradient: linear-gradient(180deg, hsl(222.2 84% 4.9%), hsl(222 45% 7%));
+    /* Slightly deeper pastels on dark so the FAB reads as a soft chip, not a glow. */
+    --gradient-create-fab: linear-gradient(135deg, hsl(205 70% 64%), hsl(255 58% 66%), hsl(325 60% 68%), hsl(22 70% 66%), hsl(45 76% 64%));
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
