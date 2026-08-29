@@ -14,6 +14,7 @@ import { NotificationBell } from './NotificationBell';
 import { MobileNavDrawer } from './MobileNavDrawer';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useMobileChromeHidden } from '@/hooks/use-mobile-scroll-direction';
 
 interface NavBarProps {
   user?: {
@@ -44,6 +45,9 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const navigate = useNavigate();
+  // Mobile only: slide the header up out of view while the user scrolls down.
+  // Always false at >= lg, so the desktop bar never moves.
+  const hideOnMobile = useMobileChromeHidden();
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -94,7 +98,10 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
     null;
 
   return (
-    <nav className="navbar w-full max-w-full overflow-x-hidden">
+    <nav
+      className="navbar w-full max-w-full overflow-x-hidden transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
+      style={{ transform: hideOnMobile ? 'translateY(-100%)' : 'translateY(0)' }}
+    >
       <div className="navbar-inner w-full max-w-full overflow-hidden !max-w-none xl:!max-w-[1280px] gap-1 sm:gap-3">
         {/* Left: brand + search */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">

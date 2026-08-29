@@ -201,6 +201,19 @@ All colors MUST be HSL.
     backdrop-filter: saturate(180%) blur(10px);
     box-shadow: var(--shadow-card);
   }
+
+  /* Mobile only: the header rides in normal flow (sticky) instead of being
+     `fixed` + offset by body padding. That way, when the auto-hide slides it
+     up (translateY(-100%)), the space it left is reclaimed by content with no
+     permanent blank strip and no scroll jump. Desktop keeps `fixed`. */
+  @media (max-width: 1023px) {
+    body {
+      padding-top: 0;
+    }
+    .navbar {
+      position: sticky;
+    }
+  }
   .navbar-inner {
     @apply h-full max-w-5xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6;
   }
