@@ -71,7 +71,7 @@ const PostText = ({ content, collapsedLines = 3, className }: PostTextProps) => 
             type="button"
             onClick={() => setIsExpanded(true)}
             aria-label="Expand post text"
-            className="absolute bottom-0 right-0 flex items-end pl-8 bg-gradient-to-r from-transparent to-card to-[1.25rem] text-muted-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+            className="absolute bottom-0 right-0 flex items-end pl-8 bg-gradient-to-r from-transparent to-card to-[1.25rem] text-sm font-semibold text-muted-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
           >
             <span aria-hidden="true">…&nbsp;</span>more
           </button>
@@ -83,7 +83,7 @@ const PostText = ({ content, collapsedLines = 3, className }: PostTextProps) => 
           type="button"
           onClick={() => setIsExpanded(false)}
           aria-label="Collapse post text"
-          className="mt-1 text-sm font-medium text-muted-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+          className="mt-1 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
         >
           less
         </button>

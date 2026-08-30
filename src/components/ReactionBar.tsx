@@ -151,7 +151,7 @@ export const ReactionBar = ({ summary, onReact, disabled }: ReactionBarProps) =>
         }}
         disabled={disabled}
       >
-        <span className="text-base leading-none">{mainEmoji}</span>
+        <span className="text-[17px] sm:text-lg leading-none shrink-0">{mainEmoji}</span>
         <span>{mainLabel}</span>
       </button>
 

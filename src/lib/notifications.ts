@@ -20,6 +20,7 @@ import {
   Star,
   Repeat2,
   AtSign,
+  Newspaper,
   type LucideIcon,
 } from 'lucide-react';
 import { REACTION_META, ReactionType } from '@/components/ReactionBar';
@@ -47,6 +48,10 @@ export interface NotificationPayload {
   to_stage?: ApplicationStage;
   candidate_name?: string;
   company_id?: string;
+  insight_slug?: string;
+  insight_title?: string;
+  article_slug?: string;
+  article_title?: string;
 }
 
 export interface NotificationLike {
@@ -85,6 +90,9 @@ export const getNotificationIcon = (type: string): LucideIcon => {
       return Award;
     case 'skill_endorsement':
       return Star;
+    case 'insight_published':
+    case 'insight_new_subscriber':
+      return Newspaper;
     default:
       return Bell;
   }
@@ -150,6 +158,12 @@ export const getNotificationMessage = (notification: NotificationLike): string =
       return payload?.message ? `${senderName}: ${payload.message}` : `${senderName} sent you a message`;
     case 'skill_endorsement':
       return `${senderName} endorsed your ${payload?.skill_name || 'skill'}`;
+    case 'insight_published':
+      return payload?.article_title
+        ? `${senderName} published “${payload.article_title}” in ${payload?.insight_title || 'an Insight'}`
+        : `${senderName} published a new Insight`;
+    case 'insight_new_subscriber':
+      return `${senderName} is now following ${payload?.insight_title || 'your Insight'}`;
     default:
       return payload?.message || 'New notification';
   }
@@ -183,6 +197,12 @@ export const getNotificationLink = (notification: NotificationLike): string => {
       return payload?.company_id ? `/company/${payload.company_id}` : '/dashboard';
     case 'message':
       return '/connect';
+    case 'insight_published':
+      return payload?.insight_slug && payload?.article_slug
+        ? `/insights/${payload.insight_slug}/${payload.article_slug}`
+        : '/insights';
+    case 'insight_new_subscriber':
+      return payload?.insight_slug ? `/insights/${payload.insight_slug}` : '/insights';
     default:
       return '/notifications';
   }

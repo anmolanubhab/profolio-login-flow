@@ -1543,6 +1543,155 @@ export type Database = {
           },
         ]
       }
+      insight_articles: {
+        Row: {
+          author_id: string
+          body: Json
+          body_html: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          insight_id: string
+          published_at: string | null
+          reading_minutes: number | null
+          slug: string
+          status: string
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body?: Json
+          body_html?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          insight_id: string
+          published_at?: string | null
+          reading_minutes?: number | null
+          slug: string
+          status?: string
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: Json
+          body_html?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          insight_id?: string
+          published_at?: string | null
+          reading_minutes?: number | null
+          slug?: string
+          status?: string
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insight_articles_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insight_articles_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insight_subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          insight_id: string
+          subscriber_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insight_id: string
+          subscriber_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insight_id?: string
+          subscriber_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insight_subscriptions_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insight_subscriptions_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insights: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          owner_id: string
+          published_at: string | null
+          slug: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_id: string
+          published_at?: string | null
+          slug: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          owner_id?: string
+          published_at?: string | null
+          slug?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insights_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interviews: {
         Row: {
           created_at: string | null
@@ -2329,6 +2478,7 @@ export type Database = {
           document_url: string | null
           id: string
           image_url: string | null
+          insight_article_id: string | null
           media_type: string | null
           post_type: string
           posted_as: string
@@ -2352,6 +2502,7 @@ export type Database = {
           document_url?: string | null
           id?: string
           image_url?: string | null
+          insight_article_id?: string | null
           media_type?: string | null
           post_type?: string
           posted_as?: string
@@ -2375,6 +2526,7 @@ export type Database = {
           document_url?: string | null
           id?: string
           image_url?: string | null
+          insight_article_id?: string | null
           media_type?: string | null
           post_type?: string
           posted_as?: string
@@ -2389,6 +2541,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_insight_article_id_fkey"
+            columns: ["insight_article_id"]
+            isOneToOne: false
+            referencedRelation: "insight_articles"
             referencedColumns: ["id"]
           },
           {
@@ -3435,6 +3594,10 @@ export type Database = {
         Returns: boolean
       }
       hash_token: { Args: { token_input: string }; Returns: string }
+      insight_subscriber_count: {
+        Args: { _insight_id: string }
+        Returns: number
+      }
       invite_interview_round: {
         Args: {
           p_application_id: string
@@ -3484,7 +3647,7 @@ export type Database = {
         Returns: number
       }
       network_counts: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           connections_count: number
           pending_received: number
@@ -3541,34 +3704,34 @@ export type Database = {
         }[]
       }
       search_connections: {
-        Args: { search?: string; lim?: number; off?: number }
+        Args: { lim?: number; off?: number; search?: string }
         Returns: {
-          profile_id: string
+          avatar_url: string
+          connected_at: string
           display_name: string
           full_name: string
           headline: string
-          profession: string
-          location: string
-          avatar_url: string
           last_name_visibility: string
-          connected_at: string
+          location: string
           mutual_count: number
+          profession: string
+          profile_id: string
         }[]
       }
       search_people: {
-        Args: { search?: string; lim?: number; off?: number }
+        Args: { lim?: number; off?: number; search?: string }
         Returns: {
-          profile_id: string
+          avatar_url: string
           display_name: string
           full_name: string
           headline: string
-          profession: string
-          location: string
-          avatar_url: string
           last_name_visibility: string
+          location: string
           mutual_count: number
+          profession: string
+          profile_id: string
           relationship: string
-          request_id: string | null
+          request_id: string
         }[]
       }
       set_application_resume_sharing: {
@@ -3583,6 +3746,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       submit_interview_feedback: {
         Args: {
           p_communication: number
