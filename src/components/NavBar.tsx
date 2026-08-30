@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, Briefcase, MessageCircle, Bell, User as UserIcon, Building2, Users2, CalendarDays, ChevronDown, ClipboardList, FilePlus2, Plus } from 'lucide-react';
+import { Home, Users, Briefcase, MessageCircle, Bell, User as UserIcon, Building2, Users2, CalendarDays, ChevronDown, ClipboardList, FilePlus2, Plus, Newspaper } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -208,6 +208,9 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
                   <FilePlus2 className="h-4 w-4 mr-2" /> My Drafts
                 </DropdownMenuItem>
               )}
+              <DropdownMenuItem onClick={() => navigate('/insights')}>
+                <Newspaper className="h-4 w-4 mr-2" /> Insights
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/certificates')}>Certificate Vault</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/resume')}>Resume Builder</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/saved-posts')}>Saved Posts</DropdownMenuItem>

@@ -36,6 +36,16 @@ interface Post {
   // Aggregate-only embed: PostgREST returns [{ count }] for comments(count).
   // Used to seed the Comment button; the full thread loads on demand.
   comments: { count: number }[];
+  // Set only for post_type === 'insight' -- the published Insight article this
+  // feed card represents. The article itself stays the source of truth.
+  insight_article: {
+    slug: string;
+    title: string;
+    subtitle: string | null;
+    reading_minutes: number | null;
+    cover_url: string | null;
+    insight: { slug: string; title: string } | null;
+  } | null;
 }
 
 interface RepostFeedItem {
@@ -153,7 +163,11 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
              post_reactions (id, user_id, reaction_type),
              post_reposts (id, user_id, commentary),
              comments (count),
-             polls ( id, question, poll_options ( id, option_text, position ), poll_votes ( id, option_id, user_id ) )
+             polls ( id, question, poll_options ( id, option_text, position ), poll_votes ( id, option_id, user_id ) ),
+             insight_article:insight_articles!posts_insight_article_id_fkey (
+               slug, title, subtitle, reading_minutes, cover_url,
+               insight:insights!insight_articles_insight_id_fkey ( slug, title )
+             )
            )`,
         )
         .not('posts', 'is', null)
@@ -270,6 +284,10 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
             question,
             poll_options ( id, option_text, position ),
             poll_votes ( id, option_id, user_id )
+          ),
+          insight_article:insight_articles!posts_insight_article_id_fkey (
+            slug, title, subtitle, reading_minutes, cover_url,
+            insight:insights!insight_articles_insight_id_fkey ( slug, title )
           )
         `)
         .eq('status', 'published')
@@ -865,6 +883,19 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         documentUrl={post.document_url || undefined}
         documentName={post.document_name || undefined}
         carouselUrls={post.carousel_urls || undefined}
+        insight={
+          post.post_type === 'insight' && post.insight_article
+            ? {
+                articleSlug: post.insight_article.slug,
+                articleTitle: post.insight_article.title,
+                subtitle: post.insight_article.subtitle,
+                coverUrl: post.insight_article.cover_url,
+                readingMinutes: post.insight_article.reading_minutes,
+                insightSlug: post.insight_article.insight?.slug ?? '',
+                insightTitle: post.insight_article.insight?.title ?? 'Insight',
+              }
+            : undefined
+        }
         poll={buildPollSummary(post.polls, currentUserProfileId)}
         onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
         reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}

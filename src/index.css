@@ -352,15 +352,21 @@ All colors MUST be HSL.
   .post-header { @apply flex items-center gap-3 p-4 sm:p-5; }
   .post-title { @apply text-base sm:text-lg font-semibold leading-tight; }
   .post-meta { @apply text-xs sm:text-sm; color: hsl(var(--muted-foreground)); }
-  .post-body { @apply px-4 sm:px-5 pb-4 sm:pb-5 text-[15px] leading-7; }
+  /* Post body -- LinkedIn mobile feed density: 14px / line-height 1.5 (their
+     `!text-sm` + 21px), softened near-black via the --foreground token,
+     whitespace-pre-wrap kept so author line breaks survive but without the
+     airy 28px line box that made blank lines look like double gaps. Desktop
+     nudges to 15px but keeps the same tight leading. */
+  .post-body { @apply px-4 sm:px-5 pb-3 text-sm sm:text-[15px] leading-normal; }
   .post-divider { @apply border-t; }
   .post-actions { @apply flex items-center justify-between px-2 sm:px-3 py-2; border-top: 1px solid hsl(var(--border)); }
 
-  /* Action buttons -- tighter horizontal padding on mobile so all four
-     (Like / Comment / Repost / Share) fit the card width without spilling;
-     roomy `px-4` returns at `sm`. */
+  /* Action buttons -- matched to LinkedIn's feed action bar: 14px / 600 label
+     in the muted token, ~20px lightweight icon, small icon->label gap, no
+     pill. Tiny horizontal padding on mobile so all four slots fit; a little
+     more at `sm`. */
   .action-btn {
-    @apply inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg px-1 sm:px-4 py-2 text-xs sm:text-sm font-medium;
+    @apply inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg px-0 sm:px-3 py-2 text-sm font-semibold;
     color: hsl(var(--muted-foreground));
     transition: var(--transition-smooth);
   }
@@ -373,14 +379,66 @@ All colors MUST be HSL.
   }
   .action-btn .icon { @apply h-[18px] w-[18px] sm:h-5 sm:w-5 shrink-0; }
 
-  /* Feed post action row: Like / Comment / Repost / Share spread across the
-     card width. Buttons size to their content (tight padding + smaller icon/
-     text on mobile, see .action-btn) so all four fit without spilling; the
-     min-width:0 + label truncate is only a backstop for an unusually long
-     localized label. Matches LinkedIn's space-between action bar. */
-  .post-actions-row { @apply flex items-center justify-between gap-0.5; }
-  .post-actions-row .action-btn { min-width: 0; }
+  /* Feed post action row: four equal, flexible slots (Like / Comment /
+     Repost / Share), each centring its icon + label -- LinkedIn's evenly
+     distributed action bar. min-width:0 + label truncate is a backstop for a
+     very long localized label on the narrowest phones. */
+  .post-actions-row { @apply flex items-center; }
+  .post-actions-row > * { flex: 1 1 0%; min-width: 0; }
+  .post-actions-row .action-btn { @apply w-full; }
   .post-actions-row .action-btn > span { @apply truncate; }
+
+  /* Insights article prose -- content-focused reading typography, calibrated
+     to LinkedIn's article body: ~16px / 1.6, near-black via the foreground
+     token, tight-but-comfortable block spacing, h2/h3 the only headings. */
+  .insight-prose {
+    @apply text-[15px] sm:text-base leading-[1.65] text-foreground;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .insight-prose > * + * { margin-top: 0.85em; }
+  .insight-prose h2 {
+    @apply text-xl sm:text-2xl font-semibold leading-snug tracking-tight;
+    margin-top: 1.6em;
+  }
+  .insight-prose h3 {
+    @apply text-lg sm:text-xl font-semibold leading-snug;
+    margin-top: 1.3em;
+  }
+  .insight-prose h2:first-child,
+  .insight-prose h3:first-child { margin-top: 0; }
+  .insight-prose a {
+    color: hsl(var(--primary));
+    @apply font-medium underline underline-offset-2 decoration-primary/40 hover:decoration-primary;
+  }
+  .insight-prose ul { @apply list-disc pl-5; }
+  .insight-prose ol { @apply list-decimal pl-5; }
+  .insight-prose li { margin-top: 0.3em; }
+  .insight-prose li > ul, .insight-prose li > ol { margin-top: 0.3em; }
+  .insight-prose blockquote {
+    @apply border-l-2 border-border pl-4 italic text-muted-foreground;
+  }
+  .insight-prose pre {
+    @apply rounded-lg bg-secondary p-3 text-[13px] overflow-x-auto;
+  }
+  .insight-prose code {
+    @apply rounded bg-secondary px-1.5 py-0.5 text-[0.85em];
+  }
+  .insight-prose pre code { @apply bg-transparent p-0; }
+  .insight-prose hr { @apply my-8 border-border; }
+  .insight-prose img,
+  .insight-prose .insight-img {
+    @apply rounded-lg w-full h-auto my-6 bg-muted;
+  }
+
+  /* Tiptap editing surface -- same reading rhythm plus the empty-node
+     placeholder. */
+  .insight-editor .ProseMirror { @apply outline-none min-h-[40vh]; }
+  .insight-editor .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    @apply text-muted-foreground pointer-events-none float-left h-0;
+  }
+  .insight-editor .ProseMirror:focus { @apply outline-none; }
 
   /* Generic buttons */
   .btn-primary {

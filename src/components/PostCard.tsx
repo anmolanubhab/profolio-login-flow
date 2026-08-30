@@ -48,6 +48,18 @@ interface PostCardProps {
   documentUrl?: string;
   documentName?: string;
   carouselUrls?: string[];
+  // Present only for feed cards that represent a published Insight article.
+  // When set, the card renders an "Insight" preview (badge + publication +
+  // headline + cover) linking to the reading page, instead of plain text.
+  insight?: {
+    insightSlug: string;
+    insightTitle: string;
+    articleSlug: string;
+    articleTitle: string;
+    subtitle: string | null;
+    coverUrl: string | null;
+    readingMinutes: number | null;
+  };
   poll?: PollSummary | null;
   onVote?: (optionId: string) => void;
   reactionSummary: ReactionSummary;
@@ -104,6 +116,7 @@ const PostCard = ({
   documentUrl,
   documentName,
   carouselUrls,
+  insight,
   poll,
   onVote,
   reactionSummary,
@@ -450,11 +463,51 @@ const PostCard = ({
         </div>
       </div>
 
-      <div className="post-body">
-        <PostText content={content} />
-      </div>
+      {insight ? (
+        <div className="px-4 pb-3 sm:px-5">
+          <button
+            type="button"
+            onClick={() => navigate(`/insights/${insight.insightSlug}/${insight.articleSlug}`)}
+            className="group block w-full overflow-hidden rounded-xl border border-border text-left transition-colors hover:bg-secondary/40"
+          >
+            {insight.coverUrl && (
+              <div className="aspect-[16/9] w-full overflow-hidden bg-muted">
+                <img
+                  src={insight.coverUrl}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                />
+              </div>
+            )}
+            <div className="p-4">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                <FileText className="h-3.5 w-3.5" />
+                Insight · {insight.insightTitle}
+              </span>
+              <div className="mt-1.5 text-[17px] font-bold leading-snug tracking-tight group-hover:text-primary">
+                {insight.articleTitle}
+              </div>
+              {insight.subtitle && (
+                <p className="mt-1 line-clamp-2 text-[13px] leading-normal text-muted-foreground">
+                  {insight.subtitle}
+                </p>
+              )}
+              {insight.readingMinutes ? (
+                <p className="mt-1.5 text-xs text-muted-foreground">{insight.readingMinutes} min read</p>
+              ) : null}
+            </div>
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="post-body">
+            <PostText content={content} />
+          </div>
 
-      {image && <ImageMedia src={image} alt="Post content" />}
+          {image && <ImageMedia src={image} alt="Post content" />}
+        </>
+      )}
 
       {postType === 'carousel' && carouselUrls && carouselUrls.length > 0 && (
         // Full-bleed on mobile (image gallery), contained on desktop. Embla's
@@ -553,18 +606,28 @@ const PostCard = ({
 
       {ctaState && <PostCta {...ctaState} />}
 
-      <div className="px-4 sm:px-5 pb-2">
-        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+      <div className="px-4 sm:px-5 pb-1.5">
+        <div className="flex items-center justify-between gap-2 text-xs sm:text-[13px] text-muted-foreground">
           <ReactionCountSummary summary={reactionSummary} onClick={() => setBreakdownOpen(true)} />
-          {repostCount > 0 && (
-            <span>{repostCount} {repostCount === 1 ? 'repost' : 'reposts'}</span>
+          {(commentCount > 0 || repostCount > 0) && (
+            <span className="shrink-0">
+              {[
+                commentCount > 0 && `${commentCount} ${commentCount === 1 ? 'comment' : 'comments'}`,
+                repostCount > 0 && `${repostCount} ${repostCount === 1 ? 'repost' : 'reposts'}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
           )}
         </div>
       </div>
 
-      <div className="border-t border-border mx-4 sm:mx-5" />
+      {/* Full-width hairline between the counts row and the action bar --
+          matches LinkedIn (their .social-action-bar border-top spans the
+          card edge-to-edge); inset only on desktop where the card is padded. */}
+      <div className="border-t border-border sm:mx-5" />
 
-      <div className="px-2 sm:px-3 py-1">
+      <div className="px-0.5 sm:px-2 py-0.5">
         <div className="post-actions-row">
           <ReactionBar summary={reactionSummary} onReact={handleReact} />
           <button
@@ -575,7 +638,7 @@ const PostCard = ({
             aria-controls={`comments-${id}`}
           >
             <MessageCircle className="icon" />
-            <span>Comment{commentCount > 0 ? ` ${commentCount}` : ''}</span>
+            <span>Comment</span>
           </button>
           <RepostButton
             post={repostOriginalPost}

@@ -12,6 +12,7 @@ import {
   Bookmark,
   Settings,
   CalendarDays,
+  Newspaper,
   Menu,
   X
 } from "lucide-react"
@@ -42,6 +43,7 @@ const mainItems = [
 const profileItems = [
   { title: "Profile", url: "/profile", icon: User },
   { title: "Connect", url: "/connect", icon: MessageCircle },
+  { title: "Insights", url: "/insights", icon: Newspaper },
   { title: "Certificates", url: "/certificates", icon: Award },
   { title: "Resume", url: "/resume", icon: FileText },
   { title: "Saved Posts", url: "/saved-posts", icon: Bookmark },
@@ -66,8 +68,10 @@ export function MobileNavDrawer() {
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[80vw] max-w-[320px] p-0">
-        <SheetHeader className="p-4 border-b border-border">
+      {/* Flex column so the header stays put and the nav list becomes the
+          scroll area. h-full comes from the Sheet's `left` variant. */}
+      <SheetContent side="left" className="w-[80vw] max-w-[320px] p-0 gap-0 flex flex-col">
+        <SheetHeader className="p-4 border-b border-border shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
@@ -78,7 +82,15 @@ export function MobileNavDrawer() {
           </div>
         </SheetHeader>
 
-        <div className="flex flex-col py-4">
+        {/* Scrollable nav. The bottom padding is INSIDE this scroll container
+            so the user can scroll the last item (Settings) clear of the
+            Android system navigation bar: at least 1.5rem of breathing room,
+            or the device's bottom safe-area inset + 1rem when that is larger
+            (PWA standalone / gesture-nav phones). Needs viewport-fit=cover,
+            which index.html already sets. min-h-0 lets the flex child shrink
+            so overflow-y actually scrolls. */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pt-4 pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1rem))]">
+         <div className="flex flex-col">
           {/* Main Navigation */}
           <div className="px-3 mb-2">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3">
@@ -130,6 +142,7 @@ export function MobileNavDrawer() {
               </SheetClose>
             ))}
           </nav>
+         </div>
         </div>
       </SheetContent>
     </Sheet>

@@ -35,6 +35,10 @@ import RecruiterCandidateProfile from "./pages/RecruiterCandidateProfile";
 import CompanyInviteAccept from "./pages/CompanyInviteAccept";
 import Groups from "./pages/Groups";
 import Events from "./pages/Events";
+import InsightsPage from "./pages/insights/InsightsPage";
+import InsightDetailPage from "./pages/insights/InsightDetailPage";
+import InsightArticlePage from "./pages/insights/InsightArticlePage";
+import InsightEditorPage from "./pages/insights/InsightEditorPage";
 import NotFound from "./pages/NotFound";
 import { RequireAal2 } from "./components/RequireAal2";
 
@@ -87,6 +91,11 @@ const App = () => (
               <Route path="/company-invite/:invitationId/:token" element={<CompanyInviteAccept />} />
               <Route path="/groups" element={<Groups />} />
               <Route path="/events" element={<Events />} />
+              <Route path="/insights" element={<InsightsPage />} />
+              <Route path="/insights/:slug" element={<InsightDetailPage />} />
+              <Route path="/insights/:slug/write" element={<InsightEditorPage />} />
+              <Route path="/insights/:slug/:articleSlug" element={<InsightArticlePage />} />
+              <Route path="/insights/:slug/:articleSlug/edit" element={<InsightEditorPage />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
