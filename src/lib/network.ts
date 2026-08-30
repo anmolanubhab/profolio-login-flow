@@ -30,12 +30,15 @@ export interface NetworkPerson {
 export interface ReceivedInvitation {
   id: string;
   created_at: string;
+  /** Optional personal note the sender attached. */
+  message?: string | null;
   person: NetworkPerson;
 }
 
 export interface SentInvitation {
   id: string;
   created_at: string;
+  message?: string | null;
   person: NetworkPerson;
 }
 

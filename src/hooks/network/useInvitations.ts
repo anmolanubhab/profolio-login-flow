@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +11,11 @@ import {
   type ReceivedInvitation,
   type SentInvitation,
 } from '@/lib/network';
+import {
+  connectionErrorMessage,
+  respondToConnectionRequest,
+  withdrawConnectionRequest,
+} from '@/lib/network/connectionApi';
 
 interface InvitationsData {
   received: ReceivedInvitation[];
@@ -49,13 +54,13 @@ export function useInvitations() {
       const [receivedRes, sentRes] = await Promise.all([
         supabase
           .from('friend_requests')
-          .select(`id, created_at, sender:profiles!friend_requests_sender_id_fkey(${PERSON_FIELDS})`)
+          .select(`id, created_at, message, sender:profiles!friend_requests_sender_id_fkey(${PERSON_FIELDS})`)
           .eq('receiver_id', myProfileId!)
           .eq('status', 'pending')
           .order('created_at', { ascending: false }),
         supabase
           .from('friend_requests')
-          .select(`id, created_at, receiver:profiles!friend_requests_receiver_id_fkey(${PERSON_FIELDS})`)
+          .select(`id, created_at, message, receiver:profiles!friend_requests_receiver_id_fkey(${PERSON_FIELDS})`)
           .eq('sender_id', myProfileId!)
           .eq('status', 'pending')
           .order('created_at', { ascending: false }),
@@ -67,10 +72,10 @@ export function useInvitations() {
       return {
         received: (receivedRes.data ?? [])
           .filter((r: any) => r.sender)
-          .map((r: any) => ({ id: r.id, created_at: r.created_at, person: mapPerson(r.sender) })),
+          .map((r: any) => ({ id: r.id, created_at: r.created_at, message: r.message ?? null, person: mapPerson(r.sender) })),
         sent: (sentRes.data ?? [])
           .filter((r: any) => r.receiver)
-          .map((r: any) => ({ id: r.id, created_at: r.created_at, person: mapPerson(r.receiver) })),
+          .map((r: any) => ({ id: r.id, created_at: r.created_at, message: r.message ?? null, person: mapPerson(r.receiver) })),
       };
     },
   });
@@ -79,7 +84,25 @@ export function useInvitations() {
     queryClient.invalidateQueries({ queryKey });
     queryClient.invalidateQueries({ queryKey: ['network-counts'] });
     queryClient.invalidateQueries({ queryKey: ['network-connections'] });
+    queryClient.invalidateQueries({ queryKey: ['people-search'] });
   }, [queryClient, queryKey]);
+
+  // Live updates: someone sends me an invite / accepts / withdraws one of
+  // mine -> refresh the lists + badges without a manual reload.
+  useEffect(() => {
+    if (!myProfileId) return;
+    const bump = () => {
+      queryClient.invalidateQueries({ queryKey: ['network-invitations'] });
+      queryClient.invalidateQueries({ queryKey: ['network-counts'] });
+      queryClient.invalidateQueries({ queryKey: ['network-connections'] });
+    };
+    const channel = supabase
+      .channel(`friend_requests_${myProfileId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests', filter: `receiver_id=eq.${myProfileId}` }, bump)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests', filter: `sender_id=eq.${myProfileId}` }, bump)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [myProfileId, queryClient]);
 
   /** Optimistically drop a row from a list, returning a rollback function. */
   const optimisticRemove = useCallback(
@@ -116,41 +139,22 @@ export function useInvitations() {
       withBusy(invitation.id, async () => {
         const rollback = optimisticRemove('received', invitation.id);
         try {
-          const { error: updateError } = await supabase
-            .from('friend_requests')
-            .update({ status: 'accepted' })
-            .eq('id', invitation.id);
-          if (updateError) throw updateError;
-
-          const { error: connError } = await supabase.from('connections').insert({
-            user_id: myProfileId!,
-            connection_id: invitation.person.id,
-            status: 'accepted',
-          });
-          // 23505 = already connected (either direction) — that's fine.
-          if (connError && connError.code !== '23505') throw connError;
-
-          await supabase.from('notifications').insert({
-            user_id: invitation.person.id,
-            type: 'connection_accepted',
-            payload: { connection_id: myProfileId },
-          });
-
+          await respondToConnectionRequest(invitation.id, true);
           toast({
             title: 'Connection added',
             description: `You are now connected with ${personName(invitation.person)}.`,
           });
           refresh();
-        } catch (err: any) {
+        } catch (err) {
           rollback();
           toast({
             title: "Couldn't accept invitation",
-            description: err.message ?? 'Please try again.',
+            description: connectionErrorMessage(err),
             variant: 'destructive',
           });
         }
       }),
-    [withBusy, optimisticRemove, myProfileId, toast, refresh],
+    [withBusy, optimisticRemove, toast, refresh],
   );
 
   const decline = useCallback(
@@ -158,19 +162,14 @@ export function useInvitations() {
       withBusy(invitation.id, async () => {
         const rollback = optimisticRemove('received', invitation.id);
         try {
-          // Receiver-only UPDATE policy allows marking the request 'rejected'.
-          const { error } = await supabase
-            .from('friend_requests')
-            .update({ status: 'rejected' })
-            .eq('id', invitation.id);
-          if (error) throw error;
+          await respondToConnectionRequest(invitation.id, false);
           toast({ title: 'Invitation ignored' });
           refresh();
-        } catch (err: any) {
+        } catch (err) {
           rollback();
           toast({
             title: "Couldn't ignore invitation",
-            description: err.message ?? 'Please try again.',
+            description: connectionErrorMessage(err),
             variant: 'destructive',
           });
         }
@@ -183,18 +182,14 @@ export function useInvitations() {
       withBusy(invitation.id, async () => {
         const rollback = optimisticRemove('sent', invitation.id);
         try {
-          const { error } = await supabase
-            .from('friend_requests')
-            .delete()
-            .eq('id', invitation.id);
-          if (error) throw error;
+          await withdrawConnectionRequest(invitation.id);
           toast({ title: 'Invitation withdrawn' });
           refresh();
-        } catch (err: any) {
+        } catch (err) {
           rollback();
           toast({
             title: "Couldn't withdraw invitation",
-            description: err.message ?? 'Please try again.',
+            description: connectionErrorMessage(err),
             variant: 'destructive',
           });
         }

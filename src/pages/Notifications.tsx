@@ -10,6 +10,7 @@ import { Layout } from '@/components/Layout';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { getNotificationMessage, getNotificationIcon, getNotificationLink } from '@/lib/notifications';
+import { connectionErrorMessage, respondToConnectionRequest } from '@/lib/network/connectionApi';
 
 interface FriendRequest {
   id: string;
@@ -177,26 +178,12 @@ const Notifications = () => {
   const handleAcceptRequest = async (requestId: string) => {
     setProcessing(requestId);
     try {
-      const { error } = await supabase
-        .from('friend_requests')
-        .update({ status: 'accepted' })
-        .eq('id', requestId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Friend request accepted!",
-      });
-
+      await respondToConnectionRequest(requestId, true);
+      toast({ title: 'Connection added', description: 'You are now connected.' });
       fetchFriendRequests();
       fetchNotifications();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error) {
+      toast({ title: 'Error', description: connectionErrorMessage(error), variant: 'destructive' });
     } finally {
       setProcessing(null);
     }
@@ -205,25 +192,11 @@ const Notifications = () => {
   const handleRejectRequest = async (requestId: string) => {
     setProcessing(requestId);
     try {
-      const { error } = await supabase
-        .from('friend_requests')
-        .update({ status: 'rejected' })
-        .eq('id', requestId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Friend request rejected",
-      });
-
+      await respondToConnectionRequest(requestId, false);
+      toast({ title: 'Invitation ignored' });
       fetchFriendRequests();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error) {
+      toast({ title: 'Error', description: connectionErrorMessage(error), variant: 'destructive' });
     } finally {
       setProcessing(null);
     }

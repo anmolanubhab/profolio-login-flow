@@ -2,10 +2,26 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, Clock, Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 import { personName, type NetworkPerson } from '@/lib/network';
+import {
+  connectionErrorMessage,
+  respondToConnectionRequest,
+  sendConnectionRequest,
+  withdrawConnectionRequest,
+} from '@/lib/network/connectionApi';
+import { ConnectNoteDialog } from './ConnectNoteDialog';
 
 export type Relationship =
   | 'none'
@@ -21,6 +37,8 @@ interface ConnectButtonProps {
   requestId?: string | null;
   size?: 'sm' | 'default' | 'lg';
   className?: string;
+  /** Show the LinkedIn "Add a note?" step before sending (profile context). */
+  promptNote?: boolean;
   /** Called after any successful mutation so parent lists can refresh counts. */
   onChanged?: (next: Relationship) => void;
 }
@@ -32,6 +50,7 @@ export function ConnectButton({
   requestId,
   size = 'sm',
   className,
+  promptNote = false,
   onChanged,
 }: ConnectButtonProps) {
   const { toast } = useToast();
@@ -40,9 +59,10 @@ export function ConnectButton({
   const [reqId, setReqId] = useState<string | null>(requestId ?? null);
   const [busy, setBusy] = useState(false);
   const [errored, setErrored] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const inFlight = useRef(false);
 
-  // Keep in sync if the parent query refetches with a new relationship.
   useEffect(() => {
     setState(relationship);
     setReqId(requestId ?? null);
@@ -52,16 +72,19 @@ export function ConnectButton({
     setState(next);
     setErrored(false);
     queryClient.invalidateQueries({ queryKey: ['network-counts'] });
+    queryClient.invalidateQueries({ queryKey: ['people-search'] });
+    queryClient.invalidateQueries({ queryKey: ['network-invitations'] });
+    queryClient.invalidateQueries({ queryKey: ['network-connections'] });
     onChanged?.(next);
   };
 
   const fail = (message: string) => {
     setErrored(true);
-    toast({ title: "Something went wrong", description: message, variant: 'destructive' });
+    toast({ title: 'Something went wrong', description: message, variant: 'destructive' });
   };
 
   const run = async (fn: () => Promise<void>) => {
-    if (inFlight.current) return; // prevent duplicate requests
+    if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     try {
@@ -72,126 +95,124 @@ export function ConnectButton({
     }
   };
 
-  const sendRequest = () =>
+  const doSend = (note: string | null) =>
     run(async () => {
+      setNoteOpen(false);
       const rlKey = `friend_request_${myProfileId}`;
       if (rateLimiter.isRateLimited(rlKey, RATE_LIMITS.MESSAGE_SEND)) {
         const secs = Math.ceil(rateLimiter.getTimeUntilReset(rlKey) / 1000);
-        fail(`Please wait ${secs}s before sending another request.`);
+        fail(`Please wait ${secs}s before sending another invitation.`);
         return;
       }
       try {
-        // Plain insert — the sender may INSERT/DELETE their own request rows but
-        // not UPDATE them (that policy is receiver-only), so upsert can't be used.
-        let { data, error } = await supabase
-          .from('friend_requests')
-          .insert({ sender_id: myProfileId, receiver_id: person.id, status: 'pending' })
-          .select('id')
-          .single();
-
-        // A stale row from a previous invite in either state — clear it and retry.
-        if (error?.code === '23505') {
-          await supabase
-            .from('friend_requests')
-            .delete()
-            .eq('sender_id', myProfileId)
-            .eq('receiver_id', person.id);
-          ({ data, error } = await supabase
-            .from('friend_requests')
-            .insert({ sender_id: myProfileId, receiver_id: person.id, status: 'pending' })
-            .select('id')
-            .single());
+        const result = await sendConnectionRequest(person.id, note);
+        if (result === 'connected') {
+          toast({ title: 'Connection added', description: `You are now connected with ${personName(person)}.` });
+          settle('connected');
+        } else {
+          toast({ title: 'Invitation sent', description: `Invitation sent to ${personName(person)}.` });
+          settle('pending_outgoing');
         }
-        if (error) throw error;
-
-        setReqId(data!.id);
-        await supabase.from('notifications').insert({
-          user_id: person.id,
-          type: 'friend_request',
-          payload: { sender_id: myProfileId },
-        });
-
-        toast({ title: 'Invitation sent', description: `Invitation sent to ${personName(person)}.` });
-        settle('pending_outgoing');
-      } catch (err: any) {
-        fail(err.message ?? 'Please try again.');
+      } catch (err) {
+        fail(connectionErrorMessage(err));
       }
     });
 
-  const withdrawRequest = () =>
+  const startSend = () => {
+    if (promptNote) setNoteOpen(true);
+    else doSend(null);
+  };
+
+  const doWithdraw = () =>
     run(async () => {
+      setWithdrawOpen(false);
       try {
-        const query = supabase.from('friend_requests').delete();
-        const { error } = reqId
-          ? await query.eq('id', reqId)
-          : await query.eq('sender_id', myProfileId).eq('receiver_id', person.id);
-        if (error) throw error;
+        if (reqId) await withdrawConnectionRequest(reqId);
         setReqId(null);
-        toast({ title: 'Invitation withdrawn' });
+        toast({ title: `Invitation to ${personName(person)} withdrawn` });
         settle('none');
-      } catch (err: any) {
-        fail(err.message ?? 'Please try again.');
+      } catch (err) {
+        fail(connectionErrorMessage(err));
       }
     });
 
-  const acceptRequest = () =>
+  const doAccept = () =>
     run(async () => {
+      if (!reqId) {
+        fail('This invitation is no longer available.');
+        return;
+      }
       try {
-        const upd = supabase.from('friend_requests').update({ status: 'accepted' });
-        const { error: updErr } = reqId
-          ? await upd.eq('id', reqId)
-          : await upd.eq('sender_id', person.id).eq('receiver_id', myProfileId);
-        if (updErr) throw updErr;
-
-        const { error: connErr } = await supabase.from('connections').insert({
-          user_id: myProfileId,
-          connection_id: person.id,
-          status: 'accepted',
-        });
-        if (connErr && connErr.code !== '23505') throw connErr;
-
-        await supabase.from('notifications').insert({
-          user_id: person.id,
-          type: 'connection_accepted',
-          payload: { connection_id: myProfileId },
-        });
-
+        await respondToConnectionRequest(reqId, true);
         toast({ title: 'Connection added', description: `You are now connected with ${personName(person)}.` });
-        queryClient.invalidateQueries({ queryKey: ['network-invitations'] });
-        queryClient.invalidateQueries({ queryKey: ['network-connections'] });
         settle('connected');
-      } catch (err: any) {
-        fail(err.message ?? 'Please try again.');
+      } catch (err) {
+        fail(connectionErrorMessage(err));
       }
     });
 
   if (state === 'self') return null;
 
+  const noteDialog = (
+    <ConnectNoteDialog
+      open={noteOpen}
+      onOpenChange={setNoteOpen}
+      personName={personName(person)}
+      onSend={doSend}
+      sending={busy}
+    />
+  );
+
+  const withdrawDialog = (
+    <AlertDialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Withdraw invitation to {personName(person)}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            They won't be notified. You can send a new invitation later.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={doWithdraw}>Withdraw</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (busy) {
     return (
-      <Button size={size} variant="outline" disabled className={className}>
-        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-        Working…
-      </Button>
+      <>
+        <Button size={size} variant="outline" disabled className={className}>
+          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+          Working…
+        </Button>
+        {noteDialog}
+        {withdrawDialog}
+      </>
     );
   }
 
   if (errored) {
     return (
-      <Button
-        size={size}
-        variant="outline"
-        className={className}
-        onClick={() =>
-          state === 'pending_outgoing'
-            ? withdrawRequest()
-            : state === 'pending_incoming'
-              ? acceptRequest()
-              : sendRequest()
-        }
-      >
-        Try again
-      </Button>
+      <>
+        <Button
+          size={size}
+          variant="outline"
+          className={className}
+          onClick={() =>
+            state === 'pending_outgoing'
+              ? setWithdrawOpen(true)
+              : state === 'pending_incoming'
+                ? doAccept()
+                : startSend()
+          }
+        >
+          Try again
+        </Button>
+        {noteDialog}
+        {withdrawDialog}
+      </>
     );
   }
 
@@ -206,16 +227,19 @@ export function ConnectButton({
 
   if (state === 'pending_outgoing') {
     return (
-      <Button
-        size={size}
-        variant="outline"
-        className={className}
-        onClick={withdrawRequest}
-        aria-label={`Withdraw invitation to ${personName(person)}`}
-      >
-        <Clock className="mr-1.5 h-4 w-4" />
-        Pending
-      </Button>
+      <>
+        <Button
+          size={size}
+          variant="outline"
+          className={className}
+          onClick={() => setWithdrawOpen(true)}
+          aria-label={`Withdraw invitation to ${personName(person)}`}
+        >
+          <Clock className="mr-1.5 h-4 w-4" />
+          Pending
+        </Button>
+        {withdrawDialog}
+      </>
     );
   }
 
@@ -224,7 +248,7 @@ export function ConnectButton({
       <Button
         size={size}
         className={className}
-        onClick={acceptRequest}
+        onClick={doAccept}
         aria-label={`Accept invitation from ${personName(person)}`}
       >
         <Check className="mr-1.5 h-4 w-4" />
@@ -234,14 +258,17 @@ export function ConnectButton({
   }
 
   return (
-    <Button
-      size={size}
-      className={className}
-      onClick={sendRequest}
-      aria-label={`Connect with ${personName(person)}`}
-    >
-      <UserPlus className="mr-1.5 h-4 w-4" />
-      Connect
-    </Button>
+    <>
+      <Button
+        size={size}
+        className={className}
+        onClick={startSend}
+        aria-label={`Connect with ${personName(person)}`}
+      >
+        <UserPlus className="mr-1.5 h-4 w-4" />
+        Connect
+      </Button>
+      {noteDialog}
+    </>
   );
 }
