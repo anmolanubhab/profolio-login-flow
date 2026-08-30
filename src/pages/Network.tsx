@@ -7,8 +7,10 @@ import { NetworkShell } from '@/components/network/NetworkShell';
 import { GrowPanel } from '@/components/network/GrowPanel';
 import { InvitationsPanel } from '@/components/network/InvitationsPanel';
 import { ConnectionsPanel } from '@/components/network/ConnectionsPanel';
+import { FollowsPanel } from '@/components/network/FollowsPanel';
 import { useNetworkCounts } from '@/hooks/network/useNetworkCounts';
 import { isNetworkTab, type NetworkPerson, type NetworkTab } from '@/lib/network';
+import type { FollowsKind } from '@/hooks/network/useFollowsList';
 
 type InvitationsSub = 'received' | 'sent';
 
@@ -34,6 +36,8 @@ const Network = () => {
     ? (searchParams.get('tab') as NetworkTab)
     : 'grow';
   const sub: InvitationsSub = searchParams.get('sub') === 'sent' ? 'sent' : 'received';
+  const followsSub: FollowsKind =
+    searchParams.get('sub') === 'followers' ? 'followers' : 'following';
   const query = searchParams.get('q') ?? '';
 
   const setTab = useCallback(
@@ -55,6 +59,18 @@ const Network = () => {
       setSearchParams((prev) => {
         const p = new URLSearchParams(prev);
         if (next === 'received') p.delete('sub');
+        else p.set('sub', next);
+        return p;
+      });
+    },
+    [setSearchParams],
+  );
+
+  const setFollowsSub = useCallback(
+    (next: FollowsKind) => {
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev);
+        if (next === 'following') p.delete('sub');
         else p.set('sub', next);
         return p;
       });
@@ -110,6 +126,13 @@ const Network = () => {
           <ConnectionsPanel
             query={query}
             onQueryChange={setQuery}
+            onOpenProfile={openProfile}
+          />
+        )}
+        {tab === 'following' && (
+          <FollowsPanel
+            sub={followsSub}
+            onSubChange={setFollowsSub}
             onOpenProfile={openProfile}
           />
         )}

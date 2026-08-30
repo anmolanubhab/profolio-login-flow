@@ -1,14 +1,16 @@
 import { ReactNode } from 'react';
-import { UserPlus, Users } from 'lucide-react';
+import { Rss, UserPlus, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { NETWORK_TABS, type NetworkTab } from '@/lib/network';
 import type { NetworkCounts } from '@/hooks/network/useNetworkCounts';
+import { useFollowCounts } from '@/hooks/network/useFollowCounts';
 
 const TAB_LABELS: Record<NetworkTab, string> = {
   grow: 'Grow',
   invitations: 'Invitations',
   connections: 'Connections',
+  following: 'Following & followers',
 };
 
 interface NetworkShellProps {
@@ -19,9 +21,12 @@ interface NetworkShellProps {
 }
 
 export function NetworkShell({ tab, onTabChange, counts, children }: NetworkShellProps) {
+  const { counts: followCounts } = useFollowCounts();
+
   const badgeFor = (t: NetworkTab): number | null => {
     if (t === 'invitations') return counts.pending_received || null;
     if (t === 'connections') return counts.connections_count || null;
+    if (t === 'following') return followCounts.followers_count || null;
     return null;
   };
 
@@ -49,6 +54,13 @@ export function NetworkShell({ tab, onTabChange, counts, children }: NetworkShel
                   count={counts.pending_received}
                   active={tab === 'invitations'}
                   onClick={() => onTabChange('invitations')}
+                />
+                <RailItem
+                  icon={<Rss className="h-4 w-4" />}
+                  label="Following & followers"
+                  count={followCounts.followers_count}
+                  active={tab === 'following'}
+                  onClick={() => onTabChange('following')}
                 />
               </nav>
             </CardContent>
