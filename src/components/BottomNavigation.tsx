@@ -93,43 +93,43 @@ const BottomNavigation = () => {
             : 'translateY(0)',
         }}
       >
-        <div className="relative mx-auto flex h-16 w-full max-w-md items-stretch px-1 xs:px-2">
+        <div className="mx-auto flex h-16 w-full max-w-md items-stretch px-1 xs:px-2">
           {renderItem(navItems[0])}
           {renderItem(navItems[1])}
 
-          {/* Center column: an inert spacer keeps the 5-slot rhythm; the FAB
-              itself is absolutely centered on the row so it lands on the true
-              horizontal midpoint regardless of the sibling label widths. */}
-          <div className="flex-1" aria-hidden="true" />
+          {/* Create: an in-row slot (no longer a raised FAB) -- a compact
+              gradient circle, ~40% smaller than the old 50px button, sitting
+              on the same baseline as Home / Network / Messages / Jobs. */}
+          <div className="flex flex-1 flex-col items-center justify-center gap-1 min-w-[44px]">
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              aria-label="Create"
+              aria-haspopup="dialog"
+              aria-expanded={createOpen}
+              style={{ background: 'var(--gradient-create-fab)' }}
+              className={cn(
+                'grid h-[30px] w-[30px] place-items-center rounded-full text-white',
+                'shadow-sm ring-1 ring-black/5',
+                'transition duration-200 ease-out will-change-transform',
+                'hover:shadow-md active:scale-95 active:brightness-95',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'motion-reduce:transition-none',
+              )}
+            >
+              <Plus
+                className={cn(
+                  'h-4 w-4 drop-shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none',
+                  createOpen && 'rotate-45',
+                )}
+                strokeWidth={2.5}
+              />
+            </button>
+            <span className="text-[10px] font-medium text-muted-foreground">Create</span>
+          </div>
 
           {renderItem(navItems[2])}
           {renderItem(navItems[3])}
-
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            aria-label="Create"
-            aria-haspopup="dialog"
-            aria-expanded={createOpen}
-            style={{ background: 'var(--gradient-create-fab)' }}
-            className={cn(
-              'absolute left-1/2 top-0 h-[50px] w-[50px] -translate-x-1/2 -translate-y-[36%]',
-              'grid place-items-center rounded-full text-white',
-              'shadow-md ring-1 ring-black/5',
-              'transition duration-200 ease-out will-change-transform',
-              'hover:shadow-lg active:scale-95 active:brightness-95',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-              'motion-reduce:transition-none',
-            )}
-          >
-            <Plus
-              className={cn(
-                'h-6 w-6 drop-shadow-sm transition-transform duration-200 ease-out motion-reduce:transition-none',
-                createOpen && 'rotate-45',
-              )}
-              strokeWidth={2.5}
-            />
-          </button>
         </div>
       </nav>
 

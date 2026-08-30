@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { PhotoVisibility } from "@/components/profile/profileTypes";
+import ImageCropDialog from "@/components/profile/ImageCropDialog";
 
 interface ProfilePhotoProps {
   avatarUrl: string | null;
@@ -79,6 +80,8 @@ export const ProfilePhoto = ({
   const [open, setOpen] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
   const [savingVis, setSavingVis] = useState(false);
   const [draftVis, setDraftVis] = useState<PhotoVisibility>(photoVisibility);
 
@@ -104,21 +107,28 @@ export const ProfilePhoto = ({
       });
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 15 * 1024 * 1024) {
       toast({
         title: "Image too large",
-        description: "Profile photos must be under 5MB.",
+        description: "Please choose an image under 15MB.",
         variant: "destructive",
       });
       return;
     }
 
+    // Let the user frame the exact square before anything is uploaded.
+    setPendingFile(file);
+    setCropOpen(true);
+  };
+
+  const uploadCroppedBlob = async (blob: Blob) => {
     setUploading(true);
     try {
+      const cropped = new File([blob], "avatar.jpg", { type: "image/jpeg" });
       const { secureUpload } = await import("@/lib/secure-upload");
       const result = await secureUpload({
         bucket: "avatars",
-        file,
+        file: cropped,
         userId: authUserId,
       });
       if (!result.success || !result.url) {
@@ -131,6 +141,8 @@ export const ProfilePhoto = ({
       if (error) throw error;
 
       onChange({ avatar_url: result.url });
+      setCropOpen(false);
+      setPendingFile(null);
       toast({ title: "Profile photo updated" });
     } catch (err) {
       toast({
@@ -335,6 +347,18 @@ export const ProfilePhoto = ({
           )}
         </ResponsiveModalContent>
       </ResponsiveModal>
+
+      <ImageCropDialog
+        open={cropOpen}
+        onOpenChange={(o) => {
+          setCropOpen(o);
+          if (!o) setPendingFile(null);
+        }}
+        file={pendingFile}
+        onCropped={uploadCroppedBlob}
+        busy={uploading}
+        title="Position your profile photo"
+      />
 
       <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
         <AlertDialogContent>

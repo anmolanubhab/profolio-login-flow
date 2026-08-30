@@ -4,7 +4,6 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Layout } from '@/components/Layout';
-import PostInput from '@/components/PostInput';
 import Feed from '@/components/Feed';
 import FloatingCreatePost from '@/components/FloatingCreatePost';
 import Stories from '@/components/Stories';
@@ -164,13 +163,6 @@ const Dashboard = () => {
           <div className="min-w-0 w-full flex-1">
           <TabsContent value="feed" className="card-stack mt-0">
             <Stories />
-            <PostInput
-              user={{
-                email: user.email,
-                avatar: user.user_metadata?.avatar_url
-              }}
-              onPostCreated={() => setFeedRefresh(prev => prev + 1)}
-            />
 
             <div className="flex items-center gap-1 p-1 bg-secondary/50 rounded-full w-fit">
               <button
