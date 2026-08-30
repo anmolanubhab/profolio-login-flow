@@ -5,12 +5,16 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useMobileChromeHidden } from '@/hooks/use-mobile-scroll-direction';
 import { useMobileNavBadges } from '@/hooks/use-mobile-nav-badges';
+import { useFullscreenOverlayActive } from '@/hooks/useFullscreenOverlay';
 import { MobileCreateSheet } from '@/components/MobileCreateSheet';
 
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const hidden = useMobileChromeHidden();
+  // A full-screen takeover (e.g. the Story composer) owns the whole viewport;
+  // the bottom bar must not sit on top of its footer controls.
+  const overlayActive = useFullscreenOverlayActive();
   const badges = useMobileNavBadges();
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -72,6 +76,8 @@ const BottomNavigation = () => {
       </Button>
     );
   };
+
+  if (overlayActive) return null;
 
   return (
     <>

@@ -33,7 +33,7 @@ export function GrowPanel({ query, onQueryChange, onOpenProfile }: GrowPanelProp
     <Card className="border-0 bg-gradient-card shadow-card">
       <CardHeader className="gap-3 pb-3">
         <CardTitle className="text-lg">
-          {debounced ? 'Search results' : 'People on Profolio'}
+          {debounced ? 'Search results' : 'People you may know'}
         </CardTitle>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

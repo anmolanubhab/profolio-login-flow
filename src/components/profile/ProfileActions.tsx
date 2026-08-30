@@ -13,13 +13,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { rateLimiter, RATE_LIMITS } from "@/lib/rate-limiter";
 import { profileDisplayName, type ProfileContextValue } from "@/components/profile/profileTypes";
+import { ConnectNoteDialog } from "@/components/network/ConnectNoteDialog";
+import {
+  connectionErrorMessage,
+  respondToConnectionRequest,
+  sendConnectionRequest,
+  withdrawConnectionRequest,
+} from "@/lib/network/connectionApi";
 
 interface ProfileActionsProps {
   ctx: ProfileContextValue;
@@ -36,6 +47,8 @@ export const ProfileActions = ({ ctx }: ProfileActionsProps) => {
     refresh,
   } = ctx;
   const [busy, setBusy] = useState<null | string>(null);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const name = profileDisplayName(profile);
 
   const guardViewer = () => {
@@ -50,7 +63,7 @@ export const ProfileActions = ({ ctx }: ProfileActionsProps) => {
     return true;
   };
 
-  const connect = async () => {
+  const startConnect = () => {
     if (!guardViewer()) return;
     if (
       rateLimiter.isRateLimited(
@@ -63,30 +76,31 @@ export const ProfileActions = ({ ctx }: ProfileActionsProps) => {
       );
       toast({
         title: "Slow down",
-        description: `Wait ${secs}s before sending another request.`,
+        description: `Wait ${secs}s before sending another invitation.`,
         variant: "destructive",
       });
       return;
     }
+    setNoteOpen(true);
+  };
+
+  const sendConnect = async (note: string | null) => {
+    setNoteOpen(false);
     setBusy("connect");
     try {
-      const { error } = await supabase.from("friend_requests").insert({
-        sender_id: viewerProfileId!,
-        receiver_id: profileId,
-        status: "pending",
+      const result = await sendConnectionRequest(profileId, note);
+      toast({
+        title: result === "connected" ? "Connected" : "Invitation sent",
+        description:
+          result === "connected"
+            ? `You are now connected with ${name}.`
+            : `Invitation sent to ${name}.`,
       });
-      if (error) throw error;
-      await supabase.from("notifications").insert({
-        user_id: profileId,
-        type: "friend_request",
-        payload: { sender_id: viewerProfileId },
-      });
-      toast({ title: "Request sent" });
       await refresh();
     } catch (err) {
       toast({
-        title: "Couldn’t send request",
-        description: err instanceof Error ? err.message : "Please try again",
+        title: "Couldn’t send invitation",
+        description: connectionErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -96,21 +110,23 @@ export const ProfileActions = ({ ctx }: ProfileActionsProps) => {
 
   const withdraw = async () => {
     if (!guardViewer()) return;
+    setWithdrawOpen(false);
     setBusy("withdraw");
     try {
-      const { error } = await supabase
+      const { data: req } = await supabase
         .from("friend_requests")
-        .delete()
+        .select("id")
         .eq("sender_id", viewerProfileId!)
         .eq("receiver_id", profileId)
-        .eq("status", "pending");
-      if (error) throw error;
-      toast({ title: "Request withdrawn" });
+        .eq("status", "pending")
+        .maybeSingle();
+      if (req) await withdrawConnectionRequest(req.id);
+      toast({ title: "Invitation withdrawn" });
       await refresh();
     } catch (err) {
       toast({
         title: "Couldn’t withdraw",
-        description: err instanceof Error ? err.message : "Please try again",
+        description: connectionErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -134,23 +150,13 @@ export const ProfileActions = ({ ctx }: ProfileActionsProps) => {
         await refresh();
         return;
       }
-
-      // Match Notifications.tsx: accepting a connection is just a status
-      // change on friend_requests. We do NOT write to the parallel
-      // `connections` table (unused by the app, and its INSERT trigger
-      // would emit a wrong-typed notification).
-      const { error: updErr } = await supabase
-        .from("friend_requests")
-        .update({ status: accept ? "accepted" : "rejected" })
-        .eq("id", req.id);
-      if (updErr) throw updErr;
-
-      toast({ title: accept ? "Connected" : "Request ignored" });
+      await respondToConnectionRequest(req.id, accept);
+      toast({ title: accept ? "Connected" : "Invitation ignored" });
       await refresh();
     } catch (err) {
       toast({
         title: "Something went wrong",
-        description: err instanceof Error ? err.message : "Please try again",
+        description: connectionErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -198,7 +204,7 @@ export const ProfileActions = ({ ctx }: ProfileActionsProps) => {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {relationship === "none" && (
-        <Button onClick={connect} disabled={busy !== null} className="gap-2">
+        <Button onClick={startConnect} disabled={busy !== null} className="gap-2">
           {busy === "connect" ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -209,20 +215,15 @@ export const ProfileActions = ({ ctx }: ProfileActionsProps) => {
       )}
 
       {relationship === "pending_outgoing" && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" disabled={busy !== null} className="gap-2">
-              <Clock className="h-4 w-4" />
-              Pending
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={withdraw}>
-              <X className="h-4 w-4 mr-2" />
-              Withdraw request
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          variant="outline"
+          disabled={busy !== null}
+          className="gap-2"
+          onClick={() => setWithdrawOpen(true)}
+        >
+          <Clock className="h-4 w-4" />
+          Pending
+        </Button>
       )}
 
       {relationship === "pending_incoming" && (
@@ -271,6 +272,29 @@ export const ProfileActions = ({ ctx }: ProfileActionsProps) => {
         )}
         {isFollowing ? "Following" : "Follow"}
       </Button>
+
+      <ConnectNoteDialog
+        open={noteOpen}
+        onOpenChange={setNoteOpen}
+        personName={name}
+        onSend={sendConnect}
+        sending={busy === "connect"}
+      />
+
+      <AlertDialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Withdraw invitation to {name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They won't be notified. You can send a new invitation later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={withdraw}>Withdraw</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

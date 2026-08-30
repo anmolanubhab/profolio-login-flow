@@ -88,11 +88,13 @@ interface PersonRowProps {
   actions?: ReactNode;
   /** Small muted line shown under the subtitle (e.g. "Connected 2 days ago"). */
   meta?: ReactNode;
+  /** Optional invitation note, rendered as its own quoted block. */
+  note?: string | null;
   onOpenProfile?: (person: NetworkPerson) => void;
 }
 
 /** Horizontal list row used in Invitations / Connections. */
-export function PersonRow({ person, actions, meta, onOpenProfile }: PersonRowProps) {
+export function PersonRow({ person, actions, meta, note, onOpenProfile }: PersonRowProps) {
   const name = personName(person);
   const subtitle = personSubtitle(person);
   const mutual = mutualLabel(person.mutual_count);
@@ -133,6 +135,11 @@ export function PersonRow({ person, actions, meta, onOpenProfile }: PersonRowPro
         )}
         {mutual && <p className="truncate text-xs text-muted-foreground">{mutual}</p>}
         {meta && <p className="truncate text-xs text-muted-foreground">{meta}</p>}
+        {note && (
+          <p className="mt-1 line-clamp-3 rounded-md bg-muted/60 px-2 py-1 text-xs italic text-foreground">
+            “{note}”
+          </p>
+        )}
       </div>
 
       {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}

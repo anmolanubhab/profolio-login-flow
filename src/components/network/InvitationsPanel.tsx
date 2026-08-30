@@ -1,12 +1,24 @@
+import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertCircle, Check, Inbox, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/ui/empty-state';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PersonRow, PersonRowSkeleton } from './PersonCard';
 import { useInvitations } from '@/hooks/network/useInvitations';
-import type { NetworkPerson } from '@/lib/network';
+import { personName, type NetworkPerson } from '@/lib/network';
+import type { SentInvitation } from '@/lib/network';
 
 type Sub = 'received' | 'sent';
 
@@ -27,6 +39,7 @@ function timeAgo(iso: string): string {
 export function InvitationsPanel({ sub, onSubChange, onOpenProfile }: InvitationsPanelProps) {
   const { received, sent, isLoading, isError, refetch, isBusy, accept, decline, withdraw } =
     useInvitations();
+  const [pendingWithdraw, setPendingWithdraw] = useState<SentInvitation | null>(null);
 
   return (
     <Card className="border-0 bg-gradient-card shadow-card">
@@ -77,6 +90,7 @@ export function InvitationsPanel({ sub, onSubChange, onOpenProfile }: Invitation
                     person={inv.person}
                     onOpenProfile={onOpenProfile}
                     meta={timeAgo(inv.created_at)}
+                    note={inv.message}
                     actions={
                       <>
                         <Button
@@ -124,7 +138,7 @@ export function InvitationsPanel({ sub, onSubChange, onOpenProfile }: Invitation
                       size="sm"
                       variant="outline"
                       disabled={isBusy(inv.id)}
-                      onClick={() => withdraw(inv)}
+                      onClick={() => setPendingWithdraw(inv)}
                     >
                       Withdraw
                     </Button>
@@ -135,6 +149,33 @@ export function InvitationsPanel({ sub, onSubChange, onOpenProfile }: Invitation
           </ul>
         )}
       </CardContent>
+
+      <AlertDialog
+        open={!!pendingWithdraw}
+        onOpenChange={(o) => !o && setPendingWithdraw(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Withdraw invitation to {pendingWithdraw ? personName(pendingWithdraw.person) : 'this person'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              They won't be notified. You can send a new invitation later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingWithdraw) withdraw(pendingWithdraw);
+                setPendingWithdraw(null);
+              }}
+            >
+              Withdraw
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -909,6 +909,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          message: string | null
           receiver_id: string
           sender_id: string
           status: Database["public"]["Enums"]["friend_request_status"]
@@ -917,6 +918,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          message?: string | null
           receiver_id: string
           sender_id: string
           status?: Database["public"]["Enums"]["friend_request_status"]
@@ -925,6 +927,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          message?: string | null
           receiver_id?: string
           sender_id?: string
           status?: Database["public"]["Enums"]["friend_request_status"]
@@ -3093,28 +3096,141 @@ export type Database = {
       }
       stories: {
         Row: {
+          ai_label: boolean
+          alt_text: string | null
+          alt_text_source: string
+          background: Json | null
+          caption: string | null
           created_at: string | null
+          duration_ms: number | null
           expires_at: string | null
+          font_style: string | null
           id: string
+          is_archived: boolean
+          kind: string
+          media_height: number | null
           media_type: string | null
-          media_url: string
+          media_url: string | null
+          media_width: number | null
+          music: Json | null
+          overlays: Json
+          privacy: string
+          thumbnail_url: string | null
+          trim: Json | null
           user_id: string | null
         }
         Insert: {
+          ai_label?: boolean
+          alt_text?: string | null
+          alt_text_source?: string
+          background?: Json | null
+          caption?: string | null
           created_at?: string | null
+          duration_ms?: number | null
           expires_at?: string | null
+          font_style?: string | null
           id?: string
+          is_archived?: boolean
+          kind?: string
+          media_height?: number | null
           media_type?: string | null
-          media_url: string
+          media_url?: string | null
+          media_width?: number | null
+          music?: Json | null
+          overlays?: Json
+          privacy?: string
+          thumbnail_url?: string | null
+          trim?: Json | null
           user_id?: string | null
         }
         Update: {
+          ai_label?: boolean
+          alt_text?: string | null
+          alt_text_source?: string
+          background?: Json | null
+          caption?: string | null
           created_at?: string | null
+          duration_ms?: number | null
           expires_at?: string | null
+          font_style?: string | null
           id?: string
+          is_archived?: boolean
+          kind?: string
+          media_height?: number | null
           media_type?: string | null
-          media_url?: string
+          media_url?: string | null
+          media_width?: number | null
+          music?: Json | null
+          overlays?: Json
+          privacy?: string
+          thumbnail_url?: string | null
+          trim?: Json | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      story_audience: {
+        Row: {
+          created_at: string
+          story_id: string
+          viewer_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          story_id: string
+          viewer_user_id: string
+        }
+        Update: {
+          created_at?: string
+          story_id?: string
+          viewer_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_audience_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_music_tracks: {
+        Row: {
+          artist: string
+          audio_url: string
+          cover_color: string
+          created_at: string
+          duration_ms: number
+          genre: string | null
+          id: string
+          is_active: boolean
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          artist: string
+          audio_url: string
+          cover_color?: string
+          created_at?: string
+          duration_ms: number
+          genre?: string | null
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          artist?: string
+          audio_url?: string
+          cover_color?: string
+          created_at?: string
+          duration_ms?: number
+          genre?: string | null
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title?: string
         }
         Relationships: []
       }
@@ -3184,6 +3300,53 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      story_saved_music: {
+        Row: {
+          created_at: string
+          track_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          track_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          track_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_saved_music_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "story_music_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_settings: {
+        Row: {
+          archive_enabled: boolean
+          default_privacy: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archive_enabled?: boolean
+          default_privacy?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archive_enabled?: boolean
+          default_privacy?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       story_views: {
         Row: {
@@ -3431,6 +3594,10 @@ export type Database = {
       apply_to_job: {
         Args: { p_cover_note?: string; p_job_id: string; p_resume_id?: string }
         Returns: string
+      }
+      can_view_story: {
+        Args: { _author: string; _privacy: string; _story_id: string }
+        Returns: boolean
       }
       cancel_interview_round: {
         Args: { p_reason?: string; p_round_id: string }
@@ -3695,6 +3862,7 @@ export type Database = {
           pending_sent: number
         }[]
       }
+      purge_expired_stories: { Args: never; Returns: number }
       remove_connection: {
         Args: { other_profile_id: string }
         Returns: boolean
@@ -3714,6 +3882,10 @@ export type Database = {
           p_round_id: string
         }
         Returns: undefined
+      }
+      respond_to_connection_request: {
+        Args: { accept: boolean; request_id: string }
+        Returns: string
       }
       schedule_interview_round: {
         Args: {
@@ -3775,6 +3947,10 @@ export type Database = {
           request_id: string
         }[]
       }
+      send_connection_request: {
+        Args: { note?: string; target_profile_id: string }
+        Returns: string
+      }
       set_application_resume_sharing: {
         Args: { p_application_id: string; p_revoked: boolean }
         Returns: boolean
@@ -3808,6 +3984,10 @@ export type Database = {
           p_reason?: string
         }
         Returns: undefined
+      }
+      withdraw_connection_request: {
+        Args: { request_id: string }
+        Returns: boolean
       }
     }
     Enums: {
