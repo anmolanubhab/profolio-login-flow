@@ -273,9 +273,52 @@ All colors MUST be HSL.
     color: hsl(var(--card-foreground));
     box-shadow: var(--shadow-card);
     transition: var(--transition-smooth);
+    /* clip (not hidden): clips media bleed / rounded corners but is NOT a
+       scroll container, so a focus event inside the inline comment section
+       can't shift the card sideways and strand its content. */
+    overflow: clip;
   }
-  .post-card:hover {
-    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+
+  /* Mobile: LinkedIn-style feed -- the whole post card is edge-to-edge. It
+     breaks out of the feed column's horizontal padding / centered max-width
+     (calc(50% - 50vw) cancels whatever padding an ancestor adds, since that
+     column is viewport-centred once the side rails are hidden), and drops the
+     rounded corners, the left/right border and the shadow. Cards are then
+     separated only by the feed gap (var(--feed-card-gap)) with the page
+     background showing through -- exactly like the LinkedIn mobile feed.
+     100vw is clamped and html has overflow-x:hidden, so no horizontal scroll.
+     Inner rows (header / body / actions / CTA / poll) keep their own
+     px-4 / mx-4 padding; only the media rows fill the full width. */
+  @media (max-width: 767.98px) {
+    .post-card {
+      width: 100vw;
+      max-width: 100vw;
+      margin-left: calc(50% - 50vw);
+      margin-right: calc(50% - 50vw);
+      border-radius: 0;
+      border-left-width: 0;
+      border-right-width: 0;
+      box-shadow: none;
+    }
+    .post-card:hover { box-shadow: none; }
+  }
+
+  /* Post media -------------------------------------------------------------
+     Shared vertical rhythm for the image / video / carousel media blocks. */
+  .post-media { @apply mb-3; }
+
+  /* Image + image-carousel media. On mobile the parent .post-card is already
+     full-bleed, so the media just fills it edge-to-edge (width:100%, no
+     wrapper padding). From `md` up it's a normal in-flow block inside the
+     contained desktop card. */
+  .post-media--fullbleed {
+    width: 100%;
+    max-width: 100%;
+  }
+  @media (min-width: 768px) {
+    .post-card:hover {
+      box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+    }
   }
   .post-header { @apply flex items-center gap-3 p-4 sm:p-5; }
   .post-title { @apply text-base sm:text-lg font-semibold leading-tight; }
@@ -284,9 +327,11 @@ All colors MUST be HSL.
   .post-divider { @apply border-t; }
   .post-actions { @apply flex items-center justify-between px-2 sm:px-3 py-2; border-top: 1px solid hsl(var(--border)); }
 
-  /* Action buttons */
+  /* Action buttons -- tighter horizontal padding on mobile so all four
+     (Like / Comment / Repost / Share) fit the card width without spilling;
+     roomy `px-4` returns at `sm`. */
   .action-btn {
-    @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium;
+    @apply inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-lg px-1 sm:px-4 py-2 text-xs sm:text-sm font-medium;
     color: hsl(var(--muted-foreground));
     transition: var(--transition-smooth);
   }
@@ -297,7 +342,16 @@ All colors MUST be HSL.
   .action-btn.active {
     color: hsl(var(--primary));
   }
-  .action-btn .icon { @apply h-5 w-5; }
+  .action-btn .icon { @apply h-[18px] w-[18px] sm:h-5 sm:w-5 shrink-0; }
+
+  /* Feed post action row: Like / Comment / Repost / Share spread across the
+     card width. Buttons size to their content (tight padding + smaller icon/
+     text on mobile, see .action-btn) so all four fit without spilling; the
+     min-width:0 + label truncate is only a backstop for an unusually long
+     localized label. Matches LinkedIn's space-between action bar. */
+  .post-actions-row { @apply flex items-center justify-between gap-0.5; }
+  .post-actions-row .action-btn { min-width: 0; }
+  .post-actions-row .action-btn > span { @apply truncate; }
 
   /* Generic buttons */
   .btn-primary {
