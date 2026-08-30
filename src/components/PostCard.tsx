@@ -23,6 +23,7 @@ import { usePostReposts } from '@/hooks/use-post-reposts';
 import { useAutoplayPreference } from '@/hooks/useAutoplayPreference';
 import { ReactionBar, ReactionCountSummary, ReactionType, ReactionSummary, REACTION_META, REACTION_ORDER } from './ReactionBar';
 import CommentSection from './comments/CommentSection';
+import { ImageMedia, VideoMedia } from './post/PostMedia';
 
 export interface PollSummary {
   id: string;
@@ -367,10 +368,11 @@ const PostCard = ({
   );
 
   return (
-    // overflow-clip (not -hidden): still clips media bleed / rounded corners,
-    // but is NOT a scroll container, so a focus event inside the inline comment
-    // section can't shift the card sideways and strand its content.
-    <div className="post-card w-full max-w-full overflow-clip" id={`post-${id}`}>
+    // Layout (overflow, and the mobile full-bleed breakout) is driven entirely
+    // by `.post-card` in index.css. Do NOT add `w-full` / `max-w-full` here --
+    // those Tailwind utilities load in a later layer and would override the
+    // mobile `width: 100vw` that makes the whole card edge-to-edge.
+    <div className="post-card" id={`post-${id}`}>
       {repostContext && (
         <div className="flex items-center gap-2 px-4 sm:px-5 pt-3 text-[13px] text-muted-foreground">
           <Repeat2 className="h-4 w-4 shrink-0" />
@@ -452,23 +454,22 @@ const PostCard = ({
         <PostText content={content} />
       </div>
 
-      {image && (
-        <div className="px-0 mb-3">
-          <img
-            src={image}
-            alt="Post content"
-            className="w-full h-auto object-cover"
-          />
-        </div>
-      )}
+      {image && <ImageMedia src={image} alt="Post content" />}
 
       {postType === 'carousel' && carouselUrls && carouselUrls.length > 0 && (
-        <div className="px-4 sm:px-5 mb-3">
+        // Full-bleed on mobile (image gallery), contained on desktop. Embla's
+        // swipe/drag is unaffected by the outer breakout margins.
+        <div className="post-media post-media--fullbleed md:px-5">
           <Carousel className="w-full">
             <CarouselContent>
               {carouselUrls.map((url, i) => (
                 <CarouselItem key={i}>
-                  <img src={url} alt={`Slide ${i + 1}`} className="w-full h-auto max-h-96 object-cover rounded-lg" />
+                  <img
+                    src={url}
+                    alt={`Slide ${i + 1}`}
+                    loading="lazy"
+                    className="w-full h-auto max-h-[80vh] md:max-h-96 object-contain bg-muted md:rounded-lg"
+                  />
                 </CarouselItem>
               ))}
             </CarouselContent>
@@ -483,16 +484,12 @@ const PostCard = ({
       )}
 
       {postType === 'video' && videoUrl && (
-        <div className="px-0 mb-3">
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            controls
-            muted={autoplayEnabled}
-            playsInline={autoplayEnabled}
-            className="w-full max-h-[32rem] bg-black"
-          />
-        </div>
+        <VideoMedia
+          ref={videoRef}
+          src={videoUrl}
+          muted={autoplayEnabled}
+          playsInline={autoplayEnabled}
+        />
       )}
 
       {postType === 'document' && documentUrl && (
@@ -568,7 +565,7 @@ const PostCard = ({
       <div className="border-t border-border mx-4 sm:mx-5" />
 
       <div className="px-2 sm:px-3 py-1">
-        <div className="flex items-center justify-around">
+        <div className="post-actions-row">
           <ReactionBar summary={reactionSummary} onReact={handleReact} />
           <button
             type="button"
