@@ -3483,6 +3483,13 @@ export type Database = {
             Returns: string
           }
       current_profile_id: { Args: never; Returns: string }
+      follow_counts: {
+        Args: never
+        Returns: {
+          followers_count: number
+          following_count: number
+        }[]
+      }
       generate_mfa_recovery_codes: { Args: never; Returns: string[] }
       get_application_candidate_resources: {
         Args: { p_application_id: string }
@@ -3638,6 +3645,40 @@ export type Database = {
         Returns: boolean
       }
       is_job_recruiter: { Args: { _job_id: string }; Returns: boolean }
+      list_followers: {
+        Args: { lim?: number; off?: number; search?: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          followed_at: string
+          full_name: string
+          headline: string
+          i_follow_them: boolean
+          is_connected: boolean
+          last_name_visibility: string
+          location: string
+          mutual_count: number
+          profession: string
+          profile_id: string
+        }[]
+      }
+      list_following: {
+        Args: { lim?: number; off?: number; search?: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          followed_at: string
+          full_name: string
+          headline: string
+          is_connected: boolean
+          last_name_visibility: string
+          location: string
+          mutual_count: number
+          profession: string
+          profile_id: string
+          they_follow_me: boolean
+        }[]
+      }
       mark_interview_outcome: {
         Args: { p_outcome: string; p_round_id: string }
         Returns: undefined

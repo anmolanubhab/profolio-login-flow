@@ -19,6 +19,12 @@ export interface NetworkPerson {
   mutual_count?: number;
   /** ISO timestamp — populated for the connections list. */
   connected_at?: string | null;
+  /** ISO timestamp — populated for the following / followers lists. */
+  followed_at?: string | null;
+  /** Following list: does this person follow the current user back? */
+  they_follow_me?: boolean;
+  /** Followers list: does the current user follow this person back? */
+  i_follow_them?: boolean;
 }
 
 export interface ReceivedInvitation {
@@ -33,9 +39,9 @@ export interface SentInvitation {
   person: NetworkPerson;
 }
 
-export type NetworkTab = 'grow' | 'invitations' | 'connections';
+export type NetworkTab = 'grow' | 'invitations' | 'connections' | 'following';
 
-export const NETWORK_TABS: NetworkTab[] = ['grow', 'invitations', 'connections'];
+export const NETWORK_TABS: NetworkTab[] = ['grow', 'invitations', 'connections', 'following'];
 
 export function isNetworkTab(value: string | null | undefined): value is NetworkTab {
   return !!value && (NETWORK_TABS as string[]).includes(value);
