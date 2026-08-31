@@ -82,7 +82,7 @@ const BottomNavigation = () => {
   return (
     <>
       <nav
-        className="fixed inset-x-0 z-50 w-full max-w-full border-t border-border bg-background transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
+        className="bottom-nav fixed inset-x-0 z-50 w-full max-w-full border-t border-border transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
         style={{
           // Edge-to-edge: the ONLY opaque layer is this h-16 bar, and it floats
           // *above* the system inset. The strip behind the Android gesture
