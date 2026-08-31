@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Home, ClipboardList, FilePlus2, FileText, Award, Bookmark, Users2, Settings2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useProfileStrength } from '@/hooks/useProfileStrength';
 
 interface SummaryProfile {
   id: string;
@@ -41,9 +42,16 @@ interface NavItem {
 export function ProfileSummaryCard({ activeTab = 'feed', hasCompany = false }: ProfileSummaryCardProps) {
   const [profile, setProfile] = useState<SummaryProfile | null>(null);
   const [viewCount, setViewCount] = useState<number | null>(null);
-  const [completion, setCompletion] = useState(0);
+  const [ids, setIds] = useState<{ profileId: string; authUserId: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Same centralized engine as the profile-page widget -> one consistent number.
+  const { data: strength } = useProfileStrength({
+    profileId: ids?.profileId,
+    authUserId: ids?.authUserId,
+  });
+  const completion = strength?.score ?? 0;
 
   useEffect(() => {
     const load = async () => {
@@ -58,10 +66,7 @@ export function ProfileSummaryCard({ activeTab = 'feed', hasCompany = false }: P
 
       if (!p) return;
       setProfile(p);
-
-      const fields = [p.avatar_url, p.profession, p.location, p.bio, p.phone, p.linkedin_url];
-      const filled = fields.filter(Boolean).length;
-      setCompletion(Math.round((filled / fields.length) * 100));
+      setIds({ profileId: p.id, authUserId: user.id });
 
       const { count } = await supabase
         .from('profile_views')

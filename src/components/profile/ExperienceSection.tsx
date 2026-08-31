@@ -1,3 +1,4 @@
+import { notifyProfileChanged } from "@/lib/profileNav";
 import { useCallback, useEffect, useState } from "react";
 import { Pencil, Trash2, Briefcase } from "lucide-react";
 
@@ -160,7 +161,7 @@ const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
           onOpenChange={setDialogOpen}
           profileId={profileId}
           existing={editing}
-          onSaved={fetchRows}
+          onSaved={() => { fetchRows(); notifyProfileChanged(); }}
         />
       )}
 

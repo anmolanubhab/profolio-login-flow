@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapPin, Pencil, BadgeCheck, Briefcase } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,8 +10,14 @@ import { ProfilePhoto } from "@/components/profile/ProfilePhoto";
 import { ProfileActions } from "@/components/profile/ProfileActions";
 import { AddSectionMenu } from "@/components/profile/AddSectionMenu";
 import { ProfileMoreMenu } from "@/components/profile/ProfileMoreMenu";
-import { ProfileCompletion } from "@/components/profile/ProfileCompletion";
+import { ProfileStrength } from "@/components/profile/ProfileStrength";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
+import {
+  jumpToProfileSection,
+  scrollToProfileHeader,
+  notifyProfileChanged,
+} from "@/lib/profileNav";
+import type { StrengthAction } from "@/lib/profileStrength";
 import { ContactInfoDialog } from "@/components/profile/ContactInfoDialog";
 import { ShareProfileDialog } from "@/components/profile/ShareProfileDialog";
 import { ReportProfileDialog } from "@/components/profile/ReportProfileDialog";
@@ -30,12 +37,34 @@ const ABOUT_CLAMP = 280;
 
 export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
   const { profile, isOwner, relationship, counts } = ctx;
+  const navigate = useNavigate();
 
   const [editOpen, setEditOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [aboutExpanded, setAboutExpanded] = useState(false);
+
+  // Route a Profile Strength recommendation to the real editor / section.
+  const handleStrengthAction = (action: StrengthAction) => {
+    switch (action.type) {
+      case "editProfile":
+        setEditOpen(true);
+        break;
+      case "editContact":
+        setContactOpen(true);
+        break;
+      case "resume":
+        navigate("/resume");
+        break;
+      case "photo":
+        scrollToProfileHeader();
+        break;
+      case "section":
+        jumpToProfileSection(action.key);
+        break;
+    }
+  };
 
   const name = profileDisplayName(profile);
   const headline = profileHeadline(profile);
@@ -182,10 +211,14 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
           )}
         </div>
 
-        {/* profile completion — owner only */}
+        {/* profile strength — owner only */}
         {isOwner && !gated && (
           <div className="mt-4">
-            <ProfileCompletion ctx={ctx} onEdit={() => setEditOpen(true)} />
+            <ProfileStrength
+              profileId={profile.id}
+              authUserId={profile.user_id}
+              onAction={handleStrengthAction}
+            />
           </div>
         )}
 
@@ -218,7 +251,10 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
           onOpenChange={setEditOpen}
           profile={profile}
           profileUserId={profile.user_id}
-          onSaved={ctx.patchProfile}
+          onSaved={(patch) => {
+            ctx.patchProfile(patch);
+            notifyProfileChanged();
+          }}
         />
       )}
       <ContactInfoDialog

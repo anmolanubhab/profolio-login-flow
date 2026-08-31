@@ -1,3 +1,4 @@
+import { notifyProfileChanged } from "@/lib/profileNav";
 import { useCallback, useEffect, useState } from "react";
 import { Pencil, Trash2, GraduationCap } from "lucide-react";
 
@@ -166,7 +167,7 @@ const EducationSection = ({ profileId, isOwner }: EducationSectionProps) => {
           onOpenChange={setDialogOpen}
           profileId={profileId}
           existing={editing}
-          onSaved={fetchRows}
+          onSaved={() => { fetchRows(); notifyProfileChanged(); }}
         />
       )}
 
