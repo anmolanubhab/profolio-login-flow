@@ -1,3 +1,4 @@
+import { notifyProfileChanged } from "@/lib/profileNav";
 import { useMemo, useState } from "react";
 import { Pencil, Trash2, FolderGit2, ExternalLink } from "lucide-react";
 
@@ -166,7 +167,7 @@ const ProjectsSection = ({ ctx }: ProjectsSectionProps) => {
           profileUserId={targetUserId}
           projects={projects}
           existing={editing}
-          onSaved={(next) => patchProfile({ projects: next })}
+          onSaved={(next) => { patchProfile({ projects: next }); notifyProfileChanged(); }}
         />
       )}
 

@@ -53,60 +53,9 @@ export function profileHeadline(
   return p.headline?.trim() || p.profession?.trim() || null;
 }
 
-// ---------------------------------------------------------------------------
-// Profile completion
-// ---------------------------------------------------------------------------
-// Weighted checklist of REAL fields/sections. The percentage is
-// round(sum(weight of completed items) / sum(all weights) * 100).
-// Section-level items (experience/education/skills) are passed in as booleans
-// by the caller because they live in separate tables/among the JSON columns.
-// ---------------------------------------------------------------------------
-
-export interface CompletionInput {
-  profile: ProfileRow;
-  hasExperience: boolean;
-  hasEducation: boolean;
-  hasSkills: boolean;
-}
-
-export interface CompletionItem {
-  key: string;
-  label: string;
-  weight: number;
-  done: boolean;
-}
-
-export function computeProfileCompletion(input: CompletionInput): {
-  percent: number;
-  items: CompletionItem[];
-} {
-  const { profile: p } = input;
-  const nonEmpty = (v: unknown) =>
-    typeof v === "string" ? v.trim().length > 0 : Boolean(v);
-
-  const items: CompletionItem[] = [
-    { key: "photo", label: "Profile photo", weight: 15, done: nonEmpty(p.avatar_url) },
-    { key: "cover", label: "Cover image", weight: 5, done: nonEmpty(p.cover_url) },
-    { key: "name", label: "Name", weight: 10, done: nonEmpty(p.display_name) || nonEmpty(p.full_name) },
-    {
-      key: "headline",
-      label: "Headline",
-      weight: 15,
-      done: nonEmpty(p.headline) || nonEmpty(p.profession),
-    },
-    { key: "location", label: "Location", weight: 10, done: nonEmpty(p.location) },
-    { key: "about", label: "About", weight: 15, done: nonEmpty(p.bio) },
-    { key: "experience", label: "Experience", weight: 12, done: input.hasExperience },
-    { key: "education", label: "Education", weight: 8, done: input.hasEducation },
-    { key: "skills", label: "Skills", weight: 5, done: input.hasSkills },
-  ];
-
-  const totalWeight = items.reduce((s, i) => s + i.weight, 0);
-  const doneWeight = items.reduce((s, i) => s + (i.done ? i.weight : 0), 0);
-  const percent = totalWeight === 0 ? 0 : Math.round((doneWeight / totalWeight) * 100);
-
-  return { percent, items };
-}
+// Profile completion / strength now lives in the centralized engine:
+//   src/lib/profileStrength.ts   (calculateProfileStrength)
+//   src/hooks/useProfileStrength.ts
 
 /** Absolute URL to a profile, used by Share / Copy link. */
 export function profileShareUrl(profileId: string): string {

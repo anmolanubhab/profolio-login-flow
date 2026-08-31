@@ -14,6 +14,7 @@ import {
 import { ApplicationCard } from './ApplicationCard';
 import { ApplicationDetailsSheet } from './ApplicationDetailsSheet';
 import { ApplicationRow, InterviewRound, Offer, MatchScore, companyName } from './applicationTypes';
+import { useProfileStrength } from '@/hooks/useProfileStrength';
 
 const FILTERS: { key: ApplicationFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -31,7 +32,15 @@ export const MyApplications = () => {
   const [interviewsByApp, setInterviewsByApp] = useState<Record<string, InterviewRound[]>>({});
   const [offersByApp, setOffersByApp] = useState<Record<string, Offer>>({});
   const [matchByJob, setMatchByJob] = useState<Record<string, MatchScore>>({});
-  const [profileCompletion, setProfileCompletion] = useState<number | null>(null);
+  // Same centralized Profile Strength engine as the profile page / dashboard —
+  // never a second completion number. Only queried once the empty state is
+  // reached (ids stay null otherwise, so the hook is disabled).
+  const [profileIds, setProfileIds] = useState<{ profileId: string; authUserId: string } | null>(null);
+  const { data: profileStrength } = useProfileStrength({
+    profileId: profileIds?.profileId,
+    authUserId: profileIds?.authUserId,
+  });
+  const profileCompletion = profileStrength?.score ?? null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,13 +89,11 @@ export const MyApplications = () => {
       if (list.length === 0) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('avatar_url, profession, location, bio, phone, linkedin_url')
+          .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
         if (profile) {
-          const fields = [profile.avatar_url, profile.profession, profile.location, profile.bio, profile.phone, profile.linkedin_url];
-          const filled = fields.filter(Boolean).length;
-          setProfileCompletion(Math.round((filled / fields.length) * 100));
+          setProfileIds({ profileId: profile.id, authUserId: user.id });
         }
         setLoading(false);
         return;
@@ -116,9 +123,9 @@ export const MyApplications = () => {
       const matchMap: Record<string, MatchScore> = {};
       (matches || []).forEach((m) => { matchMap[m.job_id] = m; });
       setMatchByJob(matchMap);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching applications:', err);
-      setError(err.message || 'Something went wrong.');
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setLoading(false);
     }
@@ -135,8 +142,8 @@ export const MyApplications = () => {
       setApplications((prev) => prev.map((a) => (a.id === applicationId ? { ...a, current_stage: 'withdrawn' } : a)));
       toast({ title: 'Application withdrawn' });
       setSheetOpen(false);
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Something went wrong", variant: "destructive" });
     }
   };
 
@@ -172,8 +179,8 @@ export const MyApplications = () => {
         };
       });
       toast({ title: accept ? 'Offer accepted' : 'Offer declined' });
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Something went wrong", variant: "destructive" });
     }
   };
 

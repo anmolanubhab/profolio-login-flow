@@ -1,3 +1,4 @@
+import { notifyProfileChanged } from "@/lib/profileNav";
 import { useState, useEffect } from 'react';
 import { Plus, X, ThumbsUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -118,10 +119,10 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
       // Sort by endorsement count (highest first)
       skillsWithEndorsements.sort((a, b) => b.endorsement_count - a.endorsement_count);
       setSkills(skillsWithEndorsements);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -155,14 +156,15 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
 
       setNewSkill('');
       fetchSkills();
+      notifyProfileChanged();
       toast({
         title: "Success",
         description: "Skill added successfully!",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -181,14 +183,15 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
       if (error) throw error;
 
       setSkills(skills.filter(s => s.id !== skillId));
+      notifyProfileChanged();
       toast({
         title: "Success",
         description: "Skill removed successfully!",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -258,10 +261,10 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
           description: `You endorsed ${skill.skill_name}.`,
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -296,7 +299,7 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
   }
 
   return (
-    <div className="space-y-4">
+    <div id="skills" className="space-y-4 scroll-mt-20">
       <h2 className="text-xl font-semibold">Skills & Endorsements</h2>
 
       {/* Add Skill Input */}

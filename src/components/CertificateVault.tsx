@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { notifyProfileChanged } from '@/lib/profileNav';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -129,6 +130,7 @@ const CertificateVault = () => {
       }
       setIsDialogOpen(false);
       fetchCertificates();
+      notifyProfileChanged();
 
     } catch (error) {
       console.error('Error uploading certificate:', error);
@@ -167,6 +169,7 @@ const CertificateVault = () => {
       });
 
       fetchCertificates();
+      notifyProfileChanged();
     } catch (error) {
       console.error('Error deleting certificate:', error);
       toast({

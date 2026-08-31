@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { jumpToProfileSection, type ProfileSectionKey } from "@/lib/profileNav";
 
 interface AddSectionMenuProps {
   /** open the Edit-profile dialog (About lives in the header for now) */
@@ -34,16 +35,7 @@ const COMING_SOON = [
   "Organizations",
 ] as const;
 
-function jumpToSection(key: string) {
-  if (typeof window === "undefined") return;
-  window.location.hash = key;
-  // ProfileTabs listens for hashchange; give it a tick then scroll into view.
-  setTimeout(() => {
-    document
-      .getElementById("profile-sections")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, 30);
-}
+const jumpToSection = (key: string) => jumpToProfileSection(key as ProfileSectionKey);
 
 export const AddSectionMenu = ({ onEditAbout }: AddSectionMenuProps) => {
   return (

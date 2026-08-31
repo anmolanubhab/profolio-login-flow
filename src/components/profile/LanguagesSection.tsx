@@ -1,3 +1,4 @@
+import { notifyProfileChanged } from "@/lib/profileNav";
 import { useCallback, useEffect, useState } from "react";
 import { Pencil, Trash2, Languages as LanguagesIcon } from "lucide-react";
 
@@ -154,7 +155,7 @@ const LanguagesSection = ({ profileId, isOwner }: LanguagesSectionProps) => {
           onOpenChange={setDialogOpen}
           profileId={profileId}
           existing={editing}
-          onSaved={fetchRows}
+          onSaved={() => { fetchRows(); notifyProfileChanged(); }}
         />
       )}
 
