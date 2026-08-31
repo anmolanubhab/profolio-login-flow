@@ -93,6 +93,8 @@ const ExperienceSection = ({ profileId, isOwner }: ExperienceSectionProps) => {
       <ProfileSectionCard
         id="experience"
         title="Experience"
+        count={rows.length}
+        icon={Briefcase}
         isOwner={isOwner}
         onAdd={openAdd}
         addLabel="Add experience"

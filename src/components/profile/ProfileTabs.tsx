@@ -75,12 +75,22 @@ const ProfileTabs = ({ ctx }: ProfileTabsProps) => {
 
   return (
     <Tabs value={tab} onValueChange={handleChange} className="w-full">
-      <TabsList className="grid w-full grid-cols-2 mb-4">
-        <TabsTrigger value="profile">Profile</TabsTrigger>
-        <TabsTrigger value="activity">Activity</TabsTrigger>
+      <TabsList className="mb-4 grid h-auto w-full grid-cols-2 gap-0 rounded-xl bg-card p-0 shadow-card">
+        <TabsTrigger
+          value="profile"
+          className="h-12 rounded-none border-b-2 border-transparent bg-transparent text-[15px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+        >
+          Profile
+        </TabsTrigger>
+        <TabsTrigger
+          value="activity"
+          className="h-12 rounded-none border-b-2 border-transparent bg-transparent text-[15px] font-semibold text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
+        >
+          Activity
+        </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="profile" className="space-y-4">
+      <TabsContent value="profile" className="space-y-3">
         <ExperienceSection profileId={profileId} isOwner={isOwner} />
         <EducationSection profileId={profileId} isOwner={isOwner} />
         <SkillsSection userId={targetUserId} profileId={profileId} isOwnProfile={isOwner} />

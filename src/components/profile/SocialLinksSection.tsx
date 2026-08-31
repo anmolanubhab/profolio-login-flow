@@ -44,10 +44,10 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
         twitter_url: data?.twitter_url || '',
         website: data?.website || ''
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -70,10 +70,10 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
         title: "Success",
         description: "Social links updated successfully!",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Something went wrong",
         variant: "destructive",
       });
     } finally {
@@ -117,12 +117,17 @@ const SocialLinksSection = ({ userId, isOwnProfile = false }: SocialLinksSection
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Social Links</h2>
+    <div id="social" className="space-y-3 scroll-mt-24">
+      <div className="flex justify-between items-center px-1">
+        <h2 className="text-xl font-semibold tracking-tight text-foreground">Social Links</h2>
         {!isEditing && isOwnProfile && (
-          <Button onClick={() => setIsEditing(true)}>
-            Edit Links
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(true)}
+            className="h-9 rounded-full"
+          >
+            Edit links
           </Button>
         )}
       </div>

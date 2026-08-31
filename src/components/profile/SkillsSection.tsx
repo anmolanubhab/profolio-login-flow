@@ -299,8 +299,10 @@ const SkillsSection = ({ userId, profileId, isOwnProfile = false }: SkillsSectio
   }
 
   return (
-    <div id="skills" className="space-y-4 scroll-mt-20">
-      <h2 className="text-xl font-semibold">Skills & Endorsements</h2>
+    <div id="skills" className="space-y-3 scroll-mt-24">
+      <h2 className="text-xl font-semibold tracking-tight text-foreground px-1">
+        Skills &amp; Endorsements
+      </h2>
 
       {/* Add Skill Input */}
       {isOwnProfile && (

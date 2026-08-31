@@ -41,7 +41,7 @@ export const AddSectionMenu = ({ onEditAbout }: AddSectionMenuProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="gap-1.5">
+        <Button variant="outline" size="sm" className="h-9 gap-1.5 rounded-full px-4">
           <Plus className="h-4 w-4" />
           Add section
           <ChevronDown className="h-4 w-4 opacity-60" />

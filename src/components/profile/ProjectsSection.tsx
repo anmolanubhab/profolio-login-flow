@@ -83,6 +83,8 @@ const ProjectsSection = ({ ctx }: ProjectsSectionProps) => {
       <ProfileSectionCard
         id="projects"
         title="Projects"
+        count={projects.length}
+        icon={FolderGit2}
         isOwner={isOwner}
         onAdd={openAdd}
         addLabel="Add project"
