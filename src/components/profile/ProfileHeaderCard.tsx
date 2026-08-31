@@ -40,19 +40,27 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
   const navigate = useNavigate();
 
   const [editOpen, setEditOpen] = useState(false);
+  const [editInitialTab, setEditInitialTab] = useState<"basics" | "contact" | "visibility">("basics");
   const [contactOpen, setContactOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [aboutExpanded, setAboutExpanded] = useState(false);
 
+  const openEdit = (tab: "basics" | "contact" | "visibility" = "basics") => {
+    setEditInitialTab(tab);
+    setEditOpen(true);
+  };
+
   // Route a Profile Strength recommendation to the real editor / section.
   const handleStrengthAction = (action: StrengthAction) => {
     switch (action.type) {
       case "editProfile":
-        setEditOpen(true);
+        openEdit("basics");
         break;
       case "editContact":
-        setContactOpen(true);
+        // EditProfileDialog's Contact tab is where phone / links are edited
+        // (ContactInfoDialog is a read-only viewer).
+        openEdit("contact");
         break;
       case "resume":
         navigate("/resume");
@@ -184,17 +192,17 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
         <div className="mt-4 flex flex-wrap items-center gap-2 sm:justify-end">
           {isOwner ? (
             <>
-              <Button onClick={() => setEditOpen(true)} className="gap-2">
+              <Button onClick={() => openEdit("basics")} className="gap-2">
                 <Pencil className="h-4 w-4" />
                 Edit profile
               </Button>
-              <AddSectionMenu onEditAbout={() => setEditOpen(true)} />
+              <AddSectionMenu onEditAbout={() => openEdit("basics")} />
               <ProfileMoreMenu
                 ctx={ctx}
                 onShare={() => setShareOpen(true)}
                 onContactInfo={() => setContactOpen(true)}
                 onReport={() => setReportOpen(true)}
-                onEditVisibility={() => setEditOpen(true)}
+                onEditVisibility={() => openEdit("visibility")}
               />
             </>
           ) : (
@@ -205,7 +213,7 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
                 onShare={() => setShareOpen(true)}
                 onContactInfo={() => setContactOpen(true)}
                 onReport={() => setReportOpen(true)}
-                onEditVisibility={() => setEditOpen(true)}
+                onEditVisibility={() => openEdit("visibility")}
               />
             </>
           )}
@@ -251,6 +259,7 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
           onOpenChange={setEditOpen}
           profile={profile}
           profileUserId={profile.user_id}
+          initialTab={editInitialTab}
           onSaved={(patch) => {
             ctx.patchProfile(patch);
             notifyProfileChanged();

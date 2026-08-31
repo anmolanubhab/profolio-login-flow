@@ -5,13 +5,29 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { notifyProfileChanged } from '@/lib/profileNav';
 import { FileText, Download, Eye, Edit, Trash2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 
+interface ResumeFormData {
+  title: string;
+  personalInfo: { name: string; email: string; phone: string; location: string };
+  summary: string;
+  experience: string;
+  education: string;
+  skills: string;
+}
+interface SavedResume {
+  id: string;
+  title: string;
+  content: ResumeFormData;
+  updated_at: string;
+}
+
 const ResumeBuilder = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ResumeFormData>({
     title: '',
     personalInfo: {
       name: '',
@@ -25,7 +41,7 @@ const ResumeBuilder = () => {
     skills: '',
   });
   const [saving, setSaving] = useState(false);
-  const [savedResumes, setSavedResumes] = useState<any[]>([]);
+  const [savedResumes, setSavedResumes] = useState<SavedResume[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -47,7 +63,7 @@ const ResumeBuilder = () => {
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      setSavedResumes(data || []);
+      setSavedResumes((data ?? []) as unknown as SavedResume[]);
     } catch (error) {
       console.error('Error loading resumes:', error);
     } finally {
@@ -173,6 +189,7 @@ const ResumeBuilder = () => {
         description: `Your resume has been ${editingId ? 'updated' : 'saved'} successfully.`,
       });
 
+      notifyProfileChanged();
       setEditingId(null);
       setFormData({
         title: '',
@@ -195,7 +212,7 @@ const ResumeBuilder = () => {
     }
   };
 
-  const handleEdit = (resume: any) => {
+  const handleEdit = (resume: SavedResume) => {
     setFormData(resume.content);
     setEditingId(resume.id);
   };
@@ -214,6 +231,7 @@ const ResumeBuilder = () => {
         description: "Your resume has been deleted successfully.",
       });
       loadResumes();
+      notifyProfileChanged();
     } catch (error) {
       console.error('Error deleting resume:', error);
       toast({
@@ -224,7 +242,7 @@ const ResumeBuilder = () => {
     }
   };
 
-  const handleDownloadPDF = (resume: any) => {
+  const handleDownloadPDF = (resume: SavedResume) => {
     const doc = new jsPDF();
     const content = resume.content;
     

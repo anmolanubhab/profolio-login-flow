@@ -81,6 +81,9 @@ interface EditProfileDialogProps {
   /** profiles.user_id — target row for the update */
   profileUserId: string;
   onSaved: (patch: Partial<ProfileRow>) => void;
+  /** which tab to land on ("basics" default) — used by Profile Strength
+   *  recommendations so "Add contact details" opens straight on Contact */
+  initialTab?: "basics" | "contact" | "visibility";
 }
 
 function toDefaults(p: ProfileRow): FormValues {
@@ -119,6 +122,7 @@ export const EditProfileDialog = ({
   profile,
   profileUserId,
   onSaved,
+  initialTab = "basics",
 }: EditProfileDialogProps) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -241,7 +245,7 @@ export const EditProfileDialog = ({
           </ResponsiveModalHeader>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Tabs defaultValue="basics" className="w-full">
+            <Tabs key={initialTab} defaultValue={initialTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="basics">Basics</TabsTrigger>
                 <TabsTrigger value="contact">Contact</TabsTrigger>

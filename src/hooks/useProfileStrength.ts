@@ -38,7 +38,11 @@ export function useProfileStrength({ profileId, authUserId }: UseProfileStrength
   return useQuery<ProfileStrengthResult>({
     queryKey: profileStrengthKey(profileId),
     enabled: !!profileId && !!authUserId,
+    // Keep it cheap during a single page's re-renders, but ALWAYS refetch when
+    // the widget mounts -- so landing back on /profile or /dashboard after
+    // adding a certificate / resume on their own routes shows a fresh score.
     staleTime: 30_000,
+    refetchOnMount: 'always',
     queryFn: async () => {
       const pid = profileId!;
       const uid = authUserId!;
