@@ -8,6 +8,10 @@ import CertificationsSection from "./CertificationsSection";
 import ProjectsSection from "./ProjectsSection";
 import LanguagesSection from "./LanguagesSection";
 import SocialLinksSection from "./SocialLinksSection";
+import {
+  scrollToProfileSectionWhenReady,
+  type ProfileSectionKey,
+} from "@/lib/profileNav";
 import type { ProfileContextValue } from "@/components/profile/profileTypes";
 
 interface ProfileTabsProps {
@@ -44,11 +48,11 @@ const ProfileTabs = ({ ctx }: ProfileTabsProps) => {
       }
       if ((SECTION_IDS as readonly string[]).includes(h)) {
         setTab("profile");
-        setTimeout(() => {
-          document
-            .getElementById(h)
-            ?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 40);
+        // Shared settle-aware scroll: waits for the section cards to finish
+        // their own async loads before scrolling, so a direct /profile#skills
+        // hit (and back/forward to one) lands on the right section. Runs after
+        // the state update is queued so the Profile tab content is rendering.
+        scrollToProfileSectionWhenReady(h as ProfileSectionKey);
       }
     };
     apply();
