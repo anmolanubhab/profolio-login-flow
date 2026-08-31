@@ -142,16 +142,20 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+          <div className="flex flex-col gap-y-0.5 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2">
             {profile.location && (
               <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3.5 w-3.5" />
-                {profile.location}
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{profile.location}</span>
               </span>
             )}
             {!gated && (
-              <>
-                {profile.location && <span aria-hidden>·</span>}
+              <span className="inline-flex items-center gap-2">
+                {profile.location && (
+                  <span aria-hidden className="hidden sm:inline">
+                    ·
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => setContactOpen(true)}
@@ -159,7 +163,7 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
                 >
                   Contact info
                 </button>
-              </>
+              </span>
             )}
           </div>
 
@@ -202,13 +206,13 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
           </div>
 
           {profile.open_to_work && (
-            <div className="mt-1 flex items-center gap-2 rounded-lg border border-primary/25 bg-accent/50 px-3 py-2">
+            <div className="mt-1 flex items-center gap-2 rounded-lg border border-primary/25 bg-accent/50 px-3 py-1.5 sm:py-2">
               <Briefcase className="h-4 w-4 shrink-0 text-primary" />
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-primary leading-tight">
                   Open to work
                 </p>
-                <p className="text-xs text-muted-foreground leading-tight">
+                <p className="hidden text-xs text-muted-foreground leading-tight sm:block">
                   {name.split(" ")[0]} is open to new opportunities
                 </p>
               </div>
@@ -223,7 +227,7 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
               <Button
                 onClick={() => openEdit("basics")}
                 size="sm"
-                className="h-9 gap-2 rounded-full px-4"
+                className="h-9 w-full gap-2 rounded-full px-4 sm:w-auto"
               >
                 <Pencil className="h-4 w-4" />
                 Edit profile

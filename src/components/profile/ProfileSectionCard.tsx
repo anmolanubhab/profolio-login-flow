@@ -51,7 +51,7 @@ export const ProfileSectionCard = ({
 }: ProfileSectionCardProps) => {
   return (
     <Card id={id} className="border-0 shadow-card rounded-xl scroll-mt-24">
-      <CardContent className="p-5 sm:p-6">
+      <CardContent className="p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3 mb-4">
           <h2 className="text-xl font-semibold tracking-tight text-foreground">
             {title}
@@ -150,8 +150,8 @@ export const ProfileSectionCard = ({
             type="button"
             onClick={showAll.onClick}
             className={cn(
-              "mt-2 -mx-5 sm:-mx-6 flex w-[calc(100%+2.5rem)] sm:w-[calc(100%+3rem)]",
-              "items-center justify-center border-t border-border px-5 pt-3 pb-0",
+              "mt-2 -mx-4 sm:-mx-6 flex w-[calc(100%+2rem)] sm:w-[calc(100%+3rem)]",
+              "items-center justify-center border-t border-border px-4 pt-3 pb-0",
               "text-sm font-semibold text-muted-foreground hover:text-primary transition-colors"
             )}
           >

@@ -342,7 +342,10 @@ const ProfilePage = ({ mode }: ProfilePageProps) => {
 
   return (
     <Layout user={authUser} onSignOut={handleSignOut}>
-      <div className="container mx-auto max-w-4xl">
+      {/* Near-full-width on mobile (LinkedIn-style) — the app's `container`
+          class forces 2rem side padding at every breakpoint which leaves the
+          profile cards cramped on phones; use a small mobile inset instead. */}
+      <div className="mx-auto w-full max-w-4xl px-2 sm:px-6">
         {mode === "public" && (
           <Button
             variant="ghost"
