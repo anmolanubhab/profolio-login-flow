@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Repeat2, PenLine, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTapGuard } from '@/hooks/useTapGuard';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -38,6 +39,7 @@ const RepostButton = ({
 }: RepostButtonProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  const tap = useTapGuard();
 
   const runInstantRepost = async () => {
     setMenuOpen(false);
@@ -63,7 +65,12 @@ const RepostButton = ({
             aria-label={hasReposted ? 'Repost options — you reposted this' : 'Repost'}
             aria-haspopup="menu"
             aria-pressed={hasReposted}
-            onClick={(e) => e.stopPropagation()}
+            {...tap.bind}
+            // Stop Radix opening the menu on pointerdown (touch-start) -- that
+            // fires before a scroll can be detected. It still opens from the
+            // guarded click below, and from keyboard via Radix's keydown.
+            onPointerDown={(e) => { tap.bind.onPointerDown(e); e.preventDefault(); }}
+            onClick={tap.onTap((e) => { e.stopPropagation(); setMenuOpen((o) => !o); })}
             className={cn(className, hasReposted && 'active')}
           >
             <Repeat2 className={cn('icon', hasReposted && 'stroke-[2.5]')} />

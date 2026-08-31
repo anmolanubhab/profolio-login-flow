@@ -377,6 +377,18 @@ All colors MUST be HSL.
   .action-btn.active {
     color: hsl(var(--primary));
   }
+  /* Comment / Repost / Share: hard-black icon + label in the normal state
+     (the icon strokes inherit currentColor). The active state -- comments
+     open, or "Reposted" -- keeps the primary/blue treatment. Like is NOT
+     `--ink`, so it keeps its muted-inactive / blue-active behaviour. */
+  .action-btn--ink:not(.active),
+  .action-btn--ink:not(.active):hover {
+    color: #000000;
+  }
+  .dark .action-btn--ink:not(.active),
+  .dark .action-btn--ink:not(.active):hover {
+    color: #ffffff;
+  }
   .action-btn .icon { @apply h-[18px] w-[18px] sm:h-5 sm:w-5 shrink-0; }
 
   /* Feed post action row: four equal, flexible slots (Like / Comment /

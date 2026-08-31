@@ -22,6 +22,7 @@ import RepostButton from './RepostButton';
 import type { RepostOriginalPost } from './RepostComposerDialog';
 import { usePostReposts } from '@/hooks/use-post-reposts';
 import { useAutoplayPreference } from '@/hooks/useAutoplayPreference';
+import { useTapGuard } from '@/hooks/useTapGuard';
 import { ReactionBar, ReactionCountSummary, ReactionType, ReactionSummary, REACTION_META, REACTION_ORDER } from './ReactionBar';
 import CommentSection from './comments/CommentSection';
 import { ImageMedia, VideoMedia } from './post/PostMedia';
@@ -150,6 +151,9 @@ const PostCard = ({
   // action bar. The full thread state lives in useComments (via
   // CommentSection); the card only tracks open/closed and a display count.
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const commentTap = useTapGuard();
+  const shareTap = useTapGuard();
   const [commentCount, setCommentCount] = useState(initialCommentCount);
   useEffect(() => { setCommentCount(initialCommentCount); }, [initialCommentCount]);
   const { toast } = useToast();
@@ -638,8 +642,9 @@ const PostCard = ({
           <ReactionBar summary={reactionSummary} onReact={handleReact} />
           <button
             type="button"
-            className={`action-btn ${commentsOpen ? 'active' : ''}`}
-            onClick={() => setCommentsOpen((o) => !o)}
+            className={`action-btn action-btn--ink ${commentsOpen ? 'active' : ''}`}
+            {...commentTap.bind}
+            onClick={commentTap.onTap(() => setCommentsOpen((o) => !o))}
             aria-expanded={commentsOpen}
             aria-controls={`comments-${id}`}
           >
@@ -654,10 +659,17 @@ const PostCard = ({
             busy={repostBusy}
             onRepost={handleRepost}
             onRemoveRepost={handleRemoveRepost}
+            className="action-btn action-btn--ink"
           />
-          <DropdownMenu>
+          <DropdownMenu open={shareOpen} onOpenChange={setShareOpen}>
             <DropdownMenuTrigger asChild>
-              <button type="button" className="action-btn">
+              <button
+                type="button"
+                className="action-btn action-btn--ink"
+                {...shareTap.bind}
+                onPointerDown={(e) => { shareTap.bind.onPointerDown(e); e.preventDefault(); }}
+                onClick={shareTap.onTap(() => setShareOpen((o) => !o))}
+              >
                 <Share className="icon" />
                 <span>Share</span>
               </button>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTapGuard } from '@/hooks/useTapGuard';
 
 export type ReactionType = 'like' | 'celebrate' | 'support' | 'love' | 'insightful' | 'funny';
 
@@ -47,6 +48,10 @@ export const ReactionBar = ({ summary, onReact, disabled }: ReactionBarProps) =>
   const closeTimer = useRef<ReturnType<typeof setTimeout>>();
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>();
   const touchMoved = useRef(false);
+  // Guards the plain-tap activation so a scroll that starts on the Like
+  // button doesn't apply a reaction. The existing touch handlers below stay
+  // -- they only gate the long-press picker.
+  const tap = useTapGuard();
 
   const activeReaction = summary.user_reaction;
   const activeMeta = activeReaction ? REACTION_META[activeReaction] : null;
@@ -142,7 +147,8 @@ export const ReactionBar = ({ summary, onReact, disabled }: ReactionBarProps) =>
         ref={buttonRef}
         type="button"
         className={`action-btn ${activeReaction ? `active ${activeMeta!.colorClass}` : ''}`}
-        onClick={handleMainClick}
+        {...tap.bind}
+        onClick={tap.onTap(handleMainClick)}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
