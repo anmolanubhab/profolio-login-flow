@@ -82,7 +82,7 @@ const BottomNavigation = () => {
   return (
     <>
       <nav
-        className="fixed inset-x-0 z-50 w-full max-w-full border-t border-border bg-background transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
+        className="bottom-nav fixed inset-x-0 z-50 w-full max-w-full border-t border-border transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
         style={{
           // Edge-to-edge: the ONLY opaque layer is this h-16 bar, and it floats
           // *above* the system inset. The strip behind the Android gesture
@@ -105,21 +105,28 @@ const BottomNavigation = () => {
 
           {/* Create: an in-row slot (no longer a raised FAB) -- a compact
               gradient circle, ~40% smaller than the old 50px button, sitting
-              on the same baseline as Home / Network / Messages / Jobs. */}
-          <div className="flex flex-1 flex-col items-center justify-center gap-1 min-w-[44px]">
-            <button
-              type="button"
-              onClick={() => setCreateOpen(true)}
-              aria-label="Create"
-              aria-haspopup="dialog"
-              aria-expanded={createOpen}
+              on the same baseline as Home / Network / Messages / Jobs. The
+              whole slot (circle + "Create" label) is one tap target, matching
+              the other four items. */}
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            aria-label="Create"
+            aria-haspopup="dialog"
+            aria-expanded={createOpen}
+            className={cn(
+              'group flex flex-1 flex-col items-center justify-center gap-1 h-16 min-w-[44px]',
+              'transition-colors duration-150 active:bg-muted',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+            )}
+          >
+            <span
               style={{ background: 'var(--gradient-create-fab)' }}
               className={cn(
                 'grid h-[30px] w-[30px] place-items-center rounded-full text-white',
                 'shadow-sm ring-1 ring-black/5',
                 'transition duration-200 ease-out will-change-transform',
-                'hover:shadow-md active:scale-95 active:brightness-95',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'group-hover:shadow-md group-active:scale-95 group-active:brightness-95',
                 'motion-reduce:transition-none',
               )}
             >
@@ -130,9 +137,9 @@ const BottomNavigation = () => {
                 )}
                 strokeWidth={2.5}
               />
-            </button>
+            </span>
             <span className="text-[10px] font-medium text-muted-foreground">Create</span>
-          </div>
+          </button>
 
           {renderItem(navItems[2])}
           {renderItem(navItems[3])}

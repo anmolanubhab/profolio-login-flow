@@ -208,6 +208,21 @@ All colors MUST be HSL.
     box-shadow: var(--shadow-card);
   }
 
+  /* Mobile bottom navigation: same frosted-glass treatment as .navbar so the
+     feed scrolls visibly behind it (matching the translucent top bar) instead
+     of hiding under a solid strip. `@supports` keeps a solid fallback for the
+     rare engine without backdrop-filter. */
+  .bottom-nav {
+    background-color: hsl(var(--card) / 0.92);
+  }
+  @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .bottom-nav {
+      background-color: hsl(var(--card) / 0.8);
+      -webkit-backdrop-filter: saturate(180%) blur(10px);
+      backdrop-filter: saturate(180%) blur(10px);
+    }
+  }
+
   /* Mobile only: the header rides in normal flow (sticky) instead of being
      `fixed` + offset by body padding. That way, when the auto-hide slides it
      up (translateY(-100%)), the space it left is reclaimed by content with no
