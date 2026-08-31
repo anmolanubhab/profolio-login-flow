@@ -84,18 +84,19 @@ const BottomNavigation = () => {
       <nav
         className="bottom-nav fixed inset-x-0 z-50 w-full max-w-full border-t border-border transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
         style={{
-          // Edge-to-edge: the ONLY opaque layer is this h-16 bar, and it floats
-          // *above* the system inset. The strip behind the Android gesture
-          // handle / 3-button bar is left uncovered, so the feed + page
-          // background show through there (LinkedIn-style) -- we never paint
-          // `bg-background` into `env(safe-area-inset-bottom)`.
-          bottom: 'env(safe-area-inset-bottom)',
+          // Edge-to-edge: the frosted-glass bar reaches the true screen edge
+          // and its own `padding-bottom` fills the gesture-bar inset with the
+          // same translucent glass, so the Android nav bar reads as a scrim
+          // over the header rather than a solid strip. The h-16 content row
+          // sits inside the padding box, so it stays above the inset.
+          bottom: 0,
+          paddingBottom: 'env(safe-area-inset-bottom)',
           paddingLeft: 'env(safe-area-inset-left)',
           paddingRight: 'env(safe-area-inset-right)',
-          // Hide: clear the bar's own height + the inset it was floating above
-          // + the FAB's overhang, so nothing (not even the "+") is left behind.
+          // Hide: clear the bar's full height (row + inset) + the FAB's
+          // overhang, so nothing (not even the "+") is left behind.
           transform: hidden
-            ? 'translateY(calc(100% + env(safe-area-inset-bottom) + 1.5rem))'
+            ? 'translateY(calc(100% + 1.5rem))'
             : 'translateY(0)',
         }}
       >
