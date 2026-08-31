@@ -93,6 +93,8 @@ const EducationSection = ({ profileId, isOwner }: EducationSectionProps) => {
       <ProfileSectionCard
         id="education"
         title="Education"
+        count={rows.length}
+        icon={GraduationCap}
         isOwner={isOwner}
         onAdd={openAdd}
         addLabel="Add education"

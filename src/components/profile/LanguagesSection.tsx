@@ -98,6 +98,8 @@ const LanguagesSection = ({ profileId, isOwner }: LanguagesSectionProps) => {
       <ProfileSectionCard
         id="languages"
         title="Languages"
+        count={rows.length}
+        icon={LanguagesIcon}
         isOwner={isOwner}
         onAdd={openAdd}
         addLabel="Add language"

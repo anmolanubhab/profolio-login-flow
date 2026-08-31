@@ -83,6 +83,8 @@ const CertificationsSection = ({ authUserId }: CertificationsSectionProps) => {
     <ProfileSectionCard
       id="certifications"
       title="Certifications"
+      count={rows.length}
+      icon={FileText}
       isOwner
       onAdd={() => navigate("/certificates")}
       addLabel="Add certificate"

@@ -4,7 +4,6 @@ import { MapPin, Pencil, BadgeCheck, Briefcase } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { CoverImage } from "@/components/profile/CoverImage";
 import { ProfilePhoto } from "@/components/profile/ProfilePhoto";
 import { ProfileActions } from "@/components/profile/ProfileActions";
@@ -115,9 +114,9 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
         </div>
 
         {/* identity */}
-        <div className="mt-3 space-y-1.5">
+        <div className="mt-3 space-y-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h1 className="text-2xl font-bold text-foreground leading-tight">
+            <h1 className="text-2xl sm:text-[28px] font-bold text-foreground leading-tight tracking-tight">
               {name}
             </h1>
             {profile.pronouns && (
@@ -127,22 +126,18 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
             )}
             {/* Verification: shown when the account has a confirmed email on file */}
             {profile.email && (
-              <BadgeCheck
-                className="h-4 w-4 text-primary"
-                aria-label="Email verified"
-              />
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-primary"
+                aria-label="Verified account"
+              >
+                <BadgeCheck className="h-3.5 w-3.5" />
+                Verified
+              </span>
             )}
           </div>
 
-          {profile.open_to_work && (
-            <Badge className="gap-1 bg-primary/10 text-primary hover:bg-primary/15 border-0">
-              <Briefcase className="h-3 w-3" />
-              Open to work
-            </Badge>
-          )}
-
           {headline && (
-            <p className="text-[15px] text-foreground/90 whitespace-pre-wrap">
+            <p className="text-base text-foreground whitespace-pre-wrap leading-snug">
               {headline}
             </p>
           )}
@@ -160,7 +155,7 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
                 <button
                   type="button"
                   onClick={() => setContactOpen(true)}
-                  className="text-primary font-medium hover:underline"
+                  className="font-semibold text-primary hover:underline"
                 >
                   Contact info
                 </button>
@@ -169,30 +164,67 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
           </div>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-            {counts.connections != null && (
+            {counts.connections != null &&
+              (isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => navigate("/network?tab=connections")}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  {counts.connections} connection{counts.connections === 1 ? "" : "s"}
+                </button>
+              ) : (
+                <span className="text-foreground font-medium">
+                  {counts.connections}
+                  <span className="text-muted-foreground font-normal">
+                    {" "}
+                    connection{counts.connections === 1 ? "" : "s"}
+                  </span>
+                </span>
+              ))}
+            {isOwner ? (
+              <button
+                type="button"
+                onClick={() => navigate("/network?tab=following&sub=followers")}
+                className="font-semibold text-primary hover:underline"
+              >
+                {counts.followers} follower{counts.followers === 1 ? "" : "s"}
+              </button>
+            ) : (
               <span className="text-foreground font-medium">
-                {counts.connections}
+                {counts.followers}
                 <span className="text-muted-foreground font-normal">
                   {" "}
-                  connection{counts.connections === 1 ? "" : "s"}
+                  follower{counts.followers === 1 ? "" : "s"}
                 </span>
               </span>
             )}
-            <span className="text-foreground font-medium">
-              {counts.followers}
-              <span className="text-muted-foreground font-normal">
-                {" "}
-                follower{counts.followers === 1 ? "" : "s"}
-              </span>
-            </span>
           </div>
+
+          {profile.open_to_work && (
+            <div className="mt-1 flex items-center gap-2 rounded-lg border border-primary/25 bg-accent/50 px-3 py-2">
+              <Briefcase className="h-4 w-4 shrink-0 text-primary" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-primary leading-tight">
+                  Open to work
+                </p>
+                <p className="text-xs text-muted-foreground leading-tight">
+                  {name.split(" ")[0]} is open to new opportunities
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* actions */}
-        <div className="mt-4 flex flex-wrap items-center gap-2 sm:justify-end">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           {isOwner ? (
             <>
-              <Button onClick={() => openEdit("basics")} className="gap-2">
+              <Button
+                onClick={() => openEdit("basics")}
+                size="sm"
+                className="h-9 gap-2 rounded-full px-4"
+              >
                 <Pencil className="h-4 w-4" />
                 Edit profile
               </Button>

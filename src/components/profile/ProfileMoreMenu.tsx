@@ -198,7 +198,12 @@ export const ProfileMoreMenu = ({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" aria-label="More actions">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="More actions"
+            className="h-9 w-9 rounded-full"
+          >
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
