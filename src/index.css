@@ -231,18 +231,33 @@ All colors MUST be HSL.
     body {
       padding-top: 0;
     }
+    /* Edge-to-edge PWA (Android 15+ / viewport-fit=cover): the header reserves
+       the status-bar inset ABOVE its content, but that reserved strip is left
+       fully transparent -- no background, no blur, no border -- so the OS
+       status bar reads as a translucent scrim over the page instead of a solid
+       Profolio-coloured bar. Only the content row (.navbar-inner) keeps the
+       frosted glass. Every inset resolves to 0 in a normal browser tab, so
+       this is a no-op there. translateY(-100%) still clears the whole height
+       (inset + row) when the header auto-hides. */
     .navbar {
       position: sticky;
-      /* Standalone PWA on a notched device (viewport-fit=cover): reserve the
-         status-bar inset above the header content and let the header's own
-         background fill that strip, so the OS status bar sits on the Profolio
-         header colour rather than a bare gap. In a normal browser tab every
-         inset resolves to 0, so this is a no-op there. When the header hides
-         (translateY(-100%)) it clears its full grown height, inset included. */
-      height: calc(var(--nav-height) + env(safe-area-inset-top));
+      height: auto;
       padding-top: env(safe-area-inset-top);
       padding-left: env(safe-area-inset-left);
       padding-right: env(safe-area-inset-right);
+      background-color: transparent;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      border-bottom: none;
+      box-shadow: none;
+    }
+    .navbar > .navbar-inner {
+      height: var(--nav-height);
+      background-color: hsl(var(--card) / 0.8);
+      -webkit-backdrop-filter: saturate(180%) blur(10px);
+      backdrop-filter: saturate(180%) blur(10px);
+      border-bottom: 1px solid hsl(var(--border));
+      box-shadow: var(--shadow-card);
     }
   }
   .navbar-inner {
