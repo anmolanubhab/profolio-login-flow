@@ -35,7 +35,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,9 +55,11 @@ import {
   MoreHorizontal,
   Megaphone,
   Loader2,
+  CheckCircle2,
 } from 'lucide-react';
 import { CtaFields } from '@/components/CtaFields';
 import { validateCtaUrl, EMPTY_CTA, type CtaConfig } from '@/lib/cta';
+import { useIsPostSaved, useToggleSavePost } from '@/hooks/useSavedPosts';
 
 interface PostOptionsMenuProps {
   postId: string;
@@ -68,6 +69,11 @@ interface PostOptionsMenuProps {
   isOwnPost: boolean;
   onDelete?: () => void;
   onHide?: () => void;
+  // Feed surfaces pass this to get the LinkedIn-style inline treatment: the
+  // PostCard is replaced in place by a "you'll see fewer like this" strip with
+  // Undo, instead of a toast + full feed refetch. When absent (PostDetail,
+  // CompanyProfile, SavedPosts, …) the menu keeps the toast + onHide behavior.
+  onInlineDismiss?: (info: { postId: string; label: string; onUndo: () => void | Promise<void> }) => void;
   // Only present for company posts -- drives the "Edit CTA" admin check and
   // the edit dialog. undefined/null for personal posts, which never show
   // CTA controls at all (matches the composer's own "posting as" gating).
@@ -76,15 +82,29 @@ interface PostOptionsMenuProps {
   onCtaChange?: (cta: CtaConfig | null) => void;
 }
 
-const REPORT_REASONS: { value: string; label: string }[] = [
-  { value: 'spam', label: 'Spam' },
-  { value: 'harassment', label: 'Harassment' },
-  { value: 'hate', label: 'Hate or abusive content' },
-  { value: 'misinformation', label: 'False/misleading information' },
-  { value: 'inappropriate', label: 'Inappropriate content' },
-  { value: 'scam', label: 'Scam/fraud' },
-  { value: 'other', label: 'Other' },
+// LinkedIn-parallel reporting categories. Every `value` is inside the DB
+// check constraint post_reports_reason_check (see migration
+// 20260831130000_expand_post_reports_reason_categories) -- the 5 reused legacy
+// values plus 9 additions. `inappropriate`/`other` stay valid in the DB for
+// old rows but are not offered here (matches LinkedIn, which has no "other").
+const REPORT_REASONS: { value: string; label: string; description: string }[] = [
+  { value: 'harassment', label: 'Harassment or bullying', description: 'Targeted attacks, intimidation, or unwanted contact.' },
+  { value: 'scam', label: 'Fraud or scam', description: 'Deceptive schemes, phishing, impersonation, or fake offers.' },
+  { value: 'spam', label: 'Spam', description: 'Irrelevant, repetitive, or misleading promotional content.' },
+  { value: 'misinformation', label: 'Misinformation', description: 'False or misleading claims that could deceive or cause harm.' },
+  { value: 'hate', label: 'Hateful speech', description: 'Attacks or slurs against a person or group based on identity.' },
+  { value: 'threats_or_violence', label: 'Threats or violence', description: 'Threats of harm, incitement, or glorification of violence.' },
+  { value: 'self_harm', label: 'Self-harm', description: 'Content that promotes or depicts suicide or self-injury.' },
+  { value: 'graphic_content', label: 'Graphic content', description: 'Excessively violent, gory, or disturbing imagery.' },
+  { value: 'dangerous_orgs', label: 'Dangerous or extremist organizations', description: 'Promotes terrorism, extremism, or organized crime.' },
+  { value: 'sexual_content', label: 'Sexual content', description: 'Nudity, pornography, or sexually explicit material.' },
+  { value: 'fake_account', label: 'Fake account', description: 'The author appears to be impersonating someone or is not a real person.' },
+  { value: 'child_exploitation', label: 'Child exploitation', description: 'Content that sexualizes or endangers minors.' },
+  { value: 'restricted_goods', label: 'Restricted goods and services', description: 'Sale of weapons, drugs, or other regulated goods.' },
+  { value: 'nonconsensual_imagery', label: 'Nonconsensual intimate imagery', description: 'Intimate images shared without the subject’s consent.' },
 ];
+
+type ReportStep = 'reason' | 'review' | 'done';
 
 // A snoozed_until further out than this counts as "Hide all from" (an
 // effectively-indefinite mute) rather than the 30-day "Snooze" -- both
@@ -94,7 +114,6 @@ const HIDE_ALL_THRESHOLD_MS = 365 * 24 * 60 * 60 * 1000;
 
 interface MenuState {
   loaded: boolean;
-  isSaved: boolean;
   notifOn: boolean;
   isInterested: boolean;
   isNotInterested: boolean;
@@ -105,7 +124,6 @@ interface MenuState {
 
 const EMPTY_STATE: MenuState = {
   loaded: false,
-  isSaved: false,
   notifOn: false,
   isInterested: false,
   isNotInterested: false,
@@ -122,6 +140,7 @@ export const PostOptionsMenu = ({
   isOwnPost,
   onDelete,
   onHide,
+  onInlineDismiss,
   companyId,
   cta,
   onCtaChange,
@@ -130,10 +149,12 @@ export const PostOptionsMenu = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('spam');
+  const [reportStep, setReportStep] = useState<ReportStep>('reason');
+  const [reportReason, setReportReason] = useState('');
   const [reportDescription, setReportDescription] = useState('');
   const [alreadyReported, setAlreadyReported] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [canManageCta, setCanManageCta] = useState(false);
   const [ctaDialogOpen, setCtaDialogOpen] = useState(false);
   const [ctaDraft, setCtaDraft] = useState<CtaConfig>(cta ?? EMPTY_CTA);
@@ -146,6 +167,12 @@ export const PostOptionsMenu = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  // Saved state comes from the shared, batched React Query cache (see
+  // useSavedPosts) -- one query per user, not one per card -- so every
+  // surface showing this post reflects a save/unsave immediately.
+  const { isSaved } = useIsPostSaved(postId);
+  const { toggleSave, isToggling: saveToggling } = useToggleSavePost();
 
   // Company posts identify their "author" in the UI via companyId, not a
   // profiles.id -- isOwnPost (computed by the caller from profiles.id) is
@@ -186,13 +213,11 @@ export const PostOptionsMenu = ({
     try {
       const targetIsCompany = !!companyId && !isSelfAuthored;
       const [
-        savedRes,
         notifRes,
         prefsRes,
         snoozeRes,
         blockRes,
       ] = await Promise.all([
-        supabase.from('saved_posts').select('id').eq('user_id', currentUserProfileId).eq('post_id', postId).maybeSingle(),
         supabase.from('post_notifications_enabled').select('id').eq('user_id', currentUserProfileId).eq('post_id', postId).maybeSingle(),
         supabase.from('user_feed_preferences').select('interested_posts, not_interested_posts').eq('user_id', currentUserProfileId).maybeSingle(),
         !isSelfAuthored
@@ -213,7 +238,6 @@ export const PostOptionsMenu = ({
 
       setState({
         loaded: true,
-        isSaved: !!savedRes.data,
         notifOn: !!notifRes.data,
         isInterested: (prefsRes.data?.interested_posts || []).includes(postId),
         isNotInterested: (prefsRes.data?.not_interested_posts || []).includes(postId),
@@ -292,31 +316,15 @@ export const PostOptionsMenu = ({
   };
 
   const handleToggleSave = async () => {
-    if (!currentUserProfileId || pending.save) return;
-    setBusy('save', true);
-    const wasSaved = state.isSaved;
+    if (!currentUserProfileId || saveToggling) return;
+    // Optimistic flip, rollback-on-error and the toast all live in
+    // useToggleSavePost so every post surface stays in sync from one place.
+    closeMenu();
     try {
-      if (wasSaved) {
-        const { error } = await supabase.from('saved_posts').delete()
-          .eq('user_id', currentUserProfileId).eq('post_id', postId);
-        if (error) throw error;
-        setState((prev) => ({ ...prev, isSaved: false }));
-        toast({ title: 'Post removed from Saved Posts' });
-      } else {
-        const { error } = await supabase.from('saved_posts').insert({
-          user_id: currentUserProfileId,
-          post_id: postId,
-        });
-        if (error && error.code !== '23505') throw error;
-        setState((prev) => ({ ...prev, isSaved: true }));
-        toast({ title: 'Post saved successfully' });
-      }
-      closeMenu();
+      await toggleSave(postId, isSaved);
     } catch (err) {
       console.error('Error toggling save:', err);
-      toast({ title: 'Failed to update saved post', variant: 'destructive' });
-    } finally {
-      setBusy('save', false);
+      // toast already surfaced by the mutation's onError
     }
   };
 
@@ -330,23 +338,33 @@ export const PostOptionsMenu = ({
       });
       if (error && error.code !== '23505') throw error;
       closeMenu();
-      onHide?.();
-      toast({
-        title: 'Post hidden',
-        description: "You won't see this post in your feed.",
-        action: (
-          <ToastAction
-            altText="Undo"
-            onClick={async () => {
-              await supabase.from('hidden_posts').delete()
-                .eq('user_id', currentUserProfileId).eq('post_id', postId);
-              onHide?.();
-            }}
-          >
-            Undo
-          </ToastAction>
-        ),
-      });
+
+      const undoHide = async () => {
+        await supabase.from('hidden_posts').delete()
+          .eq('user_id', currentUserProfileId).eq('post_id', postId);
+      };
+
+      if (onInlineDismiss) {
+        onInlineDismiss({
+          postId,
+          label: "Post hidden. You won't see this in your feed.",
+          onUndo: undoHide,
+        });
+      } else {
+        onHide?.();
+        toast({
+          title: 'Post hidden',
+          description: "You won't see this post in your feed.",
+          action: (
+            <ToastAction
+              altText="Undo"
+              onClick={async () => { await undoHide(); onHide?.(); }}
+            >
+              Undo
+            </ToastAction>
+          ),
+        });
+      }
     } catch (err) {
       console.error('Error hiding post:', err);
       toast({ title: 'Failed to hide post', variant: 'destructive' });
@@ -482,36 +500,57 @@ export const PostOptionsMenu = ({
     onHide?.();
   };
 
-  const handleToggleBlock = async () => {
+  // Block entry point from the menu. Blocking is destructive and one-sided,
+  // so it NEVER fires straight from the menu row -- it opens a confirmation
+  // dialog first (see BlockConfirmDialog). Unblock is safe and immediate.
+  const handleBlockClick = () => {
     if (!currentUserProfileId || isSelfAuthored || pending.block) return;
+    if (state.isBlocked) {
+      performUnblock();
+    } else {
+      closeMenu();
+      setBlockConfirmOpen(true);
+    }
+  };
+
+  const performUnblock = async () => {
+    if (!currentUserProfileId || pending.block) return;
     setBusy('block', true);
-    const wasBlocked = state.isBlocked;
+    try {
+      if (targetIsCompany) {
+        await supabase.from('blocked_companies').delete()
+          .eq('user_id', currentUserProfileId).eq('blocked_company_id', companyId!);
+      } else {
+        await supabase.from('blocked_users').delete()
+          .eq('user_id', currentUserProfileId).eq('blocked_user_id', postUserId);
+      }
+      setState((prev) => ({ ...prev, isBlocked: false }));
+      toast({ title: `Unblocked ${postUserName}` });
+    } catch (err) {
+      console.error('Error unblocking:', err);
+      toast({ title: 'Failed to unblock', variant: 'destructive' });
+    } finally {
+      setBusy('block', false);
+    }
+  };
+
+  const performBlock = async () => {
+    if (!currentUserProfileId || pending.block) return;
+    setBusy('block', true);
     try {
       const table = targetIsCompany ? 'blocked_companies' : 'blocked_users';
-      if (wasBlocked) {
-        if (targetIsCompany) {
-          await supabase.from('blocked_companies').delete()
-            .eq('user_id', currentUserProfileId).eq('blocked_company_id', companyId!);
-        } else {
-          await supabase.from('blocked_users').delete()
-            .eq('user_id', currentUserProfileId).eq('blocked_user_id', postUserId);
-        }
-        setState((prev) => ({ ...prev, isBlocked: false }));
-        toast({ title: `Unblocked ${postUserName}` });
-      } else {
-        const payload = targetIsCompany
-          ? { user_id: currentUserProfileId, blocked_company_id: companyId }
-          : { user_id: currentUserProfileId, blocked_user_id: postUserId };
-        const { error } = await supabase.from(table).insert(payload);
-        if (error && error.code !== '23505') throw error;
-        setState((prev) => ({ ...prev, isBlocked: true }));
-        closeMenu();
-        onHide?.();
-        toast({ title: `Blocked ${postUserName}`, description: 'You can manage blocked accounts in Settings.' });
-      }
+      const payload = targetIsCompany
+        ? { user_id: currentUserProfileId, blocked_company_id: companyId }
+        : { user_id: currentUserProfileId, blocked_user_id: postUserId };
+      const { error } = await supabase.from(table).insert(payload);
+      if (error && error.code !== '23505') throw error;
+      setState((prev) => ({ ...prev, isBlocked: true }));
+      setBlockConfirmOpen(false);
+      onHide?.();
+      toast({ title: `Blocked ${postUserName}`, description: 'Manage blocked accounts in Feed preferences.' });
     } catch (err) {
-      console.error('Error toggling block:', err);
-      toast({ title: 'Failed to update block', variant: 'destructive' });
+      console.error('Error blocking:', err);
+      toast({ title: 'Failed to block', variant: 'destructive' });
     } finally {
       setBusy('block', false);
     }
@@ -588,31 +627,41 @@ export const PostOptionsMenu = ({
 
       if (turningOn) {
         closeMenu();
-        onHide?.();
-        toast({
-          title: "Marked as not interested — you'll see fewer posts like this",
-          description: 'Removed from your feed.',
-          action: (
-            <ToastAction
-              altText="Undo"
-              onClick={async () => {
-                const { data: p } = await supabase
-                  .from('user_feed_preferences')
-                  .select('not_interested_posts')
-                  .eq('user_id', currentUserProfileId)
-                  .maybeSingle();
-                const next = (p?.not_interested_posts || []).filter((id: string) => id !== postId);
-                await supabase.from('user_feed_preferences')
-                  .update({ not_interested_posts: next })
-                  .eq('user_id', currentUserProfileId);
-                setState((prev) => ({ ...prev, isNotInterested: false }));
-                onHide?.();
-              }}
-            >
-              Undo
-            </ToastAction>
-          ),
-        });
+
+        const undoNotInterested = async () => {
+          const { data: p } = await supabase
+            .from('user_feed_preferences')
+            .select('not_interested_posts')
+            .eq('user_id', currentUserProfileId)
+            .maybeSingle();
+          const next = (p?.not_interested_posts || []).filter((id: string) => id !== postId);
+          await supabase.from('user_feed_preferences')
+            .update({ not_interested_posts: next })
+            .eq('user_id', currentUserProfileId);
+          setState((prev) => ({ ...prev, isNotInterested: false }));
+        };
+
+        if (onInlineDismiss) {
+          onInlineDismiss({
+            postId,
+            label: "You'll see fewer posts like this.",
+            onUndo: undoNotInterested,
+          });
+        } else {
+          onHide?.();
+          toast({
+            title: "Marked as not interested — you'll see fewer posts like this",
+            description: 'Removed from your feed.',
+            action: (
+              <ToastAction
+                altText="Undo"
+                onClick={async () => { await undoNotInterested(); onHide?.(); }}
+              >
+                Undo
+              </ToastAction>
+            ),
+          });
+        }
       } else {
         closeMenu();
       }
@@ -689,7 +738,18 @@ export const PostOptionsMenu = ({
 
   const handleManageFeed = () => {
     closeMenu();
-    navigate('/settings');
+    navigate('/feed/preferences');
+  };
+
+  const openReportDialog = () => {
+    closeMenu();
+    setReportStep('reason');
+    setReportReason('');
+    setReportDescription('');
+    // Defer the dialog mount by a tick: opening a Radix Dialog in the same
+    // event that closes the dropdown occasionally races the dropdown's
+    // focus-restore pointerdown and the dialog immediately re-closes.
+    setTimeout(() => setReportDialogOpen(true), 0);
   };
 
   const handleDeletePost = async () => {
@@ -721,7 +781,7 @@ export const PostOptionsMenu = ({
   };
 
   const handleReportSubmit = async () => {
-    if (!currentUserProfileId || isSubmitting) return;
+    if (!currentUserProfileId || isSubmitting || !reportReason) return;
     try {
       setIsSubmitting(true);
       const { error } = await supabase.from('post_reports').insert({
@@ -740,10 +800,7 @@ export const PostOptionsMenu = ({
         throw error;
       }
       setAlreadyReported(true);
-      toast({ title: 'Report submitted', description: 'Thank you for helping keep our community safe.' });
-      setReportDialogOpen(false);
-      setReportReason('spam');
-      setReportDescription('');
+      setReportStep('done');
     } catch (err) {
       console.error('Error submitting report:', err);
       toast({ title: 'Failed to submit report', variant: 'destructive' });
@@ -765,13 +822,13 @@ export const PostOptionsMenu = ({
       <MenuItem icon={ThumbsDown} onClick={handleToggleNotInterested} loading={busy('notInterested')} active={state.isNotInterested}>
         {state.isNotInterested ? 'Marked as Not Interested' : 'Not Interested'}
       </MenuItem>
-      <MenuItem icon={state.isSaved ? Bookmark : BookmarkPlus} onClick={handleToggleSave} loading={busy('save')}>
-        {state.isSaved ? 'Unsave Post' : 'Save Post'}
+      <MenuItem icon={isSaved ? Bookmark : BookmarkPlus} onClick={handleToggleSave} loading={saveToggling}>
+        {isSaved ? 'Unsave Post' : 'Save Post'}
       </MenuItem>
       <MenuItem icon={EyeOff} onClick={handleHidePost} loading={busy('hide')}>
         Hide Post
       </MenuItem>
-      <MenuItem icon={Flag} onClick={() => { closeMenu(); setReportDialogOpen(true); }}>
+      <MenuItem icon={Flag} onClick={openReportDialog}>
         {alreadyReported ? 'Reported' : 'Report Post'}
       </MenuItem>
       <MenuItem icon={state.notifOn ? BellOff : Bell} onClick={handleToggleNotifications} loading={busy('notif')}>
@@ -790,7 +847,7 @@ export const PostOptionsMenu = ({
           <MenuItem icon={EyeOff} onClick={handleHideAllFromTarget} loading={busy('hideAll')} active={state.isHiddenAll}>
             {state.isHiddenAll ? `Hiding all from ${postUserName}` : `Hide all from ${postUserName}`}
           </MenuItem>
-          <MenuItem icon={UserX} onClick={handleToggleBlock} loading={busy('block')} destructive>
+          <MenuItem icon={UserX} onClick={handleBlockClick} loading={busy('block')} destructive>
             {state.isBlocked ? `Unblock ${postUserName}` : `Block ${postUserName}`}
           </MenuItem>
         </>
@@ -852,15 +909,15 @@ export const PostOptionsMenu = ({
               {state.isNotInterested ? 'Marked as Not Interested' : 'Not Interested'}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleToggleSave} disabled={busy('save')}>
-              {busy('save') ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : (state.isSaved ? <Bookmark className="h-4 w-4 mr-2" /> : <BookmarkPlus className="h-4 w-4 mr-2" />)}
-              {state.isSaved ? 'Unsave Post' : 'Save Post'}
+            <DropdownMenuItem onClick={handleToggleSave} disabled={saveToggling}>
+              {saveToggling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : (isSaved ? <Bookmark className="h-4 w-4 mr-2" /> : <BookmarkPlus className="h-4 w-4 mr-2" />)}
+              {isSaved ? 'Unsave Post' : 'Save Post'}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleHidePost} disabled={busy('hide')}>
               {busy('hide') ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <EyeOff className="h-4 w-4 mr-2" />}
               Hide Post
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { closeMenu(); setReportDialogOpen(true); }}>
+            <DropdownMenuItem onClick={openReportDialog}>
               <Flag className="h-4 w-4 mr-2" />
               {alreadyReported ? 'Reported' : 'Report Post'}
             </DropdownMenuItem>
@@ -885,7 +942,7 @@ export const PostOptionsMenu = ({
                   {state.isHiddenAll ? `Hiding all from ${postUserName}` : `Hide all from ${postUserName}`}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={handleToggleBlock}
+                  onClick={handleBlockClick}
                   disabled={busy('block')}
                   className="text-destructive focus:text-destructive"
                 >
@@ -934,13 +991,24 @@ export const PostOptionsMenu = ({
 
         <ReportDialog
           open={reportDialogOpen}
-          onOpenChange={setReportDialogOpen}
+          onOpenChange={(o) => { setReportDialogOpen(o); if (!o) setReportStep('reason'); }}
+          step={reportStep}
+          setStep={setReportStep}
           reason={reportReason}
           setReason={setReportReason}
           description={reportDescription}
           setDescription={setReportDescription}
           onSubmit={handleReportSubmit}
           isSubmitting={isSubmitting}
+        />
+
+        <BlockConfirmDialog
+          open={blockConfirmOpen}
+          onOpenChange={setBlockConfirmOpen}
+          name={postUserName}
+          isCompany={targetIsCompany}
+          onConfirm={performBlock}
+          isBlocking={busy('block')}
         />
 
         <WhyDialog open={whyDialogOpen} onOpenChange={setWhyDialogOpen} reason={whyReason} />
@@ -999,13 +1067,24 @@ export const PostOptionsMenu = ({
 
       <ReportDialog
         open={reportDialogOpen}
-        onOpenChange={setReportDialogOpen}
+        onOpenChange={(o) => { setReportDialogOpen(o); if (!o) setReportStep('reason'); }}
+        step={reportStep}
+        setStep={setReportStep}
         reason={reportReason}
         setReason={setReportReason}
         description={reportDescription}
         setDescription={setReportDescription}
         onSubmit={handleReportSubmit}
         isSubmitting={isSubmitting}
+      />
+
+      <BlockConfirmDialog
+        open={blockConfirmOpen}
+        onOpenChange={setBlockConfirmOpen}
+        name={postUserName}
+        isCompany={targetIsCompany}
+        onConfirm={performBlock}
+        isBlocking={busy('block')}
       />
 
       <WhyDialog open={whyDialogOpen} onOpenChange={setWhyDialogOpen} reason={whyReason} />
@@ -1098,10 +1177,16 @@ const WhyDialog = ({
   </Dialog>
 );
 
-// Report dialog
+// Report dialog -- LinkedIn-style multi-step flow:
+//   reason  -> pick one category chip, "Next"
+//   review  -> confirm the selected reason (+ optional details), "Back" / "Submit"
+//   done    -> success acknowledgement, "Done"
+// Writes a single row to post_reports (reason constrained to the 7 DB values).
 const ReportDialog = ({
   open,
   onOpenChange,
+  step,
+  setStep,
   reason,
   setReason,
   description,
@@ -1111,56 +1196,154 @@ const ReportDialog = ({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  step: ReportStep;
+  setStep: (s: ReportStep) => void;
   reason: string;
   setReason: (value: string) => void;
   description: string;
   setDescription: (value: string) => void;
   onSubmit: () => void;
   isSubmitting: boolean;
-}) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Report Post</DialogTitle>
-        <DialogDescription>Tell us what's wrong with this post.</DialogDescription>
-      </DialogHeader>
-      <div className="py-2 space-y-4">
-        <RadioGroup value={reason} onValueChange={setReason} className="space-y-2">
-          {REPORT_REASONS.map((r) => (
-            <div key={r.value} className="flex items-center space-x-2">
-              <RadioGroupItem value={r.value} id={`report-${r.value}`} />
-              <Label htmlFor={`report-${r.value}`} className="font-normal cursor-pointer">{r.label}</Label>
+}) => {
+  const selected = REPORT_REASONS.find((r) => r.value === reason);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        {step === 'reason' && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Report this post</DialogTitle>
+              <DialogDescription>Select your reporting reason.</DialogDescription>
+            </DialogHeader>
+            <div className="flex max-h-[52vh] flex-wrap gap-2 overflow-y-auto py-2">
+              {REPORT_REASONS.map((r) => {
+                const active = r.value === reason;
+                return (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setReason(r.value)}
+                    aria-pressed={active}
+                    className={`rounded-full border px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      active
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border hover:bg-secondary'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                );
+              })}
             </div>
-          ))}
-        </RadioGroup>
-        <div className="space-y-1.5">
-          <Label htmlFor="report-description">Additional details (optional)</Label>
-          <Textarea
-            id="report-description"
-            placeholder="Add any extra context..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="min-h-[80px]"
-          />
-        </div>
-      </div>
-      <DialogFooter>
-        <Button
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-          disabled={isSubmitting}
+            <DialogFooter>
+              <Button onClick={() => setStep('review')} disabled={!reason}>
+                Next
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {step === 'review' && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Report this post</DialogTitle>
+              <DialogDescription>You've selected the following reason.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg border border-border bg-secondary/40 p-3">
+                <p className="text-sm font-semibold">{selected?.label}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{selected?.description}</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="report-description">Add details (optional)</Label>
+                <Textarea
+                  id="report-description"
+                  placeholder="Add any extra context that will help our team review this..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="min-h-[80px]"
+                />
+              </div>
+            </div>
+            <DialogFooter className="sm:justify-between">
+              <Button variant="outline" onClick={() => setStep('reason')} disabled={isSubmitting}>
+                Back
+              </Button>
+              <Button onClick={onSubmit} disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting…' : 'Submit report'}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {step === 'done' && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="sr-only">Report submitted</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <CheckCircle2 className="h-12 w-12 text-primary" />
+              <p className="text-base font-semibold">Thanks for letting us know</p>
+              <p className="text-sm text-muted-foreground">
+                Our team will review this post against our Community Policies. You won't be
+                notified of the outcome, but reports like yours help keep Profolio safe.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => onOpenChange(false)}>Done</Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Block confirmation -- block is destructive and one-sided, so the menu row
+// only ever opens this; it never blocks directly.
+const BlockConfirmDialog = ({
+  open,
+  onOpenChange,
+  name,
+  isCompany,
+  onConfirm,
+  isBlocking,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  name: string;
+  isCompany: boolean;
+  onConfirm: () => void;
+  isBlocking: boolean;
+}) => (
+  <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialogContent>
+      <AlertDialogHeader>
+        <AlertDialogTitle>Block {name}?</AlertDialogTitle>
+        <AlertDialogDescription>
+          {isCompany ? (
+            <>You'll no longer see posts or updates from {name}, and its content will be
+            removed from your feed. {name} won't be notified. You can unblock it anytime
+            from Feed preferences.</>
+          ) : (
+            <>{name} won't be able to see your posts or find your profile, and you won't see
+            theirs. Any connection or follow between you will be removed. {name} won't be
+            notified. You can unblock them anytime from Feed preferences.</>
+          )}
+        </AlertDialogDescription>
+      </AlertDialogHeader>
+      <AlertDialogFooter>
+        <AlertDialogCancel disabled={isBlocking}>Cancel</AlertDialogCancel>
+        <AlertDialogAction
+          onClick={(e) => { e.preventDefault(); onConfirm(); }}
+          disabled={isBlocking}
+          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
         >
-          Cancel
-        </Button>
-        <Button
-          onClick={onSubmit}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Submitting...' : 'Submit Report'}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+          {isBlocking ? 'Blocking…' : 'Block'}
+        </AlertDialogAction>
+      </AlertDialogFooter>
+    </AlertDialogContent>
+  </AlertDialog>
 );
 
 const CtaEditDialog = ({

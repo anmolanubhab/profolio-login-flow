@@ -131,6 +131,14 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
   const [followingIsEmpty, setFollowingIsEmpty] = useState(false);
+  // LinkedIn-style inline dismissal: "Not Interested" / "Hide Post" replace the
+  // card in place with an Undo strip. The map is post_id -> {label, onUndo};
+  // renderPostCard swaps the card for <FeedDismissedStrip> while the id is here.
+  // Cleared on a full feed reset (the not_interested/hidden filter then keeps
+  // those posts out for real).
+  const [dismissed, setDismissed] = useState<Map<string, { label: string; onUndo: () => void | Promise<void> }>>(new Map());
+  const dismissedRef = useRef(dismissed);
+  useEffect(() => { dismissedRef.current = dismissed; }, [dismissed]);
   const { toast } = useToast();
 
   const filterCtxRef = useRef<FilterContext | null>(null);
@@ -236,6 +244,9 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         seenPostIdsRef.current = new Set();
         setHasMore(true);
         filterCtxRef.current = null;
+        // A full reset rebuilds the not_interested/hidden filter, so the
+        // inline strips are no longer needed -- those posts are filtered out.
+        setDismissed(new Map());
       }
 
       let ctx = filterCtxRef.current;
@@ -773,6 +784,29 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
     fetchPosts(false);
   };
 
+  // Called by PostOptionsMenu for "Not Interested" / "Hide Post": swap the card
+  // for an inline Undo strip, no refetch, no scroll jump. The DB write already
+  // happened in the menu; onUndo reverses it.
+  const handleInlineDismiss = useCallback(
+    (info: { postId: string; label: string; onUndo: () => void | Promise<void> }) => {
+      setDismissed((prev) => new Map(prev).set(info.postId, { label: info.label, onUndo: info.onUndo }));
+    },
+    [],
+  );
+
+  const handleUndoDismiss = useCallback((postId: string) => {
+    const entry = dismissedRef.current.get(postId);
+    setDismissed((prev) => {
+      const next = new Map(prev);
+      next.delete(postId);
+      return next;
+    });
+    Promise.resolve(entry?.onUndo?.()).catch((err) => {
+      console.error('Error undoing dismissal:', err);
+      toast({ title: 'Could not undo', variant: 'destructive' });
+    });
+  }, [toast]);
+
   // "X" on a Suggested card -- removes just that card from the current
   // screen immediately (no refetch/scroll reset needed, unlike Hide Post,
   // since dismissal only ever affects this one already-loaded row) and
@@ -865,9 +899,22 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
 
   const renderPostCard = (post: Post, repostContext?: RepostContext) => {
     const seed = repostSeedFor(post);
+    const cardKey = repostContext ? `r:${repostContext.repostedAt}:${post.id}` : post.id;
+
+    const strip = dismissed.get(post.id);
+    if (strip) {
+      return (
+        <FeedDismissedStrip
+          key={cardKey}
+          label={strip.label}
+          onUndo={() => handleUndoDismiss(post.id)}
+        />
+      );
+    }
+
     return (
       <PostCard
-        key={repostContext ? `r:${repostContext.repostedAt}:${post.id}` : post.id}
+        key={cardKey}
         id={post.id}
         user={
           post.posted_as === 'company'
@@ -902,6 +949,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         onReact={(type) => handleReact(post.id, type)}
         onDelete={() => handleDeletePost(post.id)}
         onHide={handleHidePost}
+        onInlineDismiss={handleInlineDismiss}
         cta={post.cta_enabled && post.cta_label && post.cta_url ? { label: post.cta_label, url: post.cta_url, openNewTab: post.cta_open_new_tab } : null}
         companyId={post.posted_as === 'company' ? post.company_id : null}
         isSuggested={!repostContext && isSuggestedPost(post)}
@@ -950,5 +998,23 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
     </div>
   );
 };
+
+// LinkedIn-style inline replacement shown where a "Not Interested" / "Hide
+// Post" card used to be. Same outer `.post-card` box (so feed rhythm/edge-to-
+// edge is preserved) with a compact message + Undo.
+const FeedDismissedStrip = ({ label, onUndo }: { label: string; onUndo: () => void }) => (
+  <div className="post-card">
+    <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <button
+        type="button"
+        onClick={onUndo}
+        className="shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Undo
+      </button>
+    </div>
+  </div>
+);
 
 export default Feed;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { Layout } from '@/components/Layout';
@@ -6,131 +6,48 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import PostCard from '@/components/PostCard';
 import { ReactionType } from '@/components/ReactionBar';
-import { PollData, buildPollSummary, buildReactionSummary } from '@/lib/postAggregation';
+import { buildPollSummary, buildReactionSummary } from '@/lib/postAggregation';
+import { useCurrentProfileId } from '@/hooks/network/useCurrentProfileId';
+import { useSavedPostIds, useSavedPostsList } from '@/hooks/useSavedPosts';
 import { Bookmark } from 'lucide-react';
-
-interface SavedPost {
-  id: string; // posts.id
-  content: string;
-  image_url: string | null;
-  created_at: string;
-  post_type: string;
-  video_url: string | null;
-  document_url: string | null;
-  document_name: string | null;
-  carousel_urls: string[] | null;
-  company_id: string | null;
-  company_name: string | null;
-  company_logo: string | null;
-  posted_as: string;
-  profiles: {
-    id: string;
-    display_name: string | null;
-    avatar_url: string | null;
-  } | null;
-  post_reactions: { id: string; user_id: string; reaction_type: ReactionType }[];
-  polls: PollData | null;
-}
+import { Button } from '@/components/ui/button';
 
 const SavedPosts = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
-  const [posts, setPosts] = useState<SavedPost[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const { data: currentUserProfileId } = useCurrentProfileId();
+  const { data: savedIds } = useSavedPostIds();
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useSavedPostsList();
+
   useEffect(() => {
-    const init = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+    supabase.auth.getUser().then(({ data: { user: authUser } }) => {
       if (!authUser) {
         navigate('/');
         return;
       }
       setUser(authUser);
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', authUser.id)
-        .single();
-
-      if (profile) {
-        setCurrentUserProfileId(profile.id);
-        await fetchSavedPosts(profile.id);
-      } else {
-        setLoading(false);
-      }
-    };
-    init();
+    });
   }, [navigate]);
 
-  const fetchSavedPosts = async (profileId: string) => {
-    setLoading(true);
-    try {
-      const { data: savedData, error: savedError } = await supabase
-        .from('saved_posts')
-        .select('post_id, created_at')
-        .eq('user_id', profileId)
-        .order('created_at', { ascending: false });
-
-      if (savedError) throw savedError;
-
-      const postIds = (savedData || []).map((s) => s.post_id);
-      if (postIds.length === 0) {
-        setPosts([]);
-        return;
-      }
-
-      const { data: postsData, error: postsError } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          post_reactions (id, user_id, reaction_type),
-          comments (count),
-          polls (
-            id,
-            question,
-            poll_options ( id, option_text, position ),
-            poll_votes ( id, option_id, user_id )
-          )
-        `)
-        .in('id', postIds)
-        .eq('status', 'published');
-
-      if (postsError) throw postsError;
-
-      const userIds = [...new Set((postsData || []).map((p) => p.user_id))];
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, user_id, display_name, avatar_url')
-        .in('user_id', userIds.length > 0 ? userIds : ['00000000-0000-0000-0000-000000000000']);
-
-      const profilesMap = new Map();
-      (profilesData || []).forEach((p) => profilesMap.set(p.user_id, p));
-
-      // Preserve the "most recently saved first" order from saved_posts,
-      // not whatever order postgres returned matching posts in.
-      const savedOrder = new Map(postIds.map((id, idx) => [id, idx]));
-      const enriched = (postsData || [])
-        .map((post) => ({
-          ...post,
-          profiles: profilesMap.get(post.user_id) || null,
-        }))
-        .sort((a, b) => (savedOrder.get(a.id) ?? 0) - (savedOrder.get(b.id) ?? 0));
-
-      setPosts(enriched as unknown as SavedPost[]);
-    } catch (error) {
-      console.error('Error fetching saved posts:', error);
-      toast({
-        title: 'Error loading saved posts',
-        description: 'Could not load your saved posts. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // The list pages hold the ORIGINAL posts. We additionally filter against
+  // the shared saved-ids set so an unsave from the post menu (which flips
+  // that set optimistically) drops the card here instantly -- no refetch,
+  // no refresh -- while a still-saved post stays put.
+  const posts = useMemo(() => {
+    const all = (data?.pages ?? []).flatMap((p) => p.posts);
+    if (!savedIds) return all;
+    return all.filter((post) => savedIds.has(post.id));
+  }, [data, savedIds]);
 
   const handleReact = async (postId: string, type: ReactionType | null) => {
     if (!currentUserProfileId) return;
@@ -144,10 +61,10 @@ const SavedPosts = () => {
       } else {
         await supabase.from('post_reactions').upsert(
           { post_id: postId, user_id: currentUserProfileId, reaction_type: type },
-          { onConflict: 'post_id,user_id' }
+          { onConflict: 'post_id,user_id' },
         );
       }
-      fetchSavedPosts(currentUserProfileId);
+      refetch();
     } catch (error) {
       console.error('Error updating reaction:', error);
       toast({ title: 'Error', description: 'Could not update your reaction. Please try again.', variant: 'destructive' });
@@ -163,19 +80,11 @@ const SavedPosts = () => {
         user_id: currentUserProfileId,
       });
       if (error && error.code !== '23505') throw error;
-      fetchSavedPosts(currentUserProfileId);
+      refetch();
     } catch (error) {
       console.error('Error casting vote:', error);
       toast({ title: 'Error', description: 'Could not cast your vote. Please try again.', variant: 'destructive' });
     }
-  };
-
-  const handleUnsave = (postId: string) => {
-    setPosts((prev) => prev.filter((p) => p.id !== postId));
-  };
-
-  const handleDeletePost = (postId: string) => {
-    setPosts((prev) => prev.filter((p) => p.id !== postId));
   };
 
   const handleSignOut = async () => {
@@ -191,7 +100,7 @@ const SavedPosts = () => {
           <h1 className="text-xl font-bold">Saved Posts</h1>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="feed">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="post-card p-4 animate-pulse">
@@ -207,46 +116,75 @@ const SavedPosts = () => {
               </div>
             ))}
           </div>
+        ) : isError ? (
+          <div className="centered py-12 subtle text-center">
+            <Bookmark className="h-12 w-12 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">Couldn't load your saved posts</p>
+            <p className="text-sm mt-1 text-muted-foreground">
+              Something went wrong. Please try again.
+            </p>
+            <Button className="mt-4" variant="outline" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </div>
         ) : posts.length === 0 ? (
           <div className="centered py-12 subtle text-center">
             <Bookmark className="h-12 w-12 mx-auto mb-3 opacity-30" />
             <p className="font-medium">No saved posts yet</p>
             <p className="text-sm mt-1 text-muted-foreground">
-              Posts you save from the feed will show up here.
+              Tap the three-dot menu on any post and choose &ldquo;Save Post&rdquo; &mdash; it&rsquo;ll show up here.
             </p>
           </div>
         ) : (
-          <div className="feed">
-            {posts.map((post) => (
-              <PostCard
-                key={post.id}
-                id={post.id}
-                user={
-                  post.posted_as === 'company'
-                    ? { id: post.company_id || undefined, name: post.company_name || 'Company', avatar: post.company_logo || undefined }
-                    : { id: post.profiles?.id, name: post.profiles?.display_name || 'Unknown User', avatar: post.profiles?.avatar_url }
-                }
-                profileLink={post.posted_as === 'company' && post.company_id ? `/company/${post.company_id}` : undefined}
-                content={post.content}
-                image={post.image_url || undefined}
-                timestamp={post.created_at}
-                postType={post.post_type}
-                videoUrl={post.video_url || undefined}
-                documentUrl={post.document_url || undefined}
-                documentName={post.document_name || undefined}
-                carouselUrls={post.carousel_urls || undefined}
-                poll={buildPollSummary(post.polls, currentUserProfileId)}
-                onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
-                reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}
-                commentCount={(post as { comments?: { count: number }[] }).comments?.[0]?.count ?? 0}
-                onReact={(type) => handleReact(post.id, type)}
-                onDelete={() => handleDeletePost(post.id)}
-                onHide={() => handleUnsave(post.id)}
-                cta={post.cta_enabled && post.cta_label && post.cta_url ? { label: post.cta_label, url: post.cta_url, openNewTab: post.cta_open_new_tab } : null}
-                companyId={post.posted_as === 'company' ? post.company_id : null}
-              />
-            ))}
-          </div>
+          <>
+            <div className="feed">
+              {posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  id={post.id}
+                  user={
+                    post.posted_as === 'company'
+                      ? { id: post.company_id || undefined, name: post.company_name || 'Company', avatar: post.company_logo || undefined }
+                      : { id: post.profiles?.id, name: post.profiles?.display_name || 'Unknown User', avatar: post.profiles?.avatar_url || undefined }
+                  }
+                  profileLink={post.posted_as === 'company' && post.company_id ? `/company/${post.company_id}` : undefined}
+                  content={post.content}
+                  image={post.image_url || undefined}
+                  timestamp={post.created_at}
+                  postType={post.post_type}
+                  videoUrl={post.video_url || undefined}
+                  documentUrl={post.document_url || undefined}
+                  documentName={post.document_name || undefined}
+                  carouselUrls={post.carousel_urls || undefined}
+                  poll={buildPollSummary(post.polls, currentUserProfileId ?? null)}
+                  onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
+                  reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId ?? null)}
+                  commentCount={post.comments?.[0]?.count ?? 0}
+                  onReact={(type) => handleReact(post.id, type)}
+                  onDelete={() => refetch()}
+                  onHide={() => refetch()}
+                  cta={post.cta_enabled && post.cta_label && post.cta_url ? { label: post.cta_label, url: post.cta_url, openNewTab: post.cta_open_new_tab ?? true } : null}
+                  companyId={post.posted_as === 'company' ? post.company_id : null}
+                />
+              ))}
+            </div>
+
+            {hasNextPage ? (
+              <div className="centered py-4">
+                <button
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="px-4 py-2 text-sm text-primary hover:bg-secondary/50 rounded-md transition-colors disabled:opacity-50"
+                >
+                  {isFetchingNextPage ? 'Loading...' : 'Load more'}
+                </button>
+              </div>
+            ) : (
+              <div className="centered py-4 subtle text-sm">
+                <p>You're all caught up</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </Layout>
