@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { User } from '@supabase/supabase-js';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -66,6 +67,9 @@ interface PostCardProps {
   onReact?: (type: ReactionType | null) => void;
   onDelete?: () => void;
   onHide?: () => void;
+  // Feed passes this so "Not Interested" / "Hide Post" replace this card
+  // inline with an Undo strip (LinkedIn-style) instead of a toast + refetch.
+  onInlineDismiss?: (info: { postId: string; label: string; onUndo: () => void | Promise<void> }) => void;
   // Overrides where clicking the header identity navigates to -- used for
   // posts published as a company, which should open the company page
   // instead of a personal profile.
@@ -123,6 +127,7 @@ const PostCard = ({
   onReact,
   onDelete,
   onHide,
+  onInlineDismiss,
   profileLink,
   cta,
   companyId,
@@ -139,7 +144,7 @@ const PostCard = ({
   const [ctaState, setCtaState] = useState(cta ?? null);
   useEffect(() => { setCtaState(cta ?? null); }, [cta]);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
   // Comments: an inline (non-modal) section that toggles open under the
   // action bar. The full thread state lives in useComments (via
@@ -367,6 +372,7 @@ const PostCard = ({
       isOwnPost={isOwnPost}
       onDelete={onDelete}
       onHide={onHide}
+      onInlineDismiss={onInlineDismiss}
       companyId={companyId}
       cta={{
         cta_enabled: !!ctaState,

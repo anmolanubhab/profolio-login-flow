@@ -24,6 +24,7 @@ import Network from "./pages/Network";
 import AddPost from "./pages/AddPost";
 import Notifications from "./pages/Notifications";
 import SavedPosts from "./pages/SavedPosts";
+import FeedPreferences from "./pages/FeedPreferences";
 import PostDetail from "./pages/PostDetail";
 import Story from "./pages/Story";
 import Jobs from "./pages/Jobs";
@@ -80,6 +81,7 @@ const App = () => (
               <Route path="/add-post" element={<AddPost />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/saved-posts" element={<SavedPosts />} />
+              <Route path="/feed/preferences" element={<FeedPreferences />} />
               <Route path="/post/:postId" element={<PostDetail />} />
               <Route path="/story/:storyId" element={<Story />} />
               <Route path="/jobs" element={<Jobs />} />
