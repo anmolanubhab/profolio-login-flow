@@ -19,6 +19,7 @@ import { ChevronLeft, AlertCircle, RefreshCw, Loader2, Pencil } from 'lucide-rea
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CampaignStatusBadge } from '@/components/ads/CampaignStatusBadge';
+import { CampaignAudienceSummary } from '@/components/ads/CampaignAudienceSummary';
 import {
   campaignObjectiveLabel,
   getCampaignWithAccount,
@@ -201,6 +202,9 @@ export default function CampaignDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Audience */}
+            <CampaignAudienceSummary campaignId={campaign.id} />
 
             {/* Lifecycle actions */}
             <Card className="bg-card shadow-card border-0">

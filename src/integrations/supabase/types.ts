@@ -4037,6 +4037,12 @@ export type Database = {
       }
     }
     Functions: {
+      _ad_audience_count: { Args: { _spec: Json }; Returns: number }
+      _ad_like_terms: { Args: { _arr: Json }; Returns: string[] }
+      _ad_profile_years_experience: {
+        Args: { _profile_id: string }
+        Returns: number
+      }
       accept_company_invitation: {
         Args: { invitation_id: string }
         Returns: boolean
@@ -4053,6 +4059,30 @@ export type Database = {
         }
         Returns: undefined
       }
+      ad_audience_preview_reach: {
+        Args: { _ad_account_id: string; _spec: Json }
+        Returns: number
+      }
+      ad_audience_recompute_reach: {
+        Args: { _audience_id: string }
+        Returns: {
+          ad_account_id: string
+          created_at: string
+          created_by: string | null
+          estimated_reach: number | null
+          estimated_reach_at: string | null
+          id: string
+          name: string
+          spec: Json
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ad_audiences"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       ad_daily_metrics_is_owner: {
         Args: { _ad_account_id: string }
         Returns: boolean
@@ -4060,6 +4090,27 @@ export type Database = {
       apply_to_job: {
         Args: { p_cover_note?: string; p_job_id: string; p_resume_id?: string }
         Returns: string
+      }
+      attach_audience_to_ad_set: {
+        Args: { _audience_id: string; _campaign_id: string }
+        Returns: {
+          audience_id: string | null
+          bid_amount_cents: number | null
+          bid_strategy: Database["public"]["Enums"]["ad_bid_strategy"]
+          campaign_id: string
+          created_at: string
+          daily_budget_cents: number | null
+          id: string
+          name: string
+          placements: Database["public"]["Enums"]["ad_placement"][]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ad_sets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       broadcast_profile_update: { Args: never; Returns: undefined }
       can_view_story: {
@@ -4117,6 +4168,27 @@ export type Database = {
             Returns: string
           }
       current_profile_id: { Args: never; Returns: string }
+      detach_audience_from_ad_set: {
+        Args: { _campaign_id: string }
+        Returns: {
+          audience_id: string | null
+          bid_amount_cents: number | null
+          bid_strategy: Database["public"]["Enums"]["ad_bid_strategy"]
+          campaign_id: string
+          created_at: string
+          daily_budget_cents: number | null
+          id: string
+          name: string
+          placements: Database["public"]["Enums"]["ad_placement"][]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ad_sets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       follow_counts: {
         Args: never
         Returns: {

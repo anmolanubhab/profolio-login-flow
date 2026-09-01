@@ -29,6 +29,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { AdAccountStatusBadge } from '@/components/ads/AdAccountStatusBadge';
 import { AdAccountCampaignsCard } from '@/components/ads/AdAccountCampaignsCard';
+import { AdAccountAudiencesCard } from '@/components/ads/AdAccountAudiencesCard';
 import {
   AD_ACCOUNT_TIMEZONES,
   getAdAccount,
@@ -247,6 +248,12 @@ export default function AdAccountDetailPage() {
             <AdAccountCampaignsCard
               adAccountId={account.id}
               currency={account.currency}
+              disabled={account.status === 'closed'}
+            />
+
+            {/* Audiences */}
+            <AdAccountAudiencesCard
+              adAccountId={account.id}
               disabled={account.status === 'closed'}
             />
 

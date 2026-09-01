@@ -99,7 +99,7 @@ export async function getAuthorizedCompanies(): Promise<AuthorizedCompany[]> {
       .from('companies')
       .select('id, name, logo_url')
       .in('id', memberOnlyIds);
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     for (const c of memberCompanies ?? []) {
       byId.set(c.id, { id: c.id, name: c.name, logo_url: c.logo_url, relation: 'member' });
     }
@@ -114,13 +114,13 @@ export async function listAdAccounts(): Promise<AdAccount[]> {
     .from('ad_accounts')
     .select('*')
     .order('created_at', { ascending: false });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
 export async function getAdAccount(id: string): Promise<AdAccount | null> {
   const { data, error } = await supabase.from('ad_accounts').select('*').eq('id', id).maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -153,7 +153,7 @@ export async function createAdAccount(input: CreateAdAccountInput): Promise<AdAc
     })
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -168,7 +168,7 @@ export async function updateAdAccountSettings(
     .eq('id', id)
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -180,7 +180,7 @@ export async function setAdAccountStatus(id: string, status: 'active' | 'closed'
     .eq('id', id)
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -293,7 +293,7 @@ export async function listCampaigns(adAccountId: string): Promise<Campaign[]> {
     .select('*')
     .eq('ad_account_id', adAccountId)
     .order('created_at', { ascending: false });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data ?? [];
 }
 
@@ -306,7 +306,7 @@ export async function getCampaignWithAccount(
     .select('*')
     .eq('id', campaignId)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   if (!campaign) return null;
 
   const adAccount = await getAdAccount(campaign.ad_account_id);
@@ -344,7 +344,7 @@ export async function createCampaignDraft(input: CampaignDraftInput): Promise<Ca
     })
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -367,7 +367,7 @@ export async function updateCampaignDraft(
     .eq('id', campaignId)
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -375,7 +375,7 @@ export async function submitCampaignForReview(campaignId: string): Promise<Campa
   const { data, error } = await supabase.rpc('submit_campaign_for_review', {
     _campaign_id: campaignId,
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as unknown as Campaign;
 }
 
@@ -383,6 +383,221 @@ export async function withdrawCampaignSubmission(campaignId: string): Promise<Ca
   const { data, error } = await supabase.rpc('withdraw_campaign_submission', {
     _campaign_id: campaignId,
   });
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data as unknown as Campaign;
+}
+
+// =====================================================================
+// Phase F — audiences & targeting
+//
+// The advertiser only ever sends targeting criteria (spec) and receives a
+// single server-computed integer reach. Estimated reach and the >= 300
+// minimum are enforced only in the SECURITY DEFINER RPCs
+// (ad_audience_preview_reach / ad_audience_recompute_reach /
+// attach_audience_to_ad_set). No API here returns matching profile rows.
+// =====================================================================
+
+export type AdAudience = Database['public']['Tables']['ad_audiences']['Row'];
+export type AdSet = Database['public']['Tables']['ad_sets']['Row'];
+
+/** Minimum eligible profiles before an audience can be attached / used. */
+export const MIN_AUDIENCE_SIZE = 300;
+
+/** Versioned targeting spec stored in `ad_audiences.spec`. All keys optional. */
+export interface AudienceSpec {
+  v?: 1;
+  locations?: string[];
+  skills?: string[];
+  job_titles?: string[];
+  companies?: string[];
+  fields_of_study?: string[];
+  schools?: string[];
+  min_years_experience?: number;
+}
+
+export type AudienceListDimension =
+  | 'locations'
+  | 'skills'
+  | 'job_titles'
+  | 'companies'
+  | 'fields_of_study'
+  | 'schools';
+
+/**
+ * Each targeting dimension, its real Profolio data source, and how it is
+ * matched. Documented here so the UI copy and the report stay in sync with
+ * the SQL in 20260901160000_phase_f_audience_targeting.sql.
+ */
+export const TARGETING_DIMENSIONS: {
+  key: AudienceListDimension;
+  label: string;
+  placeholder: string;
+  help: string;
+}[] = [
+  {
+    key: 'locations',
+    label: 'Location',
+    placeholder: 'e.g. Patna, Bengaluru',
+    help: "Matched against the location on a member's public profile.",
+  },
+  {
+    key: 'job_titles',
+    label: 'Job title / profession',
+    placeholder: 'e.g. Software Engineer, Sales Manager',
+    help: "Matched against a member's profession and the roles in their experience.",
+  },
+  {
+    key: 'skills',
+    label: 'Skills',
+    placeholder: 'e.g. React, Project Management',
+    help: 'Matched against the skills listed on a member profile.',
+  },
+  {
+    key: 'companies',
+    label: 'Companies',
+    placeholder: 'e.g. Acme, akl tech',
+    help: "Matched against a member's current or past employers in their experience.",
+  },
+  {
+    key: 'fields_of_study',
+    label: 'Field of study',
+    placeholder: 'e.g. Computer Science',
+    help: "Matched against the field of study in a member's education.",
+  },
+  {
+    key: 'schools',
+    label: 'School / institution',
+    placeholder: 'e.g. Magadh University',
+    help: "Matched against the institutions in a member's education.",
+  },
+];
+
+export function audienceCriteriaCount(spec: AudienceSpec): number {
+  let n = 0;
+  for (const d of TARGETING_DIMENSIONS) n += (spec[d.key]?.length ?? 0);
+  if (typeof spec.min_years_experience === 'number' && spec.min_years_experience > 0) n += 1;
+  return n;
+}
+
+export async function listAudiences(adAccountId: string): Promise<AdAudience[]> {
+  const { data, error } = await supabase
+    .from('ad_audiences')
+    .select('*')
+    .eq('ad_account_id', adAccountId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function getAudienceWithAccount(
+  audienceId: string,
+): Promise<{ audience: AdAudience; adAccount: AdAccount } | null> {
+  const { data: audience, error } = await supabase
+    .from('ad_audiences')
+    .select('*')
+    .eq('id', audienceId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!audience) return null;
+  const adAccount = await getAdAccount(audience.ad_account_id);
+  if (!adAccount) return null;
+  return { audience, adAccount };
+}
+
+export async function createAudience(
+  adAccountId: string,
+  name: string,
+  spec: AudienceSpec,
+): Promise<AdAudience> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data, error } = await supabase
+    .from('ad_audiences')
+    .insert({
+      ad_account_id: adAccountId,
+      name: name.trim(),
+      spec: { v: 1, ...spec } as never,
+      created_by: user?.id ?? null,
+      // estimated_reach left null — only the server RPC may set it
+    })
+    .select('*')
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function updateAudience(
+  audienceId: string,
+  patch: { name?: string; spec?: AudienceSpec },
+): Promise<AdAudience> {
+  const row: Record<string, unknown> = {};
+  if (patch.name !== undefined) row.name = patch.name.trim();
+  if (patch.spec !== undefined) {
+    row.spec = { v: 1, ...patch.spec };
+    // invalidate the stored reach until the server recomputes it
+    row.estimated_reach = null;
+    row.estimated_reach_at = null;
+  }
+  const { data, error } = await supabase
+    .from('ad_audiences')
+    .update(row)
+    .eq('id', audienceId)
+    .select('*')
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Server-side live estimate for an unsaved spec. Returns an integer only. */
+export async function previewAudienceReach(
+  adAccountId: string,
+  spec: AudienceSpec,
+): Promise<number> {
+  const { data, error } = await supabase.rpc('ad_audience_preview_reach', {
+    _ad_account_id: adAccountId,
+    _spec: spec as never,
+  });
+  if (error) throw new Error(error.message);
+  return (data as number) ?? 0;
+}
+
+/** Recompute + persist a saved audience's reach from its own stored spec. */
+export async function recomputeAudienceReach(audienceId: string): Promise<AdAudience> {
+  const { data, error } = await supabase.rpc('ad_audience_recompute_reach', {
+    _audience_id: audienceId,
+  });
+  if (error) throw new Error(error.message);
+  return data as unknown as AdAudience;
+}
+
+export async function getCampaignAdSet(campaignId: string): Promise<AdSet | null> {
+  const { data, error } = await supabase
+    .from('ad_sets')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .order('created_at', { ascending: true })
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return data?.[0] ?? null;
+}
+
+export async function attachAudienceToCampaign(
+  campaignId: string,
+  audienceId: string,
+): Promise<AdSet> {
+  const { data, error } = await supabase.rpc('attach_audience_to_ad_set', {
+    _campaign_id: campaignId,
+    _audience_id: audienceId,
+  });
+  if (error) throw new Error(error.message);
+  return data as unknown as AdSet;
+}
+
+export async function detachAudienceFromCampaign(campaignId: string): Promise<AdSet> {
+  const { data, error } = await supabase.rpc('detach_audience_from_ad_set', {
+    _campaign_id: campaignId,
+  });
+  if (error) throw new Error(error.message);
+  return data as unknown as AdSet;
 }
