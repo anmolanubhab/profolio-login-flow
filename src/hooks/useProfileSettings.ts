@@ -19,6 +19,16 @@ interface ProfileSettings {
   share_pdf_resume_with_recruiters: boolean;
   share_online_resume_with_recruiters: boolean;
   share_professional_links_with_recruiters: boolean;
+  /** Stored in profiles.preferences.mentions_from — everyone | connections | nobody */
+  mentions_from: string;
+}
+
+const MENTIONS_FROM_VALUES = ['everyone', 'connections', 'nobody'] as const;
+function readMentionsFrom(preferences: unknown): string {
+  const v = (preferences as Record<string, unknown> | null)?.mentions_from;
+  return typeof v === 'string' && (MENTIONS_FROM_VALUES as readonly string[]).includes(v)
+    ? v
+    : 'everyone';
 }
 
 interface BlockedEntry {
@@ -66,6 +76,7 @@ export function useProfileSettings() {
     share_pdf_resume_with_recruiters: false,
     share_online_resume_with_recruiters: false,
     share_professional_links_with_recruiters: false,
+    mentions_from: 'everyone',
   });
   const [blocked, setBlocked] = useState<BlockedEntry[]>([]);
   const [snoozed, setSnoozed] = useState<SnoozedEntry[]>([]);
@@ -83,7 +94,7 @@ export function useProfileSettings() {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, profile_visibility, open_to_work, open_to_work_visibility, email_visibility, phone_visibility, connections_visibility, last_name_visibility, profile_discovery, autoplay_videos, allow_recruiter_search, allow_recruiter_profile_view, share_pdf_resume_with_recruiters, share_online_resume_with_recruiters, share_professional_links_with_recruiters, email')
+        .select('id, profile_visibility, open_to_work, open_to_work_visibility, email_visibility, phone_visibility, connections_visibility, last_name_visibility, profile_discovery, autoplay_videos, allow_recruiter_search, allow_recruiter_profile_view, share_pdf_resume_with_recruiters, share_online_resume_with_recruiters, share_professional_links_with_recruiters, preferences, email')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -105,6 +116,7 @@ export function useProfileSettings() {
           share_pdf_resume_with_recruiters: data.share_pdf_resume_with_recruiters ?? false,
           share_online_resume_with_recruiters: data.share_online_resume_with_recruiters ?? false,
           share_professional_links_with_recruiters: data.share_professional_links_with_recruiters ?? false,
+          mentions_from: readMentionsFrom(data.preferences),
         });
         setProfileId(data.id);
         await fetchPrivacyLists(data.id);
@@ -526,6 +538,34 @@ export function useProfileSettings() {
     }
   };
 
+  // Stored in profiles.preferences.mentions_from (jsonb) -- read-modify-write
+  // so other keys under `preferences` (e.g. notifications) survive.
+  const updateMentionsFrom = async (value: string) => {
+    if (!user) return;
+    const previous = settings.mentions_from;
+    setSettings((prev) => ({ ...prev, mentions_from: value }));
+    setSaving(true);
+    try {
+      const { data: row } = await supabase
+        .from('profiles')
+        .select('preferences')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const currentPrefs = (row?.preferences as Record<string, unknown> | null) ?? {};
+      const { error } = await supabase
+        .from('profiles')
+        .update({ preferences: { ...currentPrefs, mentions_from: value } })
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast({ title: 'Success', description: 'Mention & tag settings updated.' });
+    } catch (error) {
+      setSettings((prev) => ({ ...prev, mentions_from: previous }));
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return {
     user,
     loading,
@@ -548,6 +588,7 @@ export function useProfileSettings() {
     toggleShareOnlineResume,
     toggleShareProfessionalLinks,
     updateOpenToWorkVisibility,
+    updateMentionsFrom,
     unblock,
     unsnooze,
   };

@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Eye, UserX, Clock, X, Mail, Phone, Users, UserCircle, Search, Briefcase, FileText, Link as LinkIcon, UserPlus } from 'lucide-react';
+import { Eye, UserX, Clock, X, Mail, Phone, Users, UserCircle, Search, Briefcase, FileText, Link as LinkIcon, UserPlus, AtSign } from 'lucide-react';
 import { SettingsSection, SettingsConfigRows } from '@/components/settings/SettingsSection';
 import { SettingsRow } from '@/components/settings/SettingsRow';
 import {
@@ -35,6 +35,7 @@ export function VisibilitySettings() {
     toggleShareOnlineResume,
     toggleShareProfessionalLinks,
     updateOpenToWorkVisibility,
+    updateMentionsFrom,
     unblock,
     unsnooze,
   } = useProfileSettings();
@@ -289,6 +290,28 @@ export function VisibilitySettings() {
           status="active"
           onClick={() => navigate('/network?tab=following&sub=followers')}
         />
+
+        <div className="px-4 py-3.5 sm:px-5 space-y-2">
+          <Label htmlFor="mentions_from" className="flex items-center gap-2">
+            <AtSign className="h-4 w-4" />
+            Mentions &amp; tags
+          </Label>
+          <Select value={settings.mentions_from} onValueChange={updateMentionsFrom} disabled={saving}>
+            <SelectTrigger id="mentions_from" className="bg-background/50 border-muted focus:border-primary/50">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="everyone">Everyone — anyone can mention you</SelectItem>
+              <SelectItem value="connections">Connections only</SelectItem>
+              <SelectItem value="nobody">No one</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Who can @mention you in posts and comments. People who can’t mention you won’t
+            see you in the @ suggestions and won’t be able to tag you.
+          </p>
+        </div>
+
         <SettingsConfigRows rows={VISIBILITY_ACTIVITY_PLACEHOLDER_ROWS} />
 
         <div className="px-4 py-3.5 sm:px-5 space-y-2">
