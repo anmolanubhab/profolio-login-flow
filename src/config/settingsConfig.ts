@@ -114,17 +114,21 @@ export const SECURITY_ACCESS_SECTION: SettingsSectionConfig = {
   id: 'account-access',
   title: 'Account access',
   rows: [
-    { id: 'phone-numbers', label: 'Phone numbers', description: 'Sign in to Profolio is by email', status: 'unavailable' },
-    { id: 'passkeys', label: 'Passkeys', description: 'Use a password with two-step verification', status: 'unavailable' },
+    {
+      id: 'passkeys',
+      label: 'Passkeys',
+      description: 'Supabase Auth on this project doesn’t support passkeys yet — use a password with two-step verification',
+      status: 'unavailable',
+    },
   ],
 };
 
+// "Remembered devices" now points at the real Active sessions page --
+// authored directly in SecuritySettings.tsx.
 export const SECURITY_SECTION: SettingsSectionConfig = {
   id: 'security',
   title: 'Security',
-  rows: [
-    { id: 'remembered-devices', label: 'Remembered devices', description: 'Not tracked — each device signs in independently', status: 'unavailable' },
-  ],
+  rows: [],
 };
 
 // "Active status" and "Profile update broadcasts" are real switches, authored

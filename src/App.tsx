@@ -23,6 +23,7 @@ import DownloadDataPage from "./pages/settings/DownloadDataPage";
 import AccountStatusPage from "./pages/settings/AccountStatusPage";
 import ConnectedServicesPage from "./pages/settings/ConnectedServicesPage";
 import ManageDataPage from "./pages/settings/ManageDataPage";
+import PhoneNumberPage from "./pages/settings/PhoneNumberPage";
 import PublicProfile from "./pages/PublicProfile";
 import Network from "./pages/Network";
 import AddPost from "./pages/AddPost";
@@ -80,6 +81,7 @@ const App = () => (
               <Route path="/settings/security/active-sessions" element={<ActiveSessionsPage />} />
               <Route path="/settings/security/change-email" element={<ChangeEmailPage />} />
               <Route path="/settings/security/two-step-verification" element={<TwoStepVerificationPage />} />
+              <Route path="/settings/security/phone" element={<PhoneNumberPage />} />
               <Route path="/settings/privacy/download-data" element={<DownloadDataPage />} />
               <Route path="/settings/account/status" element={<AccountStatusPage />} />
               <Route path="/settings/privacy/connected-services" element={<ConnectedServicesPage />} />
