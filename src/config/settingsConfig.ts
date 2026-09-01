@@ -128,9 +128,8 @@ export const SECURITY_SECTION: SettingsSectionConfig = {
 };
 
 export const VISIBILITY_ACTIVITY_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
-  { id: 'active-status', label: 'Active status', description: 'Show others when you’re active', status: 'placeholder' },
-  { id: 'profile-updates', label: 'Profile updates', description: 'Share when you update your profile', status: 'placeholder' },
-  { id: 'mentions', label: 'Mentions & tags', description: 'Choose who can mention you', status: 'placeholder' },
+  { id: 'active-status', label: 'Active status', description: 'Profolio doesn’t show an online / active indicator', status: 'unavailable' },
+  { id: 'profile-updates', label: 'Profile update broadcasts', description: 'Profolio doesn’t post your profile edits to your network', status: 'unavailable' },
 ];
 
 export const VISIBILITY_PROFILE_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
