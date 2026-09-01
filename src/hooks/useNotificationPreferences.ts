@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -8,11 +8,19 @@ import {
   type NotificationPreferences,
 } from '@/lib/notificationCategories';
 
-// Module cache so the read surfaces (NotificationBell, /notifications) share
-// one answer and pick up a change the settings panel just saved without a
-// reload. Mirrors the pattern in useAutoplayPreference.
+// Module cache + a tiny event bus so the read surfaces (NotificationBell,
+// /notifications) share one answer and pick up a change the settings panel
+// just saved, in the same tab, without a reload. Mirrors useAutoplayPreference.
 let cached: NotificationPreferences | null = null;
 let inFlight: Promise<NotificationPreferences> | null = null;
+const CHANGED_EVENT = 'profolio:notification-prefs-changed';
+
+function publish(next: NotificationPreferences) {
+  cached = next;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(CHANGED_EVENT));
+  }
+}
 
 async function fetchPreferences(): Promise<NotificationPreferences> {
   const {
@@ -36,18 +44,26 @@ export function useNotificationPreferencesValue(): NotificationPreferences {
 
   useEffect(() => {
     let cancelled = false;
+
     if (cached) {
       setValue(cached);
-      return;
+    } else {
+      if (!inFlight) inFlight = fetchPreferences();
+      inFlight.then((result) => {
+        cached = result;
+        inFlight = null;
+        if (!cancelled) setValue(result);
+      });
     }
-    if (!inFlight) inFlight = fetchPreferences();
-    inFlight.then((result) => {
-      cached = result;
-      inFlight = null;
-      if (!cancelled) setValue(result);
-    });
+
+    // Live-update within the tab when the settings panel saves.
+    const onChanged = () => {
+      if (!cancelled && cached) setValue({ ...cached });
+    };
+    window.addEventListener(CHANGED_EVENT, onChanged);
     return () => {
       cancelled = true;
+      window.removeEventListener(CHANGED_EVENT, onChanged);
     };
   }, []);
 
@@ -57,8 +73,8 @@ export function useNotificationPreferencesValue(): NotificationPreferences {
 /**
  * Editable notification preferences for the settings panel. Persists to the
  * existing `profiles.preferences` JSONB column under a `notifications` key --
- * no new table/column. Optimistic + auto-save + toast, matching the other
- * settings panels.
+ * no new table/column. Optimistic + auto-save + toast + rollback, matching
+ * the other settings panels.
  */
 export function useNotificationPreferences() {
   const { toast } = useToast();
@@ -67,6 +83,8 @@ export function useNotificationPreferences() {
   const [prefs, setPrefs] = useState<NotificationPreferences>(
     cached ?? DEFAULT_NOTIFICATION_PREFERENCES,
   );
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
 
   useEffect(() => {
     let cancelled = false;
@@ -90,14 +108,15 @@ export function useNotificationPreferences() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const previous = prefs;
-      const next = { ...prefs, [key]: enabled };
-      setPrefs(next);
-      cached = next;
+      const previous = prefsRef.current;
+      const optimistic = { ...previous, [key]: enabled };
+      setPrefs(optimistic);
+      publish(optimistic);
       setSaving(true);
       try {
-        // Read-modify-write the JSONB so other keys under `preferences` are
-        // preserved.
+        // Read-modify-write: merge onto the freshest DB value so a concurrent
+        // toggle of a different category isn't clobbered, and other keys under
+        // `preferences` are preserved.
         const { data: row } = await supabase
           .from('profiles')
           .select('preferences')
@@ -105,18 +124,25 @@ export function useNotificationPreferences() {
           .maybeSingle();
         const currentPrefs =
           (row?.preferences as Record<string, unknown> | null) ?? {};
+        const merged: NotificationPreferences = {
+          ...normalizeNotificationPreferences(currentPrefs.notifications),
+          [key]: enabled,
+        };
         const { error } = await supabase
           .from('profiles')
-          .update({ preferences: { ...currentPrefs, notifications: next } })
+          .update({ preferences: { ...currentPrefs, notifications: merged } })
           .eq('user_id', user.id);
         if (error) throw error;
+
+        setPrefs(merged);
+        publish(merged);
         toast({
           title: enabled ? 'Notifications on' : 'Notifications off',
           description: `You’ll ${enabled ? 'now' : 'no longer'} see “${key.replace(/_/g, ' ')}” notifications.`,
         });
       } catch (err) {
         setPrefs(previous);
-        cached = previous;
+        publish(previous);
         toast({
           title: 'Couldn’t save',
           description: err instanceof Error ? err.message : 'Please try again.',
@@ -126,7 +152,7 @@ export function useNotificationPreferences() {
         setSaving(false);
       }
     },
-    [prefs, toast],
+    [toast],
   );
 
   return { loading, saving, prefs, setCategory };
