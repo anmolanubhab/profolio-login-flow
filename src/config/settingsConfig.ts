@@ -103,7 +103,6 @@ export const ACCOUNT_GENERAL_SECTION: SettingsSectionConfig = {
   rows: [
     { id: 'language', label: 'Language', description: 'Choose the language you see the app in', status: 'placeholder' },
     { id: 'content-language', label: 'Content language', description: 'Preferred language for posts and articles', status: 'placeholder' },
-    { id: 'feed-preferences', label: 'Feed preferences', description: 'Tune what shows up in your feed', status: 'placeholder' },
   ],
 };
 
@@ -148,7 +147,6 @@ export const DATA_USAGE_SECTION: SettingsSectionConfig = {
     { id: 'manage-data', label: 'Manage your data', status: 'placeholder' },
     { id: 'search-history', label: 'Search history', status: 'placeholder' },
     { id: 'personalization-data', label: 'Personalization data', status: 'placeholder' },
-    { id: 'download-data', label: 'Download your data', status: 'placeholder' },
   ],
 };
 

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from 'next-themes';
-import { LogOut, User, MapPin, IdCard, GraduationCap, Briefcase, Monitor, Film } from 'lucide-react';
+import { LogOut, User, MapPin, IdCard, GraduationCap, Briefcase, Monitor, Film, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -88,6 +88,14 @@ export function AccountSettings() {
             disabled={saving}
           />
         </div>
+
+        <SettingsRow
+          icon={SlidersHorizontal}
+          title="Feed preferences"
+          description="Manage muted people, hidden posts and topics you see less of"
+          status="active"
+          onClick={() => navigate('/feed/preferences')}
+        />
 
         <SettingsConfigRows rows={ACCOUNT_GENERAL_SECTION.rows} />
       </SettingsSection>

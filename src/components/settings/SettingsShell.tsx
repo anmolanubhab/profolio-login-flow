@@ -32,6 +32,7 @@ export function SettingsShell({ activeCategory }: SettingsShellProps) {
   const navigate = useNavigate();
   const desktopCategoryId = activeCategory ?? DEFAULT_SETTINGS_CATEGORY;
   const DesktopPanel = CATEGORY_PANELS[desktopCategoryId];
+  const desktopConfig = SETTINGS_CATEGORIES.find((c) => c.id === desktopCategoryId);
   const activeConfig = activeCategory
     ? SETTINGS_CATEGORIES.find((c) => c.id === activeCategory)
     : undefined;
@@ -45,6 +46,14 @@ export function SettingsShell({ activeCategory }: SettingsShellProps) {
           <SettingsNav variant="desktop" activeId={desktopCategoryId} />
         </aside>
         <div className="min-w-0 flex-1 space-y-4">
+          {desktopConfig && (
+            <header className="space-y-1 pb-1">
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                {desktopConfig.label}
+              </h2>
+              <p className="text-sm text-muted-foreground">{desktopConfig.description}</p>
+            </header>
+          )}
           <DesktopPanel />
         </div>
       </div>
@@ -58,7 +67,7 @@ export function SettingsShell({ activeCategory }: SettingsShellProps) {
           </>
         ) : (
           <div>
-            <div className="flex items-center gap-2 px-2 py-3 sticky top-[var(--nav-height)] bg-background z-10 border-b border-border">
+            <div className="flex items-center gap-2 px-2 py-3 sticky top-[calc(var(--nav-height)+env(safe-area-inset-top))] bg-background z-10 border-b border-border">
               <Button
                 variant="ghost"
                 size="icon"
