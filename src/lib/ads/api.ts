@@ -183,3 +183,206 @@ export async function setAdAccountStatus(id: string, status: 'active' | 'closed'
   if (error) throw error;
   return data;
 }
+
+// =====================================================================
+// Phase E — campaigns
+//
+// Create + edit-draft are plain client writes gated by the Phase C
+// `campaigns` RLS (advertiser = `is_ad_account_admin()`), and never touch
+// `status`. The only lifecycle movement is draft <-> pending_review, which
+// goes through the SECURITY DEFINER RPCs `submit_campaign_for_review` /
+// `withdraw_campaign_submission` — the Phase C `ad_status_guard` blocks any
+// direct client write to `campaigns.status`.
+// =====================================================================
+
+export type Campaign = Database['public']['Tables']['campaigns']['Row'];
+export type CampaignStatus = Database['public']['Enums']['campaign_status'];
+export type CampaignObjective = Database['public']['Enums']['campaign_objective'];
+
+export type CampaignObjectiveGroup = 'Awareness' | 'Consideration' | 'Conversions';
+
+export const CAMPAIGN_OBJECTIVES: {
+  value: CampaignObjective;
+  label: string;
+  description: string;
+  group: CampaignObjectiveGroup;
+}[] = [
+  {
+    value: 'brand_awareness',
+    label: 'Brand awareness',
+    description: 'Get your company in front of more people on Profolio.',
+    group: 'Awareness',
+  },
+  {
+    value: 'website_visits',
+    label: 'Website visits',
+    description: 'Send people to a destination off Profolio.',
+    group: 'Consideration',
+  },
+  {
+    value: 'post_engagement',
+    label: 'Engagement',
+    description: 'Get more reactions, comments, shares and follows.',
+    group: 'Consideration',
+  },
+  {
+    value: 'profile_visits',
+    label: 'Profile visits',
+    description: 'Drive people to a member or company profile.',
+    group: 'Consideration',
+  },
+  {
+    value: 'company_page_visits',
+    label: 'Company Page visits',
+    description: 'Grow traffic to your Profolio company page.',
+    group: 'Consideration',
+  },
+  {
+    value: 'lead_generation',
+    label: 'Lead generation',
+    description: 'Collect interest from people using a Profolio form.',
+    group: 'Conversions',
+  },
+  {
+    value: 'job_promotion',
+    label: 'Job promotion',
+    description: 'Put a role in front of relevant candidates.',
+    group: 'Conversions',
+  },
+];
+
+export const CAMPAIGN_OBJECTIVE_GROUP_ORDER: CampaignObjectiveGroup[] = [
+  'Awareness',
+  'Consideration',
+  'Conversions',
+];
+
+export function campaignObjectiveLabel(value: CampaignObjective): string {
+  return CAMPAIGN_OBJECTIVES.find((o) => o.value === value)?.label ?? value;
+}
+
+export const CAMPAIGN_STATUS_META: Record<
+  CampaignStatus,
+  { label: string; tone: 'neutral' | 'info' | 'success' | 'warn' | 'danger' }
+> = {
+  draft: { label: 'Draft', tone: 'neutral' },
+  pending_review: { label: 'In review', tone: 'info' },
+  approved: { label: 'Approved', tone: 'success' },
+  active: { label: 'Active', tone: 'success' },
+  paused: { label: 'Paused', tone: 'warn' },
+  completed: { label: 'Completed', tone: 'neutral' },
+  rejected: { label: 'Rejected', tone: 'danger' },
+};
+
+/** cents (bigint in the DB) -> major-unit string for inputs, '' for 0/null. */
+export function centsToAmount(cents: number | null | undefined): string {
+  if (!cents || cents <= 0) return '';
+  return (cents / 100).toString();
+}
+
+/** major-unit string -> integer cents. Returns 0 for blank/invalid. */
+export function amountToCents(amount: string): number {
+  const n = Number.parseFloat(amount);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round(n * 100);
+}
+
+export async function listCampaigns(adAccountId: string): Promise<Campaign[]> {
+  const { data, error } = await supabase
+    .from('campaigns')
+    .select('*')
+    .eq('ad_account_id', adAccountId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Campaign plus its parent ad account (for currency + breadcrumb + not-found handling). */
+export async function getCampaignWithAccount(
+  campaignId: string,
+): Promise<{ campaign: Campaign; adAccount: AdAccount } | null> {
+  const { data: campaign, error } = await supabase
+    .from('campaigns')
+    .select('*')
+    .eq('id', campaignId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!campaign) return null;
+
+  const adAccount = await getAdAccount(campaign.ad_account_id);
+  if (!adAccount) return null;
+  return { campaign, adAccount };
+}
+
+export interface CampaignDraftInput {
+  adAccountId: string;
+  name: string;
+  objective: CampaignObjective;
+  totalBudgetCents: number;
+  dailyBudgetCents: number | null;
+  startAt: string | null;
+  endAt: string | null;
+}
+
+export async function createCampaignDraft(input: CampaignDraftInput): Promise<Campaign> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from('campaigns')
+    .insert({
+      ad_account_id: input.adAccountId,
+      name: input.name.trim(),
+      objective: input.objective,
+      total_budget_cents: input.totalBudgetCents,
+      daily_budget_cents: input.dailyBudgetCents,
+      start_at: input.startAt,
+      end_at: input.endAt,
+      created_by: user?.id ?? null,
+      // status intentionally omitted — defaults to 'draft'
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/** Edit a draft. Never sends `status` — the guard would reject it and it isn't ours to set. */
+export async function updateCampaignDraft(
+  campaignId: string,
+  patch: Partial<Omit<CampaignDraftInput, 'adAccountId'>>,
+): Promise<Campaign> {
+  const row: Record<string, unknown> = {};
+  if (patch.name !== undefined) row.name = patch.name.trim();
+  if (patch.objective !== undefined) row.objective = patch.objective;
+  if (patch.totalBudgetCents !== undefined) row.total_budget_cents = patch.totalBudgetCents;
+  if (patch.dailyBudgetCents !== undefined) row.daily_budget_cents = patch.dailyBudgetCents;
+  if (patch.startAt !== undefined) row.start_at = patch.startAt;
+  if (patch.endAt !== undefined) row.end_at = patch.endAt;
+
+  const { data, error } = await supabase
+    .from('campaigns')
+    .update(row)
+    .eq('id', campaignId)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function submitCampaignForReview(campaignId: string): Promise<Campaign> {
+  const { data, error } = await supabase.rpc('submit_campaign_for_review', {
+    _campaign_id: campaignId,
+  });
+  if (error) throw error;
+  return data as unknown as Campaign;
+}
+
+export async function withdrawCampaignSubmission(campaignId: string): Promise<Campaign> {
+  const { data, error } = await supabase.rpc('withdraw_campaign_submission', {
+    _campaign_id: campaignId,
+  });
+  if (error) throw error;
+  return data as unknown as Campaign;
+}

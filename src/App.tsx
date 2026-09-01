@@ -43,6 +43,8 @@ import Groups from "./pages/Groups";
 import Events from "./pages/Events";
 import AdsDashboard from "./pages/ads/AdsDashboard";
 import AdAccountDetailPage from "./pages/ads/AdAccountDetailPage";
+import CampaignBuilderPage from "./pages/ads/CampaignBuilderPage";
+import CampaignDetailPage from "./pages/ads/CampaignDetailPage";
 import InsightsPage from "./pages/insights/InsightsPage";
 import InsightDetailPage from "./pages/insights/InsightDetailPage";
 import InsightArticlePage from "./pages/insights/InsightArticlePage";
@@ -107,6 +109,9 @@ const App = () => (
               <Route path="/events" element={<Events />} />
               <Route path="/ads" element={<AdsDashboard />} />
               <Route path="/ads/accounts/:id" element={<AdAccountDetailPage />} />
+              <Route path="/ads/accounts/:id/campaigns/new" element={<CampaignBuilderPage mode="new" />} />
+              <Route path="/ads/campaigns/:campaignId" element={<CampaignDetailPage />} />
+              <Route path="/ads/campaigns/:campaignId/edit" element={<CampaignBuilderPage mode="edit" />} />
               <Route path="/insights" element={<InsightsPage />} />
               <Route path="/insights/:slug" element={<InsightDetailPage />} />
               <Route path="/insights/:slug/write" element={<InsightEditorPage />} />

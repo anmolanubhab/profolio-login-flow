@@ -4439,6 +4439,32 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      submit_campaign_for_review: {
+        Args: { _campaign_id: string }
+        Returns: {
+          activated_at: string | null
+          ad_account_id: string
+          created_at: string
+          created_by: string | null
+          daily_budget_cents: number | null
+          end_at: string | null
+          id: string
+          name: string
+          objective: Database["public"]["Enums"]["campaign_objective"]
+          reviewed_at: string | null
+          start_at: string | null
+          status: Database["public"]["Enums"]["campaign_status"]
+          submitted_at: string | null
+          total_budget_cents: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaigns"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       submit_interview_feedback: {
         Args: {
           p_communication: number
@@ -4458,6 +4484,32 @@ export type Database = {
           p_reason?: string
         }
         Returns: undefined
+      }
+      withdraw_campaign_submission: {
+        Args: { _campaign_id: string }
+        Returns: {
+          activated_at: string | null
+          ad_account_id: string
+          created_at: string
+          created_by: string | null
+          daily_budget_cents: number | null
+          end_at: string | null
+          id: string
+          name: string
+          objective: Database["public"]["Enums"]["campaign_objective"]
+          reviewed_at: string | null
+          start_at: string | null
+          status: Database["public"]["Enums"]["campaign_status"]
+          submitted_at: string | null
+          total_budget_cents: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaigns"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       withdraw_connection_request: {
         Args: { request_id: string }
