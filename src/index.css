@@ -231,33 +231,22 @@ All colors MUST be HSL.
     body {
       padding-top: 0;
     }
-    /* Edge-to-edge PWA (Android 15+ / viewport-fit=cover): the header reserves
-       the status-bar inset ABOVE its content, but that reserved strip is left
-       fully transparent -- no background, no blur, no border -- so the OS
-       status bar reads as a translucent scrim over the page instead of a solid
-       Profolio-coloured bar. Only the content row (.navbar-inner) keeps the
-       frosted glass. Every inset resolves to 0 in a normal browser tab, so
-       this is a no-op there. translateY(-100%) still clears the whole height
-       (inset + row) when the header auto-hides. */
+    /* Standalone PWA on Android 15+ (viewport-fit=cover): Chrome draws the app
+       edge-to-edge and hands us the status-bar height as env(safe-area-inset-
+       top). We grow the header by that much and let ITS OWN frosted background
+       run continuously through the strip -- one seamless surface from the top
+       of the screen down to the hairline border -- so the OS status icons sit
+       directly on the Profolio header (LinkedIn-style) with no separate band.
+       The translucency + blur mean feed content is still visible through it
+       while scrolling. In a normal browser tab / non-notched device every
+       inset is 0, so this collapses to the plain header. translateY(-100%)
+       still clears the whole grown height on auto-hide. */
     .navbar {
       position: sticky;
-      height: auto;
+      height: calc(var(--nav-height) + env(safe-area-inset-top));
       padding-top: env(safe-area-inset-top);
       padding-left: env(safe-area-inset-left);
       padding-right: env(safe-area-inset-right);
-      background-color: transparent;
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
-      border-bottom: none;
-      box-shadow: none;
-    }
-    .navbar > .navbar-inner {
-      height: var(--nav-height);
-      background-color: hsl(var(--card) / 0.8);
-      -webkit-backdrop-filter: saturate(180%) blur(10px);
-      backdrop-filter: saturate(180%) blur(10px);
-      border-bottom: 1px solid hsl(var(--border));
-      box-shadow: var(--shadow-card);
     }
   }
   .navbar-inner {
