@@ -73,8 +73,8 @@ export const SETTINGS_CATEGORIES: SettingsCategoryConfig[] = [
   },
   {
     id: 'advertising',
-    label: 'Advertising data',
-    description: 'Data used to personalize ads',
+    label: 'Ads & data use',
+    description: 'Ads, and how your activity personalises what you see',
     icon: Megaphone,
     path: '/settings/advertising',
   },
@@ -144,30 +144,12 @@ export const VISIBILITY_PROFILE_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
 // action (download, manage-data, connected-services, visibility, applications,
 // jobs) or is explicitly marked "Not available".
 
-export const ADVERTISING_PERSONALIZATION_SECTION: SettingsSectionConfig = {
-  id: 'ad-personalization',
-  title: 'Data used for personalization',
-  rows: [
-    { id: 'ad-profile-data', label: 'Profile data', status: 'placeholder' },
-    { id: 'ad-activity-data', label: 'Activity data', status: 'placeholder' },
-    { id: 'ad-interests', label: 'Interests', status: 'placeholder' },
-    { id: 'ad-companies-followed', label: 'Companies followed', status: 'placeholder' },
-    { id: 'ad-groups', label: 'Groups', status: 'placeholder' },
-    { id: 'ad-education-skills', label: 'Education and skills', status: 'placeholder' },
-    { id: 'ad-job-info', label: 'Job information', status: 'placeholder' },
-    { id: 'ad-location', label: 'Location', status: 'placeholder' },
-  ],
-};
+// The "Ads & data use" panel is hand-authored in
+// src/pages/settings/AdvertisingSettings.tsx: an honest note (Profolio has no
+// ads / doesn't sell data), one real "Personalized recommendations" toggle,
+// and links to the existing recruiter-sharing / download / manage-data
+// controls. LinkedIn's 16 ad-targeting rows don't map onto an app with no ads.
 
-export const ADVERTISING_EXTERNAL_SECTION: SettingsSectionConfig = {
-  id: 'ad-external',
-  title: 'External data',
-  rows: [
-    { id: 'ad-partner-data', label: 'Partner data', status: 'placeholder' },
-    { id: 'ad-device-info', label: 'Device information', status: 'placeholder' },
-    { id: 'ad-off-platform', label: 'Off-platform activity', status: 'placeholder' },
-  ],
-};
 
 // Notification preferences are now real toggles bound to
 // profiles.preferences.notifications -- see src/lib/notificationCategories.ts
