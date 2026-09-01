@@ -28,6 +28,7 @@ import { ChevronLeft, AlertCircle, Loader2, RefreshCw, Lock } from 'lucide-react
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { AdAccountStatusBadge } from '@/components/ads/AdAccountStatusBadge';
+import { AdAccountCampaignsCard } from '@/components/ads/AdAccountCampaignsCard';
 import {
   AD_ACCOUNT_TIMEZONES,
   getAdAccount,
@@ -241,6 +242,13 @@ export default function AdAccountDetailPage() {
                 />
               </CardContent>
             </Card>
+
+            {/* Campaigns */}
+            <AdAccountCampaignsCard
+              adAccountId={account.id}
+              currency={account.currency}
+              disabled={account.status === 'closed'}
+            />
 
             {/* Basic settings */}
             <Card className="bg-card shadow-card border-0">
