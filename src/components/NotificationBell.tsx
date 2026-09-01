@@ -8,6 +8,8 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { getNotificationMessage, getNotificationLink, NotificationPayload } from '@/lib/notifications';
+import { useNotificationPreferencesValue } from '@/hooks/useNotificationPreferences';
+import { isNotificationTypeEnabled, mutedNotificationTypes } from '@/lib/notificationCategories';
 
 interface Notification {
   id: string;
@@ -23,7 +25,13 @@ interface NotificationBellProps {
 }
 
 export const NotificationBell = ({ userId }: NotificationBellProps) => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const notifPrefs = useNotificationPreferencesValue();
+  const muted = mutedNotificationTypes(notifPrefs);
+  const [rawNotifications, setRawNotifications] = useState<Notification[]>([]);
+  const notifications = rawNotifications.filter((n) =>
+    isNotificationTypeEnabled(n.type, notifPrefs),
+  );
+  const setNotifications = setRawNotifications;
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [page, setPage] = useState(0);
@@ -35,7 +43,9 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
     fetchUnreadCount();
     const unsubscribe = setupRealtimeSubscription();
     return unsubscribe;
-  }, [userId]);
+    // muted.join(',') so the unread count re-fetches when a category is toggled.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, muted.join(',')]);
 
   useEffect(() => {
     if (page > 0) {
@@ -84,11 +94,14 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
 
       if (!profile) return;
 
-      const { count, error } = await supabase
+      let q = supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', profile.id)
         .eq('is_read', false);
+      // Don't count categories the user turned off in Settings.
+      if (muted.length > 0) q = q.not('type', 'in', `(${muted.join(',')})`);
+      const { count, error } = await q;
 
       if (error) throw error;
       setUnreadCount(count || 0);
@@ -145,8 +158,10 @@ export const NotificationBell = ({ userId }: NotificationBellProps) => {
 
           if (profile && newNotification.user_id === profile.id) {
             setNotifications(prev => [newNotification, ...prev]);
+            // Skip the badge bump + toast for a category the user muted.
+            if (!isNotificationTypeEnabled(newNotification.type, notifPrefs)) return;
             setUnreadCount(prev => prev + 1);
-            
+
             // Show toast notification
             const message = getNotificationMessage(newNotification);
             toast.success(message, {

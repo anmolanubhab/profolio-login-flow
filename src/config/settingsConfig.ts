@@ -8,7 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-export type SettingsRowStatus = 'active' | 'placeholder';
+export type SettingsRowStatus = 'active' | 'placeholder' | 'unavailable';
 
 export interface SettingsRowConfig {
   id: string;
@@ -101,23 +101,21 @@ export const ACCOUNT_GENERAL_SECTION: SettingsSectionConfig = {
   id: 'general-preferences',
   title: 'General preferences',
   rows: [
-    { id: 'language', label: 'Language', description: 'Choose the language you see the app in', status: 'placeholder' },
-    { id: 'content-language', label: 'Content language', description: 'Preferred language for posts and articles', status: 'placeholder' },
-    { id: 'feed-preferences', label: 'Feed preferences', description: 'Tune what shows up in your feed', status: 'placeholder' },
+    { id: 'language', label: 'Language', description: 'Profolio is currently English only', status: 'unavailable' },
+    { id: 'content-language', label: 'Content language', description: 'Profolio is currently English only', status: 'unavailable' },
   ],
 };
 
 export const ACCOUNT_MANAGEMENT_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
-  { id: 'account-status', label: 'Account status', description: 'View your account standing', status: 'placeholder' },
-  { id: 'close-account', label: 'Close/deactivate account', description: 'Temporarily deactivate or permanently close your account', status: 'placeholder' },
+  { id: 'close-account', label: 'Close account', description: 'Permanently closing your account isn’t self-service yet — contact support', status: 'placeholder' },
 ];
 
 export const SECURITY_ACCESS_SECTION: SettingsSectionConfig = {
   id: 'account-access',
   title: 'Account access',
   rows: [
-    { id: 'phone-numbers', label: 'Phone numbers', status: 'placeholder' },
-    { id: 'passkeys', label: 'Passkeys', status: 'placeholder' },
+    { id: 'phone-numbers', label: 'Phone numbers', description: 'Sign in to Profolio is by email', status: 'unavailable' },
+    { id: 'passkeys', label: 'Passkeys', description: 'Use a password with two-step verification', status: 'unavailable' },
   ],
 };
 
@@ -125,17 +123,14 @@ export const SECURITY_SECTION: SettingsSectionConfig = {
   id: 'security',
   title: 'Security',
   rows: [
-    { id: 'where-signed-in', label: 'Where you’re signed in', status: 'placeholder' },
-    { id: 'remembered-devices', label: 'Remembered devices', status: 'placeholder' },
-    { id: 'account-recovery', label: 'Account recovery', description: 'Options for getting back into your account', status: 'placeholder' },
+    { id: 'remembered-devices', label: 'Remembered devices', description: 'Not tracked — each device signs in independently', status: 'unavailable' },
   ],
 };
 
 export const VISIBILITY_ACTIVITY_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
   { id: 'active-status', label: 'Active status', description: 'Show others when you’re active', status: 'placeholder' },
   { id: 'profile-updates', label: 'Profile updates', description: 'Share when you update your profile', status: 'placeholder' },
-  { id: 'followers', label: 'Followers', status: 'placeholder' },
-  { id: 'mentions', label: 'Mentions & tags', status: 'placeholder' },
+  { id: 'mentions', label: 'Mentions & tags', description: 'Choose who can mention you', status: 'placeholder' },
 ];
 
 export const VISIBILITY_PROFILE_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
@@ -148,7 +143,6 @@ export const DATA_USAGE_SECTION: SettingsSectionConfig = {
     { id: 'manage-data', label: 'Manage your data', status: 'placeholder' },
     { id: 'search-history', label: 'Search history', status: 'placeholder' },
     { id: 'personalization-data', label: 'Personalization data', status: 'placeholder' },
-    { id: 'download-data', label: 'Download your data', status: 'placeholder' },
   ],
 };
 
@@ -198,35 +192,6 @@ export const ADVERTISING_EXTERNAL_SECTION: SettingsSectionConfig = {
   ],
 };
 
-export const NOTIFICATIONS_SECTIONS: SettingsSectionConfig[] = [
-  {
-    id: 'notifications-you',
-    title: 'You',
-    rows: [
-      { id: 'notif-jobs', label: 'Jobs', status: 'placeholder' },
-      { id: 'notif-network', label: 'Network', status: 'placeholder' },
-      { id: 'notif-posts-comments', label: 'Posts and comments', status: 'placeholder' },
-      { id: 'notif-messages', label: 'Messages', status: 'placeholder' },
-      { id: 'notif-mentions', label: 'Mentions', status: 'placeholder' },
-      { id: 'notif-profile-activity', label: 'Profile activity', status: 'placeholder' },
-    ],
-  },
-  {
-    id: 'notifications-around-you',
-    title: 'Around you',
-    rows: [
-      { id: 'notif-companies', label: 'Companies', status: 'placeholder' },
-      { id: 'notif-groups', label: 'Groups', status: 'placeholder' },
-      { id: 'notif-events', label: 'Events', status: 'placeholder' },
-      { id: 'notif-recommendations', label: 'Recommendations', status: 'placeholder' },
-    ],
-  },
-  {
-    id: 'notifications-account',
-    title: 'Account',
-    rows: [
-      { id: 'notif-security-alerts', label: 'Security alerts', status: 'placeholder' },
-      { id: 'notif-product-updates', label: 'Product updates', status: 'placeholder' },
-    ],
-  },
-];
+// Notification preferences are now real toggles bound to
+// profiles.preferences.notifications -- see src/lib/notificationCategories.ts
+// and src/pages/settings/NotificationsSettings.tsx.
