@@ -4,6 +4,7 @@ import PostCard, { type RepostContext } from './PostCard';
 import { useToast } from '@/hooks/use-toast';
 import { ReactionType } from './ReactionBar';
 import { PollData, buildPollSummary, buildReactionSummary, REACTION_WEIGHTS } from '@/lib/postAggregation';
+import { usePersonalizationValue } from '@/hooks/usePersonalization';
 
 interface Post {
   id: string;
@@ -123,6 +124,10 @@ interface PostCursor {
 }
 
 const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
+  // Settings -> Ads & data use -> Personalised recommendations. When off, the
+  // "For You" feed is left in its recency-first fetch order (no activity-based
+  // re-ranking). Default on.
+  const personalizationEnabled = usePersonalizationValue();
   const [posts, setPosts] = useState<Post[]>([]);
   const [repostItems, setRepostItems] = useState<RepostFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -419,7 +424,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
       // but not page 1 won't get pulled forward across the page boundary.
       // That's an accepted, documented limitation of client-side scoring,
       // not a bug.
-      if (mode === 'foryou') {
+      if (mode === 'foryou' && personalizationEnabled) {
         newPostsWithProfiles.sort(
           (a, b) =>
             computeForYouScore(b, interestedPostIds.includes(b.id)) -
@@ -609,7 +614,8 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
 
   useEffect(() => {
     fetchPosts(false);
-  }, [refresh, mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refresh, mode, personalizationEnabled]);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {

@@ -3,6 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { setCachedAutoplayPreference } from '@/hooks/useAutoplayPreference';
+import { publishPersonalizationChange } from '@/hooks/usePersonalization';
 
 interface ProfileSettings {
   profile_visibility: string;
@@ -25,6 +26,8 @@ interface ProfileSettings {
   show_active_status: boolean;
   /** profiles.preferences.share_profile_updates — notify connections on profile edits (default: false) */
   share_profile_updates: boolean;
+  /** profiles.preferences.personalized_recommendations — use activity to rank the For You feed (default: true) */
+  personalized_recommendations: boolean;
 }
 
 const MENTIONS_FROM_VALUES = ['everyone', 'connections', 'nobody'] as const;
@@ -87,6 +90,7 @@ export function useProfileSettings() {
     mentions_from: 'everyone',
     show_active_status: true,
     share_profile_updates: false,
+    personalized_recommendations: true,
   });
   const [blocked, setBlocked] = useState<BlockedEntry[]>([]);
   const [snoozed, setSnoozed] = useState<SnoozedEntry[]>([]);
@@ -129,6 +133,7 @@ export function useProfileSettings() {
           mentions_from: readMentionsFrom(data.preferences),
           show_active_status: readPrefBool(data.preferences, 'show_active_status', true),
           share_profile_updates: readPrefBool(data.preferences, 'share_profile_updates', false),
+          personalized_recommendations: readPrefBool(data.preferences, 'personalized_recommendations', true),
         });
         setProfileId(data.id);
         await fetchPrivacyLists(data.id);
@@ -613,6 +618,23 @@ export function useProfileSettings() {
     );
   };
 
+  const togglePersonalizedRecommendations = async (checked: boolean) => {
+    const previous = settings.personalized_recommendations;
+    setSettings((prev) => ({ ...prev, personalized_recommendations: checked }));
+    publishPersonalizationChange(checked);
+    await updatePrefKey(
+      'personalized_recommendations',
+      checked,
+      checked
+        ? 'Your feed will be personalised from your activity.'
+        : 'Your “For You” feed will now be shown newest-first.',
+      () => {
+        setSettings((prev) => ({ ...prev, personalized_recommendations: previous }));
+        publishPersonalizationChange(previous);
+      },
+    );
+  };
+
   return {
     user,
     loading,
@@ -638,6 +660,7 @@ export function useProfileSettings() {
     updateMentionsFrom,
     toggleShowActiveStatus,
     toggleShareProfileUpdates,
+    togglePersonalizedRecommendations,
     unblock,
     unsnooze,
   };
