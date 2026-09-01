@@ -7,13 +7,14 @@
     <meta name="description" content="Professional portfolio platform for students and employers" />
     <meta name="author" content="Profolio" />
 
-    <!-- PWA / standalone. `viewport-fit=cover` + the transparent safe-area
-         strips in the app chrome (see .navbar / .bottom-nav in index.css) let
-         Android 15+ draw the app edge-to-edge: the OS status / nav bars become
-         translucent scrims over the page instead of solid strips. theme-color
-         stays an opaque fallback for older engines / the browser tab UI. -->
+    <!-- PWA / standalone. `viewport-fit=cover` lets Android 15+ / Chrome 132+
+         draw the app edge-to-edge (system bars become scrims). Where that is
+         NOT supported the WebAPK paints a solid status bar with `theme_color`
+         (baked in at install time) -- so it is set to #f2f3f5, matching the
+         Profolio `background_color` token and the light app chrome, instead of
+         a stark #ffffff that reads as a separate white band above the header. -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#f2f3f5" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
