@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CompanyDialog } from '@/components/jobs/CompanyDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, MapPin, Globe, Users, Calendar, Edit, Trash2, Plus, Briefcase } from 'lucide-react';
+import { Building2, MapPin, Globe, Users, Calendar, Edit, Trash2, Plus, Briefcase, Megaphone } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 export default function Companies() {
@@ -145,13 +145,23 @@ export default function Companies() {
             <h1 className="text-3xl font-bold text-[#1D2226] mb-2">My Companies</h1>
             <p className="text-[#5E6B7E]">Manage your company profiles and job postings</p>
           </div>
-          <Button
-            onClick={() => navigate('/companies/new')}
-            className="bg-[#0A66C2] hover:bg-[#084c97] text-white"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create a company page
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/ads')}
+              className="border-[#E5E7EB] hover:bg-[#F3F6F9]"
+            >
+              <Megaphone className="w-4 h-4 mr-2" />
+              Advertise
+            </Button>
+            <Button
+              onClick={() => navigate('/companies/new')}
+              className="bg-[#0A66C2] hover:bg-[#084c97] text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create a company page
+            </Button>
+          </div>
         </div>
 
         {loading ? (

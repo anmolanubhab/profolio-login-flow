@@ -41,6 +41,8 @@ import RecruiterCandidateProfile from "./pages/RecruiterCandidateProfile";
 import CompanyInviteAccept from "./pages/CompanyInviteAccept";
 import Groups from "./pages/Groups";
 import Events from "./pages/Events";
+import AdsDashboard from "./pages/ads/AdsDashboard";
+import AdAccountDetailPage from "./pages/ads/AdAccountDetailPage";
 import InsightsPage from "./pages/insights/InsightsPage";
 import InsightDetailPage from "./pages/insights/InsightDetailPage";
 import InsightArticlePage from "./pages/insights/InsightArticlePage";
@@ -103,6 +105,8 @@ const App = () => (
               <Route path="/company-invite/:invitationId/:token" element={<CompanyInviteAccept />} />
               <Route path="/groups" element={<Groups />} />
               <Route path="/events" element={<Events />} />
+              <Route path="/ads" element={<AdsDashboard />} />
+              <Route path="/ads/accounts/:id" element={<AdAccountDetailPage />} />
               <Route path="/insights" element={<InsightsPage />} />
               <Route path="/insights/:slug" element={<InsightDetailPage />} />
               <Route path="/insights/:slug/write" element={<InsightEditorPage />} />
