@@ -3,6 +3,7 @@ import NavBar from "./NavBar"
 import BottomNavigation from "./BottomNavigation"
 import { User } from "@supabase/supabase-js"
 import { MobileScrollDirectionProvider } from "@/hooks/use-mobile-scroll-direction"
+import { usePresenceHeartbeat } from "@/hooks/usePresenceHeartbeat"
 
 interface LayoutProps {
   children: ReactNode
@@ -15,6 +16,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children, user, onSignOut, fullWidth }: LayoutProps) {
+  usePresenceHeartbeat();
   return (
     <MobileScrollDirectionProvider>
       {/* Fixed top navbar -- carries all primary navigation now (desktop

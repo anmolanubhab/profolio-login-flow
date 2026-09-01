@@ -21,6 +21,10 @@ interface ProfileSettings {
   share_professional_links_with_recruiters: boolean;
   /** Stored in profiles.preferences.mentions_from — everyone | connections | nobody */
   mentions_from: string;
+  /** profiles.preferences.show_active_status — show an "Active now" indicator (default: true) */
+  show_active_status: boolean;
+  /** profiles.preferences.share_profile_updates — notify connections on profile edits (default: false) */
+  share_profile_updates: boolean;
 }
 
 const MENTIONS_FROM_VALUES = ['everyone', 'connections', 'nobody'] as const;
@@ -29,6 +33,10 @@ function readMentionsFrom(preferences: unknown): string {
   return typeof v === 'string' && (MENTIONS_FROM_VALUES as readonly string[]).includes(v)
     ? v
     : 'everyone';
+}
+function readPrefBool(preferences: unknown, key: string, fallback: boolean): boolean {
+  const v = (preferences as Record<string, unknown> | null)?.[key];
+  return typeof v === 'boolean' ? v : fallback;
 }
 
 interface BlockedEntry {
@@ -77,6 +85,8 @@ export function useProfileSettings() {
     share_online_resume_with_recruiters: false,
     share_professional_links_with_recruiters: false,
     mentions_from: 'everyone',
+    show_active_status: true,
+    share_profile_updates: false,
   });
   const [blocked, setBlocked] = useState<BlockedEntry[]>([]);
   const [snoozed, setSnoozed] = useState<SnoozedEntry[]>([]);
@@ -117,6 +127,8 @@ export function useProfileSettings() {
           share_online_resume_with_recruiters: data.share_online_resume_with_recruiters ?? false,
           share_professional_links_with_recruiters: data.share_professional_links_with_recruiters ?? false,
           mentions_from: readMentionsFrom(data.preferences),
+          show_active_status: readPrefBool(data.preferences, 'show_active_status', true),
+          share_profile_updates: readPrefBool(data.preferences, 'share_profile_updates', false),
         });
         setProfileId(data.id);
         await fetchPrivacyLists(data.id);
@@ -538,12 +550,15 @@ export function useProfileSettings() {
     }
   };
 
-  // Stored in profiles.preferences.mentions_from (jsonb) -- read-modify-write
-  // so other keys under `preferences` (e.g. notifications) survive.
-  const updateMentionsFrom = async (value: string) => {
+  // profiles.preferences (jsonb) writers -- read-modify-write so other keys
+  // under `preferences` (e.g. notifications) survive. One generic helper.
+  const updatePrefKey = async (
+    key: 'mentions_from' | 'show_active_status' | 'share_profile_updates',
+    value: string | boolean,
+    successMsg: string,
+    rollback: () => void,
+  ) => {
     if (!user) return;
-    const previous = settings.mentions_from;
-    setSettings((prev) => ({ ...prev, mentions_from: value }));
     setSaving(true);
     try {
       const { data: row } = await supabase
@@ -554,16 +569,48 @@ export function useProfileSettings() {
       const currentPrefs = (row?.preferences as Record<string, unknown> | null) ?? {};
       const { error } = await supabase
         .from('profiles')
-        .update({ preferences: { ...currentPrefs, mentions_from: value } })
+        .update({ preferences: { ...currentPrefs, [key]: value } })
         .eq('user_id', user.id);
       if (error) throw error;
-      toast({ title: 'Success', description: 'Mention & tag settings updated.' });
+      toast({ title: 'Success', description: successMsg });
     } catch (error) {
-      setSettings((prev) => ({ ...prev, mentions_from: previous }));
+      rollback();
       toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
+  };
+
+  const updateMentionsFrom = async (value: string) => {
+    const previous = settings.mentions_from;
+    setSettings((prev) => ({ ...prev, mentions_from: value }));
+    await updatePrefKey('mentions_from', value, 'Mention & tag settings updated.', () =>
+      setSettings((prev) => ({ ...prev, mentions_from: previous })),
+    );
+  };
+
+  const toggleShowActiveStatus = async (checked: boolean) => {
+    const previous = settings.show_active_status;
+    setSettings((prev) => ({ ...prev, show_active_status: checked }));
+    await updatePrefKey(
+      'show_active_status',
+      checked,
+      checked ? 'Others can see when you’re active.' : 'Your active status is now hidden.',
+      () => setSettings((prev) => ({ ...prev, show_active_status: previous })),
+    );
+  };
+
+  const toggleShareProfileUpdates = async (checked: boolean) => {
+    const previous = settings.share_profile_updates;
+    setSettings((prev) => ({ ...prev, share_profile_updates: checked }));
+    await updatePrefKey(
+      'share_profile_updates',
+      checked,
+      checked
+        ? 'Your connections will be notified when you update your profile.'
+        : 'Profile updates will no longer be shared.',
+      () => setSettings((prev) => ({ ...prev, share_profile_updates: previous })),
+    );
   };
 
   return {
@@ -589,6 +636,8 @@ export function useProfileSettings() {
     toggleShareProfessionalLinks,
     updateOpenToWorkVisibility,
     updateMentionsFrom,
+    toggleShowActiveStatus,
+    toggleShareProfileUpdates,
     unblock,
     unsnooze,
   };

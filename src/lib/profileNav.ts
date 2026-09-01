@@ -154,7 +154,25 @@ export function scrollToProfileHeader() {
 // through every section component.
 export const PROFILE_CHANGED_EVENT = 'profolio:profile-changed';
 
+// Debounce the broadcast RPC across the burst of notifyProfileChanged() calls
+// a single save can produce (section refetch + strength recompute + …).
+let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
+
 export function notifyProfileChanged() {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new Event(PROFILE_CHANGED_EVENT));
+
+  // Fire-and-forget "share profile updates". The server function checks the
+  // user's own `share_profile_updates` toggle and a 24h throttle before
+  // notifying connections, so calling it on every edit is safe. No-ops
+  // harmlessly if the migration adding it hasn't been applied yet.
+  if (broadcastTimer) clearTimeout(broadcastTimer);
+  broadcastTimer = setTimeout(() => {
+    import('@/integrations/supabase/client')
+      .then(({ supabase }) =>
+        // `as never`: the function isn't in the generated DB types yet.
+        supabase.rpc('broadcast_profile_update' as never),
+      )
+      .then(() => {}, () => {});
+  }, 4000);
 }
