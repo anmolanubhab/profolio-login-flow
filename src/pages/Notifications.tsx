@@ -11,6 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { getNotificationMessage, getNotificationIcon, getNotificationLink } from '@/lib/notifications';
 import { connectionErrorMessage, respondToConnectionRequest } from '@/lib/network/connectionApi';
+import { useNotificationPreferencesValue } from '@/hooks/useNotificationPreferences';
+import { isNotificationTypeEnabled } from '@/lib/notificationCategories';
 
 interface FriendRequest {
   id: string;
@@ -27,7 +29,7 @@ interface FriendRequest {
 interface Notification {
   id: string;
   type: string;
-  payload: any;
+  payload: Record<string, unknown>;
   is_read: boolean;
   created_at: string;
 }
@@ -43,7 +45,13 @@ interface CompanyInvite {
 const Notifications = () => {
   const [user, setUser] = useState<User | null>(null);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [allNotifications, setAllNotifications] = useState<Notification[]>([]);
+  const notifPrefs = useNotificationPreferencesValue();
+  // Hide the categories the user turned off in Settings -> Notifications.
+  const notifications = allNotifications.filter((n) =>
+    isNotificationTypeEnabled(n.type, notifPrefs),
+  );
+  const setNotifications = setAllNotifications;
   const [companyInvites, setCompanyInvites] = useState<CompanyInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
@@ -134,7 +142,7 @@ const Notifications = () => {
       );
 
       setFriendRequests(requestsWithProfiles);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching friend requests:', error);
       toast({
         title: 'Error',
@@ -165,7 +173,7 @@ const Notifications = () => {
 
       if (error) throw error;
       setNotifications(data || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching notifications:', error);
       toast({
         title: 'Error',
@@ -214,7 +222,7 @@ const Notifications = () => {
 
       if (error) throw error;
       setCompanyInvites((data as unknown as CompanyInvite[]) || []);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching company invitations:', error);
     }
   };

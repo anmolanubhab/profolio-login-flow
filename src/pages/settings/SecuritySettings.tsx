@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { KeyRound, Monitor, Mail, ShieldCheck } from 'lucide-react';
+import { KeyRound, Monitor, Mail, ShieldCheck, LifeBuoy } from 'lucide-react';
 import { SettingsSection, SettingsConfigRows } from '@/components/settings/SettingsSection';
 import { SettingsRow } from '@/components/settings/SettingsRow';
 import { SECURITY_ACCESS_SECTION, SECURITY_SECTION } from '@/config/settingsConfig';
@@ -54,6 +54,13 @@ export function SecuritySettings() {
       </SettingsSection>
 
       <SettingsSection title={SECURITY_SECTION.title}>
+        <SettingsRow
+          icon={LifeBuoy}
+          title="Account recovery"
+          description="Recovery is via your email address — keep it current and verified"
+          status="active"
+          onClick={() => navigate('/settings/security/change-email')}
+        />
         <SettingsConfigRows rows={SECURITY_SECTION.rows} />
       </SettingsSection>
     </>

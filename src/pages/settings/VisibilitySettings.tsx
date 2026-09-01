@@ -1,10 +1,12 @@
+import { useNavigate } from 'react-router-dom';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Eye, UserX, Clock, X, Mail, Phone, Users, UserCircle, Search, Briefcase, FileText, Link as LinkIcon } from 'lucide-react';
+import { Eye, UserX, Clock, X, Mail, Phone, Users, UserCircle, Search, Briefcase, FileText, Link as LinkIcon, UserPlus } from 'lucide-react';
 import { SettingsSection, SettingsConfigRows } from '@/components/settings/SettingsSection';
+import { SettingsRow } from '@/components/settings/SettingsRow';
 import {
   VISIBILITY_PROFILE_PLACEHOLDER_ROWS,
   VISIBILITY_ACTIVITY_PLACEHOLDER_ROWS,
@@ -12,6 +14,7 @@ import {
 import { useProfileSettings } from '@/hooks/useProfileSettings';
 
 export function VisibilitySettings() {
+  const navigate = useNavigate();
   const {
     loading,
     saving,
@@ -279,6 +282,13 @@ export function VisibilitySettings() {
       </SettingsSection>
 
       <SettingsSection title="Visibility of activity" description="Control who sees your activity and blocking">
+        <SettingsRow
+          icon={UserPlus}
+          title="Followers"
+          description="See and manage the people following you"
+          status="active"
+          onClick={() => navigate('/network?tab=following&sub=followers')}
+        />
         <SettingsConfigRows rows={VISIBILITY_ACTIVITY_PLACEHOLDER_ROWS} />
 
         <div className="px-4 py-3.5 sm:px-5 space-y-2">
