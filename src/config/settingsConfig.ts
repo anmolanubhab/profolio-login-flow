@@ -136,36 +136,10 @@ export const VISIBILITY_ACTIVITY_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
 export const VISIBILITY_PROFILE_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
 ];
 
-export const DATA_USAGE_SECTION: SettingsSectionConfig = {
-  id: 'data-usage',
-  title: 'How the application uses your data',
-  rows: [
-    { id: 'manage-data', label: 'Manage your data', status: 'placeholder' },
-    { id: 'search-history', label: 'Search history', status: 'placeholder' },
-    { id: 'personalization-data', label: 'Personalization data', status: 'placeholder' },
-  ],
-};
-
-export const JOB_SEEKING_PRIVACY_SECTION: SettingsSectionConfig = {
-  id: 'job-seeking-privacy',
-  title: 'Job seeking privacy',
-  rows: [
-    { id: 'job-application-settings', label: 'Job application settings', status: 'placeholder' },
-    { id: 'job-seeking-preferences', label: 'Job seeking preferences', status: 'placeholder' },
-    { id: 'stored-applicant-info', label: 'Stored applicant information', status: 'placeholder' },
-    { id: 'share-profile-recruiters', label: 'Sharing profile with recruiters', status: 'placeholder' },
-  ],
-};
-
-export const OTHER_PRIVACY_SECTION: SettingsSectionConfig = {
-  id: 'other-privacy',
-  title: 'Other privacy controls',
-  rows: [
-    { id: 'calendar-sync', label: 'Calendar & contact sync', status: 'placeholder' },
-    { id: 'connected-services', label: 'Connected services', status: 'placeholder' },
-    { id: 'data-sharing', label: 'Data sharing preferences', status: 'placeholder' },
-  ],
-};
+// Data privacy rows are hand-authored in
+// src/pages/settings/DataPrivacySettings.tsx so each binds to a real page /
+// action (download, manage-data, connected-services, visibility, applications,
+// jobs) or is explicitly marked "Not available".
 
 export const ADVERTISING_PERSONALIZATION_SECTION: SettingsSectionConfig = {
   id: 'ad-personalization',
