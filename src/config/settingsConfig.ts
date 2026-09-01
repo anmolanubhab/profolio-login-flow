@@ -127,10 +127,10 @@ export const SECURITY_SECTION: SettingsSectionConfig = {
   ],
 };
 
-export const VISIBILITY_ACTIVITY_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
-  { id: 'active-status', label: 'Active status', description: 'Profolio doesn’t show an online / active indicator', status: 'unavailable' },
-  { id: 'profile-updates', label: 'Profile update broadcasts', description: 'Profolio doesn’t post your profile edits to your network', status: 'unavailable' },
-];
+// "Active status" and "Profile update broadcasts" are real switches, authored
+// directly in src/pages/settings/VisibilitySettings.tsx (bound to
+// useProfileSettings -> profiles.preferences).
+export const VISIBILITY_ACTIVITY_PLACEHOLDER_ROWS: SettingsRowConfig[] = [];
 
 export const VISIBILITY_PROFILE_PLACEHOLDER_ROWS: SettingsRowConfig[] = [
 ];

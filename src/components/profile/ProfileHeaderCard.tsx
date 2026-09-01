@@ -45,6 +45,19 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
   const [reportOpen, setReportOpen] = useState(false);
   const [aboutExpanded, setAboutExpanded] = useState(false);
 
+  // "Active now" — driven by profiles.last_active_at (heartbeat) + the
+  // person's own show_active_status preference. Visible to the owner always,
+  // and to connections unless they've hidden it.
+  const lastActiveAt =
+    (profile as { last_active_at?: string | null }).last_active_at ?? null;
+  const activeStatusHidden =
+    ((profile.preferences as Record<string, unknown> | null)?.show_active_status) === false;
+  const isRecentlyActive =
+    !!lastActiveAt && Date.now() - new Date(lastActiveAt).getTime() < 6 * 60 * 1000;
+  const showActiveNow =
+    isRecentlyActive &&
+    (isOwner || (!activeStatusHidden && relationship === "connected"));
+
   const openEdit = (tab: "basics" | "contact" | "visibility" = "basics") => {
     setEditInitialTab(tab);
     setEditOpen(true);
@@ -166,6 +179,13 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
               </span>
             )}
           </div>
+
+          {showActiveNow && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
+              <span className="h-2 w-2 rounded-full bg-success" />
+              Active now
+            </span>
+          )}
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
             {counts.connections != null &&

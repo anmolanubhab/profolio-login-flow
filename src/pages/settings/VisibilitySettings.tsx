@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Eye, UserX, Clock, X, Mail, Phone, Users, UserCircle, Search, Briefcase, FileText, Link as LinkIcon, UserPlus, AtSign } from 'lucide-react';
+import { Eye, UserX, Clock, X, Mail, Phone, Users, UserCircle, Search, Briefcase, FileText, Link as LinkIcon, UserPlus, AtSign, Circle, Megaphone } from 'lucide-react';
 import { SettingsSection, SettingsConfigRows } from '@/components/settings/SettingsSection';
 import { SettingsRow } from '@/components/settings/SettingsRow';
 import {
@@ -36,6 +36,8 @@ export function VisibilitySettings() {
     toggleShareProfessionalLinks,
     updateOpenToWorkVisibility,
     updateMentionsFrom,
+    toggleShowActiveStatus,
+    toggleShareProfileUpdates,
     unblock,
     unsnooze,
   } = useProfileSettings();
@@ -290,6 +292,43 @@ export function VisibilitySettings() {
           status="active"
           onClick={() => navigate('/network?tab=following&sub=followers')}
         />
+
+        <div className="px-4 py-3.5 sm:px-5 flex items-center justify-between gap-4">
+          <div className="space-y-0.5 min-w-0">
+            <Label htmlFor="show_active_status" className="flex items-center gap-2">
+              <Circle className="h-4 w-4" />
+              Active status
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Show connections an “Active now” indicator when you’ve used Profolio recently
+            </p>
+          </div>
+          <Switch
+            id="show_active_status"
+            checked={settings.show_active_status}
+            onCheckedChange={toggleShowActiveStatus}
+            disabled={saving}
+          />
+        </div>
+
+        <div className="px-4 py-3.5 sm:px-5 flex items-center justify-between gap-4">
+          <div className="space-y-0.5 min-w-0">
+            <Label htmlFor="share_profile_updates" className="flex items-center gap-2">
+              <Megaphone className="h-4 w-4" />
+              Share profile updates
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Notify your connections when you make a meaningful change to your profile
+              (at most once a day)
+            </p>
+          </div>
+          <Switch
+            id="share_profile_updates"
+            checked={settings.share_profile_updates}
+            onCheckedChange={toggleShareProfileUpdates}
+            disabled={saving}
+          />
+        </div>
 
         <div className="px-4 py-3.5 sm:px-5 space-y-2">
           <Label htmlFor="mentions_from" className="flex items-center gap-2">

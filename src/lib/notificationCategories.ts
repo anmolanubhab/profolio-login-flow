@@ -46,8 +46,9 @@ export const NOTIFICATION_CATEGORIES: readonly NotificationCategory[] = [
   {
     key: 'profile_activity',
     label: 'Profile activity',
-    description: 'Profile views, profile saves, skill endorsements and certificate activity',
-    types: ['profile_view', 'profile_save', 'skill_endorsement', 'certificate'],
+    description:
+      'Profile views, saves, skill endorsements, certificates, and profile updates from your network',
+    types: ['profile_view', 'profile_save', 'skill_endorsement', 'certificate', 'profile_update'],
   },
   {
     key: 'jobs',

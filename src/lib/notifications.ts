@@ -21,12 +21,14 @@ import {
   Repeat2,
   AtSign,
   Newspaper,
+  UserCog,
   type LucideIcon,
 } from 'lucide-react';
 import { REACTION_META, ReactionType } from '@/components/ReactionBar';
 import { STAGE_LABELS, ApplicationStage } from '@/lib/applicationStages';
 
 export interface NotificationPayload {
+  sender_id?: string;
   sender_name?: string;
   sender_avatar?: string;
   message?: string;
@@ -90,6 +92,8 @@ export const getNotificationIcon = (type: string): LucideIcon => {
       return Award;
     case 'skill_endorsement':
       return Star;
+    case 'profile_update':
+      return UserCog;
     case 'insight_published':
     case 'insight_new_subscriber':
       return Newspaper;
@@ -158,6 +162,8 @@ export const getNotificationMessage = (notification: NotificationLike): string =
       return payload?.message ? `${senderName}: ${payload.message}` : `${senderName} sent you a message`;
     case 'skill_endorsement':
       return `${senderName} endorsed your ${payload?.skill_name || 'skill'}`;
+    case 'profile_update':
+      return `${senderName} updated their profile`;
     case 'insight_published':
       return payload?.article_title
         ? `${senderName} published “${payload.article_title}” in ${payload?.insight_title || 'an Insight'}`
@@ -189,6 +195,8 @@ export const getNotificationLink = (notification: NotificationLike): string => {
     case 'profile_save':
     case 'skill_endorsement':
       return '/profile';
+    case 'profile_update':
+      return payload?.sender_id ? `/profile/${payload.sender_id}` : '/notifications';
     case 'new_job':
       return '/jobs';
     case 'application_stage_changed':
