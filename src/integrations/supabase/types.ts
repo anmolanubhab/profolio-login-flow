@@ -284,6 +284,32 @@ export type Database = {
           },
         ]
       }
+      ad_delivery_test_users: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          profile_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          profile_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_delivery_test_users_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_reviews: {
         Row: {
           ad_id: string
@@ -4039,10 +4065,26 @@ export type Database = {
     Functions: {
       _ad_audience_bucket: { Args: { _raw: number }; Returns: number }
       _ad_audience_count: { Args: { _spec: Json }; Returns: number }
+      _ad_delivery_eligible_for: {
+        Args: { _ad_id: string; _me: string }
+        Returns: boolean
+      }
       _ad_like_terms: { Args: { _arr: Json }; Returns: string[] }
+      _ad_profile_matches_audience: {
+        Args: { _profile_id: string; _spec: Json }
+        Returns: boolean
+      }
       _ad_profile_years_experience: {
         Args: { _profile_id: string }
         Returns: number
+      }
+      _ad_record_event: {
+        Args: {
+          _ad_id: string
+          _kind: Database["public"]["Enums"]["ad_event_type"]
+          _session_key: string
+        }
+        Returns: undefined
       }
       accept_company_invitation: {
         Args: { invitation_id: string }
@@ -4059,6 +4101,32 @@ export type Database = {
           p_offer_id: string
         }
         Returns: undefined
+      }
+      activate_campaign: {
+        Args: { _campaign_id: string }
+        Returns: {
+          activated_at: string | null
+          ad_account_id: string
+          created_at: string
+          created_by: string | null
+          daily_budget_cents: number | null
+          end_at: string | null
+          id: string
+          name: string
+          objective: Database["public"]["Enums"]["campaign_objective"]
+          reviewed_at: string | null
+          start_at: string | null
+          status: Database["public"]["Enums"]["campaign_status"]
+          submitted_at: string | null
+          total_budget_cents: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaigns"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       ad_audience_preview_reach: {
         Args: { _ad_account_id: string; _spec: Json }
@@ -4087,6 +4155,14 @@ export type Database = {
       ad_daily_metrics_is_owner: {
         Args: { _ad_account_id: string }
         Returns: boolean
+      }
+      ad_record_click: {
+        Args: { _ad_id: string; _session_key: string }
+        Returns: undefined
+      }
+      ad_record_impression: {
+        Args: { _ad_id: string; _session_key: string }
+        Returns: undefined
       }
       apply_to_job: {
         Args: { p_cover_note?: string; p_job_id: string; p_resume_id?: string }
@@ -4189,6 +4265,19 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      feed_pick_sponsored_ad: {
+        Args: { _session_key: string }
+        Returns: {
+          ad_id: string
+          body: string
+          cta_label: string
+          destination_url: string
+          format: Database["public"]["Enums"]["ad_format"]
+          headline: string
+          media_url: string
+          sponsor_name: string
+        }[]
       }
       follow_counts: {
         Args: never
@@ -4430,6 +4519,32 @@ export type Database = {
           pending_sent: number
         }[]
       }
+      pause_campaign: {
+        Args: { _campaign_id: string }
+        Returns: {
+          activated_at: string | null
+          ad_account_id: string
+          created_at: string
+          created_by: string | null
+          daily_budget_cents: number | null
+          end_at: string | null
+          id: string
+          name: string
+          objective: Database["public"]["Enums"]["campaign_objective"]
+          reviewed_at: string | null
+          start_at: string | null
+          status: Database["public"]["Enums"]["campaign_status"]
+          submitted_at: string | null
+          total_budget_cents: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "campaigns"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       purge_expired_stories: { Args: never; Returns: number }
       remove_connection: {
         Args: { other_profile_id: string }
@@ -4554,6 +4669,10 @@ export type Database = {
       send_connection_request: {
         Args: { note?: string; target_profile_id: string }
         Returns: string
+      }
+      set_ad_delivery_test_user: {
+        Args: { _enabled: boolean; _profile_id: string }
+        Returns: undefined
       }
       set_application_resume_sharing: {
         Args: { p_application_id: string; p_revoked: boolean }

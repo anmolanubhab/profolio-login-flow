@@ -18,6 +18,7 @@ import {
 import { ChevronLeft, AlertCircle, RefreshCw, Pencil, Loader2, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 import { AdReviewStatusBadge } from '@/components/ads/AdReviewStatusBadge';
 import { AdCreativePreview } from '@/components/ads/AdCreativePreview';
 import {
@@ -91,6 +92,31 @@ export default function AdDetailPage() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate('/');
+  };
+
+  const [togglingRun, setTogglingRun] = useState(false);
+  const setAdRunning = async (running: boolean) => {
+    if (!ctx) return;
+    setTogglingRun(true);
+    try {
+      const { data, error } = await supabase
+        .from('ads')
+        .update({ status: running ? 'active' : 'paused' })
+        .eq('id', ctx.ad.id)
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      setCtx({ ...ctx, ad: data });
+      toast({ title: running ? 'Ad turned on' : 'Ad paused' });
+    } catch (e) {
+      toast({
+        title: 'Could not update',
+        description: e instanceof Error ? e.message : 'Try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTogglingRun(false);
+    }
   };
 
   const runAction = async () => {
@@ -263,9 +289,41 @@ export default function AdDetailPage() {
                     </>
                   )}
                   {ctx.ad.review_status === 'approved' && (
-                    <p>
-                      This ad is approved. Delivery and reporting come in later phases.
-                    </p>
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>This ad is approved.</span>
+                        <Badge
+                          variant="outline"
+                          className={
+                            ctx.ad.status === 'active'
+                              ? 'bg-success/15 text-success border-success/30'
+                              : 'text-muted-foreground'
+                          }
+                        >
+                          {ctx.ad.status === 'active' ? 'On' : 'Paused'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs">
+                        Turning it on makes it eligible for controlled delivery. It only reaches
+                        designated test users while the campaign is live — reporting comes in a
+                        later phase.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {ctx.ad.status === 'active' ? (
+                          <Button
+                            variant="outline"
+                            disabled={togglingRun}
+                            onClick={() => setAdRunning(false)}
+                          >
+                            Pause ad
+                          </Button>
+                        ) : (
+                          <Button disabled={togglingRun} onClick={() => setAdRunning(true)}>
+                            Turn on
+                          </Button>
+                        )}
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

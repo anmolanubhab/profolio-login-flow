@@ -21,6 +21,8 @@ import { useToast } from '@/hooks/use-toast';
 import { CampaignStatusBadge } from '@/components/ads/CampaignStatusBadge';
 import { CampaignAudienceSummary } from '@/components/ads/CampaignAudienceSummary';
 import { CampaignAdsCard } from '@/components/ads/CampaignAdsCard';
+import { useIsAdReviewer } from '@/hooks/useIsAdReviewer';
+import { activateCampaign, pauseCampaign } from '@/lib/ads/delivery';
 import {
   campaignObjectiveLabel,
   getCampaignWithAccount,
@@ -63,6 +65,28 @@ export default function CampaignDetailPage() {
 
   const [dialog, setDialog] = useState<null | 'submit' | 'withdraw'>(null);
   const [acting, setActing] = useState(false);
+  const { data: isReviewer } = useIsAdReviewer();
+  const [delivering, setDelivering] = useState(false);
+
+  const setDelivery = async (active: boolean) => {
+    if (!campaign) return;
+    setDelivering(true);
+    try {
+      const updated = active
+        ? await activateCampaign(campaign.id)
+        : await pauseCampaign(campaign.id);
+      setCampaign(updated);
+      toast({ title: active ? 'Campaign activated' : 'Campaign paused' });
+    } catch (e) {
+      toast({
+        title: 'Could not update',
+        description: e instanceof Error ? e.message : 'Try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDelivering(false);
+    }
+  };
 
   const load = useCallback(async () => {
     if (!campaignId) return;
@@ -245,10 +269,53 @@ export default function CampaignDetailPage() {
                     </Button>
                   </>
                 )}
-                {campaign.status !== 'draft' && campaign.status !== 'pending_review' && (
+                {campaign.status === 'active' && (
+                  <>
+                    <p>
+                      This campaign is live. Its approved, turned-on ads are eligible for controlled
+                      delivery — currently only to designated test users.
+                    </p>
+                    <Button
+                      variant="outline"
+                      disabled={delivering}
+                      onClick={() => setDelivery(false)}
+                    >
+                      Pause campaign
+                    </Button>
+                  </>
+                )}
+                {campaign.status === 'paused' && (
+                  <>
+                    <p>This campaign is paused — none of its ads deliver.</p>
+                    {isReviewer && (
+                      <Button disabled={delivering} onClick={() => setDelivery(true)}>
+                        Resume campaign
+                      </Button>
+                    )}
+                  </>
+                )}
+                {(campaign.status === 'draft' || campaign.status === 'pending_review') && isReviewer && (
+                  <div className="rounded-md border bg-muted/40 p-3">
+                    <p className="text-xs">
+                      Reviewer: activating starts controlled delivery for this campaign&apos;s
+                      approved, turned-on ads (test users only).
+                    </p>
+                    <Button
+                      className="mt-2"
+                      size="sm"
+                      disabled={delivering}
+                      onClick={() => setDelivery(true)}
+                    >
+                      Activate for delivery
+                    </Button>
+                  </div>
+                )}
+                {(campaign.status === 'approved' ||
+                  campaign.status === 'rejected' ||
+                  campaign.status === 'completed') && (
                   <p>
-                    This campaign is {campaign.status.replace('_', ' ')}. Later phases cover approval,
-                    delivery and reporting.
+                    This campaign is {campaign.status.replace('_', ' ')}. Later phases cover
+                    reporting.
                   </p>
                 )}
               </CardContent>
