@@ -4455,6 +4455,42 @@ export type Database = {
         Args: { accept: boolean; request_id: string }
         Returns: string
       }
+      review_ad_approve: {
+        Args: { _ad_id: string }
+        Returns: {
+          ad_set_id: string
+          created_at: string
+          id: string
+          name: string
+          review_status: Database["public"]["Enums"]["ad_review_status"]
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ads"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      review_ad_reject: {
+        Args: { _ad_id: string; _reason: string }
+        Returns: {
+          ad_set_id: string
+          created_at: string
+          id: string
+          name: string
+          review_status: Database["public"]["Enums"]["ad_review_status"]
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ads"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       schedule_interview_round: {
         Args: {
           p_application_id: string

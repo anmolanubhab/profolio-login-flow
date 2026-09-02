@@ -877,3 +877,136 @@ export async function withdrawAdSubmission(adId: string): Promise<Ad> {
   if (error) throw new Error(error.message);
   return data as unknown as Ad;
 }
+
+// =====================================================================
+// Phase H — ad review / approval
+//
+// Reviewers are the existing app-role 'admin' (Phase C). They are global —
+// any admin reviews any ad. Approve / reject go through SECURITY DEFINER
+// RPCs that re-check has_role(auth.uid(),'admin') server-side; the Phase C
+// ad_status_guard still blocks any direct client write to review_status.
+// Decisions append to the Phase C `ad_reviews` table.
+// =====================================================================
+
+export type AdReview = Database['public']['Tables']['ad_reviews']['Row'];
+
+export const REJECTION_REASON_MIN = 3;
+export const REJECTION_REASON_MAX = 1000;
+
+/** True if the signed-in user holds the `admin` role (RLS lets you read your own). */
+export async function currentUserIsAdReviewer(): Promise<boolean> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'admin')
+    .limit(1);
+  if (error) return false;
+  return (data?.length ?? 0) > 0;
+}
+
+export interface PendingAdReviewItem {
+  ad: Ad;
+  creative: AdCreative | null;
+  campaignName: string;
+  adAccountName: string;
+  companyName: string;
+  submittedAt: string;
+}
+
+/** Every ad currently in review, newest first — reviewer queue. */
+export async function listPendingAdReviews(): Promise<PendingAdReviewItem[]> {
+  const { data: ads, error } = await supabase
+    .from('ads')
+    .select('*')
+    .eq('review_status', 'pending')
+    .order('updated_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  if (!ads || ads.length === 0) return [];
+
+  const adSetIds = [...new Set(ads.map((a) => a.ad_set_id))];
+  const [creativesRes, adSetsRes] = await Promise.all([
+    supabase.from('ad_creatives').select('*').in(
+      'ad_id',
+      ads.map((a) => a.id),
+    ),
+    supabase.from('ad_sets').select('id, campaign_id').in('id', adSetIds),
+  ]);
+  if (creativesRes.error) throw new Error(creativesRes.error.message);
+  if (adSetsRes.error) throw new Error(adSetsRes.error.message);
+
+  const creativeByAd: Record<string, AdCreative> = {};
+  for (const c of creativesRes.data ?? []) if (!creativeByAd[c.ad_id]) creativeByAd[c.ad_id] = c;
+
+  const campaignIdBySet: Record<string, string> = {};
+  for (const s of adSetsRes.data ?? []) campaignIdBySet[s.id] = s.campaign_id;
+  const campaignIds = [...new Set(Object.values(campaignIdBySet))];
+
+  const { data: campaigns } = await supabase
+    .from('campaigns')
+    .select('id, name, ad_account_id')
+    .in('id', campaignIds);
+  const campaignById: Record<string, { name: string; ad_account_id: string }> = {};
+  for (const c of campaigns ?? []) campaignById[c.id] = { name: c.name, ad_account_id: c.ad_account_id };
+
+  const adAccountIds = [...new Set((campaigns ?? []).map((c) => c.ad_account_id))];
+  const { data: accounts } = await supabase
+    .from('ad_accounts')
+    .select('id, name, company_id')
+    .in('id', adAccountIds);
+  const accountById: Record<string, { name: string; company_id: string }> = {};
+  for (const a of accounts ?? []) accountById[a.id] = { name: a.name, company_id: a.company_id };
+
+  const companyIds = [...new Set((accounts ?? []).map((a) => a.company_id))];
+  const { data: companies } = await supabase.from('companies').select('id, name').in('id', companyIds);
+  const companyNameById: Record<string, string> = {};
+  for (const c of companies ?? []) companyNameById[c.id] = c.name;
+
+  return ads.map((ad) => {
+    const campaign = campaignById[campaignIdBySet[ad.ad_set_id]];
+    const account = campaign ? accountById[campaign.ad_account_id] : undefined;
+    return {
+      ad,
+      creative: creativeByAd[ad.id] ?? null,
+      campaignName: campaign?.name ?? '—',
+      adAccountName: account?.name ?? '—',
+      companyName: account ? companyNameById[account.company_id] ?? '—' : '—',
+      submittedAt: ad.updated_at,
+    };
+  });
+}
+
+/** All review decisions for an ad, newest first. Visible to the ad's advertiser and to reviewers. */
+export async function listAdReviews(adId: string): Promise<AdReview[]> {
+  const { data, error } = await supabase
+    .from('ad_reviews')
+    .select('*')
+    .eq('ad_id', adId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function latestAdReview(adId: string): Promise<AdReview | null> {
+  const rows = await listAdReviews(adId);
+  return rows[0] ?? null;
+}
+
+export async function approveAd(adId: string): Promise<Ad> {
+  const { data, error } = await supabase.rpc('review_ad_approve', { _ad_id: adId });
+  if (error) throw new Error(error.message);
+  return data as unknown as Ad;
+}
+
+export async function rejectAd(adId: string, reason: string): Promise<Ad> {
+  const { data, error } = await supabase.rpc('review_ad_reject', {
+    _ad_id: adId,
+    _reason: reason,
+  });
+  if (error) throw new Error(error.message);
+  return data as unknown as Ad;
+}
