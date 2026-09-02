@@ -549,7 +549,12 @@ export async function updateAudience(
   return data;
 }
 
-/** Server-side live estimate for an unsaved spec. Returns an integer only. */
+/**
+ * Server-side live estimate for an unsaved spec. Returns a privacy-safe
+ * integer only: `0` means "fewer than MIN_AUDIENCE_SIZE — exact size
+ * withheld"; any other value is `>= MIN_AUDIENCE_SIZE`, floored to the
+ * nearest 100. The server never returns a value in 1..MIN_AUDIENCE_SIZE-1.
+ */
 export async function previewAudienceReach(
   adAccountId: string,
   spec: AudienceSpec,

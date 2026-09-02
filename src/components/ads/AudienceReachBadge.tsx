@@ -3,9 +3,10 @@ import { cn } from '@/lib/utils';
 import { MIN_AUDIENCE_SIZE } from '@/lib/ads/api';
 
 /**
- * Renders a server-computed reach as a badge. `reach` of `null` means "not
- * estimated yet". Below MIN_AUDIENCE_SIZE it reads as a warning — that
- * audience can't be attached to a campaign.
+ * Renders a server-computed reach as a badge. The server never returns a
+ * value between 1 and MIN_AUDIENCE_SIZE-1: `null` = not estimated yet,
+ * `0` = computed but fewer than the minimum (exact size withheld for
+ * privacy), `>= MIN_AUDIENCE_SIZE` = a rounded (floored to 100) estimate.
  */
 export function AudienceReachBadge({
   reach,
@@ -33,8 +34,7 @@ export function AudienceReachBadge({
         className,
       )}
     >
-      {reach.toLocaleString()} {reach === 1 ? 'member' : 'members'}
-      {!ok && ` · under ${MIN_AUDIENCE_SIZE}`}
+      {ok ? `${reach.toLocaleString()}+ members` : `Under ${MIN_AUDIENCE_SIZE}`}
     </Badge>
   );
 }

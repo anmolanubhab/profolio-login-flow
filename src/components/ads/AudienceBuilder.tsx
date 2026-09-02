@@ -165,14 +165,18 @@ export function AudienceBuilder({ adAccount, initial, onSaved, onCancel }: Audie
                 ? 'Estimate unavailable'
                 : reach == null
                   ? 'Estimating…'
-                  : `${reach.toLocaleString()} eligible ${reach === 1 ? 'member' : 'members'}`}
+                  : reach === 0
+                    ? `Fewer than ${MIN_AUDIENCE_SIZE.toLocaleString()} eligible members`
+                    : `About ${reach.toLocaleString()}+ eligible members`}
             </p>
             <p className="text-xs text-muted-foreground">
               {reachError
                 ? reachError
                 : meetsMin
-                  ? 'Meets the minimum — this audience can run ads.'
-                  : `Needs at least ${MIN_AUDIENCE_SIZE.toLocaleString()} to attach to a campaign. Server-computed from public, discoverable profiles only.`}
+                  ? 'Meets the minimum — this audience can run ads. Sizes are rounded and computed on the server from public, discoverable profiles only.'
+                  : reach === 0
+                    ? `Broaden your targeting. Exact sizes below ${MIN_AUDIENCE_SIZE.toLocaleString()} aren’t shown, to protect members’ privacy.`
+                    : `Needs at least ${MIN_AUDIENCE_SIZE.toLocaleString()} to attach to a campaign.`}
             </p>
           </div>
         </CardContent>
