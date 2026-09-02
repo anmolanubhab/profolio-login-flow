@@ -164,14 +164,19 @@ export default function AudienceDetailPage() {
                   <span className="text-2xl font-bold text-foreground">
                     {audience.estimated_reach == null
                       ? '—'
-                      : audience.estimated_reach.toLocaleString()}
+                      : audience.estimated_reach === 0
+                        ? `Under ${MIN_AUDIENCE_SIZE.toLocaleString()}`
+                        : `${audience.estimated_reach.toLocaleString()}+`}
                   </span>
-                  <span className="text-sm text-muted-foreground">eligible members</span>
+                  {audience.estimated_reach !== 0 && (
+                    <span className="text-sm text-muted-foreground">eligible members</span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Server-computed from public, discoverable profiles only — you never receive the
-                  underlying people. Needs at least {MIN_AUDIENCE_SIZE.toLocaleString()} to attach to
-                  a campaign.
+                  underlying people, and sizes are rounded. Exact sizes below{' '}
+                  {MIN_AUDIENCE_SIZE.toLocaleString()} aren’t shown; that’s also the minimum to
+                  attach to a campaign.
                   {audience.estimated_reach_at
                     ? ` Last updated ${fmtDateTime(audience.estimated_reach_at)}.`
                     : ''}
