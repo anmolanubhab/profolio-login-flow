@@ -4037,6 +4037,7 @@ export type Database = {
       }
     }
     Functions: {
+      _ad_audience_bucket: { Args: { _raw: number }; Returns: number }
       _ad_audience_count: { Args: { _spec: Json }; Returns: number }
       _ad_like_terms: { Args: { _arr: Json }; Returns: string[] }
       _ad_profile_years_experience: {
@@ -4243,6 +4244,27 @@ export type Database = {
           remaining: number
           total_generated: number
         }[]
+      }
+      get_or_create_campaign_ad_set: {
+        Args: { _campaign_id: string }
+        Returns: {
+          audience_id: string | null
+          bid_amount_cents: number | null
+          bid_strategy: Database["public"]["Enums"]["ad_bid_strategy"]
+          campaign_id: string
+          created_at: string
+          daily_budget_cents: number | null
+          id: string
+          name: string
+          placements: Database["public"]["Enums"]["ad_placement"][]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ad_sets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_or_create_conversation: {
         Args: { _user_a: string; _user_b: string }
@@ -4511,6 +4533,24 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      submit_ad_for_review: {
+        Args: { _ad_id: string }
+        Returns: {
+          ad_set_id: string
+          created_at: string
+          id: string
+          name: string
+          review_status: Database["public"]["Enums"]["ad_review_status"]
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ads"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       submit_campaign_for_review: {
         Args: { _campaign_id: string }
         Returns: {
@@ -4557,6 +4597,24 @@ export type Database = {
         }
         Returns: undefined
       }
+      withdraw_ad_submission: {
+        Args: { _ad_id: string }
+        Returns: {
+          ad_set_id: string
+          created_at: string
+          id: string
+          name: string
+          review_status: Database["public"]["Enums"]["ad_review_status"]
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ads"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       withdraw_campaign_submission: {
         Args: { _campaign_id: string }
         Returns: {
@@ -4594,7 +4652,7 @@ export type Database = {
       ad_event_type: "impression" | "click"
       ad_format: "single_image" | "text" | "spotlight"
       ad_placement: "right_rail" | "feed_sponsored" | "company_page"
-      ad_review_status: "pending" | "approved" | "rejected"
+      ad_review_status: "draft" | "pending" | "approved" | "rejected"
       app_role:
         | "user"
         | "admin"
@@ -4826,7 +4884,7 @@ export const Constants = {
       ad_event_type: ["impression", "click"],
       ad_format: ["single_image", "text", "spotlight"],
       ad_placement: ["right_rail", "feed_sponsored", "company_page"],
-      ad_review_status: ["pending", "approved", "rejected"],
+      ad_review_status: ["draft", "pending", "approved", "rejected"],
       app_role: [
         "user",
         "admin",

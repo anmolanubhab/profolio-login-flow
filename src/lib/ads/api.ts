@@ -606,3 +606,274 @@ export async function detachAudienceFromCampaign(campaignId: string): Promise<Ad
   if (error) throw new Error(error.message);
   return data as unknown as AdSet;
 }
+
+// =====================================================================
+// Phase G — ads & creatives
+//
+// campaign -> ad_set -> ad -> ad_creative (one creative per ad). Create /
+// edit-draft are plain client writes gated by the Phase C `ads` /
+// `ad_creatives` RLS (advertiser = is_ad_set_admin / is_ad_admin) and never
+// touch `ads.review_status`. draft <-> pending is the only advertiser hop,
+// via submit_ad_for_review / withdraw_ad_submission (SECURITY DEFINER); the
+// Phase C ad_status_guard blocks direct client writes to review_status.
+// Creative images upload to the 'ad-creatives' bucket at
+// <ad_account_id>/<file>, write-gated to ad-account admins.
+// =====================================================================
+
+export type Ad = Database['public']['Tables']['ads']['Row'];
+export type AdCreative = Database['public']['Tables']['ad_creatives']['Row'];
+export type AdReviewStatus = Database['public']['Enums']['ad_review_status'];
+export type AdFormat = Database['public']['Enums']['ad_format'];
+
+export const AD_CREATIVES_BUCKET = 'ad-creatives';
+export const AD_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const AD_IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp'];
+
+/** Field limits — DB CHECK constraints; the lower number is the recommendation. */
+export const CREATIVE_LIMITS = {
+  headline: 200,
+  headlineRecommended: 70,
+  body: 600,
+  bodyRecommended: 150,
+  cta: 40,
+  destinationUrl: 2000,
+} as const;
+
+export const AD_FORMATS: {
+  value: AdFormat;
+  label: string;
+  description: string;
+  needsImage: boolean;
+}[] = [
+  {
+    value: 'single_image',
+    label: 'Single image',
+    description: 'One image with a headline, text and a call-to-action.',
+    needsImage: true,
+  },
+  {
+    value: 'text',
+    label: 'Text',
+    description: 'A compact headline-and-text unit with no image.',
+    needsImage: false,
+  },
+  {
+    value: 'spotlight',
+    label: 'Spotlight',
+    description: 'A small right-rail unit with an image, headline and CTA.',
+    needsImage: true,
+  },
+];
+
+export function adFormatMeta(f: AdFormat) {
+  return AD_FORMATS.find((x) => x.value === f) ?? AD_FORMATS[0];
+}
+
+/** Fixed CTA choices (stored as free text in ad_creatives.cta_label). */
+export const AD_CTA_OPTIONS = [
+  'Learn more',
+  'Sign up',
+  'Register',
+  'Subscribe',
+  'Download',
+  'Get quote',
+  'Contact us',
+  'Apply now',
+  'View',
+  'Visit',
+] as const;
+
+export const AD_REVIEW_STATUS_META: Record<
+  AdReviewStatus,
+  { label: string; tone: 'neutral' | 'info' | 'success' | 'danger' }
+> = {
+  draft: { label: 'Draft', tone: 'neutral' },
+  pending: { label: 'In review', tone: 'info' },
+  approved: { label: 'Approved', tone: 'success' },
+  rejected: { label: 'Rejected', tone: 'danger' },
+};
+
+/** Client-side destination URL check. Server also enforces `^https?://` via CHECK. */
+export function validateDestinationUrl(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return 'Enter a destination URL.';
+  if (v.length > CREATIVE_LIMITS.destinationUrl) return 'That URL is too long.';
+  let u: URL;
+  try {
+    u = new URL(v);
+  } catch {
+    return 'Enter a full URL, including https://';
+  }
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return 'The URL must use http:// or https://';
+  if (/[<>#%{}[\]]/.test(v)) return 'Remove special characters ( < > # % { } [ ] ) from the URL.';
+  return null;
+}
+
+export function validateCreativeImageFile(file: File): string | null {
+  if (!AD_IMAGE_MIME.includes(file.type)) return 'Use a JPG, PNG or WebP image.';
+  if (file.size > AD_IMAGE_MAX_BYTES) return 'The image must be 5 MB or smaller.';
+  return null;
+}
+
+export interface AdContext {
+  ad: Ad;
+  creative: AdCreative | null;
+  adSet: AdSet;
+  campaign: Campaign;
+  adAccount: AdAccount;
+}
+
+export async function getOrCreateCampaignAdSet(campaignId: string): Promise<AdSet> {
+  const { data, error } = await supabase.rpc('get_or_create_campaign_ad_set', {
+    _campaign_id: campaignId,
+  });
+  if (error) throw new Error(error.message);
+  return data as unknown as AdSet;
+}
+
+export async function listAdsForCampaign(campaignId: string): Promise<Ad[]> {
+  const set = await getCampaignAdSet(campaignId);
+  if (!set) return [];
+  const { data, error } = await supabase
+    .from('ads')
+    .select('*')
+    .eq('ad_set_id', set.id)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/** Creatives keyed by ad id — for thumbnails in a campaign's ad list. */
+export async function listCreativesForAds(adIds: string[]): Promise<Record<string, AdCreative>> {
+  if (adIds.length === 0) return {};
+  const { data, error } = await supabase.from('ad_creatives').select('*').in('ad_id', adIds);
+  if (error) throw new Error(error.message);
+  const byAd: Record<string, AdCreative> = {};
+  for (const c of data ?? []) if (!byAd[c.ad_id]) byAd[c.ad_id] = c;
+  return byAd;
+}
+
+export async function getAdContext(adId: string): Promise<AdContext | null> {
+  const { data: ad, error } = await supabase.from('ads').select('*').eq('id', adId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!ad) return null;
+
+  const [creativeRes, adSetRes] = await Promise.all([
+    supabase.from('ad_creatives').select('*').eq('ad_id', adId).order('created_at').limit(1),
+    supabase.from('ad_sets').select('*').eq('id', ad.ad_set_id).maybeSingle(),
+  ]);
+  if (adSetRes.error) throw new Error(adSetRes.error.message);
+  const adSet = adSetRes.data;
+  if (!adSet) return null;
+
+  const { data: campaign } = await supabase
+    .from('campaigns')
+    .select('*')
+    .eq('id', adSet.campaign_id)
+    .maybeSingle();
+  if (!campaign) return null;
+  const adAccount = await getAdAccount(campaign.ad_account_id);
+  if (!adAccount) return null;
+
+  return { ad, creative: creativeRes.data?.[0] ?? null, adSet, campaign, adAccount };
+}
+
+export interface CreativeInput {
+  format: AdFormat;
+  headline: string;
+  body: string | null;
+  ctaLabel: string | null;
+  destinationUrl: string | null;
+  mediaUrl: string | null;
+}
+
+function creativeRow(adId: string, input: CreativeInput) {
+  return {
+    ad_id: adId,
+    format: input.format,
+    headline: input.headline.trim(),
+    body: input.body?.trim() || null,
+    cta_label: input.ctaLabel?.trim() || null,
+    destination_url: input.destinationUrl?.trim() || null,
+    media_url: input.mediaUrl || null,
+    media_type: input.mediaUrl ? 'image' : null,
+  };
+}
+
+export async function createAdWithCreative(
+  adSetId: string,
+  name: string,
+  creative: CreativeInput,
+): Promise<Ad> {
+  const { data: ad, error } = await supabase
+    .from('ads')
+    .insert({ ad_set_id: adSetId, name: name.trim() }) // review_status defaults to 'draft'
+    .select('*')
+    .single();
+  if (error) throw new Error(error.message);
+
+  const { error: crErr } = await supabase.from('ad_creatives').insert(creativeRow(ad.id, creative));
+  if (crErr) {
+    await supabase.from('ads').delete().eq('id', ad.id); // drop the orphan ad
+    throw new Error(crErr.message);
+  }
+  return ad;
+}
+
+export async function updateAdName(adId: string, name: string): Promise<Ad> {
+  const { data, error } = await supabase
+    .from('ads')
+    .update({ name: name.trim() })
+    .eq('id', adId)
+    .select('*')
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function upsertCreative(
+  adId: string,
+  existing: AdCreative | null,
+  input: CreativeInput,
+): Promise<AdCreative> {
+  const row = creativeRow(adId, input);
+  if (existing) {
+    const { data, error } = await supabase
+      .from('ad_creatives')
+      .update(row)
+      .eq('id', existing.id)
+      .select('*')
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  }
+  const { data, error } = await supabase.from('ad_creatives').insert(row).select('*').single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+/** Upload a creative image to <ad_account_id>/<uuid>.<ext>; returns its public URL. */
+export async function uploadCreativeImage(adAccountId: string, file: File): Promise<string> {
+  const invalid = validateCreativeImageFile(file);
+  if (invalid) throw new Error(invalid);
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+  const path = `${adAccountId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage
+    .from(AD_CREATIVES_BUCKET)
+    .upload(path, file, { cacheControl: '3600', contentType: file.type, upsert: false });
+  if (error) throw new Error(error.message);
+  const { data } = supabase.storage.from(AD_CREATIVES_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+export async function submitAdForReview(adId: string): Promise<Ad> {
+  const { data, error } = await supabase.rpc('submit_ad_for_review', { _ad_id: adId });
+  if (error) throw new Error(error.message);
+  return data as unknown as Ad;
+}
+
+export async function withdrawAdSubmission(adId: string): Promise<Ad> {
+  const { data, error } = await supabase.rpc('withdraw_ad_submission', { _ad_id: adId });
+  if (error) throw new Error(error.message);
+  return data as unknown as Ad;
+}

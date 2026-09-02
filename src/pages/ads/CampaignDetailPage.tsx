@@ -20,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CampaignStatusBadge } from '@/components/ads/CampaignStatusBadge';
 import { CampaignAudienceSummary } from '@/components/ads/CampaignAudienceSummary';
+import { CampaignAdsCard } from '@/components/ads/CampaignAdsCard';
 import {
   campaignObjectiveLabel,
   getCampaignWithAccount,
@@ -205,6 +206,9 @@ export default function CampaignDetailPage() {
 
             {/* Audience */}
             <CampaignAudienceSummary campaignId={campaign.id} />
+
+            {/* Ads */}
+            <CampaignAdsCard campaignId={campaign.id} />
 
             {/* Lifecycle actions */}
             <Card className="bg-card shadow-card border-0">
