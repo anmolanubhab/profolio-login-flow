@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ChevronLeft, AlertCircle, RefreshCw, Pencil, Loader2 } from 'lucide-react';
+import { ChevronLeft, AlertCircle, RefreshCw, Pencil, Loader2, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { AdReviewStatusBadge } from '@/components/ads/AdReviewStatusBadge';
@@ -23,9 +23,11 @@ import { AdCreativePreview } from '@/components/ads/AdCreativePreview';
 import {
   adFormatMeta,
   getAdContext,
+  listAdReviews,
   submitAdForReview,
   withdrawAdSubmission,
   type AdContext,
+  type AdReview,
 } from '@/lib/ads/api';
 
 function fmtDateTime(d: string | null) {
@@ -55,6 +57,7 @@ export default function AdDetailPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | 'submit' | 'withdraw'>(null);
   const [acting, setActing] = useState(false);
+  const [latestRejection, setLatestRejection] = useState<AdReview | null>(null);
 
   const load = useCallback(async () => {
     if (!adId) return;
@@ -64,12 +67,12 @@ export default function AdDetailPage() {
       const c = await getAdContext(adId);
       if (!c) return setState('notfound');
       setCtx(c);
-      const { data } = await supabase
-        .from('companies')
-        .select('name')
-        .eq('id', c.adAccount.company_id)
-        .maybeSingle();
+      const [{ data }, reviews] = await Promise.all([
+        supabase.from('companies').select('name').eq('id', c.adAccount.company_id).maybeSingle(),
+        listAdReviews(adId),
+      ]);
       setCompany(data?.name ?? c.adAccount.name);
+      setLatestRejection(reviews.find((r) => r.decision === 'rejected') ?? null);
       setState('ready');
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Failed to load this ad.');
@@ -172,6 +175,25 @@ export default function AdDetailPage() {
         {state === 'ready' && ctx && (
           <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
             <div className="space-y-4">
+              {ctx.ad.review_status === 'rejected' && latestRejection && (
+                <Card className="border-destructive/30 bg-destructive/5 shadow-none">
+                  <CardContent className="flex items-start gap-3 p-4">
+                    <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+                    <div className="min-w-0 text-sm">
+                      <p className="font-medium text-destructive">
+                        A reviewer rejected this ad on {fmtDateTime(latestRejection.created_at)}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-foreground">
+                        {latestRejection.reason}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Fix the issue below, then submit it for review again.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card className="bg-card shadow-card border-0 overflow-hidden">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-[15px] font-bold">Ad details</CardTitle>
@@ -222,9 +244,27 @@ export default function AdDetailPage() {
                       </Button>
                     </>
                   )}
-                  {(ctx.ad.review_status === 'approved' || ctx.ad.review_status === 'rejected') && (
+                  {ctx.ad.review_status === 'rejected' && (
+                    <>
+                      <p>
+                        This ad was rejected. Edit the creative to address the feedback above, then
+                        resubmit it for review.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => navigate(`/ads/ads/${ctx.ad.id}/edit`)}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Fix &amp; edit
+                        </Button>
+                        <Button onClick={() => setDialog('submit')}>Resubmit for review</Button>
+                      </div>
+                    </>
+                  )}
+                  {ctx.ad.review_status === 'approved' && (
                     <p>
-                      This ad is {ctx.ad.review_status}. Delivery and reporting come in later phases.
+                      This ad is approved. Delivery and reporting come in later phases.
                     </p>
                   )}
                 </CardContent>

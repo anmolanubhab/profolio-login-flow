@@ -59,10 +59,10 @@ export default function AdBuilderPage({ mode }: { mode: 'new' | 'edit' }) {
       } else {
         const ctx = await getAdContext(params.adId!);
         if (!ctx) return setState('notfound');
-        if (ctx.ad.review_status !== 'draft') {
+        if (ctx.ad.review_status !== 'draft' && ctx.ad.review_status !== 'rejected') {
           toast({
-            title: 'Only drafts can be edited',
-            description: `This ad is ${ctx.ad.review_status === 'pending' ? 'in review' : ctx.ad.review_status}.`,
+            title: 'This ad can’t be edited right now',
+            description: `It is ${ctx.ad.review_status === 'pending' ? 'in review' : ctx.ad.review_status}.`,
           });
           navigate(`/ads/ads/${ctx.ad.id}`, { replace: true });
           return;
