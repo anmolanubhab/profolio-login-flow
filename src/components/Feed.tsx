@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import PostCard, { type RepostContext } from './PostCard';
+import { SponsoredAdSlot } from './ads/SponsoredAdSlot';
 import { useToast } from '@/hooks/use-toast';
 import { ReactionType } from './ReactionBar';
 import { PollData, buildPollSummary, buildReactionSummary, REACTION_WEIGHTS } from '@/lib/postAggregation';
@@ -971,20 +972,29 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
     );
   };
 
+  // One sponsored slot, after the 2nd feed item (or last, on a short feed).
+  // Renders nothing unless the server has an eligible ad for this viewer, so
+  // the organic timeline and its ranking are untouched.
+  const adSlotAfter = timeline.length === 0 ? -1 : Math.min(1, timeline.length - 1);
+
   return (
     <div className="feed">
-      {timeline.map((entry) =>
-        entry.kind === 'post'
-          ? renderPostCard(entry.post)
-          : renderPostCard(entry.item.post, {
-              reposterName: entry.item.reposter.name,
-              reposterAvatar: entry.item.reposter.avatar,
-              reposterProfileId: entry.item.reposter.profileId,
-              commentary: entry.item.commentary,
-              repostedAt: entry.item.createdAt,
-              isMine: !!currentUserId && entry.item.reposter.userId === currentUserId,
-            }),
-      )}
+      {timeline.flatMap((entry, i) => {
+        const card =
+          entry.kind === 'post'
+            ? renderPostCard(entry.post)
+            : renderPostCard(entry.item.post, {
+                reposterName: entry.item.reposter.name,
+                reposterAvatar: entry.item.reposter.avatar,
+                reposterProfileId: entry.item.reposter.profileId,
+                commentary: entry.item.commentary,
+                repostedAt: entry.item.createdAt,
+                isMine: !!currentUserId && entry.item.reposter.userId === currentUserId,
+              });
+        return i === adSlotAfter
+          ? [card, <SponsoredAdSlot key="__sponsored_slot" />]
+          : [card];
+      })}
 
       {hasMore ? (
         <div className="centered py-4">
