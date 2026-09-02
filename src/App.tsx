@@ -48,6 +48,8 @@ import CampaignDetailPage from "./pages/ads/CampaignDetailPage";
 import CampaignAudiencePage from "./pages/ads/CampaignAudiencePage";
 import AudienceBuilderPage from "./pages/ads/AudienceBuilderPage";
 import AudienceDetailPage from "./pages/ads/AudienceDetailPage";
+import AdBuilderPage from "./pages/ads/AdBuilderPage";
+import AdDetailPage from "./pages/ads/AdDetailPage";
 import InsightsPage from "./pages/insights/InsightsPage";
 import InsightDetailPage from "./pages/insights/InsightDetailPage";
 import InsightArticlePage from "./pages/insights/InsightArticlePage";
@@ -117,8 +119,11 @@ const App = () => (
               <Route path="/ads/campaigns/:campaignId" element={<CampaignDetailPage />} />
               <Route path="/ads/campaigns/:campaignId/edit" element={<CampaignBuilderPage mode="edit" />} />
               <Route path="/ads/campaigns/:campaignId/audience" element={<CampaignAudiencePage />} />
+              <Route path="/ads/campaigns/:campaignId/ads/new" element={<AdBuilderPage mode="new" />} />
               <Route path="/ads/audiences/:audienceId" element={<AudienceDetailPage />} />
               <Route path="/ads/audiences/:audienceId/edit" element={<AudienceBuilderPage mode="edit" />} />
+              <Route path="/ads/ads/:adId" element={<AdDetailPage />} />
+              <Route path="/ads/ads/:adId/edit" element={<AdBuilderPage mode="edit" />} />
               <Route path="/insights" element={<InsightsPage />} />
               <Route path="/insights/:slug" element={<InsightDetailPage />} />
               <Route path="/insights/:slug/write" element={<InsightEditorPage />} />
