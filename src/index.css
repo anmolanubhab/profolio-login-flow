@@ -590,3 +590,30 @@ All colors MUST be HSL.
 .animate-fade-in-up {
   animation: fade-in-up 0.6s ease-out forwards;
 }
+/* --------------------------------------------------------------------------
+   Resume builder: rich-text output inside the live preview + PDF-safe rhythm.
+   Scoped to .resume-rt so it never leaks into the rest of the app.
+   -------------------------------------------------------------------------- */
+.resume-rt p { margin: 0 0 4px; }
+.resume-rt p:last-child { margin-bottom: 0; }
+.resume-rt ul,
+.resume-rt ol { margin: 2px 0 0; padding-left: 18px; }
+.resume-rt ul { list-style: disc outside; }
+.resume-rt ol { list-style: decimal outside; }
+.resume-rt li { margin: 0 0 3px; display: list-item; }
+.resume-rt li::marker { color: currentColor; }
+.resume-rt a { color: inherit; text-decoration: underline; }
+
+/* Tiptap editor surface for the section description fields. */
+.resume-editor-rt .ProseMirror { outline: none; min-height: 96px; font-size: 14px; line-height: 1.55; }
+.resume-editor-rt .ProseMirror p { margin: 0 0 6px; }
+.resume-editor-rt .ProseMirror ul { padding-left: 20px; margin: 4px 0; list-style: disc outside; }
+.resume-editor-rt .ProseMirror ol { padding-left: 20px; margin: 4px 0; list-style: decimal outside; }
+.resume-editor-rt .ProseMirror li { margin: 0 0 4px; display: list-item; }
+.resume-editor-rt .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  height: 0;
+}
