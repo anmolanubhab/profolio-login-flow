@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Layout } from '@/components/Layout';
-import ResumeBuilder from '@/components/ResumeBuilder';
+import { ResumeWorkspace } from '@/components/resume/ResumeWorkspace';
 import ProfessionalResourcesManager from '@/components/ProfessionalResourcesManager';
 
 const Resume = () => {
@@ -36,12 +36,11 @@ const Resume = () => {
   }
 
   return (
-    <Layout user={user} onSignOut={handleSignOut}>
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6">Resume Builder</h1>
-        <ResumeBuilder />
+    <Layout user={user} onSignOut={handleSignOut} fullWidth>
+      <div className="mx-auto w-full max-w-[1180px] px-3 py-6 sm:px-4">
+        <ResumeWorkspace />
 
-        <h2 className="text-2xl font-bold mt-10 mb-6">Documents & Professional Links</h2>
+        <h2 className="mt-12 mb-4 text-xl font-bold">Documents &amp; professional links</h2>
         <ProfessionalResourcesManager />
       </div>
     </Layout>
