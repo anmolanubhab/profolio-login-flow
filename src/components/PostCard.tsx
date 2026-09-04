@@ -22,6 +22,7 @@ import RepostButton from './RepostButton';
 import type { RepostOriginalPost } from './RepostComposerDialog';
 import { usePostReposts } from '@/hooks/use-post-reposts';
 import { useAutoplayPreference } from '@/hooks/useAutoplayPreference';
+import { useTapTrigger } from '@/hooks/use-tap-trigger';
 import { ReactionBar, ReactionCountSummary, ReactionType, ReactionSummary, REACTION_META, REACTION_ORDER } from './ReactionBar';
 import CommentSection from './comments/CommentSection';
 import { ImageMedia, VideoMedia } from './post/PostMedia';
@@ -150,11 +151,20 @@ const PostCard = ({
   // action bar. The full thread state lives in useComments (via
   // CommentSection); the card only tracks open/closed and a display count.
   const [commentsOpen, setCommentsOpen] = useState(false);
+  // Share menu is controlled so the tap-gesture guard (below) can open it from
+  // an intentional tap only -- Radix's trigger would otherwise open it on
+  // `pointerdown`, firing "Share" during a vertical scroll that starts on the
+  // button.
+  const [shareOpen, setShareOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(initialCommentCount);
   useEffect(() => { setCommentCount(initialCommentCount); }, [initialCommentCount]);
   const { toast } = useToast();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  // Touch/pen: open the Share menu on an intentional tap, never on
+  // `pointerdown`. Desktop mouse keeps Radix's normal open-on-mousedown path.
+  const shareTapHandlers = useTapTrigger(() => setShareOpen((o) => !o));
   const autoplayEnabled = useAutoplayPreference();
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -655,8 +665,10 @@ const PostCard = ({
             onRepost={handleRepost}
             onRemoveRepost={handleRemoveRepost}
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <DropdownMenu open={shareOpen} onOpenChange={setShareOpen}>
+            {/* Tap handlers on the Trigger, not the inner <button> -- Radix's
+                Slot merge keeps parent handlers but drops child-only ones. */}
+            <DropdownMenuTrigger asChild {...shareTapHandlers}>
               <button type="button" className="action-btn">
                 <Share className="icon" />
                 <span>Share</span>
