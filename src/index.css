@@ -309,9 +309,9 @@ All colors MUST be HSL.
     position: absolute;
     inset: 0;
     z-index: -1;
-    background-color: hsl(var(--card) / 0.8);
-    -webkit-backdrop-filter: saturate(180%) blur(10px);
-    backdrop-filter: saturate(180%) blur(10px);
+    background-color: hsl(var(--card) / 0.65);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    backdrop-filter: saturate(180%) blur(16px);
   }
 
   /* Mobile bottom navigation: same frosted-glass treatment as .navbar so the
@@ -326,13 +326,13 @@ All colors MUST be HSL.
     position: absolute;
     inset: 0;
     z-index: -1;
-    background-color: hsl(var(--card) / 0.92);
+    background-color: hsl(var(--card) / 0.9);
   }
   @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     .bottom-nav-glass {
-      background-color: hsl(var(--card) / 0.8);
-      -webkit-backdrop-filter: saturate(180%) blur(10px);
-      backdrop-filter: saturate(180%) blur(10px);
+      background-color: hsl(var(--card) / 0.65);
+      -webkit-backdrop-filter: saturate(180%) blur(16px);
+      backdrop-filter: saturate(180%) blur(16px);
     }
   }
 
