@@ -1,0 +1,3 @@
+-- Phase K3-A fix: _ad_billing_set_hold assigned a text CASE to enum columns
+-- without a cast. Superseded by 20260902132000; kept for history.
+-- (function body folded into the corrected version in 20260902132000)

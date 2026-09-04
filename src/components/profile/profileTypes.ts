@@ -1,6 +1,29 @@
 import type { Database } from "@/integrations/supabase/types";
 
-export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+/**
+ * A loaded profile row. The public route no longer selects `profiles.*` — it
+ * calls the `get_public_profile()` accessor, which omits owner-only columns
+ * (`preferences`, `expected_salary`, …) and instead returns two derived
+ * booleans. `ProfilePage` sets these on the self-branch too, so every
+ * consumer can read `show_active_status` / `has_verified_email` regardless of
+ * which branch loaded the profile.
+ */
+export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"] & {
+  /** Effective "show active status" (default true; false only if opted out). */
+  show_active_status?: boolean | null;
+  /** Whether an email is on file — without exposing the address. */
+  has_verified_email?: boolean | null;
+};
+
+/**
+ * Columns the `authenticated` role can still `SELECT` directly on
+ * `public.profiles` (owner-only columns like `preferences` / `expected_salary`
+ * were revoked). Used for the signed-in user's OWN profile fetch; the
+ * owner-only bits it also needs (visibility flags) come from `get_my_settings()`.
+ * A bare `select('*')` on profiles now errors for authenticated clients.
+ */
+export const SELF_PROFILE_COLUMNS =
+  "id, user_id, display_name, avatar_url, bio, created_at, updated_at, profession, location, phone, website, linkedin_url, github_url, twitter_url, skills, experience, education, projects, achievements, full_name, email, photo_url, address, profile_visibility, cover_url, open_to_work, last_name_visibility, profile_discovery, autoplay_videos, cover_position, headline, pronouns, photo_visibility, last_active_at";
 
 export type ProfileVisibility = "public" | "connections_only" | "private";
 // Matches the DB check constraints on profiles.*_visibility columns.

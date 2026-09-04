@@ -3,7 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { setCachedAutoplayPreference } from '@/hooks/useAutoplayPreference';
-import { publishPersonalizationChange } from '@/hooks/usePersonalization';
+import { fetchMySettings, patchMyPreferences } from '@/lib/mySettings';
 
 interface ProfileSettings {
   profile_visibility: string;
@@ -26,8 +26,6 @@ interface ProfileSettings {
   show_active_status: boolean;
   /** profiles.preferences.share_profile_updates — notify connections on profile edits (default: false) */
   share_profile_updates: boolean;
-  /** profiles.preferences.personalized_recommendations — use activity to rank the For You feed (default: true) */
-  personalized_recommendations: boolean;
 }
 
 const MENTIONS_FROM_VALUES = ['everyone', 'connections', 'nobody'] as const;
@@ -90,7 +88,6 @@ export function useProfileSettings() {
     mentions_from: 'everyone',
     show_active_status: true,
     share_profile_updates: false,
-    personalized_recommendations: true,
   });
   const [blocked, setBlocked] = useState<BlockedEntry[]>([]);
   const [snoozed, setSnoozed] = useState<SnoozedEntry[]>([]);
@@ -106,34 +103,43 @@ export function useProfileSettings() {
       }
       setUser(user);
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, profile_visibility, open_to_work, open_to_work_visibility, email_visibility, phone_visibility, connections_visibility, last_name_visibility, profile_discovery, autoplay_videos, allow_recruiter_search, allow_recruiter_profile_view, share_pdf_resume_with_recruiters, share_online_resume_with_recruiters, share_professional_links_with_recruiters, preferences, email')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // Safe columns come straight off `profiles`; the owner-only columns
+      // (`preferences`, the recruiter-sharing flags, the *_visibility values)
+      // were revoked from a direct client SELECT and come via get_my_settings().
+      const [{ data, error }, mySettings] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select(
+            'id, profile_visibility, open_to_work, last_name_visibility, profile_discovery, autoplay_videos, email',
+          )
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        fetchMySettings(),
+      ]);
 
       if (!error && data) {
+        const prefs = (mySettings?.preferences as Record<string, unknown> | null) ?? null;
         setSettings({
           profile_visibility: data.profile_visibility || 'public',
           open_to_work: data.open_to_work || false,
-          open_to_work_visibility: data.open_to_work_visibility || 'public',
-          email_visibility: data.email_visibility || 'private',
-          phone_visibility: data.phone_visibility || 'private',
-          connections_visibility: data.connections_visibility || 'private',
+          open_to_work_visibility: mySettings?.open_to_work_visibility || 'public',
+          email_visibility: mySettings?.email_visibility || 'private',
+          phone_visibility: mySettings?.phone_visibility || 'private',
+          connections_visibility: mySettings?.connections_visibility || 'private',
           last_name_visibility: data.last_name_visibility || 'private',
           // Booleans, not strings: `??` (not `||`) so an explicit `false`
           // from the DB isn't coerced back to the default.
           profile_discovery: data.profile_discovery ?? true,
           autoplay_videos: data.autoplay_videos ?? false,
-          allow_recruiter_search: data.allow_recruiter_search ?? false,
-          allow_recruiter_profile_view: data.allow_recruiter_profile_view ?? false,
-          share_pdf_resume_with_recruiters: data.share_pdf_resume_with_recruiters ?? false,
-          share_online_resume_with_recruiters: data.share_online_resume_with_recruiters ?? false,
-          share_professional_links_with_recruiters: data.share_professional_links_with_recruiters ?? false,
-          mentions_from: readMentionsFrom(data.preferences),
-          show_active_status: readPrefBool(data.preferences, 'show_active_status', true),
-          share_profile_updates: readPrefBool(data.preferences, 'share_profile_updates', false),
-          personalized_recommendations: readPrefBool(data.preferences, 'personalized_recommendations', true),
+          allow_recruiter_search: mySettings?.allow_recruiter_search ?? false,
+          allow_recruiter_profile_view: mySettings?.allow_recruiter_profile_view ?? false,
+          share_pdf_resume_with_recruiters: mySettings?.share_pdf_resume_with_recruiters ?? false,
+          share_online_resume_with_recruiters: mySettings?.share_online_resume_with_recruiters ?? false,
+          share_professional_links_with_recruiters:
+            mySettings?.share_professional_links_with_recruiters ?? false,
+          mentions_from: readMentionsFrom(prefs),
+          show_active_status: readPrefBool(prefs, 'show_active_status', true),
+          share_profile_updates: readPrefBool(prefs, 'share_profile_updates', false),
         });
         setProfileId(data.id);
         await fetchPrivacyLists(data.id);
@@ -555,8 +561,10 @@ export function useProfileSettings() {
     }
   };
 
-  // profiles.preferences (jsonb) writers -- read-modify-write so other keys
-  // under `preferences` (e.g. notifications) survive. One generic helper.
+  // profiles.preferences (jsonb) writer. The server deep-merges just this key
+  // into the current row (update_my_preferences_patch), so a concurrent writer
+  // touching a different key can't be clobbered and no read-before-write is
+  // needed. One generic helper.
   const updatePrefKey = async (
     key: 'mentions_from' | 'show_active_status' | 'share_profile_updates',
     value: string | boolean,
@@ -566,17 +574,7 @@ export function useProfileSettings() {
     if (!user) return;
     setSaving(true);
     try {
-      const { data: row } = await supabase
-        .from('profiles')
-        .select('preferences')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      const currentPrefs = (row?.preferences as Record<string, unknown> | null) ?? {};
-      const { error } = await supabase
-        .from('profiles')
-        .update({ preferences: { ...currentPrefs, [key]: value } })
-        .eq('user_id', user.id);
-      if (error) throw error;
+      await patchMyPreferences({ [key]: value });
       toast({ title: 'Success', description: successMsg });
     } catch (error) {
       rollback();
@@ -618,22 +616,10 @@ export function useProfileSettings() {
     );
   };
 
-  const togglePersonalizedRecommendations = async (checked: boolean) => {
-    const previous = settings.personalized_recommendations;
-    setSettings((prev) => ({ ...prev, personalized_recommendations: checked }));
-    publishPersonalizationChange(checked);
-    await updatePrefKey(
-      'personalized_recommendations',
-      checked,
-      checked
-        ? 'Your feed will be personalised from your activity.'
-        : 'Your “For You” feed will now be shown newest-first.',
-      () => {
-        setSettings((prev) => ({ ...prev, personalized_recommendations: previous }));
-        publishPersonalizationChange(previous);
-      },
-    );
-  };
+  // NOTE: `personalized_recommendations` is written ONLY by
+  // useAdvertisingDataSettings.setPersonalizedRecommendations (Advertising data
+  // → Interests and traits). This hook used to expose a second, unused writer
+  // for it — removed so there is a single canonical write path.
 
   return {
     user,
@@ -660,7 +646,6 @@ export function useProfileSettings() {
     updateMentionsFrom,
     toggleShowActiveStatus,
     toggleShareProfileUpdates,
-    togglePersonalizedRecommendations,
     unblock,
     unsnooze,
   };

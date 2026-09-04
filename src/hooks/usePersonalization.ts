@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchMyPreferences } from '@/lib/mySettings';
 
 // profiles.preferences.personalized_recommendations — default ON. Read-only,
 // session-cached view for the surfaces that personalise from your activity
@@ -13,12 +14,10 @@ async function fetchValue(): Promise<boolean> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return true;
-  const { data } = await supabase
-    .from('profiles')
-    .select('preferences')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  const v = (data?.preferences as Record<string, unknown> | null)?.personalized_recommendations;
+  // profiles.preferences is no longer directly selectable by the client —
+  // read the caller's own copy via the get_my_settings() accessor.
+  const prefs = await fetchMyPreferences();
+  const v = prefs.personalized_recommendations;
   return v === false ? false : true; // default true unless explicitly disabled
 }
 

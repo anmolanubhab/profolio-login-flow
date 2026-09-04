@@ -1,0 +1,7 @@
+-- Phase K3-A fix: CASE-of-text-literals resolves to `text` and does NOT
+-- implicitly cast to an enum column. `_ad_billing_set_hold` (status /
+-- event_type) and `ad_billing_apply_webhook` (refund status) needed
+-- explicit ::enum casts. The corrected bodies are already inlined in
+-- 20260902131655_phase_k3a_payment_model.sql for fresh installs; this
+-- migration re-applies them to environments that ran the pre-fix version.
+-- See 20260902131655 for the authoritative function definitions.

@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_account_billing_state: {
+        Row: {
+          ad_account_id: string
+          currency: string
+          hold: boolean
+          hold_reason: string | null
+          last_charge_at: string | null
+          last_charge_status: string | null
+          lifetime_paid_micros: number
+          outstanding_micros: number
+          payment_threshold_cents: number
+          test_lifetime_paid_micros: number
+          test_outstanding_micros: number
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id: string
+          currency: string
+          hold?: boolean
+          hold_reason?: string | null
+          last_charge_at?: string | null
+          last_charge_status?: string | null
+          lifetime_paid_micros?: number
+          outstanding_micros?: number
+          payment_threshold_cents?: number
+          test_lifetime_paid_micros?: number
+          test_outstanding_micros?: number
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string
+          currency?: string
+          hold?: boolean
+          hold_reason?: string | null
+          last_charge_at?: string | null
+          last_charge_status?: string | null
+          lifetime_paid_micros?: number
+          outstanding_micros?: number
+          payment_threshold_cents?: number
+          test_lifetime_paid_micros?: number
+          test_outstanding_micros?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_account_billing_state_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: true
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ad_accounts: {
         Row: {
           agreement_accepted_at: string | null
@@ -101,6 +154,392 @@ export type Database = {
             columns: ["ad_account_id"]
             isOneToOne: false
             referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_billing_events: {
+        Row: {
+          actor_user_id: string | null
+          ad_account_id: string
+          created_at: string
+          event_type: Database["public"]["Enums"]["ad_billing_event_type"]
+          id: string
+          metadata: Json
+          summary: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          ad_account_id: string
+          created_at?: string
+          event_type: Database["public"]["Enums"]["ad_billing_event_type"]
+          id?: string
+          metadata?: Json
+          summary: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          ad_account_id?: string
+          created_at?: string
+          event_type?: Database["public"]["Enums"]["ad_billing_event_type"]
+          id?: string
+          metadata?: Json
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_billing_events_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_billing_ledger: {
+        Row: {
+          ad_account_id: string
+          amount_micros: number
+          balance_after_micros: number
+          created_at: string
+          currency: string
+          entry_type: string
+          id: string
+          idempotency_key: string | null
+          invoice_id: string | null
+          is_test: boolean
+          note: string | null
+          spend_event_id: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          ad_account_id: string
+          amount_micros: number
+          balance_after_micros: number
+          created_at?: string
+          currency: string
+          entry_type: string
+          id?: string
+          idempotency_key?: string | null
+          invoice_id?: string | null
+          is_test?: boolean
+          note?: string | null
+          spend_event_id?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          ad_account_id?: string
+          amount_micros?: number
+          balance_after_micros?: number
+          created_at?: string
+          currency?: string
+          entry_type?: string
+          id?: string
+          idempotency_key?: string | null
+          invoice_id?: string | null
+          is_test?: boolean
+          note?: string | null
+          spend_event_id?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_billing_ledger_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_billing_ledger_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "ad_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_billing_ledger_spend_event_id_fkey"
+            columns: ["spend_event_id"]
+            isOneToOne: false
+            referencedRelation: "ad_spend_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_billing_ledger_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "ad_billing_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_billing_profiles: {
+        Row: {
+          ad_account_id: string
+          address_line1: string | null
+          address_line2: string | null
+          billing_contact_name: string | null
+          billing_country: string | null
+          billing_email: string | null
+          city: string | null
+          created_at: string
+          created_by: string | null
+          hold_reason: string | null
+          id: string
+          legal_name: string | null
+          postal_code: string | null
+          provider: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref: string | null
+          state_region: string | null
+          status: Database["public"]["Enums"]["ad_billing_profile_status"]
+          tax_id_type: string | null
+          tax_id_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id: string
+          address_line1?: string | null
+          address_line2?: string | null
+          billing_contact_name?: string | null
+          billing_country?: string | null
+          billing_email?: string | null
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          hold_reason?: string | null
+          id?: string
+          legal_name?: string | null
+          postal_code?: string | null
+          provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref?: string | null
+          state_region?: string | null
+          status?: Database["public"]["Enums"]["ad_billing_profile_status"]
+          tax_id_type?: string | null
+          tax_id_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string
+          address_line1?: string | null
+          address_line2?: string | null
+          billing_contact_name?: string | null
+          billing_country?: string | null
+          billing_email?: string | null
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          hold_reason?: string | null
+          id?: string
+          legal_name?: string | null
+          postal_code?: string | null
+          provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref?: string | null
+          state_region?: string | null
+          status?: Database["public"]["Enums"]["ad_billing_profile_status"]
+          tax_id_type?: string | null
+          tax_id_value?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_billing_profiles_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: true
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_billing_transactions: {
+        Row: {
+          ad_account_id: string
+          amount_cents: number
+          client_secret_ref: string | null
+          created_at: string
+          currency: string
+          failure_reason: string | null
+          id: string
+          idempotency_key: string | null
+          invoice_id: string | null
+          is_test: boolean
+          occurred_at: string
+          parent_transaction_id: string | null
+          payment_method_id: string | null
+          provider: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref: string | null
+          provider_event_id: string | null
+          provider_ref: string | null
+          refunded_amount_cents: number
+          settled_at: string | null
+          status: Database["public"]["Enums"]["ad_billing_txn_status"]
+          txn_type: Database["public"]["Enums"]["ad_billing_txn_type"]
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id: string
+          amount_cents: number
+          client_secret_ref?: string | null
+          created_at?: string
+          currency: string
+          failure_reason?: string | null
+          id?: string
+          idempotency_key?: string | null
+          invoice_id?: string | null
+          is_test?: boolean
+          occurred_at?: string
+          parent_transaction_id?: string | null
+          payment_method_id?: string | null
+          provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref?: string | null
+          provider_event_id?: string | null
+          provider_ref?: string | null
+          refunded_amount_cents?: number
+          settled_at?: string | null
+          status?: Database["public"]["Enums"]["ad_billing_txn_status"]
+          txn_type: Database["public"]["Enums"]["ad_billing_txn_type"]
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string
+          amount_cents?: number
+          client_secret_ref?: string | null
+          created_at?: string
+          currency?: string
+          failure_reason?: string | null
+          id?: string
+          idempotency_key?: string | null
+          invoice_id?: string | null
+          is_test?: boolean
+          occurred_at?: string
+          parent_transaction_id?: string | null
+          payment_method_id?: string | null
+          provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref?: string | null
+          provider_event_id?: string | null
+          provider_ref?: string | null
+          refunded_amount_cents?: number
+          settled_at?: string | null
+          status?: Database["public"]["Enums"]["ad_billing_txn_status"]
+          txn_type?: Database["public"]["Enums"]["ad_billing_txn_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_billing_transactions_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_billing_transactions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "ad_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_billing_transactions_parent_transaction_id_fkey"
+            columns: ["parent_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "ad_billing_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_billing_transactions_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "ad_payment_methods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_billing_webhook_events: {
+        Row: {
+          error: string | null
+          event_type: string
+          id: string
+          payload: Json
+          processed: boolean
+          processed_at: string | null
+          provider: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_event_id: string
+          received_at: string
+          signature_valid: boolean
+        }
+        Insert: {
+          error?: string | null
+          event_type: string
+          id?: string
+          payload: Json
+          processed?: boolean
+          processed_at?: string | null
+          provider: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_event_id: string
+          received_at?: string
+          signature_valid: boolean
+        }
+        Update: {
+          error?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_event_id?: string
+          received_at?: string
+          signature_valid?: boolean
+        }
+        Relationships: []
+      }
+      ad_campaign_spend_daily: {
+        Row: {
+          ad_account_id: string
+          campaign_id: string
+          clicks: number
+          currency: string
+          day: string
+          id: string
+          impressions: number
+          spend_micros: number
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id: string
+          campaign_id: string
+          clicks?: number
+          currency: string
+          day: string
+          id?: string
+          impressions?: number
+          spend_micros?: number
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string
+          campaign_id?: string
+          clicks?: number
+          currency?: string
+          day?: string
+          id?: string
+          impressions?: number
+          spend_micros?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaign_spend_daily_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_campaign_spend_daily_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
         ]
@@ -310,6 +749,188 @@ export type Database = {
           },
         ]
       }
+      ad_invoices: {
+        Row: {
+          ad_account_id: string
+          attempt_count: number
+          billing_profile_snapshot: Json | null
+          created_at: string
+          currency: string
+          due_at: string | null
+          id: string
+          invoice_number: string | null
+          is_test: boolean
+          issued_at: string | null
+          paid_at: string | null
+          period_end: string | null
+          period_start: string | null
+          provider: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref: string | null
+          provider_ref: string | null
+          status: Database["public"]["Enums"]["ad_invoice_status"]
+          subtotal_cents: number
+          tax_cents: number
+          total_cents: number
+          transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id: string
+          attempt_count?: number
+          billing_profile_snapshot?: Json | null
+          created_at?: string
+          currency: string
+          due_at?: string | null
+          id?: string
+          invoice_number?: string | null
+          is_test?: boolean
+          issued_at?: string | null
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref?: string | null
+          provider_ref?: string | null
+          status?: Database["public"]["Enums"]["ad_invoice_status"]
+          subtotal_cents?: number
+          tax_cents?: number
+          total_cents?: number
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string
+          attempt_count?: number
+          billing_profile_snapshot?: Json | null
+          created_at?: string
+          currency?: string
+          due_at?: string | null
+          id?: string
+          invoice_number?: string | null
+          is_test?: boolean
+          issued_at?: string | null
+          paid_at?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref?: string | null
+          provider_ref?: string | null
+          status?: Database["public"]["Enums"]["ad_invoice_status"]
+          subtotal_cents?: number
+          tax_cents?: number
+          total_cents?: number
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_invoices_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_invoices_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "ad_billing_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_payment_methods: {
+        Row: {
+          ad_account_id: string
+          billing_name: string | null
+          created_at: string
+          created_by: string | null
+          display_brand: string | null
+          display_last4: string | null
+          exp_month: number | null
+          exp_year: number | null
+          id: string
+          is_default: boolean
+          method_type: Database["public"]["Enums"]["ad_payment_method_type"]
+          provider: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref: string | null
+          provider_ref: string | null
+          provider_setup_ref: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          ad_account_id: string
+          billing_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_brand?: string | null
+          display_last4?: string | null
+          exp_month?: number | null
+          exp_year?: number | null
+          id?: string
+          is_default?: boolean
+          method_type?: Database["public"]["Enums"]["ad_payment_method_type"]
+          provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref?: string | null
+          provider_ref?: string | null
+          provider_setup_ref?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          ad_account_id?: string
+          billing_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_brand?: string | null
+          display_last4?: string | null
+          exp_month?: number | null
+          exp_year?: number | null
+          id?: string
+          is_default?: boolean
+          method_type?: Database["public"]["Enums"]["ad_payment_method_type"]
+          provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref?: string | null
+          provider_ref?: string | null
+          provider_setup_ref?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_payment_methods_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_provider_config: {
+        Row: {
+          active_provider: Database["public"]["Enums"]["ad_payment_provider"]
+          id: number
+          notes: string | null
+          test_mode: boolean
+          updated_at: string
+        }
+        Insert: {
+          active_provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          id?: number
+          notes?: string | null
+          test_mode?: boolean
+          updated_at?: string
+        }
+        Update: {
+          active_provider?: Database["public"]["Enums"]["ad_payment_provider"]
+          id?: number
+          notes?: string | null
+          test_mode?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ad_reviews: {
         Row: {
           ad_id: string
@@ -398,6 +1019,120 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ad_spend_events: {
+        Row: {
+          ad_account_id: string
+          ad_id: string
+          ad_set_id: string
+          campaign_id: string
+          chargeable: boolean
+          cost_micros: number
+          created_at: string
+          currency: string
+          delivery_event_id: string
+          event_type: Database["public"]["Enums"]["ad_event_type"]
+          id: string
+          occurred_at: string
+          rate_model: string
+          unit_cost_micros: number
+        }
+        Insert: {
+          ad_account_id: string
+          ad_id: string
+          ad_set_id: string
+          campaign_id: string
+          chargeable: boolean
+          cost_micros: number
+          created_at?: string
+          currency: string
+          delivery_event_id: string
+          event_type: Database["public"]["Enums"]["ad_event_type"]
+          id?: string
+          occurred_at: string
+          rate_model: string
+          unit_cost_micros: number
+        }
+        Update: {
+          ad_account_id?: string
+          ad_id?: string
+          ad_set_id?: string
+          campaign_id?: string
+          chargeable?: boolean
+          cost_micros?: number
+          created_at?: string
+          currency?: string
+          delivery_event_id?: string
+          event_type?: Database["public"]["Enums"]["ad_event_type"]
+          id?: string
+          occurred_at?: string
+          rate_model?: string
+          unit_cost_micros?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_spend_events_ad_account_id_fkey"
+            columns: ["ad_account_id"]
+            isOneToOne: false
+            referencedRelation: "ad_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_spend_events_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_spend_events_ad_set_id_fkey"
+            columns: ["ad_set_id"]
+            isOneToOne: false
+            referencedRelation: "ad_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_spend_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_spend_events_delivery_event_id_fkey"
+            columns: ["delivery_event_id"]
+            isOneToOne: true
+            referencedRelation: "ad_delivery_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_spend_rate_card: {
+        Row: {
+          default_cpm_cents: number
+          id: number
+          min_bid_cpc_cents: number
+          min_bid_cpm_cents: number
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          default_cpm_cents?: number
+          id?: number
+          min_bid_cpc_cents?: number
+          min_bid_cpm_cents?: number
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          default_cpm_cents?: number
+          id?: number
+          min_bid_cpc_cents?: number
+          min_bid_cpm_cents?: number
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       ads: {
         Row: {
@@ -4063,12 +4798,66 @@ export type Database = {
       }
     }
     Functions: {
+      _ad_analytics_can_view: {
+        Args: { _scope: string; _scope_id: string }
+        Returns: boolean
+      }
+      _ad_analytics_events: {
+        Args: { _from: string; _scope: string; _scope_id: string; _to: string }
+        Returns: {
+          ad_id: string
+          ad_set_id: string
+          campaign_id: string
+          day: string
+          event_type: Database["public"]["Enums"]["ad_event_type"]
+          viewer_key: string
+        }[]
+      }
       _ad_audience_bucket: { Args: { _raw: number }; Returns: number }
       _ad_audience_count: { Args: { _spec: Json }; Returns: number }
+      _ad_billing_apply_status: {
+        Args: { _p: Database["public"]["Tables"]["ad_billing_profiles"]["Row"] }
+        Returns: Database["public"]["Enums"]["ad_billing_profile_status"]
+      }
+      _ad_billing_post_ledger: {
+        Args: {
+          _ad_account_id: string
+          _amount_micros: number
+          _currency: string
+          _entry_type: string
+          _idempotency_key?: string
+          _invoice_id?: string
+          _note?: string
+          _spend_event_id?: string
+          _transaction_id?: string
+        }
+        Returns: undefined
+      }
+      _ad_billing_set_hold: {
+        Args: { _ad_account_id: string; _hold: boolean; _reason: string }
+        Returns: undefined
+      }
+      _ad_campaign_deliverable: {
+        Args: { _campaign_id: string }
+        Returns: boolean
+      }
+      _ad_currency_minor_units: { Args: { _currency: string }; Returns: number }
       _ad_delivery_eligible_for: {
         Args: { _ad_id: string; _me: string }
         Returns: boolean
       }
+      _ad_event_cost: {
+        Args: {
+          _bid_amount_cents: number
+          _bid_strategy: Database["public"]["Enums"]["ad_bid_strategy"]
+          _kind: Database["public"]["Enums"]["ad_event_type"]
+        }
+        Returns: {
+          rate_model: string
+          unit_cost_micros: number
+        }[]
+      }
+      _ad_get_webhook_secret: { Args: never; Returns: string }
       _ad_like_terms: { Args: { _arr: Json }; Returns: string[] }
       _ad_profile_matches_audience: {
         Args: { _profile_id: string; _spec: Json }
@@ -4084,6 +4873,10 @@ export type Database = {
           _kind: Database["public"]["Enums"]["ad_event_type"]
           _session_key: string
         }
+        Returns: undefined
+      }
+      _ad_spend_record: {
+        Args: { _delivery_event_id: string }
         Returns: undefined
       }
       accept_company_invitation: {
@@ -4128,6 +4921,60 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      ad_account_billing_summary: {
+        Args: { _ad_account_id: string }
+        Returns: Json
+      }
+      ad_analytics_breakdown: {
+        Args: {
+          _from?: string
+          _level?: string
+          _scope: string
+          _scope_id: string
+          _to?: string
+        }
+        Returns: {
+          clicks: number
+          ctr: number
+          entity_id: string
+          entity_name: string
+          impressions: number
+          spend_micros: number
+        }[]
+      }
+      ad_analytics_daily: {
+        Args: {
+          _from?: string
+          _scope: string
+          _scope_id: string
+          _to?: string
+        }
+        Returns: {
+          clicks: number
+          day: string
+          impressions: number
+          spend_micros: number
+        }[]
+      }
+      ad_analytics_summary: {
+        Args: {
+          _from?: string
+          _scope: string
+          _scope_id: string
+          _to?: string
+        }
+        Returns: {
+          clicks: number
+          ctr: number
+          currency: string
+          first_event: string
+          impressions: number
+          last_event: string
+          spend_micros: number
+          unique_viewers: number
+          unique_viewers_withheld: boolean
+        }[]
+      }
       ad_audience_preview_reach: {
         Args: { _ad_account_id: string; _spec: Json }
         Returns: number
@@ -4152,9 +4999,159 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      ad_billing_apply_adjustment: {
+        Args: {
+          _ad_account_id: string
+          _amount_cents: number
+          _direction: string
+          _idempotency_key: string
+          _reason: string
+        }
+        Returns: undefined
+      }
+      ad_billing_apply_webhook: {
+        Args: {
+          _event_type: string
+          _payload: Json
+          _provider: Database["public"]["Enums"]["ad_payment_provider"]
+          _provider_event_id: string
+          _signature_valid: boolean
+        }
+        Returns: Json
+      }
+      ad_billing_claim_charge_for_intent: {
+        Args: { _txn_id: string }
+        Returns: boolean
+      }
+      ad_billing_list_stuck_transactions: {
+        Args: { _older_than_minutes?: number }
+        Returns: {
+          ad_account_id: string
+          amount_cents: number
+          created_at: string
+          currency: string
+          id: string
+          idempotency_key: string
+          is_test: boolean
+          provider: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_ref: string
+          status: Database["public"]["Enums"]["ad_billing_txn_status"]
+        }[]
+      }
+      ad_billing_open_charge: {
+        Args: {
+          _ad_account_id: string
+          _amount_cents: number
+          _idempotency_key: string
+          _payment_method_id?: string
+        }
+        Returns: {
+          ad_account_id: string
+          amount_cents: number
+          client_secret_ref: string | null
+          created_at: string
+          currency: string
+          failure_reason: string | null
+          id: string
+          idempotency_key: string | null
+          invoice_id: string | null
+          is_test: boolean
+          occurred_at: string
+          parent_transaction_id: string | null
+          payment_method_id: string | null
+          provider: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref: string | null
+          provider_event_id: string | null
+          provider_ref: string | null
+          refunded_amount_cents: number
+          settled_at: string | null
+          status: Database["public"]["Enums"]["ad_billing_txn_status"]
+          txn_type: Database["public"]["Enums"]["ad_billing_txn_type"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ad_billing_transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      ad_billing_reconciliation_check: {
+        Args: { _ad_account_id?: string }
+        Returns: Json
+      }
+      ad_billing_record_payment_method: {
+        Args: {
+          _ad_account_id: string
+          _billing_name: string
+          _brand: string
+          _customer_ref: string
+          _exp_month: number
+          _exp_year: number
+          _last4: string
+          _make_default?: boolean
+          _pm_ref: string
+          _provider: Database["public"]["Enums"]["ad_payment_provider"]
+          _setup_ref: string
+        }
+        Returns: {
+          ad_account_id: string
+          billing_name: string | null
+          created_at: string
+          created_by: string | null
+          display_brand: string | null
+          display_last4: string | null
+          exp_month: number | null
+          exp_year: number | null
+          id: string
+          is_default: boolean
+          method_type: Database["public"]["Enums"]["ad_payment_method_type"]
+          provider: Database["public"]["Enums"]["ad_payment_provider"]
+          provider_customer_ref: string | null
+          provider_ref: string | null
+          provider_setup_ref: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "ad_payment_methods"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      ad_billing_resolve_pending_transaction: {
+        Args: {
+          _failure_reason?: string
+          _provider_ref?: string
+          _resolved_status: string
+          _txn_id: string
+        }
+        Returns: Json
+      }
+      ad_billing_set_default_payment_method: {
+        Args: { _payment_method_id: string }
+        Returns: undefined
+      }
+      ad_billing_set_provider_customer: {
+        Args: {
+          _ad_account_id: string
+          _customer_ref: string
+          _provider: Database["public"]["Enums"]["ad_payment_provider"]
+        }
+        Returns: undefined
+      }
+      ad_campaign_budget_status: {
+        Args: { _campaign_id: string }
+        Returns: Json
+      }
       ad_daily_metrics_is_owner: {
         Args: { _ad_account_id: string }
         Returns: boolean
+      }
+      ad_rebuild_daily_metrics: {
+        Args: { _ad_account_id: string; _from?: string; _to?: string }
+        Returns: number
       }
       ad_record_click: {
         Args: { _ad_id: string; _session_key: string }
@@ -4334,6 +5331,40 @@ export type Database = {
           total_generated: number
         }[]
       }
+      get_my_consent_history: {
+        Args: { limit_n?: number }
+        Returns: {
+          id: string
+          user_id: string
+          signal_key: string
+          old_value: Json
+          new_value: Json
+          source: string
+          schema_version: number
+          occurred_at: string
+        }[]
+      }
+      get_my_settings: {
+        Args: never
+        Returns: {
+          preferences: Json
+          expected_salary: string
+          notice_period: string
+          open_to_roles: string[]
+          preferred_locations: string[]
+          job_type: string[]
+          autoplay_videos: boolean
+          allow_recruiter_search: boolean
+          allow_recruiter_profile_view: boolean
+          share_pdf_resume_with_recruiters: boolean
+          share_online_resume_with_recruiters: boolean
+          share_professional_links_with_recruiters: boolean
+          email_visibility: string
+          phone_visibility: string
+          connections_visibility: string
+          open_to_work_visibility: string
+        }[]
+      }
       get_or_create_campaign_ad_set: {
         Args: { _campaign_id: string }
         Returns: {
@@ -4364,6 +5395,43 @@ export type Database = {
         Returns: {
           email: string
           phone: string
+        }[]
+      }
+      get_public_profile: {
+        Args: { target_profile_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          display_name: string
+          full_name: string
+          headline: string
+          profession: string
+          avatar_url: string
+          photo_url: string
+          cover_url: string
+          cover_position: number
+          bio: string
+          location: string
+          pronouns: string
+          open_to_work: boolean
+          skills: string[]
+          projects: Json
+          experience: Json
+          education: Json
+          achievements: Json
+          website: string
+          linkedin_url: string
+          github_url: string
+          twitter_url: string
+          address: string
+          created_at: string
+          last_active_at: string
+          profile_visibility: string
+          photo_visibility: string
+          last_name_visibility: string
+          profile_discovery: boolean
+          show_active_status: boolean
+          has_verified_email: boolean
         }[]
       }
       get_ranked_post_comments: {
@@ -4439,6 +5507,10 @@ export type Database = {
         Returns: string
       }
       is_ad_account_admin: {
+        Args: { _ad_account_id: string }
+        Returns: boolean
+      }
+      is_ad_account_billing_manager: {
         Args: { _ad_account_id: string }
         Returns: boolean
       }
@@ -4635,6 +5707,15 @@ export type Database = {
           years_experience: number
         }[]
       }
+      search_mentionable_people: {
+        Args: { q: string }
+        Returns: {
+          id: string
+          display_name: string
+          avatar_url: string
+          profession: string
+        }[]
+      }
       search_connections: {
         Args: { lim?: number; off?: number; search?: string }
         Returns: {
@@ -4752,6 +5833,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_my_preferences_patch: {
+        Args: { patch: Json }
+        Returns: Json
+      }
+      validate_campaign_budget: {
+        Args: { _campaign_id: string }
+        Returns: Json
+      }
       withdraw_ad_submission: {
         Args: { _ad_id: string }
         Returns: {
@@ -4804,8 +5893,45 @@ export type Database = {
     Enums: {
       ad_account_status: "active" | "suspended" | "closed"
       ad_bid_strategy: "auto" | "max_cpc" | "max_cpm"
+      ad_billing_event_type:
+        | "profile_created"
+        | "profile_updated"
+        | "status_changed"
+        | "payment_method_added"
+        | "payment_method_removed"
+        | "payment_method_default_changed"
+        | "provider_connected"
+        | "payment_started"
+        | "payment_succeeded"
+        | "payment_failed"
+        | "payment_requires_action"
+        | "payment_canceled"
+        | "payment_refunded"
+        | "billing_adjustment"
+        | "invoice_issued"
+        | "invoice_paid"
+        | "account_hold"
+        | "account_hold_cleared"
+      ad_billing_profile_status:
+        | "setup_required"
+        | "payment_method_required"
+        | "ready"
+        | "restricted"
+      ad_billing_txn_status:
+        | "pending"
+        | "succeeded"
+        | "failed"
+        | "canceled"
+        | "processing"
+        | "requires_action"
+        | "refunded"
+        | "partially_refunded"
+      ad_billing_txn_type: "charge" | "refund" | "adjustment" | "credit"
       ad_event_type: "impression" | "click"
       ad_format: "single_image" | "text" | "spotlight"
+      ad_invoice_status: "draft" | "open" | "paid" | "void" | "uncollectible"
+      ad_payment_method_type: "card" | "paypal" | "bank_account" | "other"
+      ad_payment_provider: "none" | "stripe" | "manual" | "simulated"
       ad_placement: "right_rail" | "feed_sponsored" | "company_page"
       ad_review_status: "draft" | "pending" | "approved" | "rejected"
       app_role:
@@ -4922,12 +6048,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4951,11 +6077,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -4976,11 +6102,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5001,11 +6127,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5018,11 +6144,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5036,8 +6162,48 @@ export const Constants = {
     Enums: {
       ad_account_status: ["active", "suspended", "closed"],
       ad_bid_strategy: ["auto", "max_cpc", "max_cpm"],
+      ad_billing_event_type: [
+        "profile_created",
+        "profile_updated",
+        "status_changed",
+        "payment_method_added",
+        "payment_method_removed",
+        "payment_method_default_changed",
+        "provider_connected",
+        "payment_started",
+        "payment_succeeded",
+        "payment_failed",
+        "payment_requires_action",
+        "payment_canceled",
+        "payment_refunded",
+        "billing_adjustment",
+        "invoice_issued",
+        "invoice_paid",
+        "account_hold",
+        "account_hold_cleared",
+      ],
+      ad_billing_profile_status: [
+        "setup_required",
+        "payment_method_required",
+        "ready",
+        "restricted",
+      ],
+      ad_billing_txn_status: [
+        "pending",
+        "succeeded",
+        "failed",
+        "canceled",
+        "processing",
+        "requires_action",
+        "refunded",
+        "partially_refunded",
+      ],
+      ad_billing_txn_type: ["charge", "refund", "adjustment", "credit"],
       ad_event_type: ["impression", "click"],
       ad_format: ["single_image", "text", "spotlight"],
+      ad_invoice_status: ["draft", "open", "paid", "void", "uncollectible"],
+      ad_payment_method_type: ["card", "paypal", "bank_account", "other"],
+      ad_payment_provider: ["none", "stripe", "manual", "simulated"],
       ad_placement: ["right_rail", "feed_sponsored", "company_page"],
       ad_review_status: ["draft", "pending", "approved", "rejected"],
       app_role: [

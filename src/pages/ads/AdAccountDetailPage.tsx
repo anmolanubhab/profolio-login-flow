@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ChevronLeft, AlertCircle, Loader2, RefreshCw, Lock } from 'lucide-react';
+import { ChevronLeft, AlertCircle, Loader2, RefreshCw, Lock, CreditCard, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { AdAccountStatusBadge } from '@/components/ads/AdAccountStatusBadge';
@@ -243,6 +243,23 @@ export default function AdAccountDetailPage() {
                 />
               </CardContent>
             </Card>
+
+            {/* Billing */}
+            <button
+              onClick={() => navigate(`/ads/accounts/${account.id}/billing`)}
+              className="flex w-full items-center gap-3 rounded-lg border bg-card p-4 text-left shadow-card transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <CreditCard className="h-5 w-5 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground">Billing</p>
+                <p className="text-xs text-muted-foreground">
+                  Billing details, payment methods and invoices
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
 
             {/* Campaigns */}
             <AdAccountCampaignsCard

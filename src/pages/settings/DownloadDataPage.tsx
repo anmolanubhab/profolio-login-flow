@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SELF_PROFILE_COLUMNS } from '@/components/profile/profileTypes';
+import { fetchMySettings, fetchMyConsentHistory } from '@/lib/mySettings';
 
 type Phase = 'idle' | 'preparing' | 'ready';
 
@@ -19,6 +21,7 @@ type Phase = 'idle' | 'preparing' | 'ready';
  *   - account (auth.users, via getUser)
  *   - profile row (profiles.user_id = auth uid)
  *   - posts (posts.user_id = auth uid)
+ *   - consent_history (get_my_consent_history() — owner-scoped RPC)
  * Comments / connections / applications key off profiles.id in different
  * places and are intentionally left for a follow-up rather than guessed here.
  */
@@ -43,14 +46,24 @@ export default function DownloadDataPage() {
     if (!user || phase === 'preparing') return;
     setPhase('preparing');
     try {
-      const [{ data: profile }, { data: posts }] = await Promise.all([
-        supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle(),
-        supabase
-          .from('posts')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
-      ]);
+      // `select('*')` on profiles no longer works for the authenticated role —
+      // read the safe columns directly and the owner-only columns via the
+      // get_my_settings() accessor, then recombine for a complete export.
+      const [{ data: profile }, mySettings, { data: posts }, consentHistory] =
+        await Promise.all([
+          supabase
+            .from('profiles')
+            .select(SELF_PROFILE_COLUMNS)
+            .eq('user_id', user.id)
+            .maybeSingle(),
+          fetchMySettings(),
+          supabase
+            .from('posts')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false }),
+          fetchMyConsentHistory(1000),
+        ]);
 
       const bundle = {
         export_generated_at: new Date().toISOString(),
@@ -62,8 +75,9 @@ export default function DownloadDataPage() {
           last_sign_in_at: user.last_sign_in_at ?? null,
           providers: user.app_metadata?.providers ?? [],
         },
-        profile: profile ?? null,
+        profile: profile ? { ...profile, ...(mySettings ?? {}) } : null,
         posts: posts ?? [],
+        consent_history: consentHistory,
       };
 
       const blob = new Blob([JSON.stringify(bundle, null, 2)], {
@@ -115,9 +129,9 @@ export default function DownloadDataPage() {
           <CardHeader>
             <CardTitle className="text-[15px] font-bold">Get a copy of your data</CardTitle>
             <CardDescription className="text-xs">
-              Download a JSON file containing your account details, your profile and the
-              posts you’ve published. The file is generated in your browser and never
-              leaves your device except as the download.
+              Download a JSON file containing your account details, your profile, the
+              posts you’ve published and your consent history. The file is generated in
+              your browser and never leaves your device except as the download.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -125,6 +139,7 @@ export default function DownloadDataPage() {
               <li>Account (email, sign-in dates, providers)</li>
               <li>Profile (all fields, including your visibility &amp; privacy settings)</li>
               <li>Your posts</li>
+              <li>Consent history (changes to your Advertising data &amp; personalisation choices)</li>
             </ul>
 
             <Button onClick={handlePrepare} disabled={phase === 'preparing' || !user} className="gap-2">

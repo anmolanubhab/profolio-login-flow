@@ -73,8 +73,8 @@ export const SETTINGS_CATEGORIES: SettingsCategoryConfig[] = [
   },
   {
     id: 'advertising',
-    label: 'Ads & data use',
-    description: 'Ads, and how your activity personalises what you see',
+    label: 'Advertising data',
+    description: 'How your Profolio data personalises what you see, and your choices for any future advertising features',
     icon: Megaphone,
     path: '/settings/advertising',
   },
