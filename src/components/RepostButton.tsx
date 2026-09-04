@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
+import { useTapTrigger } from '@/hooks/use-tap-trigger';
 import RepostComposerDialog, { type RepostOriginalPost } from './RepostComposerDialog';
 
 interface RepostButtonProps {
@@ -39,6 +40,12 @@ const RepostButton = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
 
+  // Touch/pen: open on an intentional tap, never on `pointerdown` (Radix's
+  // trigger would otherwise open the menu the moment a finger lands on the
+  // button, so a vertical scroll starting here fires "Repost"). Desktop mouse
+  // is untouched -- Radix's open-on-mousedown still runs.
+  const tapHandlers = useTapTrigger(() => setMenuOpen((o) => !o));
+
   const runInstantRepost = async () => {
     setMenuOpen(false);
     await onRepost(null);
@@ -57,7 +64,11 @@ const RepostButton = ({
   return (
     <>
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-        <DropdownMenuTrigger asChild>
+        {/* Tap handlers go on the Trigger, not the inner <button>: Radix's
+            Slot merge keeps parent (Trigger) handlers but drops child-only
+            ones, so the touch pointerup that opens the menu has to come from
+            here. */}
+        <DropdownMenuTrigger asChild {...tapHandlers}>
           <button
             type="button"
             aria-label={hasReposted ? 'Repost options — you reposted this' : 'Repost'}
