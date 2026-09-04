@@ -36,6 +36,30 @@ All colors MUST be HSL.
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
 
+    --warning: 35 92% 45%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 211 100% 40%;
+    --info-foreground: 0 0% 100%;
+
+    /* Surfaces: base (card), sunken wells / table stripes, and elevated
+       (menus / dialogs -- same colour, distinguished by --elevation-2). */
+    --surface: 0 0% 100%;
+    --surface-sunken: 225 14% 93%;
+    --surface-elevated: 0 0% 100%;
+
+    /* Divider: one step lighter than --border, for in-card row separators. */
+    --divider: 216 16% 92%;
+
+    /* Neutral interaction states for rows / ghost controls / list items. */
+    --hover: 210 16% 96%;
+    --active: 210 14% 92%;
+    --selected: 206 100% 96%;
+    --selected-foreground: 211 100% 40%;
+
+    /* Single source of truth for the focus ring (see --ring alias below). */
+    --focus: 211 100% 45%;
+
     --gradient-primary: linear-gradient(135deg, hsl(211 100% 45%), hsl(240 60% 55%));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 15% 98%));
     --gradient-hero: linear-gradient(135deg, hsl(200 90% 55%), hsl(280 80% 60%), hsl(330 85% 65%));
@@ -52,16 +76,38 @@ All colors MUST be HSL.
        = the previous post-to-post gap (12px on desktop) reduced by ~25%. */
     --feed-card-gap: 9px;
 
-    --shadow-elegant: 0 6px 18px rgba(16, 24, 40, 0.08);
-    --shadow-card: 0 6px 18px rgba(16, 24, 40, 0.08);
+    /* Elevation -- border-first. Level 0 is a crisp 1px hairline ring (reads as
+       a border even on the many cards that set `border-0` and previously
+       relied on a soft drop shadow to show an edge). Levels 1/2 add a
+       restrained lift for hover and for menus / dialogs only. */
+    --elevation-0: 0 0 0 1px hsl(var(--divider));
+    --elevation-1: 0 0 0 1px hsl(var(--divider)), 0 2px 6px -1px rgb(16 24 40 / 0.08), 0 1px 2px rgb(16 24 40 / 0.04);
+    --elevation-2: 0 0 0 1px hsl(var(--divider) / 0.6), 0 16px 40px -8px rgb(16 24 40 / 0.18);
+
+    /* Back-compat aliases: ~140 call sites use `shadow-card` / `shadow-elegant`.
+       They now resolve to the flat hairline (rest) and the subtle lift (hover)
+       instead of the old puffy 18px blur. */
+    --shadow-card: var(--elevation-0);
+    --shadow-elegant: var(--elevation-1);
     --shadow-glow: 0 0 40px hsl(211 100% 50% / 0.15);
-    
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Motion scale. --transition-smooth kept as an alias so existing utilities
+       keep working, but retuned from a blunt `all .3s`. */
+    --motion-fast: 120ms;
+    --motion-base: 180ms;
+    --motion-slow: 240ms;
+    --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+    --transition-smooth: all var(--motion-base) var(--motion-ease);
 
     --border: 217 16% 90%;
     --input: 217 16% 90%;
-    --ring: 211 100% 40%;
+    --ring: var(--focus);
 
+    /* Radius scale: sm = chips/controls, md = buttons/inputs/menus,
+       lg = cards/dialogs/sheets. --radius kept as the md alias. */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 100%;
@@ -116,6 +162,29 @@ All colors MUST be HSL.
     --success: 142 60% 42%;
     --success-foreground: 0 0% 100%;
 
+    --warning: 35 90% 55%;
+    --warning-foreground: 222.2 84% 4.9%;
+
+    --info: 211 90% 58%;
+    --info-foreground: 0 0% 100%;
+
+    --surface: 222 45% 9%;
+    --surface-sunken: 222 40% 7%;
+    --surface-elevated: 222 44% 11%;
+
+    --divider: 217 22% 22%;
+
+    --hover: 217 26% 15%;
+    --active: 217 26% 18%;
+    --selected: 211 40% 18%;
+    --selected-foreground: 206 100% 85%;
+
+    --focus: 211 90% 58%;
+
+    --elevation-0: 0 0 0 1px hsl(var(--divider));
+    --elevation-1: 0 0 0 1px hsl(var(--divider)), 0 2px 8px rgb(0 0 0 / 0.5);
+    --elevation-2: 0 0 0 1px hsl(var(--divider)), 0 20px 48px -8px rgb(0 0 0 / 0.7);
+
     --gradient-primary: linear-gradient(135deg, hsl(211 90% 58%), hsl(240 65% 65%));
     --gradient-card: linear-gradient(145deg, hsl(222 40% 9%), hsl(222.2 84% 4.9%));
     --bg-gradient: linear-gradient(180deg, hsl(222.2 84% 4.9%), hsl(222 45% 7%));
@@ -156,9 +225,14 @@ All colors MUST be HSL.
 
   body {
     @apply w-full max-w-full bg-background text-foreground;
-    background-image: var(--bg-gradient);
-    background-attachment: fixed;
-    background-size: cover;
+    /* Flat neutral canvas -- the old fixed full-page gradient image
+       (background-attachment: fixed) was decorative and cost a repaint on
+       every mobile scroll frame. Surfaces now read against a single colour. */
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     padding-top: var(--nav-height);
   }
 
@@ -176,6 +250,19 @@ All colors MUST be HSL.
   /* Ensure images don't overflow */
   img {
     @apply max-w-full h-auto;
+  }
+
+  /* One global reduced-motion honour point -- individual components no longer
+     need their own motion-reduce: guards for simple transitions/animations. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -205,7 +292,7 @@ All colors MUST be HSL.
     background-color: hsl(var(--card) / 0.8);
     -webkit-backdrop-filter: saturate(180%) blur(10px);
     backdrop-filter: saturate(180%) blur(10px);
-    box-shadow: var(--shadow-card);
+    /* Border-first: the hairline border-bottom defines the bar; no drop shadow. */
   }
 
   /* Mobile bottom navigation: same frosted-glass treatment as .navbar so the
@@ -316,11 +403,10 @@ All colors MUST be HSL.
   /* Card / Post -- ~20% less rounded than rounded-xl (12px -> 10px);
      no Tailwind step lands exactly there, hence the arbitrary value. */
   .post-card {
-    @apply rounded-[10px] border;
+    @apply rounded-lg border;
     background: hsl(var(--card));
     color: hsl(var(--card-foreground));
-    box-shadow: var(--shadow-card);
-    transition: var(--transition-smooth);
+    transition: box-shadow var(--motion-base) var(--motion-ease);
     /* clip (not hidden): clips media bleed / rounded corners but is NOT a
        scroll container, so a focus event inside the inline comment section
        can't shift the card sideways and strand its content. */
@@ -365,7 +451,7 @@ All colors MUST be HSL.
   }
   @media (min-width: 768px) {
     .post-card:hover {
-      box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+      box-shadow: var(--elevation-1);
     }
   }
   .post-header { @apply flex items-center gap-3 p-4 sm:p-5; }
@@ -486,9 +572,26 @@ All colors MUST be HSL.
   }
   .fab:hover { transform: translateY(-3px) scale(1.03); }
 
-  /* Typography hierarchy */
-  .heading-lg { @apply text-2xl sm:text-3xl font-semibold tracking-tight; }
-  .heading-md { @apply text-xl sm:text-2xl font-semibold; }
+  /* ---------------------------------------------------------------------------
+     Typography scale -- one ladder for the whole app. Pages/components use
+     these instead of ad-hoc text-* combinations so headings, body and
+     metadata stay consistent everywhere. Sizes are fixed (not responsive) so
+     vertical rhythm is predictable; a surface that needs a bigger title on
+     desktop can still add an sm: override, but the default is one size.
+     --------------------------------------------------------------------------- */
+  .type-display     { @apply text-[30px] font-bold leading-9 tracking-tight; }
+  .type-title       { @apply text-[22px] font-semibold leading-7 tracking-tight; }
+  .type-section     { @apply text-[18px] font-semibold leading-6; }
+  .type-card-title  { @apply text-[15px] font-semibold leading-5; }
+  .type-body        { @apply text-[14px] font-normal leading-5; }
+  .type-body-strong { @apply text-[14px] font-semibold leading-5; }
+  .type-small       { @apply text-[13px] font-normal leading-[18px]; }
+  .type-caption     { @apply text-[12px] font-normal leading-4 text-muted-foreground; }
+  .type-label       { @apply text-[12px] font-semibold leading-4 tracking-wide; }
+
+  /* Legacy heading aliases (only a few call sites) -- routed onto the scale. */
+  .heading-lg { @apply type-title; }
+  .heading-md { @apply type-section; }
   .subtle { color: hsl(var(--muted-foreground)); }
 
   /* Center alignment helpers */

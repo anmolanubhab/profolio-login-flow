@@ -36,6 +36,9 @@ export default {
 			boxShadow: {
 				'elegant': 'var(--shadow-elegant)',
 				'card': 'var(--shadow-card)',
+				'e0': 'var(--elevation-0)',
+				'e1': 'var(--elevation-1)',
+				'e2': 'var(--elevation-2)',
 			},
 			transitionTimingFunction: {
 				'smooth': 'var(--transition-smooth)',
@@ -69,6 +72,27 @@ export default {
 				success: {
 					DEFAULT: 'hsl(var(--success))',
 					foreground: 'hsl(var(--success-foreground))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))'
+				},
+				info: {
+					DEFAULT: 'hsl(var(--info))',
+					foreground: 'hsl(var(--info-foreground))'
+				},
+				divider: 'hsl(var(--divider))',
+				hover: 'hsl(var(--hover))',
+				active: 'hsl(var(--active))',
+				focus: 'hsl(var(--focus))',
+				selected: {
+					DEFAULT: 'hsl(var(--selected))',
+					foreground: 'hsl(var(--selected-foreground))'
+				},
+				surface: {
+					DEFAULT: 'hsl(var(--surface))',
+					sunken: 'hsl(var(--surface-sunken))',
+					elevated: 'hsl(var(--surface-elevated))'
 				},
 				popover: {
 					DEFAULT: 'hsl(var(--popover))',
