@@ -289,21 +289,47 @@ All colors MUST be HSL.
     z-index: 50;
     height: var(--nav-height);
     border-bottom: 1px solid hsl(var(--border));
+    /* No background/backdrop-filter here -- see .navbar-glass below. This
+       element only carries layout + the animated translateY (via the
+       will-change-transform class + inline style in NavBar.tsx). */
+  }
+
+  /* The frosted-glass surface lives on its OWN element (absolutely filling
+     the nav), separate from the element that gets translateY'd on scroll.
+     Android Chrome's compositor has a long-standing bug where an element
+     that is BOTH backdrop-filter'd AND transform-animated (will-change:
+     transform) freezes the blurred backdrop into a stale, solid-looking
+     snapshot instead of live-updating it as the page scrolls behind it --
+     which is exactly the "panel doesn't turn transparent while scrolling"
+     symptom on real devices (desktop/iOS Safari compositors don't hit this,
+     so it can look fine in a browser preview). Keeping this layer static
+     (no transform of its own) gives it an independent compositing layer
+     that Android keeps live-updating correctly. */
+  .navbar-glass {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
     background-color: hsl(var(--card) / 0.8);
     -webkit-backdrop-filter: saturate(180%) blur(10px);
     backdrop-filter: saturate(180%) blur(10px);
-    /* Border-first: the hairline border-bottom defines the bar; no drop shadow. */
   }
 
   /* Mobile bottom navigation: same frosted-glass treatment as .navbar so the
      feed scrolls visibly behind it (matching the translucent top bar) instead
-     of hiding under a solid strip. `@supports` keeps a solid fallback for the
-     rare engine without backdrop-filter. */
-  .bottom-nav {
+     of hiding under a solid strip. Background/backdrop-filter live on the
+     separate .bottom-nav-glass layer for the same reason as .navbar-glass
+     above -- keeping it off the translateY'd element avoids the Android
+     compositor bug that freezes the blur into an opaque-looking snapshot.
+     `@supports` keeps a solid fallback for the rare engine without
+     backdrop-filter. */
+  .bottom-nav-glass {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
     background-color: hsl(var(--card) / 0.92);
   }
   @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-    .bottom-nav {
+    .bottom-nav-glass {
       background-color: hsl(var(--card) / 0.8);
       -webkit-backdrop-filter: saturate(180%) blur(10px);
       backdrop-filter: saturate(180%) blur(10px);
