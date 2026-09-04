@@ -21,6 +21,8 @@ import { useToast } from '@/hooks/use-toast';
 import { CampaignStatusBadge } from '@/components/ads/CampaignStatusBadge';
 import { CampaignAudienceSummary } from '@/components/ads/CampaignAudienceSummary';
 import { CampaignAdsCard } from '@/components/ads/CampaignAdsCard';
+import { AdAnalyticsPanel } from '@/components/ads/analytics/AdAnalyticsPanel';
+import { CampaignBudgetCard } from '@/components/ads/spend/CampaignBudgetCard';
 import { useIsAdReviewer } from '@/hooks/useIsAdReviewer';
 import { activateCampaign, pauseCampaign } from '@/lib/ads/delivery';
 import {
@@ -228,11 +230,29 @@ export default function CampaignDetailPage() {
               </CardContent>
             </Card>
 
+            {/* Budget & spend */}
+            <CampaignBudgetCard
+              campaignId={campaign.id}
+              currency={adAccount.currency}
+              dailyBudgetCents={campaign.daily_budget_cents}
+              totalBudgetCents={campaign.total_budget_cents}
+              canManage={!isReviewer}
+              onBudgetChange={load}
+            />
+
             {/* Audience */}
             <CampaignAudienceSummary campaignId={campaign.id} />
 
             {/* Ads */}
             <CampaignAdsCard campaignId={campaign.id} />
+
+            {/* Analytics */}
+            <AdAnalyticsPanel
+              scope="campaign"
+              scopeId={campaign.id}
+              breakdownLevel="ad_set"
+              title="Performance"
+            />
 
             {/* Lifecycle actions */}
             <Card className="bg-card shadow-card border-0">
@@ -314,8 +334,7 @@ export default function CampaignDetailPage() {
                   campaign.status === 'rejected' ||
                   campaign.status === 'completed') && (
                   <p>
-                    This campaign is {campaign.status.replace('_', ' ')}. Later phases cover
-                    reporting.
+                    This campaign is {campaign.status.replace('_', ' ')}. See its performance above.
                   </p>
                 )}
               </CardContent>

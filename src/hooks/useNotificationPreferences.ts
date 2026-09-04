@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { fetchMyPreferences, patchMyPreferences } from '@/lib/mySettings';
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   normalizeNotificationPreferences,
@@ -27,13 +28,9 @@ async function fetchPreferences(): Promise<NotificationPreferences> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ...DEFAULT_NOTIFICATION_PREFERENCES };
-  const { data } = await supabase
-    .from('profiles')
-    .select('preferences')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  const raw = (data?.preferences as Record<string, unknown> | null) ?? null;
-  return normalizeNotificationPreferences(raw?.notifications);
+  // profiles.preferences is not directly selectable by the client any more.
+  const raw = await fetchMyPreferences();
+  return normalizeNotificationPreferences(raw.notifications);
 }
 
 /** Read-only, session-cached view of the viewer's notification category prefs. */
@@ -114,28 +111,11 @@ export function useNotificationPreferences() {
       publish(optimistic);
       setSaving(true);
       try {
-        // Read-modify-write: merge onto the freshest DB value so a concurrent
-        // toggle of a different category isn't clobbered, and other keys under
-        // `preferences` are preserved.
-        const { data: row } = await supabase
-          .from('profiles')
-          .select('preferences')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        const currentPrefs =
-          (row?.preferences as Record<string, unknown> | null) ?? {};
-        const merged: NotificationPreferences = {
-          ...normalizeNotificationPreferences(currentPrefs.notifications),
-          [key]: enabled,
-        };
-        const { error } = await supabase
-          .from('profiles')
-          .update({ preferences: { ...currentPrefs, notifications: merged } })
-          .eq('user_id', user.id);
-        if (error) throw error;
-
-        setPrefs(merged);
-        publish(merged);
+        // Server deep-merges just this one sub-key into
+        // profiles.preferences.notifications against the current row, so a
+        // concurrent toggle of a different category (or a different top-level
+        // preference) can't be clobbered — no read-before-write needed.
+        await patchMyPreferences({ notifications: { [key]: enabled } });
         toast({
           title: enabled ? 'Notifications on' : 'Notifications off',
           description: `You’ll ${enabled ? 'now' : 'no longer'} see “${key.replace(/_/g, ' ')}” notifications.`,

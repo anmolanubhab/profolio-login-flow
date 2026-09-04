@@ -47,11 +47,12 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
 
   // "Active now" — driven by profiles.last_active_at (heartbeat) + the
   // person's own show_active_status preference. Visible to the owner always,
-  // and to connections unless they've hidden it.
+  // and to connections unless they've hidden it. `show_active_status` is a
+  // derived boolean on the loaded profile (from get_public_profile /
+  // get_my_settings) — the raw `preferences` blob is no longer exposed.
   const lastActiveAt =
     (profile as { last_active_at?: string | null }).last_active_at ?? null;
-  const activeStatusHidden =
-    ((profile.preferences as Record<string, unknown> | null)?.show_active_status) === false;
+  const activeStatusHidden = profile.show_active_status === false;
   const isRecentlyActive =
     !!lastActiveAt && Date.now() - new Date(lastActiveAt).getTime() < 6 * 60 * 1000;
   const showActiveNow =
@@ -137,8 +138,9 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
                 ({profile.pronouns})
               </span>
             )}
-            {/* Verification: shown when the account has a confirmed email on file */}
-            {profile.email && (
+            {/* Verification: shown when the account has an email on file
+                (`has_verified_email` — the address itself isn't exposed here) */}
+            {profile.has_verified_email && (
               <span
                 className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-primary"
                 aria-label="Verified account"

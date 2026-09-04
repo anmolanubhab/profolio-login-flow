@@ -5,7 +5,7 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Megaphone, Plus, AlertCircle, Building2, ChevronRight, RefreshCw, ClipboardCheck, FlaskConical } from 'lucide-react';
+import { Megaphone, Plus, AlertCircle, Building2, ChevronRight, RefreshCw, ClipboardCheck, FlaskConical, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { AdAccountStatusBadge } from '@/components/ads/AdAccountStatusBadge';
 import { CreateAdAccountDialog } from '@/components/ads/CreateAdAccountDialog';
@@ -111,6 +111,25 @@ export default function AdsDashboard() {
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
             </button>
           </div>
+        )}
+
+        {/* Analytics entry */}
+        {!loading && !error && accounts.length > 0 && (
+          <button
+            onClick={() => navigate('/ads/analytics')}
+            className="mb-4 flex w-full items-center gap-3 rounded-lg border bg-card p-4 text-left shadow-card transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
+              <BarChart3 className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">Analytics</p>
+              <p className="text-xs text-muted-foreground">
+                Impressions, clicks and CTR by campaign, ad set and ad
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
         )}
 
         {/* Error state */}

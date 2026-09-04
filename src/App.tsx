@@ -23,6 +23,7 @@ import DownloadDataPage from "./pages/settings/DownloadDataPage";
 import AccountStatusPage from "./pages/settings/AccountStatusPage";
 import ConnectedServicesPage from "./pages/settings/ConnectedServicesPage";
 import ManageDataPage from "./pages/settings/ManageDataPage";
+import AdvertisingDataDetailPage from "./pages/settings/AdvertisingDataDetailPage";
 import PhoneNumberPage from "./pages/settings/PhoneNumberPage";
 import PublicProfile from "./pages/PublicProfile";
 import Network from "./pages/Network";
@@ -53,6 +54,8 @@ import AdDetailPage from "./pages/ads/AdDetailPage";
 import AdReviewQueuePage from "./pages/ads/AdReviewQueuePage";
 import AdReviewDetailPage from "./pages/ads/AdReviewDetailPage";
 import AdDeliveryTestPage from "./pages/ads/AdDeliveryTestPage";
+import AdAnalyticsDashboardPage from "./pages/ads/AdAnalyticsDashboardPage";
+import AdAccountBillingPage from "./pages/ads/AdAccountBillingPage";
 import InsightsPage from "./pages/insights/InsightsPage";
 import InsightDetailPage from "./pages/insights/InsightDetailPage";
 import InsightArticlePage from "./pages/insights/InsightArticlePage";
@@ -98,6 +101,7 @@ const App = () => (
               <Route path="/settings/account/status" element={<AccountStatusPage />} />
               <Route path="/settings/privacy/connected-services" element={<ConnectedServicesPage />} />
               <Route path="/settings/privacy/manage-data" element={<ManageDataPage />} />
+              <Route path="/settings/advertising/:topic" element={<AdvertisingDataDetailPage />} />
               <Route path="/profile/:userId" element={<PublicProfile />} />
               <Route path="/network" element={<Network />} />
               <Route path="/add-post" element={<AddPost />} />
@@ -117,6 +121,7 @@ const App = () => (
               <Route path="/events" element={<Events />} />
               <Route path="/ads" element={<AdsDashboard />} />
               <Route path="/ads/accounts/:id" element={<AdAccountDetailPage />} />
+              <Route path="/ads/accounts/:id/billing" element={<AdAccountBillingPage />} />
               <Route path="/ads/accounts/:id/campaigns/new" element={<CampaignBuilderPage mode="new" />} />
               <Route path="/ads/accounts/:id/audiences/new" element={<AudienceBuilderPage mode="new" />} />
               <Route path="/ads/campaigns/:campaignId" element={<CampaignDetailPage />} />
@@ -130,6 +135,7 @@ const App = () => (
               <Route path="/ads/review" element={<AdReviewQueuePage />} />
               <Route path="/ads/review/:adId" element={<AdReviewDetailPage />} />
               <Route path="/ads/delivery" element={<AdDeliveryTestPage />} />
+              <Route path="/ads/analytics" element={<AdAnalyticsDashboardPage />} />
               <Route path="/insights" element={<InsightsPage />} />
               <Route path="/insights/:slug" element={<InsightDetailPage />} />
               <Route path="/insights/:slug/write" element={<InsightEditorPage />} />

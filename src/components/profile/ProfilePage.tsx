@@ -16,8 +16,33 @@ import type {
   ProfileCounts,
   ProfileRow,
 } from "@/components/profile/profileTypes";
+import { SELF_PROFILE_COLUMNS } from "@/components/profile/profileTypes";
+import { fetchMySettings, type MySettingsRow } from "@/lib/mySettings";
 
 type Mode = "self" | "public";
+
+/**
+ * Fold the owner-only settings columns (from get_my_settings()) back onto the
+ * safe-columns profile row, and add the two derived booleans that the public
+ * `get_public_profile()` path returns — so ProfileHeaderCard / EditProfileDialog
+ * see the same shape regardless of which branch loaded the profile.
+ */
+function mergeOwnerProfile(
+  base: ProfileRow,
+  s: MySettingsRow | null,
+): ProfileRow {
+  const prefs = (s?.preferences as Record<string, unknown> | null) ?? null;
+  return {
+    ...base,
+    email_visibility: s?.email_visibility ?? null,
+    phone_visibility: s?.phone_visibility ?? null,
+    connections_visibility: s?.connections_visibility ?? null,
+    open_to_work_visibility: s?.open_to_work_visibility ?? null,
+    preferences: (prefs as ProfileRow["preferences"]) ?? null,
+    show_active_status: prefs?.show_active_status !== false,
+    has_verified_email: !!base.email,
+  };
+}
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -199,23 +224,31 @@ const ProfilePage = ({ mode }: ProfilePageProps) => {
       let target: ProfileRow | null = null;
 
       if (mode === "self") {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("user_id", authUser.id)
-          .maybeSingle();
+        // `select('*')` on profiles no longer works for the authenticated role
+        // (owner-only columns are revoked). Read the safe columns directly and
+        // the owner-only settings columns via the get_my_settings() accessor.
+        const [{ data, error }, mySettings] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select(SELF_PROFILE_COLUMNS)
+            .eq("user_id", authUser.id)
+            .maybeSingle(),
+          fetchMySettings(),
+        ]);
         if (error) throw error;
-        target = data;
 
-        if (!target) {
+        let base = data as ProfileRow | null;
+        if (!base) {
           const { data: created, error: createErr } = await supabase
             .from("profiles")
             .insert({ user_id: authUser.id })
-            .select("*")
+            .select(SELF_PROFILE_COLUMNS)
             .single();
           if (createErr) throw createErr;
-          target = created;
+          base = created as ProfileRow;
         }
+
+        target = mergeOwnerProfile(base, mySettings);
         if (!myProfile && target) myProfile = { id: target.id };
       } else {
         const param = routeParam ?? "";
@@ -225,14 +258,15 @@ const ProfilePage = ({ mode }: ProfilePageProps) => {
           return;
         }
         // The param may be either profiles.id (links from search / network)
-        // or profiles.user_id (links from post headers). Accept both.
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .or(`id.eq.${param},user_id.eq.${param}`)
-          .maybeSingle();
+        // or profiles.user_id (links from post headers) — the accessor accepts
+        // both. It returns no row when the target is private / connections-only
+        // to a non-connection / has blocked the viewer, matching the old RLS.
+        const { data, error } = await supabase.rpc("get_public_profile", {
+          target_profile_id: param,
+        });
         if (error) throw error;
-        target = data;
+        const row = Array.isArray(data) ? data[0] : data;
+        target = (row as ProfileRow | undefined) ?? null;
 
         if (!target) {
           setNotFound(true);

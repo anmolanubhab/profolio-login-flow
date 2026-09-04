@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { AdReviewStatusBadge } from '@/components/ads/AdReviewStatusBadge';
 import { AdCreativePreview } from '@/components/ads/AdCreativePreview';
+import { AdAnalyticsPanel } from '@/components/ads/analytics/AdAnalyticsPanel';
 import {
   adFormatMeta,
   getAdContext,
@@ -305,8 +306,8 @@ export default function AdDetailPage() {
                       </div>
                       <p className="text-xs">
                         Turning it on makes it eligible for controlled delivery. It only reaches
-                        designated test users while the campaign is live — reporting comes in a
-                        later phase.
+                        designated test users while the campaign is live. Its performance shows up
+                        below.
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {ctx.ad.status === 'active' ? (
@@ -327,6 +328,8 @@ export default function AdDetailPage() {
                   )}
                 </CardContent>
               </Card>
+
+              <AdAnalyticsPanel scope="ad" scopeId={ctx.ad.id} title="Performance" />
             </div>
 
             <div className="lg:sticky lg:top-4">
