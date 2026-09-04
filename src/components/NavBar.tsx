@@ -102,6 +102,9 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
       className="navbar w-full max-w-full overflow-x-hidden transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
       style={{ transform: hideOnMobile ? 'translateY(-100%)' : 'translateY(0)' }}
     >
+      {/* Static frosted-glass layer, kept off the translateY'd <nav> itself --
+          see the .navbar-glass comment in index.css for why. */}
+      <div className="navbar-glass" aria-hidden="true" />
       <div className="navbar-inner w-full max-w-full overflow-hidden !max-w-none xl:!max-w-[1280px] gap-1 sm:gap-3">
         {/* Left: brand + search */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">

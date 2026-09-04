@@ -100,6 +100,9 @@ const BottomNavigation = () => {
             : 'translateY(0)',
         }}
       >
+        {/* Static frosted-glass layer, kept off the translateY'd <nav> itself
+            -- see the .bottom-nav-glass comment in index.css for why. */}
+        <div className="bottom-nav-glass" aria-hidden="true" />
         <div className="mx-auto flex h-16 w-full max-w-md items-stretch px-1 xs:px-2">
           {renderItem(navItems[0])}
           {renderItem(navItems[1])}
