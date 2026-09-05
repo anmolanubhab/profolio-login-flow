@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the web app's --primary token (src/index.css, light theme:
+         hsl(211 100% 40%)) so the native chrome (status bar icon tinting via
+         AppTheme, decor-view background fallback) isn't visually disconnected
+         from the Profolio brand color. NOTE: styles.xml referenced
+         @color/colorPrimary etc. without this file existing -- `cap add
+         android`'s generated template leaves these undefined, which fails
+         the Gradle resource-linking build; this file fills that gap. -->
+    <color name="colorPrimary">#0066CC</color>
+    <color name="colorPrimaryDark">#004C99</color>
+    <color name="colorAccent">#0066CC</color>
+    <!-- Matches manifest.webmanifest's background_color / theme-color
+         (#f2f3f5) used across the web app -- this is the color the decor
+         view (and therefore any edge-to-edge system-bar area) falls back to
+         before web content paints over it. -->
+    <color name="windowBackground">#F2F3F5</color>
+</resources>
