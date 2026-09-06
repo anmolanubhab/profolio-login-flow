@@ -8,7 +8,7 @@
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <!-- SystemBars (Capacitor core plugin) reads android:windowBackground
-             to color the decor view -- i.e. whatever briefly shows behind
+             to color the decor view: whatever briefly shows behind
              the status/navigation bars in edge-to-edge mode before the
              WebView paints. Matches the web app's own background so there is
              no visible mismatch/flash of a default white or black. -->
