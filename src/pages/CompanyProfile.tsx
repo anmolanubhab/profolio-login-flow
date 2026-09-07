@@ -77,11 +77,13 @@ interface Job {
 interface CompanyPost {
   id: string;
   content: string;
+  content_rich: import('@/lib/posts/richText').RichDoc | null;
   image_url: string | null;
   video_url: string | null;
   document_url: string | null;
   document_name: string | null;
   carousel_urls: string[] | null;
+  media: unknown;
   post_type: string;
   created_at: string;
   cta_enabled: boolean | null;
@@ -279,13 +281,14 @@ export default function CompanyProfile() {
       const { data, error } = await supabase
         .from('posts')
         .select(`
-          id, content, image_url, video_url, document_url, document_name, carousel_urls, post_type, created_at,
+          id, content, content_rich, image_url, video_url, document_url, document_name, carousel_urls, post_type, created_at,
           cta_enabled, cta_label, cta_url, cta_open_new_tab,
           post_reactions ( id, user_id, reaction_type ),
           comments (count),
           polls (
             id,
             question,
+            expires_at,
             poll_options ( id, option_text, position ),
             poll_votes ( id, option_id, user_id )
           )
@@ -413,6 +416,7 @@ export default function CompanyProfile() {
       user={{ id: company.id, name: company.name, avatar: company.logo_url || undefined }}
       profileLink={`/company/${company.id}`}
       content={post.content}
+      contentRich={post.content_rich}
       image={post.image_url || undefined}
       timestamp={post.created_at}
       postType={post.post_type}
@@ -420,6 +424,7 @@ export default function CompanyProfile() {
       documentUrl={post.document_url || undefined}
       documentName={post.document_name || undefined}
       carouselUrls={post.carousel_urls || undefined}
+                  media={post.media}
       poll={buildPollSummary(post.polls, currentUserProfileId)}
       onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
       reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}

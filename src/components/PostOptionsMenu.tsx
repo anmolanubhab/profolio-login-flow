@@ -52,6 +52,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Trash2,
+  Pencil,
   MoreHorizontal,
   Megaphone,
   Loader2,
@@ -60,6 +61,10 @@ import {
 import { CtaFields } from '@/components/CtaFields';
 import { validateCtaUrl, EMPTY_CTA, type CtaConfig } from '@/lib/cta';
 import { useIsPostSaved, useToggleSavePost } from '@/hooks/useSavedPosts';
+import EditPostDialog from '@/components/post/EditPostDialog';
+import type { RichDoc } from '@/lib/posts/richText';
+import { normalizePostMedia, type PostMediaItem } from '@/lib/posts/media';
+import { pruneOrphanMedia, postImagePath } from '@/lib/posts/mediaCleanup';
 
 interface PostOptionsMenuProps {
   postId: string;
@@ -80,6 +85,9 @@ interface PostOptionsMenuProps {
   companyId?: string | null;
   cta?: CtaConfig | null;
   onCtaChange?: (cta: CtaConfig | null) => void;
+  // Fired after the author saves an edit, with the new plain-text mirror + rich
+  // doc, so the card can swap its body in place (no refetch).
+  onEdited?: (content: string, contentRich: RichDoc | null, media?: PostMediaItem[]) => void;
 }
 
 // LinkedIn-parallel reporting categories. Every `value` is inside the DB
@@ -144,9 +152,11 @@ export const PostOptionsMenu = ({
   companyId,
   cta,
   onCtaChange,
+  onEdited,
 }: PostOptionsMenuProps) => {
   const [open, setOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportStep, setReportStep] = useState<ReportStep>('reason');
@@ -756,6 +766,29 @@ export const PostOptionsMenu = ({
     if (!currentUserProfileId || !canDeletePost) return;
     try {
       setIsDeleting(true);
+
+      // Capture this post's image paths BEFORE deletion so we can hand them to
+      // the server-side cleanup afterwards (the row -- and its media columns --
+      // is gone once the delete lands).
+      let imagePaths: string[] = [];
+      try {
+        const { data: pre } = await supabase
+          .from('posts')
+          .select('media, image_url, carousel_urls')
+          .eq('id', postId)
+          .maybeSingle();
+        if (pre) {
+          const urls = [
+            ...normalizePostMedia(pre.media).map((m) => m.url),
+            ...(pre.image_url ? [pre.image_url as string] : []),
+            ...((pre.carousel_urls as string[] | null) ?? []),
+          ];
+          imagePaths = urls.map(postImagePath).filter((p): p is string => !!p);
+        }
+      } catch {
+        /* cleanup is best-effort; never block the delete */
+      }
+
       // Ownership/authorization is enforced by RLS (auth.uid() = user_id, or
       // is_company_admin() for company posts) -- no need to (and no correct
       // way to) re-check it client-side against a mismatched id column here.
@@ -768,6 +801,10 @@ export const PostOptionsMenu = ({
       if (!count) {
         throw new Error('You are not authorized to delete this post.');
       }
+
+      // Now-unreferenced images are removed server-side (verifies caller
+      // ownership + that no other post still points at them). Best-effort.
+      if (imagePaths.length) void pruneOrphanMedia(imagePaths);
 
       toast({ title: 'Post deleted successfully' });
       setDeleteDialogOpen(false);
@@ -865,6 +902,9 @@ export const PostOptionsMenu = ({
       {canDeletePost && (
         <>
           <div className="h-px bg-border my-1" />
+          <MenuItem icon={Pencil} onClick={() => { closeMenu(); setEditDialogOpen(true); }}>
+            Edit Post
+          </MenuItem>
           <MenuItem icon={Trash2} onClick={() => { closeMenu(); setDeleteDialogOpen(true); }} destructive>
             Delete Post
           </MenuItem>
@@ -965,6 +1005,10 @@ export const PostOptionsMenu = ({
             {canDeletePost && (
               <>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => { closeMenu(); setEditDialogOpen(true); }}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Post
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => { closeMenu(); setDeleteDialogOpen(true); }}
                   className="text-destructive focus:text-destructive"
@@ -1025,6 +1069,15 @@ export const PostOptionsMenu = ({
           onSave={handleSaveCta}
           onRemove={handleRemoveCta}
         />
+
+        {canDeletePost && (
+          <EditPostDialog
+            postId={postId}
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            onSaved={(content, contentRich, media) => onEdited?.(content, contentRich, media)}
+          />
+        )}
       </>
     );
   }
@@ -1088,6 +1141,15 @@ export const PostOptionsMenu = ({
       />
 
       <WhyDialog open={whyDialogOpen} onOpenChange={setWhyDialogOpen} reason={whyReason} />
+
+      {canDeletePost && (
+        <EditPostDialog
+          postId={postId}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSaved={(content, contentRich, media) => onEdited?.(content, contentRich, media)}
+        />
+      )}
     </>
   );
 };

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 interface DetailPost {
   id: string;
   content: string;
+  content_rich: import('@/lib/posts/richText').RichDoc | null;
   image_url: string | null;
   created_at: string;
   post_type: string;
@@ -20,6 +21,7 @@ interface DetailPost {
   document_url: string | null;
   document_name: string | null;
   carousel_urls: string[] | null;
+  media: unknown;
   company_id: string | null;
   company_name: string | null;
   company_logo: string | null;
@@ -82,6 +84,7 @@ const PostDetail = () => {
           polls (
             id,
             question,
+            expires_at,
             poll_options ( id, option_text, position ),
             poll_votes ( id, option_id, user_id )
           )
@@ -198,6 +201,7 @@ const PostDetail = () => {
               }
               profileLink={post.posted_as === 'company' && post.company_id ? `/company/${post.company_id}` : undefined}
               content={post.content}
+              contentRich={post.content_rich}
               image={post.image_url || undefined}
               timestamp={post.created_at}
               postType={post.post_type}
@@ -205,6 +209,7 @@ const PostDetail = () => {
               documentUrl={post.document_url || undefined}
               documentName={post.document_name || undefined}
               carouselUrls={post.carousel_urls || undefined}
+                  media={post.media}
               poll={buildPollSummary(post.polls, currentUserProfileId)}
               onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
               reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId)}

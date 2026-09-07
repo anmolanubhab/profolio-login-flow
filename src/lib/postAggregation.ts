@@ -21,6 +21,8 @@ export interface PollVote {
 export interface PollData {
   id: string;
   question: string;
+  /** Poll close time (ISO). NULL = never expires. */
+  expires_at?: string | null;
   poll_options: PollOption[];
   poll_votes: PollVote[];
 }
@@ -42,12 +44,16 @@ export const buildPollSummary = (poll: PollData | null | undefined, myProfileId:
     .sort((a, b) => a.position - b.position)
     .map((o) => ({ id: o.id, text: o.option_text, votes: votesByOption.get(o.id) || 0 }));
 
+  const expiresAt = poll.expires_at ?? null;
+
   return {
     id: poll.id,
     question: poll.question,
     totalVotes: poll.poll_votes.length,
     userOptionId,
     options,
+    expiresAt,
+    isClosed: !!expiresAt && new Date(expiresAt).getTime() <= Date.now(),
   };
 };
 

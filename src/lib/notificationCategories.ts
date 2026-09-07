@@ -33,9 +33,9 @@ export const NOTIFICATION_CATEGORIES: readonly NotificationCategory[] = [
   },
   {
     key: 'mentions',
-    label: 'Mentions',
-    description: 'When someone mentions you in a post or comment',
-    types: ['comment_mention', 'mention'],
+    label: 'Mentions and tags',
+    description: 'When someone mentions you in a post or comment, or tags you in a photo',
+    types: ['comment_mention', 'post_mention', 'mention', 'photo_tag'],
   },
   {
     key: 'network',
