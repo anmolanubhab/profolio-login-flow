@@ -54,6 +54,9 @@ export interface NotificationPayload {
   insight_title?: string;
   article_slug?: string;
   article_title?: string;
+  job_id?: string;
+  score?: number;
+  explanation_text?: string;
 }
 
 export interface NotificationLike {
@@ -148,8 +151,17 @@ export const getNotificationMessage = (notification: NotificationLike): string =
       return `${senderName} viewed your profile`;
     case 'profile_save':
       return `${senderName} saved your profile`;
-    case 'new_job':
-      return `New job posted: ${payload?.job_title || 'Check it out'}`;
+    case 'new_job': {
+      // Older rows (pre-Phase-4, or the retired notify-everyone trigger)
+      // never had a score/explanation -- fall back to the original generic
+      // line so they keep rendering sensibly rather than showing "undefined".
+      if (payload?.score == null) {
+        return `New job posted: ${payload?.job_title || 'Check it out'}`;
+      }
+      const companyPart = payload?.company_name ? ` at ${payload.company_name}` : '';
+      const explanationPart = payload?.explanation_text ? ` — ${payload.explanation_text}` : '';
+      return `${payload.score}% match: ${payload?.job_title || 'a new job'}${companyPart}${explanationPart}`;
+    }
     case 'job_application_received':
       return `${payload?.candidate_name || 'A candidate'} applied to ${payload?.job_title || 'your job posting'}`;
     case 'application_stage_changed': {
@@ -198,7 +210,10 @@ export const getNotificationLink = (notification: NotificationLike): string => {
     case 'profile_update':
       return payload?.sender_id ? `/profile/${payload.sender_id}` : '/notifications';
     case 'new_job':
-      return '/jobs';
+      // Deep-links straight to the job's existing details dialog on the
+      // Jobs page (same ?param convention Jobs.tsx/AddPost.tsx already use
+      // for other deep links) -- no new job-details page/route.
+      return payload?.job_id ? `/jobs?job=${payload.job_id}` : '/jobs';
     case 'application_stage_changed':
       return '/dashboard?tab=applications';
     case 'job_application_received':

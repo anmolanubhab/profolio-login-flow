@@ -11,6 +11,7 @@ import { AddSectionMenu } from "@/components/profile/AddSectionMenu";
 import { ProfileMoreMenu } from "@/components/profile/ProfileMoreMenu";
 import { ProfileStrength } from "@/components/profile/ProfileStrength";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
+import { JobPreferencesDialog, JobPreferencesValues } from "@/components/jobs/JobPreferencesDialog";
 import {
   jumpToProfileSection,
   scrollToProfileHeader,
@@ -43,6 +44,7 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
   const [contactOpen, setContactOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [jobPreferencesOpen, setJobPreferencesOpen] = useState(false);
   const [aboutExpanded, setAboutExpanded] = useState(false);
 
   // "Active now" — driven by profiles.last_active_at (heartbeat) + the
@@ -240,6 +242,16 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
               </div>
             </div>
           )}
+
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => setJobPreferencesOpen(true)}
+              className="mt-1 text-left text-xs font-medium text-primary hover:underline"
+            >
+              Job Preferences
+            </button>
+          )}
         </div>
 
         {/* actions */}
@@ -321,6 +333,29 @@ export const ProfileHeaderCard = ({ ctx, gated }: ProfileHeaderCardProps) => {
           onSaved={(patch) => {
             ctx.patchProfile(patch);
             notifyProfileChanged();
+          }}
+        />
+      )}
+
+      {isOwner && (
+        <JobPreferencesDialog
+          open={jobPreferencesOpen}
+          onOpenChange={setJobPreferencesOpen}
+          profileUserId={profile.user_id}
+          initialValues={{
+            open_to_roles: profile.open_to_roles,
+            preferred_locations: profile.preferred_locations,
+            preferred_work_modes: profile.preferred_work_modes,
+            job_type: profile.job_type,
+            preferred_industries: profile.preferred_industries,
+            salary_min_expected: profile.salary_min_expected,
+            salary_max_expected: profile.salary_max_expected,
+            salary_currency: profile.salary_currency,
+            open_to_work: profile.open_to_work ?? false,
+            actively_looking: profile.actively_looking ?? false,
+          }}
+          onSaved={(values) => {
+            ctx.patchProfile(values as Partial<typeof profile>);
           }}
         />
       )}

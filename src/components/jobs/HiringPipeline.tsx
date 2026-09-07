@@ -19,9 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Users2, Sparkles, FileText, Loader2, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Users2, Sparkles, FileText, Loader2, ExternalLink, RefreshCw } from 'lucide-react';
 import { ApplicationResumeResult } from './applicationTypes';
 import { ResumeSnapshotView } from './ResumeSnapshotView';
+import { MatchDetailsDialog } from './MatchDetailsDialog';
 
 interface CandidateResourcesResult {
   status: 'ok' | 'not_authorized';
@@ -87,6 +89,20 @@ interface HiringPipelineProps {
   jobs: HiringJob[];
 }
 
+interface CandidateMatch {
+  candidate_profile_id: string;
+  candidate_user_id: string;
+  display_name: string | null;
+  headline: string | null;
+  location: string | null;
+  avatar_url: string | null;
+  score: number;
+  eligibility_status: 'eligible' | 'not_eligible';
+  matched_skills: string[];
+  missing_skills: string[];
+  has_applied: boolean;
+}
+
 export default function HiringPipeline({ companyId, jobs }: HiringPipelineProps) {
   const { toast } = useToast();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -100,6 +116,13 @@ export default function HiringPipeline({ companyId, jobs }: HiringPipelineProps)
   const [loadingResume, setLoadingResume] = useState(false);
   const [candidateResources, setCandidateResources] = useState<CandidateResourcesResult | null>(null);
   const [loadingPdfUrl, setLoadingPdfUrl] = useState(false);
+  const [candidateMatches, setCandidateMatches] = useState<CandidateMatch[]>([]);
+  const [loadingMatches, setLoadingMatches] = useState(false);
+  const [refreshingMatches, setRefreshingMatches] = useState(false);
+  const [matchesOffset, setMatchesOffset] = useState(0);
+  const [hasMoreMatches, setHasMoreMatches] = useState(false);
+  const [whyMatchCandidate, setWhyMatchCandidate] = useState<CandidateMatch | null>(null);
+  const MATCHES_PAGE_SIZE = 20;
 
   useEffect(() => {
     checkAdmin();
@@ -114,8 +137,50 @@ export default function HiringPipeline({ companyId, jobs }: HiringPipelineProps)
   useEffect(() => {
     if (isAdmin && selectedJobId) {
       fetchApplications(selectedJobId);
+      setMatchesOffset(0);
+      fetchCandidateMatches(selectedJobId, 0);
     }
   }, [isAdmin, selectedJobId]);
+
+  /** Reads the canonical hiring_match_scores via get_job_candidate_matches -- one paginated RPC call, no client-side scoring, no per-candidate queries. */
+  const fetchCandidateMatches = async (jobId: string, offset: number) => {
+    setLoadingMatches(true);
+    try {
+      const { data, error } = await supabase.rpc('get_job_candidate_matches', {
+        p_job_id: jobId,
+        p_limit: MATCHES_PAGE_SIZE,
+        p_offset: offset,
+      });
+      if (error) throw error;
+      const rows = (data || []).map((r) => ({
+        ...r,
+        matched_skills: Array.isArray(r.matched_skills) ? (r.matched_skills as string[]) : [],
+        missing_skills: Array.isArray(r.missing_skills) ? (r.missing_skills as string[]) : [],
+      })) as CandidateMatch[];
+      setCandidateMatches((prev) => (offset === 0 ? rows : [...prev, ...rows]));
+      setHasMoreMatches(rows.length === MATCHES_PAGE_SIZE);
+      setMatchesOffset(offset);
+    } catch (error) {
+      toast({ title: 'Error loading candidate matches', description: error instanceof Error ? error.message : 'Please try again', variant: 'destructive' });
+    } finally {
+      setLoadingMatches(false);
+    }
+  };
+
+  /** Manual "Refresh matches" -- Phase 3 scope: recalculated on request, not on every page load or via an always-on cron. */
+  const handleRefreshMatches = async () => {
+    if (!selectedJobId) return;
+    setRefreshingMatches(true);
+    try {
+      await supabase.rpc('refresh_job_candidate_matches', { p_job_id: selectedJobId, p_limit: 200 });
+      await fetchCandidateMatches(selectedJobId, 0);
+      toast({ title: 'Candidate matches refreshed' });
+    } catch (error) {
+      toast({ title: 'Error refreshing matches', description: error instanceof Error ? error.message : 'Please try again', variant: 'destructive' });
+    } finally {
+      setRefreshingMatches(false);
+    }
+  };
 
   const checkAdmin = async () => {
     setCheckingAdmin(true);
@@ -254,6 +319,7 @@ export default function HiringPipeline({ companyId, jobs }: HiringPipelineProps)
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -418,5 +484,112 @@ export default function HiringPipeline({ companyId, jobs }: HiringPipelineProps)
         </DialogContent>
       </Dialog>
     </Card>
+
+    {/* Best Matching Candidates -- Phase 3. Same job selector/authorization
+        as the pipeline above; a single canonical engine (calculate_job_match)
+        and table (hiring_match_scores) power both this and the "Match: X%"
+        badge above. Applicants and non-applicant strong matches are clearly
+        labeled separately, per product decision that this is a decision-
+        support signal, not an automatic hiring/shortlisting action. */}
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            Best Matching Candidates
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={handleRefreshMatches} disabled={refreshingMatches || !selectedJobId}>
+            {refreshingMatches ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
+            Refresh matches
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Decision-support signal based on skills, experience and preferences -- not an automatic hiring decision. You still choose who to shortlist.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {loadingMatches ? (
+          <div className="space-y-3">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ) : candidateMatches.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Sparkles className="w-10 h-10 mx-auto mb-2 opacity-50" />
+            <p className="mb-1">No strong matching candidates found yet.</p>
+            <p className="text-xs">Try broadening the job requirements, or check again later.</p>
+          </div>
+        ) : (
+          <>
+            {candidateMatches.filter((c) => c.has_applied).length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-foreground">Matching Applicants</h4>
+                {candidateMatches.filter((c) => c.has_applied).map((c) => (
+                  <CandidateMatchRow key={c.candidate_profile_id} candidate={c} onWhyMatch={() => setWhyMatchCandidate(c)} />
+                ))}
+              </div>
+            )}
+            {candidateMatches.filter((c) => !c.has_applied).length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-foreground">Recommended Candidates (not yet applied)</h4>
+                {candidateMatches.filter((c) => !c.has_applied).map((c) => (
+                  <CandidateMatchRow key={c.candidate_profile_id} candidate={c} onWhyMatch={() => setWhyMatchCandidate(c)} />
+                ))}
+              </div>
+            )}
+            {hasMoreMatches && (
+              <div className="text-center pt-2">
+                <Button variant="outline" size="sm" onClick={() => fetchCandidateMatches(selectedJobId, matchesOffset + MATCHES_PAGE_SIZE)} disabled={loadingMatches}>
+                  Load more
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+
+    {whyMatchCandidate && (
+      <MatchDetailsDialog
+        open={!!whyMatchCandidate}
+        onOpenChange={(o) => !o && setWhyMatchCandidate(null)}
+        jobId={selectedJobId}
+        jobTitle={jobs.find((j) => j.id === selectedJobId)?.title || ''}
+        userId={whyMatchCandidate.candidate_user_id}
+      />
+    )}
+    </>
+  );
+}
+
+function CandidateMatchRow({ candidate, onWhyMatch }: { candidate: CandidateMatch; onWhyMatch: () => void }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-lg border border-border">
+      <div className="flex items-center gap-3 min-w-0">
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={candidate.avatar_url || undefined} />
+          <AvatarFallback>{candidate.display_name?.charAt(0) || 'C'}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-foreground truncate">{candidate.display_name || 'Candidate'}</p>
+            <Badge variant="secondary" className="text-xs shrink-0">{Math.round(candidate.score)}% Match</Badge>
+          </div>
+          {candidate.headline && <p className="text-xs text-muted-foreground truncate">{candidate.headline}</p>}
+          {candidate.location && <p className="text-xs text-muted-foreground truncate">{candidate.location}</p>}
+          {candidate.matched_skills.length > 0 && (
+            <p className="text-xs text-muted-foreground truncate mt-0.5">
+              Skills: {candidate.matched_skills.slice(0, 4).join(' · ')}
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+        <Button variant="ghost" size="sm" onClick={onWhyMatch}>Why this matches</Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link to={`/profile/${candidate.candidate_user_id}`}>View Profile</Link>
+        </Button>
+      </div>
+    </div>
   );
 }
