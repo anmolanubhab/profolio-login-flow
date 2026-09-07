@@ -32,6 +32,7 @@ import Notifications from "./pages/Notifications";
 import SavedPosts from "./pages/SavedPosts";
 import FeedPreferences from "./pages/FeedPreferences";
 import PostDetail from "./pages/PostDetail";
+import HashtagPage from "./pages/HashtagPage";
 import Story from "./pages/Story";
 import Jobs from "./pages/Jobs";
 import Companies from "./pages/Companies";
@@ -109,6 +110,7 @@ const App = () => (
               <Route path="/saved-posts" element={<SavedPosts />} />
               <Route path="/feed/preferences" element={<FeedPreferences />} />
               <Route path="/post/:postId" element={<PostDetail />} />
+              <Route path="/hashtag/:tag" element={<HashtagPage />} />
               <Route path="/story/:storyId" element={<Story />} />
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/companies" element={<Companies />} />

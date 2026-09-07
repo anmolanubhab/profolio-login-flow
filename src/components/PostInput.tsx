@@ -2,10 +2,28 @@ import { useState, useRef, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import PostComposerEditor from '@/components/post/PostComposerEditor';
+import {
+  createEmptyDoc,
+  docToJson,
+  isDocEmpty,
+  MAX_POST_CHARS,
+  type RichDoc,
+} from '@/lib/posts/richText';
+import {
+  POLL_DURATIONS,
+  DEFAULT_POLL_DURATION,
+  POLL_MAX_OPTION,
+  validatePoll,
+  type PollDuration,
+} from '@/lib/posts/poll';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Camera, FileText, User, X, Video as VideoIcon, Images, BarChart3, Plus, Building2 } from 'lucide-react';
+import PostImageEditor from '@/components/post/PostImageEditor';
+import { draftFromFile, uploadDraftImages, type DraftImage } from '@/lib/posts/mediaDrafts';
+import { isAcceptableImage, mediaToJson, MAX_POST_IMAGES, readImageSize } from '@/lib/posts/media';
+import { reconcilePostMediaTags } from '@/lib/posts/mediaTags';
+import { Camera, FileText, User, X, Video as VideoIcon, BarChart3, Plus, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { rateLimiter, RATE_LIMITS, isServerRateLimitError, SERVER_RATE_LIMIT_MESSAGE } from '@/lib/rate-limiter';
@@ -29,13 +47,15 @@ interface OwnedCompany {
   logo_url: string | null;
 }
 
-const MAX_CAROUSEL_IMAGES = 10;
 const MAX_POLL_OPTIONS = 6;
 const MIN_POLL_OPTIONS = 2;
 const POST_AS_SELF = 'self';
 
 const PostInput = ({ user, onPostCreated }: PostInputProps) => {
-  const [postContent, setPostContent] = useState('');
+  // Rich-text document (Phase 6A). `postPlainText` is the flattened mirror kept
+  // in sync by the editor — used for validation and the `posts.content` column.
+  const [doc, setDoc] = useState<RichDoc>(createEmptyDoc);
+  const [postPlainText, setPostPlainText] = useState('');
   const [mode, setMode] = useState<AttachmentMode>('none');
   const [isPosting, setIsPosting] = useState(false);
 
@@ -57,11 +77,9 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
     loadOwnedCompanies();
   }, []);
 
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-  const [carouselFiles, setCarouselFiles] = useState<File[]>([]);
-  const [carouselPreviews, setCarouselPreviews] = useState<string[]>([]);
+  // Phase 6C: photos flow through the PostImageEditor (crop + ALT + reorder).
+  const [photoDrafts, setPhotoDrafts] = useState<DraftImage[]>([]);
+  const [imageEditorOpen, setImageEditorOpen] = useState(false);
 
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
@@ -69,24 +87,22 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
 
   const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
+  const [pollDuration, setPollDuration] = useState<PollDuration>(DEFAULT_POLL_DURATION);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const carouselInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const clearAttachments = () => {
-    setSelectedImage(null);
-    setImagePreview(null);
-    setCarouselFiles([]);
-    setCarouselPreviews([]);
+    setPhotoDrafts([]);
+    setImageEditorOpen(false);
     setSelectedVideo(null);
     setVideoPreview(null);
     setSelectedDocument(null);
     setPollOptions(['', '']);
+    setPollDuration(DEFAULT_POLL_DURATION);
     if (imageInputRef.current) imageInputRef.current.value = '';
-    if (carouselInputRef.current) carouselInputRef.current.value = '';
     if (videoInputRef.current) videoInputRef.current.value = '';
     if (documentInputRef.current) documentInputRef.current.value = '';
   };
@@ -102,51 +118,40 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
     setMode(next);
   };
 
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast({ title: "Invalid file type", description: "Please select an image file.", variant: "destructive" });
-      return;
-    }
-    setMode('image');
-    setSelectedImage(file);
-    const reader = new FileReader();
-    reader.onload = (e) => setImagePreview(e.target?.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleCarouselSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
+  // Photo button -> OS picker -> open the editor seeded with the picked files
+  // (matching LinkedIn's "Photo -> Editor" flow).
+  const handlePhotosPicked = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []).slice(0, MAX_POST_IMAGES);
+    if (imageInputRef.current) imageInputRef.current.value = '';
     if (files.length === 0) return;
-
-    const invalid = files.find((f) => !f.type.startsWith('image/'));
-    if (invalid) {
-      toast({ title: "Invalid file type", description: "Carousel posts only support images.", variant: "destructive" });
-      return;
+    const drafts: DraftImage[] = [];
+    for (const f of files) {
+      const err = isAcceptableImage(f);
+      if (err) {
+        toast({ title: 'Photo skipped', description: err, variant: 'destructive' });
+        continue;
+      }
+      const d = await draftFromFile(f);
+      const size = await readImageSize(d.src);
+      d.w = size.w || undefined;
+      d.h = size.h || undefined;
+      drafts.push(d);
     }
-
-    const combined = [...carouselFiles, ...files].slice(0, MAX_CAROUSEL_IMAGES);
-    setMode('carousel');
-    setCarouselFiles(combined);
-
-    Promise.all(
-      combined.map(
-        (file) =>
-          new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target?.result as string);
-            reader.readAsDataURL(file);
-          })
-      )
-    ).then(setCarouselPreviews);
+    if (drafts.length === 0) return;
+    clearAttachments();
+    setMode('image');
+    setPhotoDrafts(drafts);
+    setImageEditorOpen(true);
   };
 
-  const removeCarouselImage = (index: number) => {
-    const nextFiles = carouselFiles.filter((_, i) => i !== index);
-    setCarouselFiles(nextFiles);
-    setCarouselPreviews((prev) => prev.filter((_, i) => i !== index));
-    if (nextFiles.length === 0) setMode('none');
+  const openPhotoPicker = () => {
+    if (photoDrafts.length > 0) setImageEditorOpen(true);
+    else imageInputRef.current?.click();
+  };
+
+  const removeAllPhotos = () => {
+    clearAttachments();
+    setMode('none');
   };
 
   const handleVideoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,14 +193,14 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
 
   const canSubmit = () => {
     if (isPosting) return false;
+    if (postPlainText.length > MAX_POST_CHARS) return false;
     if (mode === 'poll') {
-      const validOptions = pollOptions.map((o) => o.trim()).filter(Boolean);
-      return postContent.trim().length > 0 && validOptions.length >= MIN_POLL_OPTIONS;
+      return validatePoll(postPlainText, pollOptions) === null;
     }
-    if (mode === 'carousel') return carouselFiles.length >= 2;
+    if (mode === 'image') return photoDrafts.length >= 1;
     if (mode === 'video') return !!selectedVideo;
     if (mode === 'document') return !!selectedDocument;
-    return postContent.trim().length > 0 || !!selectedImage;
+    return postPlainText.trim().length > 0;
   };
 
   const handlePost = async () => {
@@ -220,25 +225,42 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
     setIsPosting(true);
     try {
       const { sanitizeTextContent } = await import('@/lib/input-sanitizer');
-      const sanitizedContent = sanitizeTextContent(postContent);
+      const sanitizedContent = sanitizeTextContent(postPlainText);
+      // Only persist the rich doc when it actually carries text — an
+      // image-only post stays a plain-text (NULL content_rich) row so the
+      // renderer's legacy path handles it and the entity trigger no-ops.
+      const richForInsert = isDocEmpty(doc) ? null : doc;
 
       const postingAsCompany = postAsCompanyId !== POST_AS_SELF
         ? ownedCompanies.find((c) => c.id === postAsCompanyId)
         : undefined;
 
       if (mode === 'poll') {
+        const pollError = validatePoll(postPlainText, pollOptions);
+        if (pollError) {
+          toast({ title: 'Poll needs a fix', description: pollError, variant: 'destructive' });
+          setIsPosting(false);
+          return;
+        }
         const validOptions = pollOptions.map((o) => sanitizeTextContent(o.trim())).filter(Boolean);
-        // Posts + poll + options are created atomically server-side, so a
-        // failure partway through can never leave a poll-typed post with no
-        // actual poll behind it.
-        const { error } = await supabase.rpc('create_poll_post', {
+        // Post + poll + options are created atomically server-side (and the RPC
+        // re-validates duration / dedupe / limits), so a failure partway
+        // through can never leave a poll-typed post with no poll behind it.
+        const { data: newPollPostId, error } = await supabase.rpc('create_poll_post', {
           p_content: sanitizedContent,
           p_options: validOptions,
+          p_duration: pollDuration,
           ...(postingAsCompany
             ? { p_company_id: postingAsCompany.id, p_company_name: postingAsCompany.name, p_company_logo: postingAsCompany.logo_url || undefined }
             : {}),
         });
         if (error) throw error;
+        // Attach the rich version of the question so @mentions / #hashtags /
+        // formatting render (and the sync_post_entities trigger fires on the
+        // content_rich UPDATE, just like a normal post).
+        if (newPollPostId && !isDocEmpty(doc)) {
+          await supabase.from('posts').update({ content_rich: docToJson(doc) }).eq('id', newPollPostId as string);
+        }
       } else {
         const { secureUpload } = await import('@/lib/secure-upload');
 
@@ -247,21 +269,15 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
         let documentUrl: string | null = null;
         let documentName: string | null = null;
         let carouselUrls: string[] | null = null;
+        let mediaJson: ReturnType<typeof mediaToJson> | null = null;
         let postType: 'text' | 'carousel' | 'document' | 'video' = 'text';
 
-        if (mode === 'image' && selectedImage) {
-          const result = await secureUpload({ bucket: 'post-images', file: selectedImage, userId: currentUser.id });
-          if (!result.success) throw new Error(result.error || 'Upload failed');
-          imageUrl = result.url!;
-        } else if (mode === 'carousel' && carouselFiles.length >= 2) {
-          const uploaded: string[] = [];
-          for (const file of carouselFiles) {
-            const result = await secureUpload({ bucket: 'post-images', file, userId: currentUser.id });
-            if (!result.success) throw new Error(result.error || 'Upload failed');
-            uploaded.push(result.url!);
-          }
-          carouselUrls = uploaded;
-          postType = 'carousel';
+        if (mode === 'image' && photoDrafts.length > 0) {
+          const media = await uploadDraftImages(photoDrafts, currentUser.id);
+          mediaJson = mediaToJson(media);
+          imageUrl = media[0]?.url ?? null;
+          carouselUrls = media.length > 1 ? media.map((m) => m.url) : null;
+          postType = media.length > 1 ? 'carousel' : 'text';
         } else if (mode === 'video' && selectedVideo) {
           const result = await secureUpload({ bucket: 'post-videos', file: selectedVideo, userId: currentUser.id });
           if (!result.success) throw new Error(result.error || 'Upload failed');
@@ -275,26 +291,38 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
           postType = 'document';
         }
 
-        const { error } = await supabase.from('posts').insert({
+        const { data: inserted, error } = await supabase.from('posts').insert({
           content: sanitizedContent,
+          content_rich: docToJson(richForInsert),
           image_url: imageUrl,
           video_url: videoUrl,
           document_url: documentUrl,
           document_name: documentName,
           carousel_urls: carouselUrls,
+          media: mediaJson,
           post_type: postType,
           user_id: currentUser.id,
           ...(postingAsCompany
             ? { posted_as: 'company', company_id: postingAsCompany.id, company_name: postingAsCompany.name, company_logo: postingAsCompany.logo_url }
             : {}),
-        });
+        }).select('id').single();
 
         if (error) throw error;
+
+        // Persist photo tags (people attached to specific images). Separate
+        // from caption @mentions; each new tag fires one photo_tag notification.
+        if (inserted?.id && mode === 'image' && photoDrafts.some((d) => d.tags.length > 0)) {
+          await reconcilePostMediaTags(
+            inserted.id,
+            photoDrafts.map((d) => ({ mediaKey: d.mediaKey, tags: d.tags })),
+          );
+        }
       }
 
       toast({ title: "Post created!", description: "Your post has been shared successfully." });
 
-      setPostContent('');
+      setDoc(createEmptyDoc());
+      setPostPlainText('');
       clearAttachments();
       setMode('none');
       onPostCreated?.();
@@ -356,55 +384,47 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
             </AvatarFallback>
           </Avatar>
 
-          <div className="flex-1">
-            <Textarea
-              placeholder={mode === 'poll' ? "Ask a question…" : "Share your achievement, upload a certificate, or update your resume…"}
-              value={postContent}
-              onChange={(e) => setPostContent(e.target.value)}
-              className="min-h-[60px] resize-none border-0 bg-secondary text-sm placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary rounded-lg px-4 py-3 transition-all duration-200"
-            />
+          <div className="flex-1 min-w-0">
+            <div className="rounded-lg bg-secondary px-3 py-2 focus-within:ring-1 focus-within:ring-primary transition-all duration-200">
+              <PostComposerEditor
+                value={doc}
+                onChange={(nextDoc, text) => {
+                  setDoc(nextDoc);
+                  setPostPlainText(text);
+                }}
+                placeholder={mode === 'poll'
+                  ? 'Ask a question…'
+                  : 'Share your achievement, upload a certificate, or update your resume…'}
+                disabled={isPosting}
+                minHeight="60px"
+              />
+            </div>
+            {postPlainText.length > MAX_POST_CHARS && (
+              <p className="mt-1 text-xs text-destructive">
+                {postPlainText.length.toLocaleString()} / {MAX_POST_CHARS.toLocaleString()} characters
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Image Preview */}
-        {mode === 'image' && imagePreview && (
-          <div className="mt-4 relative">
-            <img src={imagePreview} alt="Preview" className="max-h-64 w-full object-cover rounded-lg" />
-            <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-8 w-8 rounded-full" onClick={() => switchMode('none')}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        {/* Carousel Preview */}
-        {mode === 'carousel' && carouselPreviews.length > 0 && (
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            {carouselPreviews.map((src, i) => (
-              <div key={i} className="relative shrink-0">
-                <img src={src} alt={`Slide ${i + 1}`} className="h-32 w-32 object-cover rounded-lg" />
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-1 right-1 h-6 w-6 rounded-full"
-                  onClick={() => removeCarouselImage(i)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
+        {/* Photos preview strip */}
+        {mode === 'image' && photoDrafts.length > 0 && (
+          <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1">
+            {photoDrafts.map((d) => (
+              <img
+                key={d.key}
+                src={d.src}
+                alt={d.alt || 'Selected photo'}
+                className="h-20 w-20 shrink-0 rounded-lg object-cover"
+              />
             ))}
-            {carouselFiles.length < MAX_CAROUSEL_IMAGES && (
-              <button
-                type="button"
-                className="h-32 w-32 shrink-0 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
-                onClick={() => carouselInputRef.current?.click()}
-              >
-                <Plus className="h-6 w-6" />
-              </button>
-            )}
+            <div className="ml-1 flex shrink-0 flex-col gap-1">
+              <Button variant="outline" size="sm" onClick={() => setImageEditorOpen(true)}>Edit photos</Button>
+              <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={removeAllPhotos}>
+                <X className="mr-1 h-3.5 w-3.5" /> Remove
+              </Button>
+            </div>
           </div>
-        )}
-        {mode === 'carousel' && carouselFiles.length < 2 && (
-          <p className="mt-2 text-xs text-muted-foreground">Add at least 2 images to make a carousel post.</p>
         )}
 
         {/* Video Preview */}
@@ -440,7 +460,7 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
                   placeholder={`Option ${i + 1}`}
                   value={option}
                   onChange={(e) => updatePollOption(i, e.target.value)}
-                  maxLength={80}
+                  maxLength={POLL_MAX_OPTION}
                 />
                 {pollOptions.length > MIN_POLL_OPTIONS && (
                   <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removePollOption(i)}>
@@ -454,12 +474,24 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
                 <Plus className="h-4 w-4 mr-1.5" /> Add option
               </Button>
             )}
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-xs text-muted-foreground shrink-0">Poll length</span>
+              <Select value={pollDuration} onValueChange={(v) => setPollDuration(v as PollDuration)}>
+                <SelectTrigger className="h-8 w-auto text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {POLL_DURATIONS.map((d) => (
+                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
 
         {/* Hidden file inputs */}
-        <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageSelect} className="hidden" />
-        <input ref={carouselInputRef} type="file" accept="image/*" multiple onChange={handleCarouselSelect} className="hidden" />
+        <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple onChange={handlePhotosPicked} className="hidden" />
         <input ref={videoInputRef} type="file" accept="video/*" onChange={handleVideoSelect} className="hidden" />
         <input ref={documentInputRef} type="file" accept="application/pdf" onChange={handleDocumentSelect} className="hidden" />
 
@@ -470,22 +502,11 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
               variant="ghost"
               size="sm"
               className={`text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all duration-200 ease-in-out text-sm font-medium ${mode === 'image' ? 'text-primary bg-secondary' : ''}`}
-              onClick={() => (mode === 'image' ? switchMode('none') : imageInputRef.current?.click())}
+              onClick={openPhotoPicker}
               disabled={isPosting}
             >
               <Camera className="h-5 w-5 sm:mr-1.5" />
               <span className="hidden sm:inline">Photo</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-all duration-200 ease-in-out text-sm font-medium ${mode === 'carousel' ? 'text-primary bg-secondary' : ''}`}
-              onClick={() => (mode === 'carousel' ? switchMode('none') : carouselInputRef.current?.click())}
-              disabled={isPosting}
-            >
-              <Images className="h-5 w-5 sm:mr-1.5" />
-              <span className="hidden sm:inline">Carousel</span>
             </Button>
 
             <Button
@@ -532,6 +553,17 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
           </Button>
         </div>
       </CardContent>
+
+      <PostImageEditor
+        open={imageEditorOpen}
+        initial={photoDrafts}
+        onCancel={() => setImageEditorOpen(false)}
+        onDone={(items) => {
+          setPhotoDrafts(items);
+          setImageEditorOpen(false);
+          if (items.length === 0) setMode('none');
+        }}
+      />
     </Card>
   );
 };

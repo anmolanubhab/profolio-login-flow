@@ -20,6 +20,21 @@ export function escapeHtml(text: string): string {
 }
 
 /**
+ * Reverses escapeHtml() — used when loading a legacy plain-text post
+ * (posts.content is HTML-escaped) back into an editor for editing.
+ * `&amp;` is decoded last so a sequence like `&amp;lt;` is not double-decoded.
+ */
+export function unescapeHtml(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x2F;/g, '/')
+    .replace(/&amp;/g, '&');
+}
+
+/**
  * Sanitizes user input for safe storage and display
  */
 export function sanitizeInput(input: string): string {

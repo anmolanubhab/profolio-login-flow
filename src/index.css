@@ -746,3 +746,104 @@ All colors MUST be HSL.
   pointer-events: none;
   height: 0;
 }
+
+/* --------------------------------------------------------------------------
+   Phase 6A — advanced post composer + rich-text post rendering.
+   Scoped to .post-rt* / .post-mention / .post-hashtag so nothing leaks into
+   the rest of the app (mirrors the .resume-rt / .insight-prose approach).
+   -------------------------------------------------------------------------- */
+
+/* ---- shared: @mention + #hashtag chips (composer AND rendered post) ---- */
+.post-mention,
+.post-hashtag {
+  color: hsl(var(--primary));
+  font-weight: 600;
+  white-space: nowrap;
+}
+.post-hashtag { font-weight: 500; }
+.post-rt-editor .post-mention,
+.post-rt-editor .post-hashtag { cursor: text; }
+
+/* ---- editor surface ---- */
+.post-rt-editor {
+  outline: none;
+  min-height: var(--post-rt-min-height, 60px);
+  font-size: 14px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+.post-rt-editor p { margin: 0 0 0.5em; }
+.post-rt-editor > :last-child { margin-bottom: 0; }
+.post-rt-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: hsl(var(--muted-foreground));
+}
+.post-rt-editor:focus { outline: none; }
+
+/* ---- lists / quote / code — shared rules for the editor and the reader ---- */
+.post-rt-editor ul,
+.post-rt ul.post-rt-ul { margin: 0.25em 0; padding-left: 1.35em; list-style: disc outside; }
+.post-rt-editor ol,
+.post-rt ol.post-rt-ol { margin: 0.25em 0; padding-left: 1.35em; list-style: decimal outside; }
+.post-rt-editor li,
+.post-rt .post-rt-ul li,
+.post-rt .post-rt-ol li { margin: 0.15em 0; display: list-item; }
+
+.post-rt-editor ul[data-type="taskList"],
+.post-rt ul.post-rt-tasklist { list-style: none; margin: 0.25em 0; padding-left: 0; }
+.post-rt-editor ul[data-type="taskList"] li,
+.post-rt li.post-rt-taskitem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45em;
+  margin: 0.15em 0;
+}
+.post-rt-editor ul[data-type="taskList"] li > label {
+  margin-top: 0.15em;
+  user-select: none;
+}
+.post-rt-editor ul[data-type="taskList"] li > div { flex: 1 1 auto; }
+.post-rt li.post-rt-taskitem .post-rt-checkbox { line-height: 1.4; }
+.post-rt li.post-rt-taskitem .post-rt-taskitem-body { flex: 1 1 auto; }
+.post-rt li.post-rt-taskitem[data-checked="true"] .post-rt-taskitem-body { color: hsl(var(--muted-foreground)); }
+
+.post-rt-editor blockquote,
+.post-rt blockquote.post-rt-quote {
+  margin: 0.4em 0;
+  padding-left: 0.8em;
+  border-left: 3px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+
+.post-rt-code,
+.post-rt-editor code {
+  background: hsl(var(--secondary));
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+  font-size: 0.9em;
+}
+.post-rt pre.post-rt-pre,
+.post-rt-editor pre {
+  background: hsl(var(--secondary));
+  border-radius: 6px;
+  padding: 0.6em 0.8em;
+  overflow-x: auto;
+  margin: 0.4em 0;
+}
+.post-rt pre.post-rt-pre code { background: none; padding: 0; }
+.post-rt hr.post-rt-hr,
+.post-rt-editor hr { margin: 0.8em 0; border: 0; border-top: 1px solid hsl(var(--border)); }
+
+/* ---- rendered post body ---- */
+.post-rt { font-size: inherit; line-height: 1.55; word-break: break-word; }
+.post-rt .post-rt-p { margin: 0 0 0.5em; white-space: pre-wrap; }
+.post-rt > :last-child,
+.post-rt .post-rt-p:last-child { margin-bottom: 0; }
+.post-rt a { color: hsl(var(--primary)); }
+
+/* ---- toolbar: horizontal scroll on small screens, no visible scrollbar ---- */
+.post-rt-toolbar { -ms-overflow-style: none; scrollbar-width: none; }
+.post-rt-toolbar::-webkit-scrollbar { display: none; }

@@ -18,6 +18,8 @@ import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext
 import { PostOptionsMenu } from './PostOptionsMenu';
 import { SuggestedFollowControl } from './SuggestedFollowControl';
 import PostText from './PostText';
+import PostRichText from './post/PostRichText';
+import { isRichDoc, type RichDoc } from '@/lib/posts/richText';
 import RepostButton from './RepostButton';
 import type { RepostOriginalPost } from './RepostComposerDialog';
 import { usePostReposts } from '@/hooks/use-post-reposts';
@@ -26,6 +28,9 @@ import { useTapTrigger } from '@/hooks/use-tap-trigger';
 import { ReactionBar, ReactionCountSummary, ReactionType, ReactionSummary, REACTION_META, REACTION_ORDER } from './ReactionBar';
 import CommentSection from './comments/CommentSection';
 import { ImageMedia, VideoMedia } from './post/PostMedia';
+import { normalizePostMedia } from '@/lib/posts/media';
+import PhotoTagOverlay, { PhotoTagToggle } from './post/PhotoTagOverlay';
+import { loadPostMediaTags, type DraftTag } from '@/lib/posts/mediaTags';
 
 export interface PollSummary {
   id: string;
@@ -33,6 +38,10 @@ export interface PollSummary {
   totalVotes: number;
   userOptionId: string | null;
   options: { id: string; text: string; votes: number }[];
+  /** Poll close time (ISO), or null for a poll that never expires. */
+  expiresAt: string | null;
+  /** True once `expiresAt` has passed — voting is disabled, results stay. */
+  isClosed: boolean;
 }
 
 interface PostCardProps {
@@ -43,6 +52,9 @@ interface PostCardProps {
     avatar?: string;
   };
   content: string;
+  /** Tiptap document (Phase 6A). When set, renders formatted text +
+   *  @mention / #hashtag links instead of the plain-text `content`. */
+  contentRich?: RichDoc | null;
   image?: string;
   timestamp: string;
   postType?: string;
@@ -50,6 +62,9 @@ interface PostCardProps {
   documentUrl?: string;
   documentName?: string;
   carouselUrls?: string[];
+  /** Phase 6C `posts.media` jsonb: ordered [{url, alt, w, h}]. When non-empty
+   *  it supersedes `image` / `carouselUrls` and carries per-photo alt text. */
+  media?: unknown;
   // Present only for feed cards that represent a published Insight article.
   // When set, the card renders an "Insight" preview (badge + publication +
   // headline + cover) linking to the reading page, instead of plain text.
@@ -114,6 +129,7 @@ const PostCard = ({
   id,
   user,
   content,
+  contentRich,
   image,
   timestamp,
   postType = 'text',
@@ -121,6 +137,7 @@ const PostCard = ({
   documentUrl,
   documentName,
   carouselUrls,
+  media,
   insight,
   poll,
   onVote,
@@ -144,6 +161,43 @@ const PostCard = ({
 }: PostCardProps) => {
   const [ctaState, setCtaState] = useState(cta ?? null);
   useEffect(() => { setCtaState(cta ?? null); }, [cta]);
+
+  // Post body is kept in local state so an author's in-place edit (via
+  // PostOptionsMenu -> EditPostDialog) updates the card immediately without a
+  // feed refetch / scroll jump. Re-synced whenever the parent passes new props.
+  const [bodyContent, setBodyContent] = useState(content);
+  const [bodyRich, setBodyRich] = useState<RichDoc | null | undefined>(contentRich);
+  const [wasEdited, setWasEdited] = useState(false);
+  useEffect(() => {
+    setBodyContent(content);
+    setBodyRich(contentRich);
+    setWasEdited(false);
+  }, [content, contentRich]);
+
+  // "View results" peek on a poll the viewer hasn't voted on yet.
+  const [pollShowResults, setPollShowResults] = useState(false);
+
+  // Phase 6C: `posts.media` (per-photo alt + order) supersedes image/carousel.
+  // Kept in local state so an author's in-place photo edit refreshes the card.
+  const [bodyMedia, setBodyMedia] = useState<unknown>(media);
+  useEffect(() => { setBodyMedia(media); }, [media]);
+  const mediaItems = normalizePostMedia(bodyMedia);
+  const hasMedia = mediaItems.length > 0;
+
+  // Phase 6C: photo tags (people attached to a specific image), grouped by the
+  // stable media id. Read-only here; markers toggle on/off over the image.
+  const [photoTags, setPhotoTags] = useState<Record<string, DraftTag[]>>({});
+  const [showPhotoTags, setShowPhotoTags] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    if (hasMedia) {
+      loadPostMediaTags(id).then((t) => { if (alive) setPhotoTags(t); });
+    } else {
+      setPhotoTags({});
+    }
+    return () => { alive = false; };
+  }, [id, hasMedia, bodyMedia]);
+  const totalPhotoTags = Object.values(photoTags).reduce((n, arr) => n + arr.length, 0);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentUserProfileId, setCurrentUserProfileId] = useState<string | null>(null);
@@ -308,7 +362,7 @@ const PostCard = ({
   const handleShare = async () => {
     const url = `${window.location.origin}/post/${id}`;
     const title = `${user.name} on Profolio`;
-    const text = content;
+    const text = bodyContent;
 
     // On mobile, use navigator.share() if supported
     if (isMobile && navigator.share) {
@@ -335,7 +389,7 @@ const PostCard = ({
 
   const shareOnWhatsApp = () => {
     const url = `${window.location.origin}/post/${id}`;
-    const text = encodeURIComponent(`${user.name} on Profolio: ${content}\n\n${url}`);
+    const text = encodeURIComponent(`${user.name} on Profolio: ${bodyContent}\n\n${url}`);
     const whatsappUrl = `https://wa.me/?text=${text}`;
     window.open(whatsappUrl, '_blank');
   };
@@ -348,7 +402,7 @@ const PostCard = ({
 
   const shareOnTwitter = () => {
     const url = encodeURIComponent(`${window.location.origin}/post/${id}`);
-    const text = encodeURIComponent(`${user.name} on Profolio: ${content}`);
+    const text = encodeURIComponent(`${user.name} on Profolio: ${bodyContent}`);
     const twitterUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
     window.open(twitterUrl, '_blank');
   };
@@ -393,6 +447,12 @@ const PostCard = ({
       onCtaChange={(next) =>
         setCtaState(next ? { label: next.cta_label!, url: next.cta_url!, openNewTab: next.cta_open_new_tab } : null)
       }
+      onEdited={(newContent, newRich, newMedia) => {
+        setBodyContent(newContent);
+        setBodyRich(newRich);
+        if (newMedia !== undefined) setBodyMedia(newMedia);
+        setWasEdited(true);
+      }}
     />
   );
 
@@ -460,7 +520,9 @@ const PostCard = ({
             <div className="post-title group-hover:text-primary transition-colors">
               {user.name}
             </div>
-            <div className="post-meta">{formatTimeAgo(timestamp)}</div>
+            <div className="post-meta">
+              {formatTimeAgo(timestamp)}{wasEdited ? ' · Edited' : ''}
+            </div>
           </div>
         </div>
 
@@ -517,36 +579,67 @@ const PostCard = ({
         </div>
       ) : (
         <>
-          <div className="post-body">
-            <PostText content={content} />
-          </div>
+          {(bodyContent || isRichDoc(bodyRich)) && (
+            <div className="post-body">
+              {isRichDoc(bodyRich) ? (
+                <PostRichText doc={bodyRich} />
+              ) : (
+                <PostText content={bodyContent} />
+              )}
+            </div>
+          )}
 
-          {image && <ImageMedia src={image} alt="Post content" />}
+          {/* Phase 6C media: single image (with its own alt) or a gallery. */}
+          {hasMedia && mediaItems.length === 1 && (
+            <div className="relative">
+              <ImageMedia src={mediaItems[0].url} alt={mediaItems[0].alt || 'Post image'} />
+              {showPhotoTags && (photoTags[mediaItems[0].id]?.length ?? 0) > 0 && (
+                <PhotoTagOverlay tags={photoTags[mediaItems[0].id]} />
+              )}
+              {totalPhotoTags > 0 && (
+                <PhotoTagToggle on={showPhotoTags} count={totalPhotoTags} onClick={() => setShowPhotoTags((s) => !s)} />
+              )}
+            </div>
+          )}
+          {!hasMedia && image && <ImageMedia src={image} alt="Post image" />}
         </>
       )}
 
-      {postType === 'carousel' && carouselUrls && carouselUrls.length > 0 && (
+      {(hasMedia
+        ? mediaItems.length >= 2
+        : postType === 'carousel' && !!carouselUrls && carouselUrls.length > 0) && (
         // Full-bleed on mobile (image gallery), contained on desktop. Embla's
         // swipe/drag is unaffected by the outer breakout margins.
         <div className="post-media post-media--fullbleed md:px-5">
           <Carousel className="w-full">
             <CarouselContent>
-              {carouselUrls.map((url, i) => (
+              {(hasMedia
+                ? mediaItems.map((m) => ({ url: m.url, alt: m.alt, id: m.id }))
+                : (carouselUrls ?? []).map((url, i) => ({ url, alt: `Image ${i + 1}`, id: '' }))
+              ).map((slide, i) => (
                 <CarouselItem key={i}>
-                  <img
-                    src={url}
-                    alt={`Slide ${i + 1}`}
-                    loading="lazy"
-                    className="w-full h-auto max-h-[80vh] md:max-h-96 object-contain bg-muted md:rounded-lg"
-                  />
+                  <div className="relative">
+                    <img
+                      src={slide.url}
+                      alt={slide.alt || `Image ${i + 1}`}
+                      loading="lazy"
+                      className="w-full h-auto max-h-[80vh] md:max-h-96 object-contain bg-muted md:rounded-lg"
+                    />
+                    {showPhotoTags && slide.id && (photoTags[slide.id]?.length ?? 0) > 0 && (
+                      <PhotoTagOverlay tags={photoTags[slide.id]} />
+                    )}
+                  </div>
                 </CarouselItem>
               ))}
             </CarouselContent>
-            {carouselUrls.length > 1 && (
+            {(hasMedia ? mediaItems.length : (carouselUrls?.length ?? 0)) > 1 && (
               <>
                 <CarouselPrevious className="left-2" />
                 <CarouselNext className="right-2" />
               </>
+            )}
+            {totalPhotoTags > 0 && (
+              <PhotoTagToggle on={showPhotoTags} count={totalPhotoTags} onClick={() => setShowPhotoTags((s) => !s)} />
             )}
           </Carousel>
         </div>
@@ -579,46 +672,90 @@ const PostCard = ({
         </div>
       )}
 
-      {postType === 'poll' && poll && (
-        <div className="px-4 sm:px-5 mb-3 space-y-2">
-          {poll.options.map((option) => {
-            const pct = poll.totalVotes > 0 ? Math.round((option.votes / poll.totalVotes) * 100) : 0;
-            const isMine = poll.userOptionId === option.id;
-            const hasVoted = poll.userOptionId !== null;
+      {postType === 'poll' && poll && (() => {
+        const hasVoted = poll.userOptionId !== null;
+        // Show the results (bars) once the viewer has voted, the poll has
+        // closed, or they chose to peek. Otherwise show votable options.
+        const showBars = hasVoted || poll.isClosed || pollShowResults;
+        const canVote = !hasVoted && !poll.isClosed;
+        const timeLabel = poll.isClosed
+          ? 'Poll ended'
+          : poll.expiresAt
+            ? `${pollTimeLeft(poll.expiresAt)} left`
+            : null;
 
-            if (!hasVoted) {
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  className="w-full text-left rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:border-primary hover:bg-secondary/50 transition-colors"
-                  onClick={() => handleVote(option.id)}
-                >
-                  {option.text}
-                </button>
-              );
-            }
+        return (
+          <div className="px-4 sm:px-5 mb-3">
+            <div
+              role={canVote && !showBars ? 'radiogroup' : 'group'}
+              aria-label={`Poll: ${poll.question}`}
+              className="space-y-2"
+            >
+              {poll.options.map((option) => {
+                const pct = poll.totalVotes > 0 ? Math.round((option.votes / poll.totalVotes) * 100) : 0;
+                const isMine = poll.userOptionId === option.id;
 
-            return (
-              <div key={option.id} className={`relative w-full rounded-lg border px-4 py-2.5 text-sm overflow-hidden ${isMine ? 'border-primary' : 'border-border'}`}>
-                <div
-                  className={`absolute inset-y-0 left-0 ${isMine ? 'bg-primary/15' : 'bg-secondary'}`}
-                  style={{ width: `${pct}%` }}
-                />
-                <div className="relative flex items-center justify-between">
-                  <span className={`font-medium ${isMine ? 'text-primary' : ''}`}>
-                    {option.text}{isMine ? ' ✓' : ''}
-                  </span>
-                  <span className="text-muted-foreground">{pct}%</span>
-                </div>
-              </div>
-            );
-          })}
-          <p className="text-xs text-muted-foreground">
-            {poll.totalVotes} {poll.totalVotes === 1 ? 'vote' : 'votes'}
-          </p>
-        </div>
-      )}
+                if (!showBars) {
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={false}
+                      className="w-full break-words text-left rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-primary hover:border-primary hover:bg-secondary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                      onClick={() => handleVote(option.id)}
+                    >
+                      {option.text}
+                    </button>
+                  );
+                }
+
+                return (
+                  <div
+                    key={option.id}
+                    aria-label={`${option.text}: ${pct}%${isMine ? ', your vote' : ''}`}
+                    className={`relative w-full overflow-hidden rounded-lg border px-4 py-2.5 text-sm ${isMine ? 'border-primary' : 'border-border'}`}
+                  >
+                    <div
+                      className={`absolute inset-y-0 left-0 ${isMine ? 'bg-primary/15' : 'bg-secondary'}`}
+                      style={{ width: `${pct}%` }}
+                      aria-hidden
+                    />
+                    <div className="relative flex items-center justify-between gap-2">
+                      <span className={`min-w-0 break-words font-medium ${isMine ? 'text-primary' : ''}`}>
+                        {option.text}{isMine ? ' ✓' : ''}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground">{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span>{poll.totalVotes} {poll.totalVotes === 1 ? 'vote' : 'votes'}</span>
+              {timeLabel && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{timeLabel}</span>
+                </>
+              )}
+              {canVote && (
+                <>
+                  <span aria-hidden>·</span>
+                  <button
+                    type="button"
+                    className="rounded-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => setPollShowResults((s) => !s)}
+                  >
+                    {pollShowResults ? 'Hide results' : 'View results'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {ctaState && <PostCta {...ctaState} />}
 
@@ -731,6 +868,18 @@ const PostCard = ({
     </div>
   );
 };
+
+// Coarse "time remaining" label for an open poll: "3d" / "5h" / "12m".
+// Closed polls are handled by the caller (shows "Poll ended" instead).
+function pollTimeLeft(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return '<1m';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${Math.max(1, mins)}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
 
 // The company-post CTA, rendered as a compact link-preview strip (domain +
 // button) rather than a floating button -- matches how the destination

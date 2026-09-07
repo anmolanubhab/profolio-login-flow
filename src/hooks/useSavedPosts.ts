@@ -146,6 +146,7 @@ const LIST_PAGE_SIZE = 10;
 export interface SavedPostRow {
   id: string;
   content: string;
+  content_rich: import('@/lib/posts/richText').RichDoc | null;
   image_url: string | null;
   created_at: string;
   post_type: string;
@@ -153,6 +154,7 @@ export interface SavedPostRow {
   document_url: string | null;
   document_name: string | null;
   carousel_urls: string[] | null;
+  media: unknown;
   company_id: string | null;
   company_name: string | null;
   company_logo: string | null;
@@ -211,6 +213,7 @@ export function useSavedPostsList() {
           polls (
             id,
             question,
+            expires_at,
             poll_options ( id, option_text, position ),
             poll_votes ( id, option_id, user_id )
           )

@@ -20,6 +20,7 @@ import {
   Star,
   Repeat2,
   AtSign,
+  Tag,
   Newspaper,
   UserCog,
   type LucideIcon,
@@ -74,7 +75,10 @@ export const getNotificationIcon = (type: string): LucideIcon => {
     case 'comment_reply':
       return MessageSquare;
     case 'comment_mention':
+    case 'post_mention':
       return AtSign;
+    case 'photo_tag':
+      return Tag;
     case 'repost':
       return Repeat2;
     case 'share':
@@ -137,6 +141,12 @@ export const getNotificationMessage = (notification: NotificationLike): string =
       return payload?.message
         ? `${senderName} mentioned you: "${payload.message}"`
         : `${senderName} mentioned you in a comment`;
+    case 'post_mention':
+      return payload?.message
+        ? `${senderName} mentioned you in a post: "${payload.message}"`
+        : `${senderName} mentioned you in a post`;
+    case 'photo_tag':
+      return `${senderName} tagged you in a photo`;
     case 'repost':
       return payload?.message
         ? `${senderName} reposted your post: "${payload.message}"`
@@ -197,6 +207,8 @@ export const getNotificationLink = (notification: NotificationLike): string => {
     case 'comment_reply':
     case 'comment_reaction':
     case 'comment_mention':
+    case 'post_mention':
+    case 'photo_tag':
     case 'repost':
     case 'share':
       return `/dashboard?post=${payload?.post_id}`;

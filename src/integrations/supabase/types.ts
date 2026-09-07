@@ -2405,6 +2405,27 @@ export type Database = {
         }
         Relationships: []
       }
+      hashtags: {
+        Row: {
+          created_at: string
+          id: string
+          post_count: number
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_count?: number
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_count?: number
+          tag?: string
+        }
+        Relationships: []
+      }
       hidden_posts: {
         Row: {
           created_at: string
@@ -3702,18 +3723,21 @@ export type Database = {
       polls: {
         Row: {
           created_at: string
+          expires_at: string | null
           id: string
           post_id: string
           question: string
         }
         Insert: {
           created_at?: string
+          expires_at?: string | null
           id?: string
           post_id: string
           question: string
         }
         Update: {
           created_at?: string
+          expires_at?: string | null
           id?: string
           post_id?: string
           question?: string
@@ -3723,6 +3747,39 @@ export type Database = {
             foreignKeyName: "polls_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: true
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_hashtags: {
+        Row: {
+          created_at: string
+          hashtag_id: string
+          post_id: string
+        }
+        Insert: {
+          created_at?: string
+          hashtag_id: string
+          post_id: string
+        }
+        Update: {
+          created_at?: string
+          hashtag_id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_hashtags_hashtag_id_fkey"
+            columns: ["hashtag_id"]
+            isOneToOne: false
+            referencedRelation: "hashtags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_hashtags_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
             referencedRelation: "posts"
             referencedColumns: ["id"]
           },
@@ -3763,6 +3820,87 @@ export type Database = {
           },
           {
             foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_media_tags: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          media_key: string
+          post_id: string
+          profile_id: string
+          x: number
+          y: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          media_key: string
+          post_id: string
+          profile_id: string
+          x: number
+          y: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          media_key?: string
+          post_id?: string
+          profile_id?: string
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_media_tags_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_media_tags_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_mentions: {
+        Row: {
+          created_at: string
+          mentioned_profile_id: string
+          post_id: string
+        }
+        Insert: {
+          created_at?: string
+          mentioned_profile_id: string
+          post_id: string
+        }
+        Update: {
+          created_at?: string
+          mentioned_profile_id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_mentions_mentioned_profile_id_fkey"
+            columns: ["mentioned_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_mentions_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
@@ -3939,6 +4077,7 @@ export type Database = {
           company_logo: string | null
           company_name: string | null
           content: string
+          content_rich: Json | null
           created_at: string
           cta_enabled: boolean
           cta_label: string | null
@@ -3949,6 +4088,7 @@ export type Database = {
           id: string
           image_url: string | null
           insight_article_id: string | null
+          media: Json | null
           media_type: string | null
           post_type: string
           posted_as: string
@@ -3963,6 +4103,7 @@ export type Database = {
           company_logo?: string | null
           company_name?: string | null
           content: string
+          content_rich?: Json | null
           created_at?: string
           cta_enabled?: boolean
           cta_label?: string | null
@@ -3973,6 +4114,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           insight_article_id?: string | null
+          media?: Json | null
           media_type?: string | null
           post_type?: string
           posted_as?: string
@@ -3987,6 +4129,7 @@ export type Database = {
           company_logo?: string | null
           company_name?: string | null
           content?: string
+          content_rich?: Json | null
           created_at?: string
           cta_enabled?: boolean
           cta_label?: string | null
@@ -3997,6 +4140,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           insight_article_id?: string | null
+          media?: Json | null
           media_type?: string | null
           post_type?: string
           posted_as?: string
@@ -5570,6 +5714,11 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      can_receive_mention_from: {
+        Args: { actor: string; target: string }
+        Returns: boolean
+      }
+      can_tag_profile: { Args: { target: string }; Returns: boolean }
       can_view_story: {
         Args: { _author: string; _privacy: string; _story_id: string }
         Returns: boolean
@@ -5608,18 +5757,17 @@ export type Database = {
         }
         Returns: string
       }
-      create_poll_post:
-        | { Args: { p_content: string; p_options: string[] }; Returns: string }
-        | {
-            Args: {
-              p_company_id?: string
-              p_company_logo?: string
-              p_company_name?: string
-              p_content: string
-              p_options: string[]
-            }
-            Returns: string
-          }
+      create_poll_post: {
+        Args: {
+          p_company_id?: string
+          p_company_logo?: string
+          p_company_name?: string
+          p_content: string
+          p_duration?: string
+          p_options: string[]
+        }
+        Returns: string
+      }
       current_profile_id: { Args: never; Returns: string }
       detach_audience_from_ad_set: {
         Args: { _campaign_id: string }
@@ -6000,7 +6148,9 @@ export type Database = {
           pending_sent: number
         }[]
       }
+      normalize_hashtag: { Args: { input: string }; Returns: string }
       normalize_skill_name: { Args: { p_name: string }; Returns: string }
+      owns_post: { Args: { p_post_id: string }; Returns: boolean }
       pause_campaign: {
         Args: { _campaign_id: string }
         Returns: {
@@ -6152,6 +6302,13 @@ export type Database = {
           profile_id: string
         }[]
       }
+      search_hashtags: {
+        Args: { q: string }
+        Returns: {
+          post_count: number
+          tag: string
+        }[]
+      }
       search_mentionable_people: {
         Args: { q: string }
         Returns: {
@@ -6177,6 +6334,16 @@ export type Database = {
           request_id: string
         }[]
       }
+      search_taggable_people: {
+        Args: { q: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          headline: string
+          id: string
+          profession: string
+        }[]
+      }
       send_connection_request: {
         Args: { note?: string; target_profile_id: string }
         Returns: string
@@ -6199,6 +6366,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      storage_path_referenced: { Args: { p_path: string }; Returns: boolean }
       strong_match_threshold: { Args: never; Returns: number }
       submit_ad_for_review: {
         Args: { _ad_id: string }

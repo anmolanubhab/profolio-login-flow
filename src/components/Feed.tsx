@@ -10,6 +10,7 @@ import { usePersonalizationValue } from '@/hooks/usePersonalization';
 interface Post {
   id: string;
   content: string;
+  content_rich: import('@/lib/posts/richText').RichDoc | null;
   image_url: string | null;
   created_at: string;
   user_id: string;
@@ -18,6 +19,7 @@ interface Post {
   document_url: string | null;
   document_name: string | null;
   carousel_urls: string[] | null;
+  media: unknown;
   company_id: string | null;
   company_name: string | null;
   company_logo: string | null;
@@ -177,7 +179,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
              post_reactions (id, user_id, reaction_type),
              post_reposts (id, user_id, commentary),
              comments (count),
-             polls ( id, question, poll_options ( id, option_text, position ), poll_votes ( id, option_id, user_id ) ),
+             polls ( id, question, expires_at, poll_options ( id, option_text, position ), poll_votes ( id, option_id, user_id ) ),
              insight_article:insight_articles!posts_insight_article_id_fkey (
                slug, title, subtitle, reading_minutes, cover_url,
                insight:insights!insight_articles_insight_id_fkey ( slug, title )
@@ -299,6 +301,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
           polls (
             id,
             question,
+            expires_at,
             poll_options ( id, option_text, position ),
             poll_votes ( id, option_id, user_id )
           ),
@@ -726,6 +729,12 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
           // already reflects this choice.
           return;
         }
+        // 23514 (check_violation): the validate_poll_vote() trigger rejected
+        // the vote -- almost always "This poll has ended".
+        if (error.code === '23514') {
+          toast({ title: 'Poll closed', description: error.message || 'This poll has ended.', variant: 'destructive' });
+          return;
+        }
         throw error;
       }
 
@@ -930,6 +939,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         }
         profileLink={post.posted_as === 'company' && post.company_id ? `/company/${post.company_id}` : undefined}
         content={post.content}
+        contentRich={post.content_rich}
         image={post.image_url || undefined}
         timestamp={post.created_at}
         postType={post.post_type}
@@ -937,6 +947,7 @@ const Feed = ({ refresh, mode = 'foryou' }: FeedProps) => {
         documentUrl={post.document_url || undefined}
         documentName={post.document_name || undefined}
         carouselUrls={post.carousel_urls || undefined}
+                  media={post.media}
         insight={
           post.post_type === 'insight' && post.insight_article
             ? {

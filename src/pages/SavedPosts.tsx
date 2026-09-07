@@ -149,6 +149,7 @@ const SavedPosts = () => {
                   }
                   profileLink={post.posted_as === 'company' && post.company_id ? `/company/${post.company_id}` : undefined}
                   content={post.content}
+                  contentRich={post.content_rich}
                   image={post.image_url || undefined}
                   timestamp={post.created_at}
                   postType={post.post_type}
@@ -156,6 +157,7 @@ const SavedPosts = () => {
                   documentUrl={post.document_url || undefined}
                   documentName={post.document_name || undefined}
                   carouselUrls={post.carousel_urls || undefined}
+                  media={post.media}
                   poll={buildPollSummary(post.polls, currentUserProfileId ?? null)}
                   onVote={(optionId) => post.polls && handleVote(post.polls.id, optionId)}
                   reactionSummary={buildReactionSummary(post.post_reactions || [], currentUserProfileId ?? null)}
