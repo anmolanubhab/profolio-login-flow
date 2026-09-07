@@ -1,0 +1,12 @@
+-- CRITICAL HOTFIX, explicitly approved by user.
+-- public.profiles had NO SELECT grant for authenticated or anon at the
+-- Postgres level (confirmed via information_schema.table_privileges just
+-- before this migration). This blocked every profile read across the
+-- entire live app with "permission denied for table profiles" via
+-- PostgREST/supabase-js. The existing profiles_select_respecting_visibility
+-- RLS policy (roles: {public}, verified unchanged just before this
+-- migration) already correctly governs row-level visibility -- own row,
+-- public/connections-only profiles, NOT is_blocked_by(id) -- for both
+-- anon and authenticated; it simply never had a chance to run without this
+-- grant. No other privilege, column, policy, or table is touched.
+grant select on public.profiles to authenticated, anon;

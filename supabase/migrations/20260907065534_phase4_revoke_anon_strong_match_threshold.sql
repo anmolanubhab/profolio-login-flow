@@ -1,0 +1,1 @@
+revoke execute on function public.strong_match_threshold() from anon;

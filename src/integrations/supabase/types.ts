@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.12 (cd3cf9e)"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -272,6 +272,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ad_billing_ops_config: {
+        Row: {
+          id: number
+          lookback_hours: number
+          stuck_minutes: number
+          updated_at: string
+          webhook_fail_window_mins: number
+          webhook_retain_days: number
+        }
+        Insert: {
+          id?: number
+          lookback_hours?: number
+          stuck_minutes?: number
+          updated_at?: string
+          webhook_fail_window_mins?: number
+          webhook_retain_days?: number
+        }
+        Update: {
+          id?: number
+          lookback_hours?: number
+          stuck_minutes?: number
+          updated_at?: string
+          webhook_fail_window_mins?: number
+          webhook_retain_days?: number
+        }
+        Relationships: []
+      }
+      ad_billing_ops_log: {
+        Row: {
+          alert_dispatched_at: string | null
+          details: Json
+          id: string
+          kind: string
+          ran_at: string
+          severity: string
+          summary: string
+          sweep_id: string
+        }
+        Insert: {
+          alert_dispatched_at?: string | null
+          details?: Json
+          id?: string
+          kind: string
+          ran_at?: string
+          severity: string
+          summary: string
+          sweep_id: string
+        }
+        Update: {
+          alert_dispatched_at?: string | null
+          details?: Json
+          id?: string
+          kind?: string
+          ran_at?: string
+          severity?: string
+          summary?: string
+          sweep_id?: string
+        }
+        Relationships: []
       }
       ad_billing_profiles: {
         Row: {
@@ -1822,6 +1882,39 @@ export type Database = {
           },
         ]
       }
+      consent_audit_log: {
+        Row: {
+          id: string
+          new_value: Json
+          occurred_at: string
+          old_value: Json | null
+          schema_version: number
+          signal_key: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          new_value: Json
+          occurred_at?: string
+          old_value?: Json | null
+          schema_version?: number
+          signal_key: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          new_value?: Json
+          occurred_at?: string
+          old_value?: Json | null
+          schema_version?: number
+          signal_key?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string | null
@@ -1961,6 +2054,71 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "education_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_outbox: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          dedup_key: string
+          email_type: string
+          entity_id: string | null
+          entity_type: string | null
+          failed_at: string | null
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          payload: Json
+          recipient_email: string
+          sent_at: string | null
+          status: string
+          template_key: string
+          user_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          dedup_key: string
+          email_type: string
+          entity_id?: string | null
+          entity_type?: string | null
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          recipient_email: string
+          sent_at?: string | null
+          status?: string
+          template_key: string
+          user_id: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          dedup_key?: string
+          email_type?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          recipient_email?: string
+          sent_at?: string | null
+          status?: string
+          template_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_outbox_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -2357,6 +2515,7 @@ export type Database = {
           current_stage: Database["public"]["Enums"]["application_stage"]
           id: string
           job_id: string
+          match_score_at_apply: number | null
           rejection_reason: string | null
           resume_file_path: string | null
           resume_id: string | null
@@ -2376,6 +2535,7 @@ export type Database = {
           current_stage?: Database["public"]["Enums"]["application_stage"]
           id?: string
           job_id: string
+          match_score_at_apply?: number | null
           rejection_reason?: string | null
           resume_file_path?: string | null
           resume_id?: string | null
@@ -2395,6 +2555,7 @@ export type Database = {
           current_stage?: Database["public"]["Enums"]["application_stage"]
           id?: string
           job_id?: string
+          match_score_at_apply?: number | null
           rejection_reason?: string | null
           resume_file_path?: string | null
           resume_id?: string | null
@@ -2641,34 +2802,61 @@ export type Database = {
           candidate_profile_id: string
           candidate_user_id: string
           computed_at: string
+          eligibility_status: string
+          employment_type_score: number | null
+          experience_score: number | null
           explanation: Json
           id: string
+          industry_score: number | null
           job_id: string
+          location_score: number | null
           matched_skills: Json
           missing_skills: Json
+          salary_score: number | null
           score: number
+          skills_score: number | null
+          title_score: number | null
+          work_mode_score: number | null
         }
         Insert: {
           candidate_profile_id: string
           candidate_user_id: string
           computed_at?: string
+          eligibility_status?: string
+          employment_type_score?: number | null
+          experience_score?: number | null
           explanation?: Json
           id?: string
+          industry_score?: number | null
           job_id: string
+          location_score?: number | null
           matched_skills?: Json
           missing_skills?: Json
+          salary_score?: number | null
           score: number
+          skills_score?: number | null
+          title_score?: number | null
+          work_mode_score?: number | null
         }
         Update: {
           candidate_profile_id?: string
           candidate_user_id?: string
           computed_at?: string
+          eligibility_status?: string
+          employment_type_score?: number | null
+          experience_score?: number | null
           explanation?: Json
           id?: string
+          industry_score?: number | null
           job_id?: string
+          location_score?: number | null
           matched_skills?: Json
           missing_skills?: Json
+          salary_score?: number | null
           score?: number
+          skills_score?: number | null
+          title_score?: number | null
+          work_mode_score?: number | null
         }
         Relationships: [
           {
@@ -3050,6 +3238,44 @@ export type Database = {
         }
         Relationships: []
       }
+      job_recommendations: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          job_id: string
+          rank: number
+          score: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          job_id: string
+          rank: number
+          score: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          job_id?: string
+          rank?: number
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_recommendations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_skill_requirements: {
         Row: {
           created_at: string
@@ -3096,9 +3322,16 @@ export type Database = {
           currency: string | null
           description: string | null
           employment_type: string | null
+          experience_level: string | null
           expires_at: string | null
           id: string
+          industry: string | null
           location: string | null
+          matches_fully_processed: boolean
+          matches_processed_at: string | null
+          matches_processed_offset: number
+          max_experience_years: number | null
+          min_experience_years: number | null
           posted_at: string
           posted_by: string | null
           posted_by_profile_id: string | null
@@ -3117,9 +3350,16 @@ export type Database = {
           currency?: string | null
           description?: string | null
           employment_type?: string | null
+          experience_level?: string | null
           expires_at?: string | null
           id?: string
+          industry?: string | null
           location?: string | null
+          matches_fully_processed?: boolean
+          matches_processed_at?: string | null
+          matches_processed_offset?: number
+          max_experience_years?: number | null
+          min_experience_years?: number | null
           posted_at?: string
           posted_by?: string | null
           posted_by_profile_id?: string | null
@@ -3138,9 +3378,16 @@ export type Database = {
           currency?: string | null
           description?: string | null
           employment_type?: string | null
+          experience_level?: string | null
           expires_at?: string | null
           id?: string
+          industry?: string | null
           location?: string | null
+          matches_fully_processed?: boolean
+          matches_processed_at?: string | null
+          matches_processed_offset?: number
+          max_experience_years?: number | null
+          min_experience_years?: number | null
           posted_at?: string
           posted_by?: string | null
           posted_by_profile_id?: string | null
@@ -3889,9 +4136,11 @@ export type Database = {
       profiles: {
         Row: {
           achievements: Json | null
+          actively_looking: boolean
           address: string | null
           allow_recruiter_profile_view: boolean
           allow_recruiter_search: boolean
+          application_emails: boolean
           autoplay_videos: boolean
           avatar_url: string | null
           bio: string | null
@@ -3902,6 +4151,7 @@ export type Database = {
           display_name: string | null
           education: Json | null
           email: string | null
+          email_notifications_enabled: boolean
           email_visibility: string
           expected_salary: string | null
           experience: Json | null
@@ -3909,11 +4159,15 @@ export type Database = {
           github_url: string | null
           headline: string | null
           id: string
+          job_alert_emails: boolean
           job_type: string[] | null
           last_active_at: string | null
           last_name_visibility: string
           linkedin_url: string | null
           location: string | null
+          marketing_emails: boolean
+          message_emails: boolean
+          network_emails: boolean
           notice_period: string | null
           open_to_roles: string[] | null
           open_to_work: boolean | null
@@ -3923,12 +4177,17 @@ export type Database = {
           photo_url: string | null
           photo_visibility: string
           preferences: Json | null
+          preferred_industries: string[]
           preferred_locations: string[] | null
+          preferred_work_modes: string[]
           profession: string | null
           profile_discovery: boolean
           profile_visibility: string | null
           projects: Json | null
           pronouns: string | null
+          salary_currency: string | null
+          salary_max_expected: number | null
+          salary_min_expected: number | null
           share_online_resume_with_recruiters: boolean
           share_pdf_resume_with_recruiters: boolean
           share_professional_links_with_recruiters: boolean
@@ -3940,9 +4199,11 @@ export type Database = {
         }
         Insert: {
           achievements?: Json | null
+          actively_looking?: boolean
           address?: string | null
           allow_recruiter_profile_view?: boolean
           allow_recruiter_search?: boolean
+          application_emails?: boolean
           autoplay_videos?: boolean
           avatar_url?: string | null
           bio?: string | null
@@ -3953,6 +4214,7 @@ export type Database = {
           display_name?: string | null
           education?: Json | null
           email?: string | null
+          email_notifications_enabled?: boolean
           email_visibility?: string
           expected_salary?: string | null
           experience?: Json | null
@@ -3960,11 +4222,15 @@ export type Database = {
           github_url?: string | null
           headline?: string | null
           id?: string
+          job_alert_emails?: boolean
           job_type?: string[] | null
           last_active_at?: string | null
           last_name_visibility?: string
           linkedin_url?: string | null
           location?: string | null
+          marketing_emails?: boolean
+          message_emails?: boolean
+          network_emails?: boolean
           notice_period?: string | null
           open_to_roles?: string[] | null
           open_to_work?: boolean | null
@@ -3974,12 +4240,17 @@ export type Database = {
           photo_url?: string | null
           photo_visibility?: string
           preferences?: Json | null
+          preferred_industries?: string[]
           preferred_locations?: string[] | null
+          preferred_work_modes?: string[]
           profession?: string | null
           profile_discovery?: boolean
           profile_visibility?: string | null
           projects?: Json | null
           pronouns?: string | null
+          salary_currency?: string | null
+          salary_max_expected?: number | null
+          salary_min_expected?: number | null
           share_online_resume_with_recruiters?: boolean
           share_pdf_resume_with_recruiters?: boolean
           share_professional_links_with_recruiters?: boolean
@@ -3991,9 +4262,11 @@ export type Database = {
         }
         Update: {
           achievements?: Json | null
+          actively_looking?: boolean
           address?: string | null
           allow_recruiter_profile_view?: boolean
           allow_recruiter_search?: boolean
+          application_emails?: boolean
           autoplay_videos?: boolean
           avatar_url?: string | null
           bio?: string | null
@@ -4004,6 +4277,7 @@ export type Database = {
           display_name?: string | null
           education?: Json | null
           email?: string | null
+          email_notifications_enabled?: boolean
           email_visibility?: string
           expected_salary?: string | null
           experience?: Json | null
@@ -4011,11 +4285,15 @@ export type Database = {
           github_url?: string | null
           headline?: string | null
           id?: string
+          job_alert_emails?: boolean
           job_type?: string[] | null
           last_active_at?: string | null
           last_name_visibility?: string
           linkedin_url?: string | null
           location?: string | null
+          marketing_emails?: boolean
+          message_emails?: boolean
+          network_emails?: boolean
           notice_period?: string | null
           open_to_roles?: string[] | null
           open_to_work?: boolean | null
@@ -4025,12 +4303,17 @@ export type Database = {
           photo_url?: string | null
           photo_visibility?: string
           preferences?: Json | null
+          preferred_industries?: string[]
           preferred_locations?: string[] | null
+          preferred_work_modes?: string[]
           profession?: string | null
           profile_discovery?: boolean
           profile_visibility?: string | null
           projects?: Json | null
           pronouns?: string | null
+          salary_currency?: string | null
+          salary_max_expected?: number | null
+          salary_min_expected?: number | null
           share_online_resume_with_recruiters?: boolean
           share_pdf_resume_with_recruiters?: boolean
           share_professional_links_with_recruiters?: boolean
@@ -4815,10 +5098,12 @@ export type Database = {
       }
       _ad_audience_bucket: { Args: { _raw: number }; Returns: number }
       _ad_audience_count: { Args: { _spec: Json }; Returns: number }
+      _ad_billing_alert_dispatch: { Args: never; Returns: Json }
       _ad_billing_apply_status: {
         Args: { _p: Database["public"]["Tables"]["ad_billing_profiles"]["Row"] }
         Returns: Database["public"]["Enums"]["ad_billing_profile_status"]
       }
+      _ad_billing_ops_sweep: { Args: never; Returns: Json }
       _ad_billing_post_ledger: {
         Args: {
           _ad_account_id: string
@@ -4878,6 +5163,56 @@ export type Database = {
       _ad_spend_record: {
         Args: { _delivery_event_id: string }
         Returns: undefined
+      }
+      _assert_valid_preference_patch: {
+        Args: { patch: Json }
+        Returns: undefined
+      }
+      _calculate_job_match_core: {
+        Args: { p_candidate_user_id: string; p_job_id: string }
+        Returns: {
+          candidate_profile_id: string
+          candidate_user_id: string
+          computed_at: string
+          eligibility_status: string
+          employment_type_score: number | null
+          experience_score: number | null
+          explanation: Json
+          id: string
+          industry_score: number | null
+          job_id: string
+          location_score: number | null
+          matched_skills: Json
+          missing_skills: Json
+          salary_score: number | null
+          score: number
+          skills_score: number | null
+          title_score: number | null
+          work_mode_score: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "hiring_match_scores"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _enqueue_job_alert_email: {
+        Args: {
+          p_candidate_profile_id: string
+          p_candidate_user_id: string
+          p_company_name: string
+          p_explanation_text: string
+          p_job_id: string
+          p_job_title: string
+          p_score: number
+        }
+        Returns: undefined
+      }
+      _jsonb_deep_merge: { Args: { a: Json; b: Json }; Returns: Json }
+      _notify_strong_matches_for_job: {
+        Args: { p_job_id: string; p_limit?: number; p_offset?: number }
+        Returns: number
       }
       accept_company_invitation: {
         Args: { invitation_id: string }
@@ -5076,6 +5411,25 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      ad_billing_ops_recent: {
+        Args: { _limit?: number }
+        Returns: {
+          alert_dispatched_at: string | null
+          details: Json
+          id: string
+          kind: string
+          ran_at: string
+          severity: string
+          summary: string
+          sweep_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ad_billing_ops_log"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       ad_billing_reconciliation_check: {
         Args: { _ad_account_id?: string }
         Returns: Json
@@ -5187,6 +5541,35 @@ export type Database = {
         }
       }
       broadcast_profile_update: { Args: never; Returns: undefined }
+      calculate_job_match: {
+        Args: { p_candidate_user_id: string; p_job_id: string }
+        Returns: {
+          candidate_profile_id: string
+          candidate_user_id: string
+          computed_at: string
+          eligibility_status: string
+          employment_type_score: number | null
+          experience_score: number | null
+          explanation: Json
+          id: string
+          industry_score: number | null
+          job_id: string
+          location_score: number | null
+          matched_skills: Json
+          missing_skills: Json
+          salary_score: number | null
+          score: number
+          skills_score: number | null
+          title_score: number | null
+          work_mode_score: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "hiring_match_scores"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       can_view_story: {
         Args: { _author: string; _privacy: string; _story_id: string }
         Returns: boolean
@@ -5202,10 +5585,6 @@ export type Database = {
           p_window_seconds: number
         }
         Returns: boolean
-      }
-      compute_match_score: {
-        Args: { p_candidate_profile_id: string; p_job_id: string }
-        Returns: number
       }
       consume_mfa_recovery_code: { Args: { code: string }; Returns: boolean }
       create_company_invitation: {
@@ -5316,6 +5695,30 @@ export type Database = {
         Args: { company_uuid: string }
         Returns: number
       }
+      get_job_candidate_matches: {
+        Args: { p_job_id: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          avatar_url: string
+          candidate_profile_id: string
+          candidate_user_id: string
+          display_name: string
+          eligibility_status: string
+          employment_type_score: number
+          experience_score: number
+          has_applied: boolean
+          headline: string
+          industry_score: number
+          location: string
+          location_score: number
+          matched_skills: Json
+          missing_skills: Json
+          salary_score: number
+          score: number
+          skills_score: number
+          title_score: number
+          work_mode_score: number
+        }[]
+      }
       get_message_attachment: {
         Args: { p_message_id: string }
         Returns: {
@@ -5335,34 +5738,40 @@ export type Database = {
         Args: { limit_n?: number }
         Returns: {
           id: string
-          user_id: string
-          signal_key: string
-          old_value: Json
           new_value: Json
-          source: string
-          schema_version: number
           occurred_at: string
+          old_value: Json | null
+          schema_version: number
+          signal_key: string
+          source: string
+          user_id: string
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "consent_audit_log"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_my_settings: {
         Args: never
         Returns: {
-          preferences: Json
+          allow_recruiter_profile_view: boolean
+          allow_recruiter_search: boolean
+          autoplay_videos: boolean
+          connections_visibility: string
+          email_visibility: string
           expected_salary: string
+          job_type: string[]
           notice_period: string
           open_to_roles: string[]
-          preferred_locations: string[]
-          job_type: string[]
-          autoplay_videos: boolean
-          allow_recruiter_search: boolean
-          allow_recruiter_profile_view: boolean
-          share_pdf_resume_with_recruiters: boolean
-          share_online_resume_with_recruiters: boolean
-          share_professional_links_with_recruiters: boolean
-          email_visibility: string
-          phone_visibility: string
-          connections_visibility: string
           open_to_work_visibility: string
+          phone_visibility: string
+          preferences: Json
+          preferred_locations: string[]
+          share_online_resume_with_recruiters: boolean
+          share_pdf_resume_with_recruiters: boolean
+          share_professional_links_with_recruiters: boolean
         }[]
       }
       get_or_create_campaign_ad_set: {
@@ -5400,38 +5809,38 @@ export type Database = {
       get_public_profile: {
         Args: { target_profile_id: string }
         Returns: {
-          id: string
-          user_id: string
-          display_name: string
-          full_name: string
-          headline: string
-          profession: string
-          avatar_url: string
-          photo_url: string
-          cover_url: string
-          cover_position: number
-          bio: string
-          location: string
-          pronouns: string
-          open_to_work: boolean
-          skills: string[]
-          projects: Json
-          experience: Json
-          education: Json
           achievements: Json
-          website: string
-          linkedin_url: string
-          github_url: string
-          twitter_url: string
           address: string
+          avatar_url: string
+          bio: string
+          cover_position: number
+          cover_url: string
           created_at: string
-          last_active_at: string
-          profile_visibility: string
-          photo_visibility: string
-          last_name_visibility: string
-          profile_discovery: boolean
-          show_active_status: boolean
+          display_name: string
+          education: Json
+          experience: Json
+          full_name: string
+          github_url: string
           has_verified_email: boolean
+          headline: string
+          id: string
+          last_active_at: string
+          last_name_visibility: string
+          linkedin_url: string
+          location: string
+          open_to_work: boolean
+          photo_url: string
+          photo_visibility: string
+          profession: string
+          profile_discovery: boolean
+          profile_visibility: string
+          projects: Json
+          pronouns: string
+          show_active_status: boolean
+          skills: string[]
+          twitter_url: string
+          user_id: string
+          website: string
         }[]
       }
       get_ranked_post_comments: {
@@ -5591,6 +6000,7 @@ export type Database = {
           pending_sent: number
         }[]
       }
+      normalize_skill_name: { Args: { p_name: string }; Returns: string }
       pause_campaign: {
         Args: { _campaign_id: string }
         Returns: {
@@ -5617,7 +6027,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      process_new_job_matches: {
+        Args: { p_job_id: string; p_limit?: number }
+        Returns: number
+      }
+      process_pending_email_outbox: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      process_pending_new_job_matches: {
+        Args: { p_candidates_per_job?: number; p_jobs_limit?: number }
+        Returns: number
+      }
       purge_expired_stories: { Args: never; Returns: number }
+      refresh_job_candidate_matches: {
+        Args: { p_job_id: string; p_limit?: number }
+        Returns: number
+      }
+      refresh_job_recommendations_for_candidate: {
+        Args: { p_limit?: number; p_user_id: string }
+        Returns: number
+      }
       remove_connection: {
         Args: { other_profile_id: string }
         Returns: boolean
@@ -5707,15 +6137,6 @@ export type Database = {
           years_experience: number
         }[]
       }
-      search_mentionable_people: {
-        Args: { q: string }
-        Returns: {
-          id: string
-          display_name: string
-          avatar_url: string
-          profession: string
-        }[]
-      }
       search_connections: {
         Args: { lim?: number; off?: number; search?: string }
         Returns: {
@@ -5729,6 +6150,15 @@ export type Database = {
           mutual_count: number
           profession: string
           profile_id: string
+        }[]
+      }
+      search_mentionable_people: {
+        Args: { q: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+          profession: string
         }[]
       }
       search_people: {
@@ -5769,6 +6199,7 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      strong_match_threshold: { Args: never; Returns: number }
       submit_ad_for_review: {
         Args: { _ad_id: string }
         Returns: {
@@ -5833,10 +6264,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      update_my_preferences_patch: {
-        Args: { patch: Json }
-        Returns: Json
-      }
+      update_my_preferences_patch: { Args: { patch: Json }; Returns: Json }
       validate_campaign_budget: {
         Args: { _campaign_id: string }
         Returns: Json
