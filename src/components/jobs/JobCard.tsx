@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Briefcase, Calendar, Building2, Bookmark, BookmarkCheck } from "lucide-react";
+import { MapPin, Briefcase, Calendar, Building2, Bookmark, BookmarkCheck, Check } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface JobCardProps {
@@ -29,9 +29,15 @@ interface JobCardProps {
   isSaved?: boolean;
   onToggleSave?: (jobId: string) => void;
   matchLabel?: string;
+  /** 0-100 -- when set, renders a numeric match badge instead of/alongside matchLabel. */
+  matchPercent?: number;
+  /** Top matching skills (from hiring_match_scores.matched_skills), shown as small checks. */
+  topSkills?: string[];
+  /** Opens the "Why this matches" detail view -- only rendered when provided. */
+  onWhyThisMatches?: () => void;
 }
 
-export const JobCard = ({ job, onApply, onViewDetails, isApplied, isSaved, onToggleSave, matchLabel }: JobCardProps) => {
+export const JobCard = ({ job, onApply, onViewDetails, isApplied, isSaved, onToggleSave, matchLabel, matchPercent, topSkills, onWhyThisMatches }: JobCardProps) => {
   const companyName = job.company?.name || job.company_name || 'Company';
 
   return (
@@ -47,9 +53,11 @@ export const JobCard = ({ job, onApply, onViewDetails, isApplied, isSaved, onTog
           {isSaved ? <BookmarkCheck className="h-4 w-4 text-primary" /> : <Bookmark className="h-4 w-4 text-muted-foreground" />}
         </Button>
       )}
-      {matchLabel && (
+      {matchPercent != null ? (
+        <Badge className="absolute top-3 left-3 z-10" variant="secondary">{Math.round(matchPercent)}% Match</Badge>
+      ) : matchLabel ? (
         <Badge className="absolute top-3 left-3 z-10" variant="secondary">{matchLabel}</Badge>
-      )}
+      ) : null}
       <CardHeader>
         <div className="flex items-start gap-4">
           {job.company_id ? (
@@ -117,6 +125,24 @@ export const JobCard = ({ job, onApply, onViewDetails, isApplied, isSaved, onTog
             {job.currency || '$'}{job.salary_min.toLocaleString()} - {job.currency || '$'}
             {job.salary_max.toLocaleString()}
           </p>
+        )}
+        {topSkills && topSkills.length > 0 && (
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {topSkills.slice(0, 4).map((s) => (
+              <span key={s} className="inline-flex items-center gap-1">
+                <Check className="h-3 w-3 text-emerald-600" /> {s}
+              </span>
+            ))}
+          </div>
+        )}
+        {onWhyThisMatches && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onWhyThisMatches(); }}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Why this matches
+          </button>
         )}
       </CardContent>
       <CardFooter className="gap-2 mt-auto">

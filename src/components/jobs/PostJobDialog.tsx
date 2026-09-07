@@ -153,8 +153,24 @@ export const PostJobDialog = ({ open, onOpenChange, profileId, onJobPosted, edit
           .eq('id', editJob.id);
         error = result.error;
       } else {
-        const result = await supabase.from('jobs').insert(jobData);
+        // .select('id').single() so we can kick off the strong-match
+        // notification pass below -- the insert itself is unaffected either
+        // way (this doesn't change what gets written).
+        const result = await supabase.from('jobs').insert(jobData).select('id').single();
         error = result.error;
+
+        // Fire-and-forget: notifies strong-matching candidates for a real
+        // publish (not a draft). Deliberately NOT awaited -- the dialog
+        // closes immediately regardless of how long candidate matching
+        // takes, and a pg_cron fallback (process_pending_new_job_matches,
+        // every 2 min) reliably catches this job even if this call never
+        // completes (network drop, tab closed, etc.), so nothing here is a
+        // single point of failure for the notification actually going out.
+        if (!error && !isDraft && result.data?.id) {
+          supabase.rpc('process_new_job_matches', { p_job_id: result.data.id, p_limit: 200 }).then(({ error: matchError }) => {
+            if (matchError) console.error('process_new_job_matches failed (pg_cron will retry within 2 min):', matchError);
+          });
+        }
       }
 
       if (error) throw error;

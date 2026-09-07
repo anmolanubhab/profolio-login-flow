@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
-import { MapPin, DollarSign, Briefcase, Plus, FileText, Sparkles } from 'lucide-react';
+import { MapPin, DollarSign, Briefcase, Plus, FileText, Settings2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +29,10 @@ import { JobCard } from '@/components/jobs/JobCard';
 import { JobSearchHeader } from '@/components/jobs/JobSearchHeader';
 import { JobInsightsRail } from '@/components/jobs/JobInsightsRail';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
-import { hasAnySignal, rankJobsByPreference, CandidateSignals } from '@/lib/jobRecommendations';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RecommendedJobsSection } from '@/components/jobs/RecommendedJobsSection';
+import { JobPreferencesDialog, JobPreferencesValues } from '@/components/jobs/JobPreferencesDialog';
+import { useJobRecommendations, type RecommendedJob } from '@/hooks/useJobRecommendations';
 
 interface Job {
   id: string;
@@ -79,11 +81,20 @@ const Jobs = () => {
   const [selectedResumeId, setSelectedResumeId] = useState<string>('');
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
-  const [signals, setSignals] = useState<CandidateSignals>({ openToRoles: null, preferredLocations: null, jobType: null, skills: null });
+  const [showPreferencesDialog, setShowPreferencesDialog] = useState(false);
+  const [preferences, setPreferences] = useState<JobPreferencesValues>({
+    open_to_roles: null, preferred_locations: null, preferred_work_modes: null, job_type: null,
+    preferred_industries: null, salary_min_expected: null, salary_max_expected: null, salary_currency: null,
+    open_to_work: false, actively_looking: false,
+  });
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { savedJobIds, toggleSave } = useSavedJobs();
+  const {
+    loading: recLoading, refreshing: recRefreshing, jobs: recommendedJobs,
+    hasPreferenceSignal, error: recError, refresh: refreshRecommendations,
+  } = useJobRecommendations(user?.id ?? null);
 
   useEffect(() => {
     const getUser = async () => {
@@ -96,17 +107,23 @@ const Jobs = () => {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, open_to_roles, preferred_locations, job_type, skills')
+        .select('id, open_to_roles, preferred_locations, job_type, preferred_work_modes, preferred_industries, salary_min_expected, salary_max_expected, salary_currency, open_to_work, actively_looking')
         .eq('user_id', user.id)
         .single();
 
       if (profile) {
         setProfileId(profile.id);
-        setSignals({
-          openToRoles: profile.open_to_roles,
-          preferredLocations: profile.preferred_locations,
-          jobType: profile.job_type,
-          skills: profile.skills,
+        setPreferences({
+          open_to_roles: profile.open_to_roles,
+          preferred_locations: profile.preferred_locations,
+          preferred_work_modes: profile.preferred_work_modes,
+          job_type: profile.job_type,
+          preferred_industries: profile.preferred_industries,
+          salary_min_expected: profile.salary_min_expected,
+          salary_max_expected: profile.salary_max_expected,
+          salary_currency: profile.salary_currency,
+          open_to_work: profile.open_to_work ?? false,
+          actively_looking: profile.actively_looking ?? false,
         });
 
         // "Post a Job" / For Business entry only makes sense if this person
@@ -141,6 +158,19 @@ const Jobs = () => {
       fetchResumes();
     }
   }, [user]);
+
+  // `?job=<id>` -- new_job notifications deep-link here (see getNotificationLink
+  // in lib/notifications.ts). Opens the same existing job-details dialog the
+  // regular "View Details" button uses; no separate job-details page.
+  useEffect(() => {
+    const jobId = searchParams.get('job');
+    if (!jobId || jobs.length === 0) return;
+    const target = jobs.find((j) => j.id === jobId);
+    if (target) setSelectedJob(target);
+    const next = new URLSearchParams(searchParams);
+    next.delete('job');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, jobs, setSearchParams]);
 
   const fetchJobs = async () => {
     try {
@@ -224,10 +254,26 @@ const Jobs = () => {
     return result;
   }, [jobs, search, filters]);
 
-  const recommended = useMemo(() => {
-    if (!hasAnySignal(signals)) return [];
-    return rankJobsByPreference(jobs.filter((j) => !appliedJobs.has(j.id)), signals).slice(0, 4);
-  }, [jobs, signals, appliedJobs]);
+  /** Adapts a RecommendedJob (from useJobRecommendations) into the local Job shape used by the existing selectedJob/apply-dialog flow -- no new dialog needed, reuses what's already there. */
+  const toJob = (rj: RecommendedJob): Job => ({
+    id: rj.id,
+    title: rj.title,
+    company_name: rj.company_name || '',
+    company_id: rj.company_id || undefined,
+    description: rj.description,
+    requirements: '',
+    location: rj.location,
+    employment_type: rj.employment_type,
+    remote_option: rj.remote_option,
+    apply_link: '',
+    salary_min: rj.salary_min || 0,
+    salary_max: rj.salary_max || 0,
+    currency: rj.currency || '',
+    posted_at: rj.posted_at,
+    posted_by: '',
+    status: 'open',
+    company: rj.company || undefined,
+  });
 
   const handleApply = async () => {
     if (!selectedJob || !user) return;
@@ -305,14 +351,18 @@ const Jobs = () => {
         <div className="flex flex-col lg:flex-row gap-4 items-start">
           <aside className="hidden lg:block lg:w-[240px] lg:shrink-0 sticky top-[calc(var(--nav-height)+1rem)]">
             <ProfileSummaryCard hasCompany={!!companyId} />
-            {companyId && (
-              <div className="mt-4">
+            <div className="mt-4 space-y-2">
+              {companyId && (
                 <Button className="w-full" variant="outline" onClick={() => setShowPostJobDialog(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Post a Job
                 </Button>
-              </div>
-            )}
+              )}
+              <Button className="w-full" variant="outline" onClick={() => setShowPreferencesDialog(true)}>
+                <Settings2 className="h-4 w-4 mr-2" />
+                Job Preferences
+              </Button>
+            </div>
           </aside>
 
           <div className="min-w-0 w-full flex-1 space-y-4 py-4">
@@ -320,11 +370,16 @@ const Jobs = () => {
               <div>
                 <h1 className="text-xl font-bold text-foreground">Find Your Next Opportunity</h1>
               </div>
-              {companyId && (
-                <Button size="sm" onClick={() => setShowPostJobDialog(true)}>
-                  <Plus className="h-4 w-4 mr-1" /> Post
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => setShowPreferencesDialog(true)}>
+                  <Settings2 className="h-4 w-4" />
                 </Button>
-              )}
+                {companyId && (
+                  <Button size="sm" onClick={() => setShowPostJobDialog(true)}>
+                    <Plus className="h-4 w-4 mr-1" /> Post
+                  </Button>
+                )}
+              </div>
             </div>
             <h1 className="hidden lg:block text-2xl font-bold text-foreground">Find Your Next Opportunity</h1>
 
@@ -351,17 +406,22 @@ const Jobs = () => {
               </Card>
             ) : (
               <>
-                {recommended.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      <h2 className="text-lg font-semibold text-foreground">Jobs based on your preferences</h2>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-3">Based on your profile and job preferences.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 mb-6">
-                      {recommended.map(({ job }) => renderJobCard(job, 'Recommended'))}
-                    </div>
-                  </div>
+                {user && (
+                  <RecommendedJobsSection
+                    userId={user.id}
+                    loading={recLoading}
+                    refreshing={recRefreshing}
+                    jobs={recommendedJobs}
+                    hasPreferenceSignal={hasPreferenceSignal}
+                    error={recError}
+                    onRefresh={refreshRecommendations}
+                    appliedJobIds={appliedJobs}
+                    savedJobIds={savedJobIds}
+                    onToggleSave={toggleSave}
+                    onViewDetails={(rj) => setSelectedJob(toJob(rj))}
+                    onApply={(rj) => { setSelectedJob(toJob(rj)); setShowApplyDialog(true); }}
+                    onOpenPreferences={() => setShowPreferencesDialog(true)}
+                  />
                 )}
 
                 <div>
@@ -389,6 +449,22 @@ const Jobs = () => {
           </aside>
         </div>
       </div>
+
+      {user && (
+        <JobPreferencesDialog
+          open={showPreferencesDialog}
+          onOpenChange={setShowPreferencesDialog}
+          profileUserId={user.id}
+          initialValues={preferences}
+          onSaved={(values) => {
+            setPreferences(values);
+            // Re-run the server-side batch scorer + reload the cache so
+            // "Recommended for You" reflects the new preferences immediately
+            // instead of waiting for the next unrelated page load.
+            refreshRecommendations();
+          }}
+        />
+      )}
 
       {/* Apply Dialog */}
       <Dialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>

@@ -1,0 +1,1 @@
+revoke execute on function public.normalize_skill_name(text) from anon;
