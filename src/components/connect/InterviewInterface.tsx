@@ -390,7 +390,10 @@ const InterviewInterface = ({ user }: InterviewInterfaceProps) => {
           const s = statusStyles(interview.status);
           const note = interview.notes || interview.description;
           return (
-            <Card key={interview.id} className={cn('min-w-0 overflow-hidden border-l-4', s.border)}>
+            <Card
+              key={interview.id}
+              className={cn('min-w-0 overflow-hidden border-l-4 shadow-none', s.border)}
+            >
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="min-w-0 flex-1 break-words font-semibold leading-snug">

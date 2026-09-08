@@ -589,25 +589,30 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
           box. On desktop it always fills the split-pane row. */}
       <Card
         className={cn(
-          'flex min-w-0 flex-col lg:col-span-1 lg:h-auto lg:min-h-0',
+          // Mobile: LinkedIn-style bare list -- no card border/shadow, rows
+          // run full-bleed on the page background. Desktop: a bordered
+          // split-pane panel.
+          'flex min-w-0 flex-col border-0 bg-transparent shadow-none lg:col-span-1 lg:h-auto lg:min-h-0 lg:border lg:bg-card lg:shadow-sm',
           conversations.length > 0
             ? 'h-[calc(var(--app-vvh,100dvh)-17rem)] min-h-[16rem]'
             : 'h-auto lg:h-auto',
           selectedConversation && 'hidden lg:flex',
         )}
       >
-        <CardHeader className="pb-3 flex-shrink-0">
+        <CardHeader className="flex-shrink-0 px-0 pb-3 lg:px-6">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Messages</CardTitle>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
+              className="h-8 w-8"
+              aria-label={showNewChat ? 'Close new message' : 'New message'}
               onClick={() => setShowNewChat(!showNewChat)}
             >
               {showNewChat ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </Button>
           </div>
-          
+
           {showNewChat && (
             <div className="space-y-2 pt-2">
               <Popover open={userSearchOpen} onOpenChange={setUserSearchOpen}>
@@ -677,46 +682,48 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
             </div>
           )}
         </CardHeader>
-        <CardContent className="p-0 flex-1 overflow-hidden">
+        <CardContent className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full">
             {conversations.length === 0 ? (
-              <div className="p-6 text-center text-muted-foreground">
-                <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">No conversations yet</p>
-                <p className="text-xs mt-1">Start a new chat to connect</p>
+              <div className="px-2 py-8 text-center text-muted-foreground">
+                <MessageCircle className="mx-auto mb-2 h-10 w-10 opacity-40" />
+                <p className="text-sm font-medium">No conversations yet</p>
+                <p className="mt-0.5 text-xs">Start a new chat to connect</p>
               </div>
             ) : (
-              conversations.map((conversation) => (
-                <div
-                  key={conversation.id}
-                  className={`p-4 border-b cursor-pointer hover:bg-muted/50 transition-colors ${
-                    selectedConversation === conversation.id ? 'bg-muted' : ''
-                  }`}
-                  onClick={() => handleSelectConversation(conversation)}
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10 flex-shrink-0">
+              <div className="lg:px-2">
+                {conversations.map((conversation) => (
+                  <button
+                    key={conversation.id}
+                    type="button"
+                    className={cn(
+                      'flex w-full items-start gap-3 border-b border-border px-1 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/50 lg:rounded-lg lg:border-b-0 lg:px-3',
+                      selectedConversation === conversation.id && 'bg-muted',
+                    )}
+                    onClick={() => handleSelectConversation(conversation)}
+                  >
+                    <Avatar className="h-11 w-11 shrink-0">
                       <AvatarImage src={conversation.otherUser?.avatar_url || undefined} />
                       <AvatarFallback>
                         {conversation.otherUser?.display_name?.[0]?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">
-                        {conversation.otherUser?.display_name || 'Unknown User'}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="min-w-0 truncate text-sm font-semibold">
+                          {conversation.otherUser?.display_name || 'Unknown User'}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
+                        </span>
                       </div>
-                      {conversation.lastMessage && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          {conversation.lastMessage}
-                        </p>
-                      )}
-                      <div className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
-                      </div>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {conversation.lastMessage || 'No messages yet'}
+                      </p>
                     </div>
-                  </div>
-                </div>
-              ))
+                  </button>
+                ))}
+              </div>
             )}
           </ScrollArea>
         </CardContent>
@@ -730,17 +737,18 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
         </p>
       )}
 
-      {/* Chat Window */}
+      {/* Chat Window. Bare (full-bleed) on mobile, bordered panel on desktop
+          -- matches the conversation list above. */}
       <Card
         className={cn(
-          'flex min-w-0 flex-col lg:col-span-2 lg:h-auto lg:min-h-0',
+          'flex min-w-0 flex-col border-0 bg-transparent shadow-none lg:col-span-2 lg:h-auto lg:min-h-0 lg:border lg:bg-card lg:shadow-sm',
           'h-[calc(var(--app-vvh,100dvh)-14rem)] min-h-[24rem]',
           !selectedConversation && 'hidden lg:flex',
         )}
       >
         {selectedConversation ? (
           <>
-            <CardHeader className="pb-3 flex-shrink-0 border-b">
+            <CardHeader className="flex-shrink-0 border-b px-0 pb-3 lg:px-6">
               <div className="flex items-center gap-3">
                 <Button
                   variant="ghost"
