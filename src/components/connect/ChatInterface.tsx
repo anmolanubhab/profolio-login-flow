@@ -11,7 +11,9 @@ import { Separator } from '@/components/ui/separator';
 import {
   Send, Plus, MessageCircle, Search, Loader2, X, Paperclip, FileText, Download,
   Image, Camera, Mic, User as UserIcon, BarChart3, Calendar, Sticker as StickerIcon,
+  ChevronLeft,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Command,
@@ -574,9 +576,26 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-280px)] min-h-[500px]">
-      {/* Conversations List */}
-      <Card className="lg:col-span-1 flex flex-col">
+    // Mobile: a single-panel view -- the conversation list OR the open chat,
+    // never both stacked (that was the source of the huge empty "select a
+    // conversation" box). Heights use var(--app-vvh,100dvh) so the panel
+    // tracks the visible viewport incl. the on-screen keyboard, and the
+    // Layout already reserves the bottom-nav + safe-area padding.
+    // Desktop (lg): the classic 1/3 + 2/3 split pane.
+    <div className="grid min-w-0 grid-cols-1 gap-4 lg:h-[calc(100dvh-16rem)] lg:min-h-[32rem] lg:grid-cols-3">
+      {/* Conversations List. On mobile it only claims a tall viewport-based
+          height when it actually has conversations to scroll -- an empty list
+          shrinks to its "no conversations yet" hint instead of a big blank
+          box. On desktop it always fills the split-pane row. */}
+      <Card
+        className={cn(
+          'flex min-w-0 flex-col lg:col-span-1 lg:h-auto lg:min-h-0',
+          conversations.length > 0
+            ? 'h-[calc(var(--app-vvh,100dvh)-17rem)] min-h-[16rem]'
+            : 'h-auto lg:h-auto',
+          selectedConversation && 'hidden lg:flex',
+        )}
+      >
         <CardHeader className="pb-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Messages</CardTitle>
@@ -603,7 +622,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     Search users...
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0" align="start">
+                <PopoverContent className="w-[min(300px,calc(100vw-2rem))] p-0" align="start">
                   <Command shouldFilter={false}>
                     <CommandInput 
                       placeholder="Search by name..." 
@@ -703,24 +722,50 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
         </CardContent>
       </Card>
 
+      {/* Compact mobile hint when conversations exist but none is open --
+          replaces the full-height empty panel below. */}
+      {!selectedConversation && conversations.length > 0 && (
+        <p className="px-1 text-center text-xs text-muted-foreground lg:hidden">
+          Tap a conversation to open it
+        </p>
+      )}
+
       {/* Chat Window */}
-      <Card className="lg:col-span-2 flex flex-col">
+      <Card
+        className={cn(
+          'flex min-w-0 flex-col lg:col-span-2 lg:h-auto lg:min-h-0',
+          'h-[calc(var(--app-vvh,100dvh)-14rem)] min-h-[24rem]',
+          !selectedConversation && 'hidden lg:flex',
+        )}
+      >
         {selectedConversation ? (
           <>
             <CardHeader className="pb-3 flex-shrink-0 border-b">
               <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="-ml-2 h-8 w-8 shrink-0 lg:hidden"
+                  onClick={() => {
+                    setSelectedConversation(null);
+                    setSelectedConversationUser(null);
+                  }}
+                  aria-label="Back to conversations"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={selectedConversationUser?.avatar_url || undefined} />
                   <AvatarFallback>
                     {selectedConversationUser?.display_name?.[0]?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <CardTitle className="text-base">
+                <div className="min-w-0">
+                  <CardTitle className="truncate text-base">
                     {selectedConversationUser?.display_name || 'Chat'}
                   </CardTitle>
                   {selectedConversationUser?.profession && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="truncate text-xs text-muted-foreground">
                       {selectedConversationUser.profession}
                     </p>
                   )}
@@ -933,7 +978,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                       <div
                         role="dialog"
                         aria-label="Sticker picker"
-                        className="absolute bottom-full left-0 mb-2 w-[300px] rounded-md border bg-popover text-popover-foreground shadow-md z-50"
+                        className="absolute bottom-full left-0 mb-2 w-[min(300px,calc(100vw-2rem))] rounded-md border bg-popover text-popover-foreground shadow-md z-50"
                       >
                         <div className="p-3 pb-2 border-b">
                           <div className="flex items-center justify-between mb-2">

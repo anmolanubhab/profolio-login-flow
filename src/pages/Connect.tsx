@@ -6,7 +6,7 @@ import { Layout } from '@/components/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ChatInterface from '@/components/connect/ChatInterface';
 import InterviewInterface from '@/components/connect/InterviewInterface';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CalendarDays, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
@@ -71,30 +71,51 @@ const Connect = () => {
 
   return (
     <Layout user={user} onSignOut={handleSignOut}>
-      <div className="container mx-auto max-w-6xl">
-        <div className="flex items-center gap-4 mb-6">
-          <Button 
-            variant="outline" 
+      {/* min-w-0 + w-full: every level can shrink, so nothing forces the page
+          wider than the viewport. The .layout wrapper (Layout) already gives
+          the horizontal page padding + centred max-width; no extra container
+          here (the old `container mx-auto max-w-6xl` double-wrapper is what
+          pushed content past the screen edge on mobile). */}
+      <div className="mx-auto w-full min-w-0 max-w-5xl space-y-4 sm:space-y-6">
+        {/* Back + hero. Back to Dashboard gets its own row; the title sits
+            below it and can never be clipped by a sibling on a narrow row. */}
+        <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-accent/50 via-background to-background p-4 sm:p-6">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2"
+            className="rounded-full"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="mr-1.5 h-4 w-4" />
             Back to Dashboard
           </Button>
-          <h1 className="text-3xl font-bold">Connect</h1>
+          <h1 className="mt-3 text-[22px] font-semibold leading-tight tracking-tight sm:text-[26px]">
+            Stay Connected
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Messages and interviews in one place
+          </p>
         </div>
 
-        <Tabs defaultValue="chat" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="chat">Messages</TabsTrigger>
-            <TabsTrigger value="interviews">Interviews</TabsTrigger>
+        <Tabs defaultValue="chat" className="w-full min-w-0">
+          {/* Full-width, equal-width segmented control. h-auto + py on the
+              triggers so the icon+label fit without clipping on 320px. */}
+          <TabsList className="grid h-auto w-full grid-cols-2 rounded-xl p-1">
+            <TabsTrigger value="chat" className="min-w-0 gap-2 rounded-lg py-2.5">
+              <MessageSquare className="h-4 w-4 shrink-0" />
+              <span className="truncate">Messages</span>
+            </TabsTrigger>
+            <TabsTrigger value="interviews" className="min-w-0 gap-2 rounded-lg py-2.5">
+              <CalendarDays className="h-4 w-4 shrink-0" />
+              <span className="truncate">Interviews</span>
+            </TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="chat" className="mt-4">
+
+          <TabsContent value="chat" className="mt-4 min-w-0">
             <ChatInterface user={user} />
           </TabsContent>
-          
-          <TabsContent value="interviews" className="mt-4">
+
+          <TabsContent value="interviews" className="mt-4 min-w-0">
             <InterviewInterface user={user} />
           </TabsContent>
         </Tabs>
