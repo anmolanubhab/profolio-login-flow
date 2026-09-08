@@ -143,16 +143,16 @@ const PostImageEditor = ({ open, initial, onCancel, onDone }: PostImageEditorPro
             )}
           </DialogHeader>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
             {/* preview + tools */}
             <div className="min-w-0 flex-1">
-              <div className="flex h-[42vh] items-center justify-center overflow-hidden rounded-lg bg-black/90">
+              <div className="flex h-[42dvh] items-center justify-center overflow-hidden rounded-lg bg-black/90">
                 {current ? (
                   <div className="relative inline-block max-h-full max-w-full">
                     <img
                       src={current.src}
                       alt={current.alt || 'Selected photo preview'}
-                      className="block max-h-[42vh] max-w-full object-contain"
+                      className="block max-h-[42dvh] max-w-full object-contain"
                     />
                     <PhotoTagOverlay
                       tags={current.tags}
@@ -242,10 +242,10 @@ const PostImageEditor = ({ open, initial, onCancel, onDone }: PostImageEditorPro
             </div>
 
             {/* thumbnail rail */}
-            <div className="sm:w-28 sm:shrink-0">
+            <div className="min-w-0 sm:w-28 sm:shrink-0">
               <div
                 ref={railScrollRef}
-                className="flex gap-2 overflow-x-auto pb-1 sm:max-h-[42vh] sm:flex-col sm:overflow-y-auto sm:overflow-x-visible"
+                className="flex gap-2 overflow-x-auto pb-1 sm:max-h-[42dvh] sm:flex-col sm:overflow-y-auto sm:overflow-x-visible"
               >
                 {items.map((it, i) => (
                   <button
@@ -299,7 +299,12 @@ const PostImageEditor = ({ open, initial, onCancel, onDone }: PostImageEditorPro
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          {/* Sticky on mobile so Back / Next stay visible while the editor body
+              scrolls. DialogContent already reserves env(safe-area-inset-bottom)
+              of padding below this bar, so the buttons clear the Android nav /
+              gesture area without any per-device offset here. At `sm:` all the
+              mobile-only decoration is reset to the original inline row. */}
+          <div className="sticky bottom-0 z-10 -mx-6 mt-1 flex items-center justify-between gap-3 border-t border-border bg-background px-6 pb-3 pt-3 sm:mx-0 sm:mt-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:py-0">
             <Button type="button" variant="outline" onClick={onCancel}>
               <X className="mr-1.5 h-4 w-4" /> Back
             </Button>

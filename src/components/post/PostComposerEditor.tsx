@@ -317,9 +317,9 @@ const PostComposerEditor = ({
   const popupOpen = !!suggest && (results.length > 0 || loading);
 
   return (
-    <div className={cn('flex flex-col', className)}>
+    <div className={cn('flex min-w-0 flex-col', className)}>
       <div
-        className="post-rt-toolbar flex items-center gap-0.5 overflow-x-auto border-b border-border pb-1.5 mb-1.5"
+        className="post-rt-toolbar flex min-w-0 items-center gap-0.5 overflow-x-auto border-b border-border pb-1.5 mb-1.5"
         role="toolbar"
         aria-label="Text formatting"
       >

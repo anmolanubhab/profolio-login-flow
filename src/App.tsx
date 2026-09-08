@@ -65,6 +65,7 @@ import NotFound from "./pages/NotFound";
 import Diagnostics from "./pages/Diagnostics";
 import { RequireAal2 } from "./components/RequireAal2";
 import { SWUpdatePrompt } from "./components/SWUpdatePrompt";
+import { ViewportSizeVar } from "./hooks/use-viewport-size";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <SWUpdatePrompt />
+        <ViewportSizeVar />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
