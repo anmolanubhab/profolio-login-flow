@@ -56,6 +56,7 @@ const AddPost = () => {
   const [doc, setDoc] = useState<RichDoc>(createEmptyDoc);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [mode, setMode] = useState<AttachmentMode>('none');
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -350,7 +351,13 @@ const AddPost = () => {
         let postType: 'text' | 'carousel' | 'document' | 'video' = 'text';
 
         if (mode === 'image' && photoDrafts.length > 0) {
-          const media = await uploadDraftImages(photoDrafts, user.id);
+          const media = await uploadDraftImages(
+            photoDrafts,
+            user.id,
+            photoDrafts.length > 1
+              ? (done, total) => setUploadProgress({ done, total })
+              : undefined,
+          );
           mediaJson = mediaToJson(media);
           imageUrl = media[0]?.url ?? null;
           carouselUrls = media.length > 1 ? media.map((m) => m.url) : null;
@@ -438,6 +445,7 @@ const AddPost = () => {
       }
     } finally {
       setLoading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -679,7 +687,11 @@ const AddPost = () => {
                 onClick={() => handlePost(false)}
                 disabled={!canSubmit(false)}
               >
-                {loading ? 'Posting...' : 'Post'}
+                {uploadProgress
+                  ? `Uploading ${uploadProgress.done}/${uploadProgress.total}`
+                  : loading
+                    ? 'Posting...'
+                    : 'Post'}
               </Button>
             </div>
           </CardContent>

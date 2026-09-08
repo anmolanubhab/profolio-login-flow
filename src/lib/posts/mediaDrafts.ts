@@ -73,19 +73,34 @@ export function draftFromMedia(m: PostMediaItem): DraftImage {
  * the final ordered `posts.media` list. Items that already have a `remoteUrl`
  * and no pending edit are passed through untouched (no duplicate upload).
  */
-export async function uploadDraftImages(items: DraftImage[], userId: string): Promise<PostMediaItem[]> {
+export async function uploadDraftImages(
+  items: DraftImage[],
+  userId: string,
+  /** Called after each item resolves, for a "Uploading 3/6" indicator. */
+  onProgress?: (done: number, total: number) => void,
+): Promise<PostMediaItem[]> {
   const out: PostMediaItem[] = [];
-  for (const it of items) {
+  const total = items.length;
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
     if (it.remoteUrl && !it.blob && !it.file) {
       out.push({ id: it.mediaKey, url: it.remoteUrl, alt: sanitizeAlt(it.alt), w: it.w, h: it.h });
+      onProgress?.(i + 1, total);
       continue;
     }
     const payload: File = it.blob
       ? new File([it.blob], 'photo.jpg', { type: it.blob.type || 'image/jpeg' })
       : (it.file as File);
     const res = await secureUpload({ bucket: 'post-images', file: payload, userId });
-    if (!res.success || !res.url) throw new Error(res.error || 'Photo upload failed');
+    // Nothing is inserted until this whole loop resolves, so a failure here
+    // aborts cleanly -- no partial carousel is ever published.
+    if (!res.success || !res.url) {
+      throw new Error(
+        res.error || `Photo ${i + 1} of ${total} failed to upload. Nothing was posted -- please try again.`,
+      );
+    }
     out.push({ id: it.mediaKey, url: res.url, alt: sanitizeAlt(it.alt), w: it.w, h: it.h });
+    onProgress?.(i + 1, total);
   }
   return out;
 }

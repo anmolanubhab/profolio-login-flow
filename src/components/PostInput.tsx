@@ -58,6 +58,7 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
   const [postPlainText, setPostPlainText] = useState('');
   const [mode, setMode] = useState<AttachmentMode>('none');
   const [isPosting, setIsPosting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
 
   // "Post as" -- only shown when the current user owns at least one company
   // (mirrors CompanySelector.tsx's owner_id-only scoping used elsewhere for
@@ -273,7 +274,13 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
         let postType: 'text' | 'carousel' | 'document' | 'video' = 'text';
 
         if (mode === 'image' && photoDrafts.length > 0) {
-          const media = await uploadDraftImages(photoDrafts, currentUser.id);
+          const media = await uploadDraftImages(
+            photoDrafts,
+            currentUser.id,
+            photoDrafts.length > 1
+              ? (done, total) => setUploadProgress({ done, total })
+              : undefined,
+          );
           mediaJson = mediaToJson(media);
           imageUrl = media[0]?.url ?? null;
           carouselUrls = media.length > 1 ? media.map((m) => m.url) : null;
@@ -344,6 +351,7 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
       }
     } finally {
       setIsPosting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -549,7 +557,11 @@ const PostInput = ({ user, onPostCreated }: PostInputProps) => {
             className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6 text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={!canSubmit()}
           >
-            {isPosting ? "Posting..." : "Post"}
+            {uploadProgress
+              ? `Uploading ${uploadProgress.done}/${uploadProgress.total}`
+              : isPosting
+                ? "Posting..."
+                : "Post"}
           </Button>
         </div>
       </CardContent>

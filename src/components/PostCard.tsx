@@ -14,7 +14,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { PostOptionsMenu } from './PostOptionsMenu';
 import { SuggestedFollowControl } from './SuggestedFollowControl';
 import PostText from './PostText';
@@ -28,8 +27,9 @@ import { useTapTrigger } from '@/hooks/use-tap-trigger';
 import { ReactionBar, ReactionCountSummary, ReactionType, ReactionSummary, REACTION_META, REACTION_ORDER } from './ReactionBar';
 import CommentSection from './comments/CommentSection';
 import { ImageMedia, VideoMedia } from './post/PostMedia';
+import { MultiPhotoCarousel } from './post/MultiPhotoCarousel';
+import { PhotoLightbox } from './post/PhotoLightbox';
 import { normalizePostMedia } from '@/lib/posts/media';
-import PhotoTagOverlay, { PhotoTagToggle } from './post/PhotoTagOverlay';
 import { loadPostMediaTags, type DraftTag } from '@/lib/posts/mediaTags';
 
 export interface PollSummary {
@@ -188,6 +188,9 @@ const PostCard = ({
   // stable media id. Read-only here; markers toggle on/off over the image.
   const [photoTags, setPhotoTags] = useState<Record<string, DraftTag[]>>({});
   const [showPhotoTags, setShowPhotoTags] = useState(false);
+  // Full-screen viewer for the truly-legacy single `image_url` path (posts.media
+  // and legacy carousel_urls get their own viewer inside <MultiPhotoCarousel>).
+  const [legacyLightboxOpen, setLegacyLightboxOpen] = useState(false);
   useEffect(() => {
     let alive = true;
     if (hasMedia) {
@@ -589,60 +592,40 @@ const PostCard = ({
             </div>
           )}
 
-          {/* Phase 6C media: single image (with its own alt) or a gallery. */}
-          {hasMedia && mediaItems.length === 1 && (
-            <div className="relative">
-              <ImageMedia src={mediaItems[0].url} alt={mediaItems[0].alt || 'Post image'} />
-              {showPhotoTags && (photoTags[mediaItems[0].id]?.length ?? 0) > 0 && (
-                <PhotoTagOverlay tags={photoTags[mediaItems[0].id]} />
-              )}
-              {totalPhotoTags > 0 && (
-                <PhotoTagToggle on={showPhotoTags} count={totalPhotoTags} onClick={() => setShowPhotoTags((s) => !s)} />
-              )}
-            </div>
-          )}
-          {!hasMedia && image && <ImageMedia src={image} alt="Post image" />}
+          {/* Photos render in one block below (sibling of video / document) so
+              new posts.media (1-10), legacy carousel_urls and the
+              truly-legacy single image_url all route through one path. */}
         </>
       )}
 
-      {(hasMedia
-        ? mediaItems.length >= 2
-        : postType === 'carousel' && !!carouselUrls && carouselUrls.length > 0) && (
-        // Full-bleed on mobile (image gallery), contained on desktop. Embla's
-        // swipe/drag is unaffected by the outer breakout margins.
-        <div className="post-media post-media--fullbleed md:px-5">
-          <Carousel className="w-full">
-            <CarouselContent>
-              {(hasMedia
-                ? mediaItems.map((m) => ({ url: m.url, alt: m.alt, id: m.id }))
-                : (carouselUrls ?? []).map((url, i) => ({ url, alt: `Image ${i + 1}`, id: '' }))
-              ).map((slide, i) => (
-                <CarouselItem key={i}>
-                  <div className="relative">
-                    <img
-                      src={slide.url}
-                      alt={slide.alt || `Image ${i + 1}`}
-                      loading="lazy"
-                      className="w-full h-auto max-h-[80vh] md:max-h-96 object-contain bg-muted md:rounded-lg"
-                    />
-                    {showPhotoTags && slide.id && (photoTags[slide.id]?.length ?? 0) > 0 && (
-                      <PhotoTagOverlay tags={photoTags[slide.id]} />
-                    )}
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            {(hasMedia ? mediaItems.length : (carouselUrls?.length ?? 0)) > 1 && (
-              <>
-                <CarouselPrevious className="left-2" />
-                <CarouselNext className="right-2" />
-              </>
-            )}
-            {totalPhotoTags > 0 && (
-              <PhotoTagToggle on={showPhotoTags} count={totalPhotoTags} onClick={() => setShowPhotoTags((s) => !s)} />
-            )}
-          </Carousel>
-        </div>
+      {/* Phase 6C posts.media -> carousel (also handles a single photo:
+          tap-to-zoom + photo tags, no arrows/indicator). */}
+      {hasMedia && (
+        <MultiPhotoCarousel
+          photos={mediaItems.map((m) => ({ url: m.url, alt: m.alt, id: m.id, w: m.w, h: m.h }))}
+          photoTags={photoTags}
+          showPhotoTags={showPhotoTags}
+          onToggleTags={() => setShowPhotoTags((s) => !s)}
+          totalPhotoTags={totalPhotoTags}
+        />
+      )}
+      {/* Legacy multi-image posts (carousel_urls, pre-Phase-6C). */}
+      {!hasMedia && !!carouselUrls && carouselUrls.length > 0 && (
+        <MultiPhotoCarousel
+          photos={carouselUrls.map((url, i) => ({ url, alt: `Photo ${i + 1}`, id: '' }))}
+        />
+      )}
+      {/* Legacy single image (pre-Phase-6C). Unchanged renderer; tap opens the
+          shared full-screen viewer. */}
+      {!hasMedia && (!carouselUrls || carouselUrls.length === 0) && image && (
+        <ImageMedia src={image} alt="Post image" onClick={() => setLegacyLightboxOpen(true)} />
+      )}
+      {legacyLightboxOpen && image && (
+        <PhotoLightbox
+          photos={[{ url: image, alt: 'Post image' }]}
+          index={0}
+          onClose={() => setLegacyLightboxOpen(false)}
+        />
       )}
 
       {postType === 'video' && videoUrl && (
