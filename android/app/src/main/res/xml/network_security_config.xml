@@ -2,16 +2,16 @@
 <!--
   HTTPS-only network policy for the Profolio native shell.
 
-  * cleartextTrafficPermitted="false"  -> no plain-HTTP anywhere (the WebView
-    production URL, Supabase REST/Realtime/Storage and Edge Functions are all
-    HTTPS, so nothing legitimate is blocked).
-  * trust-anchors = system only        -> standard public CAs; no custom or
-    user-added certificates, no per-domain exceptions. Vercel and Supabase
-    both chain to public CAs, so this does not block the production site or
-    the Supabase APIs.
+  cleartextTrafficPermitted="false" : no plain-HTTP anywhere. The WebView
+  production URL, Supabase REST/Realtime/Storage and Edge Functions are all
+  HTTPS, so nothing legitimate is blocked.
 
-  There are intentionally NO <domain-config> overrides -- adding one would be
-  the only way to accidentally weaken this.
+  trust-anchors = system only : standard public CAs, no custom or user-added
+  certificates, no per-domain exceptions. Vercel and Supabase both chain to
+  public CAs, so this does not block the production site or the Supabase APIs.
+
+  There are intentionally no domain-config overrides; adding one would be the
+  only way to accidentally weaken this.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
