@@ -36,7 +36,19 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        // Mobile: 1rem side gutters (never edge-to-edge / off-centre) and a
+        // height capped to the space actually visible -- `--app-vvh` also
+        // shrinks for the on-screen keyboard (see useViewportSizeVar); falls
+        // back to 100dvh. Content scrolls inside instead of spilling off
+        // screen, and the bottom padding grows to clear the Android nav bar /
+        // gesture area via env(safe-area-inset-bottom). Desktop (`sm:`) keeps
+        // the original max-w-lg and, in practice, never needs to scroll.
+        // `[&>*]:min-w-0` lets direct children (which are grid items) shrink
+        // below their intrinsic min-content instead of forcing the single grid
+        // track wider than the dialog -- the usual cause of a horizontally
+        // clipped / off-centre mobile dialog. Children that scroll horizontally
+        // (toolbars, thumbnail rails) then contain themselves.
+        "fixed left-[50%] top-[50%] z-50 grid max-h-[calc(var(--app-vvh,100dvh)-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto overflow-x-hidden overscroll-contain border bg-background p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-lg duration-200 [&>*]:min-w-0 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:max-w-lg sm:rounded-lg",
         className
       )}
       {...props}

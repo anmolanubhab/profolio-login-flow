@@ -274,7 +274,7 @@ const EditPostDialog = ({ postId, open, onOpenChange, onSaved }: EditPostDialogP
           </div>
         ) : (
           <>
-            <div className="rounded-md border border-input bg-background px-3 py-2 focus-within:ring-1 focus-within:ring-ring">
+            <div className="min-w-0 rounded-md border border-input bg-background px-3 py-2 focus-within:ring-1 focus-within:ring-ring">
               <PostComposerEditor
                 value={doc}
                 onChange={(nextDoc, text) => {
@@ -293,7 +293,7 @@ const EditPostDialog = ({ postId, open, onOpenChange, onSaved }: EditPostDialogP
             )}
 
             {isImagePost && (
-              <div className="flex items-center gap-2 overflow-x-auto rounded-lg border border-border p-2">
+              <div className="flex min-w-0 items-center gap-2 overflow-x-auto rounded-lg border border-border p-2">
                 {photoDrafts.map((d) => (
                   <img
                     key={d.key}
@@ -317,7 +317,7 @@ const EditPostDialog = ({ postId, open, onOpenChange, onSaved }: EditPostDialogP
           </>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 z-10 -mx-6 mt-1 gap-2 border-t border-border bg-background px-6 pb-3 pt-3 sm:mx-0 sm:mt-0 sm:gap-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:py-0">
           {poll ? (
             <Button onClick={() => onOpenChange(false)}>Close</Button>
           ) : (
