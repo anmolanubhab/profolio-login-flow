@@ -62,7 +62,9 @@ import InsightDetailPage from "./pages/insights/InsightDetailPage";
 import InsightArticlePage from "./pages/insights/InsightArticlePage";
 import InsightEditorPage from "./pages/insights/InsightEditorPage";
 import NotFound from "./pages/NotFound";
+import Diagnostics from "./pages/Diagnostics";
 import { RequireAal2 } from "./components/RequireAal2";
+import { SWUpdatePrompt } from "./components/SWUpdatePrompt";
 
 const queryClient = new QueryClient();
 
@@ -72,10 +74,13 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <SWUpdatePrompt />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/register" element={<Register />} />
+            {/* Public build/environment diagnostic -- reachable before login. */}
+            <Route path="/diagnostics" element={<Diagnostics />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/mfa-challenge" element={<MfaChallenge />} />
