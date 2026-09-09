@@ -1,27 +1,36 @@
 import { cn } from '@/lib/utils';
 import logoSrc from '@/assets/logo/profolio-logo.png';
+import iconSrc from '@/assets/logo/profolio-icon.png';
 
 /**
- * The one source of truth for the Profolio brand mark: the official rainbow
- * ribbon "P" + "Profolio" wordmark lockup (src/assets/logo/profolio-logo.png,
- * a transparent-margin trim of the supplied master). Import this component —
- * never the image — so sizing, aspect ratio and alt text stay consistent.
+ * The one source of truth for the Profolio brand mark. Import this component —
+ * never the images.
+ *
+ *   variant="lockup" (default)  rainbow ribbon "P" + "Profolio" wordmark
+ *                               (src/assets/logo/profolio-logo.png)
+ *   variant="icon"              the ribbon "P" only, for tight / square slots
+ *                               (src/assets/logo/profolio-icon.png)
  *
  * Sizing: set the HEIGHT via `className` (e.g. `h-7`, `h-10`); width tracks the
- * intrinsic 2.52:1 ratio automatically, so the mark never distorts.
+ * intrinsic ratio automatically, so the mark never distorts.
  */
 
-// Intrinsic pixel size of the trimmed lockup — drives layout / avoids CLS.
-const INTRINSIC_W = 880;
-const INTRINSIC_H = 349;
+// Intrinsic pixel sizes — drive layout / avoid CLS.
+const LOCKUP_W = 880;
+const LOCKUP_H = 349;
+const ICON_W = 221;
+const ICON_H = 256;
 
 interface ProfolioLogoProps {
   /** Height utility + any extra classes. Defaults to `h-7`. */
   className?: string;
+  /** `lockup` (P + wordmark) or `icon` (P only). Defaults to `lockup`. */
+  variant?: 'lockup' | 'icon';
   /**
    * Wrap the mark in a light rounded card. Use on dark or photographic
    * backgrounds (auth screens) where the dark wordmark would lose contrast —
-   * the artwork itself is never altered.
+   * the artwork itself is never altered. Ignored for `variant="icon"` (the
+   * full-colour "P" reads on any background).
    */
   boxed?: boolean;
   /**
@@ -31,18 +40,23 @@ interface ProfolioLogoProps {
   alt?: string;
 }
 
-export function ProfolioLogo({ className, boxed = false, alt = 'Profolio' }: ProfolioLogoProps) {
+export function ProfolioLogo({ className, variant = 'lockup', boxed = false, alt = 'Profolio' }: ProfolioLogoProps) {
+  const isIcon = variant === 'icon';
+
   const img = (
     <img
-      src={logoSrc}
+      src={isIcon ? iconSrc : logoSrc}
       alt={alt}
-      width={INTRINSIC_W}
-      height={INTRINSIC_H}
+      width={isIcon ? ICON_W : LOCKUP_W}
+      height={isIcon ? ICON_H : LOCKUP_H}
       decoding="async"
       draggable={false}
       className={cn('block h-7 w-auto max-w-full select-none', className)}
     />
   );
+
+  // The full-colour "P" alone has enough contrast on light AND dark — no card.
+  if (isIcon) return img;
 
   // Explicit card — for coloured / photographic backgrounds (auth screens).
   if (boxed) {

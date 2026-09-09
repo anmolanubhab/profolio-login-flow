@@ -25,14 +25,14 @@
  *  - activate deletes any cache not in the current keep-set, so bumping
  *    CACHE_VERSION fully purges the previous version's caches.
  */
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const RUNTIME_CACHE = `profolio-runtime-${CACHE_VERSION}`;
 const PRECACHE = `profolio-precache-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(PRECACHE).then((cache) => cache.addAll([OFFLINE_URL, '/icon.svg', '/manifest.webmanifest'])),
+    caches.open(PRECACHE).then((cache) => cache.addAll([OFFLINE_URL, '/pwa-192.png', '/manifest.webmanifest'])),
   );
   // NOTE: no self.skipWaiting() here -- see "Update lifecycle" above.
 });
