@@ -1465,41 +1465,157 @@ export type Database = {
           },
         ]
       }
-      certificates: {
+      certificate_activity: {
+        Row: {
+          action: string
+          certificate_id: string
+          created_at: string
+          detail: Json | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          certificate_id: string
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          certificate_id?: string
+          created_at?: string
+          detail?: Json | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      certificate_folders: {
         Row: {
           created_at: string
-          description: string | null
-          file_name: string
-          file_size: number | null
-          file_url: string
+          deleted_at: string | null
           id: string
-          title: string
+          name: string
+          parent_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          description?: string | null
-          file_name: string
-          file_size?: number | null
-          file_url: string
+          deleted_at?: string | null
           id?: string
-          title: string
+          name: string
+          parent_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          description?: string | null
-          file_name?: string
-          file_size?: number | null
-          file_url?: string
+          deleted_at?: string | null
           id?: string
-          title?: string
+          name?: string
+          parent_id?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      certificates: {
+        Row: {
+          category: string | null
+          created_at: string
+          credential_id: string | null
+          credential_name: string | null
+          deleted_at: string | null
+          description: string | null
+          expiry_date: string | null
+          file_name: string
+          file_size: number | null
+          file_url: string
+          folder_id: string | null
+          id: string
+          issue_date: string | null
+          issuer: string | null
+          last_opened_at: string | null
+          mime_type: string | null
+          skills: string[]
+          starred: boolean
+          tags: string[]
+          thumb_path: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          verification_url: string | null
+          verified_status: string
+          visibility: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          credential_id?: string | null
+          credential_name?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          expiry_date?: string | null
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          folder_id?: string | null
+          id?: string
+          issue_date?: string | null
+          issuer?: string | null
+          last_opened_at?: string | null
+          mime_type?: string | null
+          skills?: string[]
+          starred?: boolean
+          tags?: string[]
+          thumb_path?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          verification_url?: string | null
+          verified_status?: string
+          visibility?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          credential_id?: string | null
+          credential_name?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          expiry_date?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          folder_id?: string | null
+          id?: string
+          issue_date?: string | null
+          issuer?: string | null
+          last_opened_at?: string | null
+          mime_type?: string | null
+          skills?: string[]
+          starred?: boolean
+          tags?: string[]
+          thumb_path?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          verification_url?: string | null
+          verified_status?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificates_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "certificate_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       comment_reactions: {
         Row: {
@@ -5725,6 +5841,14 @@ export type Database = {
       }
       cancel_interview_round: {
         Args: { p_reason?: string; p_round_id: string }
+        Returns: undefined
+      }
+      cert_folder_set_deleted: {
+        Args: { _deleted: boolean; _folder: string }
+        Returns: undefined
+      }
+      cert_touch_opened: {
+        Args: { _id: string }
         Returns: undefined
       }
       check_and_record_rate_limit: {
