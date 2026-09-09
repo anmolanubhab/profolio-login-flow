@@ -7,6 +7,7 @@ import { Lock, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeInput } from '@/lib/input-sanitizer';
+import { ProfolioLogo } from '@/components/ProfolioLogo';
 import { PASSWORD_MIN_LENGTH, getPasswordStrength } from '@/lib/password';
 
 const ResetPassword = () => {
@@ -78,10 +79,8 @@ const ResetPassword = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Profolio
-          </h1>
-          <p className="text-sm text-muted-foreground mt-2">Your Future, Verified.</p>
+          <ProfolioLogo boxed className="h-8" />
+          <p className="text-sm text-muted-foreground mt-3">Your Future, Verified.</p>
         </div>
 
         <Card className="shadow-card">

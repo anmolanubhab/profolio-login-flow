@@ -38,6 +38,7 @@ import {
   muteAuthor, recordStoryView, reportStory, saveStoryToArchive, sendStoryReply,
   setStoryReaction, unfollowAuthor, type SeenByViewer,
 } from '@/lib/stories/api';
+import { ProfolioLogo } from '@/components/ProfolioLogo';
 
 function timeAgo(ts: string) {
   const m = Math.floor((Date.now() - new Date(ts).getTime()) / 60000);
@@ -526,10 +527,9 @@ const StoryPage = () => {
       {!standalone && (
         <div className="hidden lg:flex w-80 shrink-0 flex-col bg-neutral-950 border-r border-white/10 overflow-y-auto">
           <div className="flex items-center justify-between px-4 py-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded bg-primary flex items-center justify-center font-bold text-sm">P</div>
-              <span className="font-semibold">Profolio</span>
-            </div>
+            {/* Story viewer forces a black backdrop regardless of theme, so
+                the dark wordmark needs the light card here. */}
+            <ProfolioLogo boxed className="h-6" />
             <button aria-label="Close story" onClick={close} className="p-2 rounded-full hover:bg-white/10">
               <X className="h-5 w-5" />
             </button>

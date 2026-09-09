@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { ProfolioLogo } from "./ProfolioLogo"
 
 const mainItems = [
   { title: "Home", url: "/dashboard", icon: Home },
@@ -84,12 +85,11 @@ export function MobileNavDrawer() {
       <SheetContent side="left" className="w-[80vw] max-w-[320px] p-0 gap-0 flex flex-col pl-[env(safe-area-inset-left)]">
         <SheetHeader className="border-b border-border shrink-0 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">P</span>
-              </div>
-              <SheetTitle className="text-xl font-bold">Profolio</SheetTitle>
-            </div>
+            {/* Radix requires a Dialog title for the a11y name; keep it
+                sr-only and show the brand mark decoratively (alt="") so
+                screen readers announce "Profolio" once, not twice. */}
+            <SheetTitle className="sr-only">Profolio</SheetTitle>
+            <ProfolioLogo className="h-7" alt="" />
           </div>
         </SheetHeader>
 
