@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Eye, EyeOff, User, Mail, Phone, Lock } from 'lucide-react';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 import { sanitizeInput } from '@/lib/input-sanitizer';
+import { ProfolioLogo } from '@/components/ProfolioLogo';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -215,10 +216,8 @@ const Register = () => {
 
       {/* Logo & Branding */}
       <div className="relative z-10 text-center mb-6 animate-fade-in-up">
-        <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-wide drop-shadow-2xl" style={{ fontFamily: 'Inter, system-ui, sans-serif', letterSpacing: '0.05em' }}>
-          PROFOLIO
-        </h1>
-        <p className="text-sm sm:text-base text-white/90 mt-2 font-medium tracking-wide drop-shadow-lg">
+        <ProfolioLogo boxed className="h-9 sm:h-11" />
+        <p className="text-sm sm:text-base text-white/90 mt-3 font-medium tracking-wide drop-shadow-lg">
           Your Career, Verified.
         </p>
       </div>

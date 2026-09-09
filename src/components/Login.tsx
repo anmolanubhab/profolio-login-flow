@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 import { sanitizeInput } from '@/lib/input-sanitizer';
+import { ProfolioLogo } from '@/components/ProfolioLogo';
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -142,10 +143,8 @@ const Login = () => {
 
       {/* Logo & Branding */}
       <div className="relative z-10 text-center mb-8 animate-fade-in-up">
-        <h1 className="text-5xl sm:text-6xl font-bold text-white tracking-wide drop-shadow-2xl" style={{ fontFamily: 'Inter, system-ui, sans-serif', letterSpacing: '0.05em' }}>
-          PROFOLIO
-        </h1>
-        <p className="text-base sm:text-lg text-white/90 mt-3 font-medium tracking-wide drop-shadow-lg">
+        <ProfolioLogo boxed className="h-10 sm:h-12" />
+        <p className="text-base sm:text-lg text-white/90 mt-4 font-medium tracking-wide drop-shadow-lg">
           Your Career, Verified.
         </p>
       </div>

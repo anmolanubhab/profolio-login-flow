@@ -16,6 +16,7 @@ import {
 import { NavLink, useLocation } from "react-router-dom"
 import { supabase } from "@/integrations/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { ProfolioLogo } from "./ProfolioLogo"
 
 import {
   Sidebar,
@@ -93,15 +94,10 @@ export function AppSidebar() {
       variant={isMobile ? "inset" : "sidebar"}
     >
       <SidebarHeader className="p-4">
-        {!isCollapsed && (
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">P</span>
-            </div>
-            <h1 className="text-xl font-bold text-sidebar-foreground">Profolio</h1>
-          </div>
-        )}
+        {!isCollapsed && <ProfolioLogo className="h-7" />}
         {isCollapsed && (
+          // Icon-only slot: no rainbow-"P"-only asset was supplied and it
+          // can't be cropped cleanly from the lockup, so keep the P chip here.
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto">
             <span className="text-primary-foreground font-bold text-sm">P</span>
           </div>

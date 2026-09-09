@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SearchBar } from './SearchBar';
+import { ProfolioLogo } from './ProfolioLogo';
 import { NotificationBell } from './NotificationBell';
 import { MobileNavDrawer } from './MobileNavDrawer';
 import { supabase } from '@/integrations/supabase/client';
@@ -109,12 +110,14 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
         {/* Left: brand + search */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <MobileNavDrawer />
-          <div className="nav-brand cursor-pointer shrink-0" onClick={() => navigate('/dashboard')}>
-            <div className="w-9 h-9 rounded bg-primary text-primary-foreground grid place-items-center font-bold text-base">
-              P
-            </div>
-            <span className="hidden sm:inline">Profolio</span>
-          </div>
+          <button
+            type="button"
+            aria-label="Profolio — go to home"
+            onClick={() => navigate('/dashboard')}
+            className="shrink-0 rounded-md border-0 bg-transparent p-0"
+          >
+            <ProfolioLogo className="h-6 sm:h-7" />
+          </button>
           <div className="nav-search hidden md:block w-64 lg:w-72">
             <SearchBar />
           </div>
