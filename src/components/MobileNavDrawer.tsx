@@ -69,9 +69,15 @@ export function MobileNavDrawer() {
         </Button>
       </SheetTrigger>
       {/* Flex column so the header stays put and the nav list becomes the
-          scroll area. h-full comes from the Sheet's `left` variant. */}
-      <SheetContent side="left" className="w-[80vw] max-w-[320px] p-0 gap-0 flex flex-col">
-        <SheetHeader className="p-4 border-b border-border shrink-0">
+          scroll area. h-full comes from the Sheet's `left` variant. The Sheet
+          surface + scrim already span behind the Android status / navigation
+          bars (fixed inset-0 / inset-y-0); we inset only the CONTENT — same
+          env(safe-area-inset-*) idiom as the Certificate Vault drawer — so the
+          header clears the status bar and the last row clears the gesture /
+          nav-bar area. pl handles a left-edge notch in landscape. Every inset
+          is 0 in a normal browser tab / non-notched device. */}
+      <SheetContent side="left" className="w-[80vw] max-w-[320px] p-0 gap-0 flex flex-col pl-[env(safe-area-inset-left)]">
+        <SheetHeader className="border-b border-border shrink-0 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
