@@ -20,7 +20,7 @@ import { CertificatePreview } from './CertificatePreview';
 import { downloadCertificate } from './download';
 import { CertificateDetailsPanel } from './CertificateDetailsPanel';
 import { MoveToFolderDialog, NewFolderDialog, RenameDialog, TrashConfirmDialog } from './dialogs';
-import certVaultArt from '@/assets/empty-states/certificate-vault.svg';
+import certVaultArt from '@/assets/empty-states/certificate-vault.png';
 import {
   createFolder,
   moveCertificates,
