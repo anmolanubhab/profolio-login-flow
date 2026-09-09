@@ -13,6 +13,7 @@ import {
   Settings,
   CalendarDays,
   Newspaper,
+  ClipboardList,
   Menu,
   X
 } from "lucide-react"
@@ -44,9 +45,13 @@ const profileItems = [
   { title: "Profile", url: "/profile", icon: User },
   { title: "Connect", url: "/connect", icon: MessageCircle },
   { title: "Insights", url: "/insights", icon: Newspaper },
-  { title: "Certificates", url: "/certificates", icon: Award },
+  { title: "My Applications", url: "/dashboard?tab=applications", icon: ClipboardList },
+  { title: "Certificate Vault", url: "/certificates", icon: Award },
   { title: "Resume", url: "/resume", icon: FileText },
   { title: "Saved Posts", url: "/saved-posts", icon: Bookmark },
+]
+
+const settingsItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ]
 
@@ -69,9 +74,15 @@ export function MobileNavDrawer() {
         </Button>
       </SheetTrigger>
       {/* Flex column so the header stays put and the nav list becomes the
-          scroll area. h-full comes from the Sheet's `left` variant. */}
-      <SheetContent side="left" className="w-[80vw] max-w-[320px] p-0 gap-0 flex flex-col">
-        <SheetHeader className="p-4 border-b border-border shrink-0">
+          scroll area. h-full comes from the Sheet's `left` variant. The Sheet
+          surface + scrim already span behind the Android status / navigation
+          bars (fixed inset-0 / inset-y-0); we inset only the CONTENT — same
+          env(safe-area-inset-*) idiom as the Certificate Vault drawer — so the
+          header clears the status bar and the last row clears the gesture /
+          nav-bar area. pl handles a left-edge notch in landscape. Every inset
+          is 0 in a normal browser tab / non-notched device. */}
+      <SheetContent side="left" className="w-[80vw] max-w-[320px] p-0 gap-0 flex flex-col pl-[env(safe-area-inset-left)]">
+        <SheetHeader className="border-b border-border shrink-0 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
@@ -126,6 +137,33 @@ export function MobileNavDrawer() {
           </div>
           <nav className="flex flex-col gap-1 px-3">
             {profileItems.map((item) => (
+              <SheetClose asChild key={item.title}>
+                <NavLink
+                  to={item.url}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                    isActive(item.url)
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-foreground hover:bg-muted"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.title}</span>
+                </NavLink>
+              </SheetClose>
+            ))}
+          </nav>
+
+          <Separator className="my-4" />
+
+          {/* Settings */}
+          <div className="px-3 mb-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3">
+              Settings
+            </span>
+          </div>
+          <nav className="flex flex-col gap-1 px-3">
+            {settingsItems.map((item) => (
               <SheetClose asChild key={item.title}>
                 <NavLink
                   to={item.url}

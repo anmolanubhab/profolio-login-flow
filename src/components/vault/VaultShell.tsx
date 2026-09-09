@@ -20,6 +20,7 @@ import { CertificatePreview } from './CertificatePreview';
 import { downloadCertificate } from './download';
 import { CertificateDetailsPanel } from './CertificateDetailsPanel';
 import { MoveToFolderDialog, NewFolderDialog, RenameDialog, TrashConfirmDialog } from './dialogs';
+import certVaultArt from '@/assets/empty-states/certificate-vault.png';
 import {
   createFolder,
   moveCertificates,
@@ -258,14 +259,27 @@ export function VaultShell() {
       );
     if (view === 'recent')
       return <EmptyState icon={FileText} title="Nothing recent" description="Certificates you open appear here." />;
+    if (folderId)
+      return (
+        <EmptyState
+          icon={FolderOpen}
+          title="This folder is empty"
+          description="Upload a certificate here, or move existing ones into this folder."
+          action={
+            <Button size="sm" onClick={() => fileInput.current?.click()}>
+              <UploadCloud className="mr-2 h-4 w-4" /> Upload
+            </Button>
+          }
+        />
+      );
     return (
       <EmptyState
-        icon={FolderOpen}
-        title={folderId ? 'This folder is empty' : 'Your vault is empty'}
-        description="Upload a certificate, credential, licence or proof to get started."
+        illustration={certVaultArt}
+        title="No certificates yet"
+        description="Upload your certificates and keep them organized in one place. You can also create folders and share them with others."
         action={
-          <Button size="sm" onClick={() => fileInput.current?.click()}>
-            <UploadCloud className="mr-2 h-4 w-4" /> Upload
+          <Button onClick={() => fileInput.current?.click()}>
+            <UploadCloud className="mr-2 h-4 w-4" /> Upload Certificate
           </Button>
         }
       />
@@ -291,10 +305,18 @@ export function VaultShell() {
         <VaultNav view={view} folderId={folderId} folders={data.allFolders} usageBytes={usageBytes} onNavigate={navigate} />
       </aside>
 
-      {/* Mobile nav drawer */}
+      {/* Mobile nav drawer. On Android edge-to-edge the Sheet surface and its
+          scrim already span the full screen behind the status / navigation
+          bars (fixed inset-0 / inset-y-0), so the drawer never "stops early".
+          We inset only the CONTENT — same env(safe-area-inset-*) idiom as
+          MobileNavDrawer — so the first row clears the status bar and the
+          storage line clears the gesture / nav-bar area. Every inset collapses
+          to 0 in a normal browser tab / non-notched device. */}
       <Sheet open={navOpen} onOpenChange={setNavOpen}>
-        <SheetContent side="left" className="w-72 p-0">
-          <VaultNav view={view} folderId={folderId} folders={data.allFolders} usageBytes={usageBytes} onNavigate={navigate} />
+        <SheetContent side="left" className="flex w-72 flex-col gap-0 p-0">
+          <div className="flex min-h-0 flex-1 flex-col pl-[env(safe-area-inset-left)] pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.75rem,calc(env(safe-area-inset-bottom)+0.5rem))]">
+            <VaultNav view={view} folderId={folderId} folders={data.allFolders} usageBytes={usageBytes} onNavigate={navigate} />
+          </div>
         </SheetContent>
       </Sheet>
 
@@ -411,15 +433,19 @@ export function VaultShell() {
         open={detailsOpen && !!detailCertId && window.matchMedia('(max-width: 1023px)').matches}
         onOpenChange={(o) => setDetailsOpen(o)}
       >
-        <SheetContent side="bottom" className="h-[85dvh] p-0">
-          {detailCertId && certById(detailCertId) && (
-            <CertificateDetailsPanel
-              cert={certById(detailCertId)!}
-              folder={folderById(certById(detailCertId)!.folder_id)}
-              onClose={() => setDetailsOpen(false)}
-              onSaved={data.refetch}
-            />
-          )}
+        <SheetContent side="bottom" className="flex h-[85dvh] flex-col gap-0 p-0">
+          {/* pb keeps the panel's scroll area + sticky Save bar clear of the
+              Android gesture / navigation bar; 0 in a normal browser tab. */}
+          <div className="flex min-h-0 flex-1 flex-col pb-[env(safe-area-inset-bottom)]">
+            {detailCertId && certById(detailCertId) && (
+              <CertificateDetailsPanel
+                cert={certById(detailCertId)!}
+                folder={folderById(certById(detailCertId)!.folder_id)}
+                onClose={() => setDetailsOpen(false)}
+                onSaved={data.refetch}
+              />
+            )}
+          </div>
         </SheetContent>
       </Sheet>
 
