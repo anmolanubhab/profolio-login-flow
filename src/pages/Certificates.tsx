@@ -3,8 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Layout } from '@/components/Layout';
-import CertificateVault from '@/components/CertificateVault';
+import { VaultShell } from '@/components/vault/VaultShell';
 
+/**
+ * Certificate Vault — a Google Drive-style professional document manager for
+ * certificates, credentials, licences and proofs. Edge-to-edge (no centred
+ * max-width container): the shell owns its own nav rail + toolbar + content.
+ */
 const Certificates = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,18 +33,15 @@ const Certificates = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <Layout user={user} onSignOut={handleSignOut}>
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6">Certificate Vault</h1>
-        <CertificateVault />
-      </div>
+    <Layout user={user} onSignOut={handleSignOut} fullWidth>
+      <VaultShell />
     </Layout>
   );
 };

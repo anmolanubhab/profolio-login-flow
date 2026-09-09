@@ -49,6 +49,7 @@ const CertificationsSection = ({ authUserId }: CertificationsSectionProps) => {
       .from("certificates")
       .select("*")
       .eq("user_id", authUserId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
     if (error) {
       setError("Couldn’t load certificates.");
