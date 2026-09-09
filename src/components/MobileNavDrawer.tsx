@@ -13,6 +13,7 @@ import {
   Settings,
   CalendarDays,
   Newspaper,
+  ClipboardList,
   Menu,
   X
 } from "lucide-react"
@@ -44,9 +45,13 @@ const profileItems = [
   { title: "Profile", url: "/profile", icon: User },
   { title: "Connect", url: "/connect", icon: MessageCircle },
   { title: "Insights", url: "/insights", icon: Newspaper },
-  { title: "Certificates", url: "/certificates", icon: Award },
+  { title: "My Applications", url: "/dashboard?tab=applications", icon: ClipboardList },
+  { title: "Certificate Vault", url: "/certificates", icon: Award },
   { title: "Resume", url: "/resume", icon: FileText },
   { title: "Saved Posts", url: "/saved-posts", icon: Bookmark },
+]
+
+const settingsItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ]
 
@@ -132,6 +137,33 @@ export function MobileNavDrawer() {
           </div>
           <nav className="flex flex-col gap-1 px-3">
             {profileItems.map((item) => (
+              <SheetClose asChild key={item.title}>
+                <NavLink
+                  to={item.url}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                    isActive(item.url)
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-foreground hover:bg-muted"
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.title}</span>
+                </NavLink>
+              </SheetClose>
+            ))}
+          </nav>
+
+          <Separator className="my-4" />
+
+          {/* Settings */}
+          <div className="px-3 mb-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3">
+              Settings
+            </span>
+          </div>
+          <nav className="flex flex-col gap-1 px-3">
+            {settingsItems.map((item) => (
               <SheetClose asChild key={item.title}>
                 <NavLink
                   to={item.url}

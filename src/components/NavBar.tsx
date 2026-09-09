@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, Briefcase, MessageCircle, Bell, User as UserIcon, Building2, Users2, CalendarDays, ChevronDown, ClipboardList, FilePlus2, Plus, Newspaper } from 'lucide-react';
+import { Home, Users, Briefcase, MessageCircle, Bell, User as UserIcon, Building2, Users2, CalendarDays, ChevronDown, FilePlus2, Plus, Settings, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -197,30 +197,32 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
                 </div>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/profile')}>View Profile</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {/* On mobile the desktop sidebar (Dashboard's ProfileSummaryCard)
-                  is hidden, so these two are only reachable from here on
-                  small screens -- desktop users have both, which is fine,
-                  the dropdown just isn't the primary path there. */}
-              <DropdownMenuItem onClick={() => navigate('/dashboard?tab=applications')}>
-                <ClipboardList className="h-4 w-4 mr-2" /> My Applications
+              {/* Account menu = account / personal actions only. Application
+                  destinations (Applications, Insights, Certificate Vault,
+                  Resume, Saved Posts, …) live in the ☰ sidebar
+                  (MobileNavDrawer) so a feature never lives in two places.
+                  "View Profile" stays as an account-context shortcut; My
+                  Drafts is a recruiter-only action not surfaced in the
+                  sidebar. */}
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <UserIcon className="h-4 w-4 mr-2" /> View Profile
               </DropdownMenuItem>
               {hasCompany && (
-                <DropdownMenuItem onClick={() => navigate('/dashboard?tab=drafts')}>
-                  <FilePlus2 className="h-4 w-4 mr-2" /> My Drafts
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/dashboard?tab=drafts')}>
+                    <FilePlus2 className="h-4 w-4 mr-2" /> My Drafts
+                  </DropdownMenuItem>
+                </>
               )}
-              <DropdownMenuItem onClick={() => navigate('/insights')}>
-                <Newspaper className="h-4 w-4 mr-2" /> Insights
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className="h-4 w-4 mr-2" /> Settings
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/certificates')}>Certificate Vault</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/resume')}>Resume Builder</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/saved-posts')}>Saved Posts</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/settings')}>Settings</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onSignOut}>Sign Out</DropdownMenuItem>
+              <DropdownMenuItem onClick={onSignOut}>
+                <LogOut className="h-4 w-4 mr-2" /> Sign Out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
