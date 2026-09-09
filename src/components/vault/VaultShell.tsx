@@ -20,6 +20,7 @@ import { CertificatePreview } from './CertificatePreview';
 import { downloadCertificate } from './download';
 import { CertificateDetailsPanel } from './CertificateDetailsPanel';
 import { MoveToFolderDialog, NewFolderDialog, RenameDialog, TrashConfirmDialog } from './dialogs';
+import certVaultArt from '@/assets/empty-states/certificate-vault.svg';
 import {
   createFolder,
   moveCertificates,
@@ -258,14 +259,27 @@ export function VaultShell() {
       );
     if (view === 'recent')
       return <EmptyState icon={FileText} title="Nothing recent" description="Certificates you open appear here." />;
+    if (folderId)
+      return (
+        <EmptyState
+          icon={FolderOpen}
+          title="This folder is empty"
+          description="Upload a certificate here, or move existing ones into this folder."
+          action={
+            <Button size="sm" onClick={() => fileInput.current?.click()}>
+              <UploadCloud className="mr-2 h-4 w-4" /> Upload
+            </Button>
+          }
+        />
+      );
     return (
       <EmptyState
-        icon={FolderOpen}
-        title={folderId ? 'This folder is empty' : 'Your vault is empty'}
-        description="Upload a certificate, credential, licence or proof to get started."
+        illustration={certVaultArt}
+        title="No certificates yet"
+        description="Upload your certificates and keep them organized in one place. You can also create folders and share them with others."
         action={
-          <Button size="sm" onClick={() => fileInput.current?.click()}>
-            <UploadCloud className="mr-2 h-4 w-4" /> Upload
+          <Button onClick={() => fileInput.current?.click()}>
+            <UploadCloud className="mr-2 h-4 w-4" /> Upload Certificate
           </Button>
         }
       />
