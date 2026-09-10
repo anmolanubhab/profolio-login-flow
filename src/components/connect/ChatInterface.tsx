@@ -310,24 +310,34 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          // '*' (not just INSERT) so a "delete for everyone" -- a plain UPDATE
+          // flipping deleted_for_everyone -- reaches the other participant live
+          // instead of only after they reopen the thread.
+          event: '*',
           schema: 'public',
           table: 'messages'
         },
         (payload) => {
-          const newMsg = payload.new as Message;
-          if (newMsg.conversation_id === selectedConversation) {
-            // The user is looking at this thread: pull the new message in and
-            // immediately mark it read, so a message received while the
-            // conversation is open never inflates the unread badge (Part 11).
+          const row = (payload.new ?? payload.old) as Partial<Message> | null;
+          const isInsert = payload.eventType === 'INSERT';
+          // Refetch the open thread on a new message, or on an UPDATE that
+          // marks a message deleted-for-everyone (so the tombstone shows for
+          // the other participant live). Plain is_read UPDATEs are ignored
+          // here -- they carry no visible change to the message list.
+          const isDeleteForEveryone =
+            payload.eventType === 'UPDATE' && (payload.new as Partial<Message>)?.deleted_for_everyone === true;
+          if (!isInsert && !isDeleteForEveryone) return;
+          if (row?.conversation_id === selectedConversation) {
             fetchMessages(selectedConversation);
-            if (newMsg.sender_id !== user.id) {
+            if (isInsert && row.sender_id && row.sender_id !== user.id) {
+              // Marking read keeps an incoming message from inflating the
+              // unread badge while the thread is open (Part 11).
               markMessagesAsRead(selectedConversation);
             }
           }
-          // Always refresh the list -- updates the preview, ordering and the
-          // per-thread unread pip. A full re-query, so duplicate realtime
-          // events can't double-count.
+          // Refresh the list -- updates the preview, ordering and the per-thread
+          // unread pip. A full re-query, so duplicate realtime events can't
+          // double-count.
           fetchConversations();
         }
       )
