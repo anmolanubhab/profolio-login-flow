@@ -50,7 +50,13 @@ import {
 import { MessageActionsMenu } from './MessageActionsMenu';
 import { MessageInfoDialog } from './MessageInfoDialog';
 import { ForwardMessageDialog, type ForwardableMessage } from './ForwardMessageDialog';
+import { MessageImage } from './MessageImage';
+import { PhotoLightbox } from '@/components/post/PhotoLightbox';
 import { useMessageActions } from '@/hooks/useMessageActions';
+import { getMessageAttachmentUrl } from '@/lib/message-attachment-url';
+import {
+  uploadMessageAttachment, validateMessageAttachment, UploadAbortError,
+} from '@/lib/message-upload';
 
 const ALLOWED_DOCUMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'];
 const ALLOWED_DOCUMENT_MIME_TYPES = [
@@ -176,8 +182,11 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const [recentStickers, setRecentStickers] = useState<Sticker[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const attachAreaRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const imageAbortRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -198,6 +207,15 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [forwardTargets, setForwardTargets] = useState<Message[] | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  // Image messaging (Phase 3a) ------------------------------------------
+  const [pendingImage, setPendingImage] = useState<{ file: File; previewUrl: string } | null>(null);
+  const [imageCaption, setImageCaption] = useState('');
+  const [imageUpload, setImageUpload] = useState<{ progress: number; status: 'idle' | 'uploading' | 'error' }>({
+    progress: 0,
+    status: 'idle',
+  });
+  const [lightbox, setLightbox] = useState<{ url: string; alt: string } | null>(null);
 
   // Messages the current user has hidden with "delete for me" never render.
   const visibleMessages = messages.filter((m) => !deletedForMeIds.has(m.id));
@@ -569,6 +587,101 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     }
   };
 
+  // ---- image messaging (Phase 3a) --------------------------------------
+
+  const clearPendingImage = useCallback(() => {
+    imageAbortRef.current?.abort();
+    imageAbortRef.current = null;
+    setPendingImage((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
+    setImageCaption('');
+    setImageUpload({ progress: 0, status: 'idle' });
+  }, []);
+
+  const handleImageFileSelected = (file: File) => {
+    if (!selectedConversation) return;
+    const validationError = validateMessageAttachment(file, 'image');
+    if (validationError) {
+      toast({ title: 'Unsupported image', description: validationError, variant: 'destructive' });
+      return;
+    }
+    // Drop any image already staged (and cancel its upload).
+    clearPendingImage();
+    setPendingImage({ file, previewUrl: URL.createObjectURL(file) });
+    setImageCaption('');
+    setImageUpload({ progress: 0, status: 'idle' });
+  };
+
+  const sendImage = async () => {
+    if (!pendingImage || !selectedConversation || imageUpload.status === 'uploading') return;
+
+    const controller = new AbortController();
+    imageAbortRef.current = controller;
+    setImageUpload({ progress: 0, status: 'uploading' });
+
+    try {
+      const { path } = await uploadMessageAttachment({
+        conversationId: selectedConversation,
+        userId: user.id,
+        file: pendingImage.file,
+        kind: 'image',
+        onProgress: (f) => setImageUpload({ progress: f, status: 'uploading' }),
+        signal: controller.signal,
+      });
+
+      const { error } = await supabase.from('messages').insert({
+        conversation_id: selectedConversation,
+        sender_id: user.id,
+        content: imageCaption.trim() || pendingImage.file.name,
+        message_type: 'image',
+        file_url: path,
+        file_name: pendingImage.file.name,
+        mime_type: pendingImage.file.type,
+        file_size: pendingImage.file.size,
+        reply_to_id: replyingTo?.id ?? null,
+      });
+      if (error) throw error;
+
+      URL.revokeObjectURL(pendingImage.previewUrl);
+      setPendingImage(null);
+      setImageCaption('');
+      setImageUpload({ progress: 0, status: 'idle' });
+      setReplyingTo(null);
+    } catch (err) {
+      if (err instanceof UploadAbortError) {
+        // user cancelled -- clearPendingImage already reset everything
+        return;
+      }
+      console.error('Error sending image:', err);
+      setImageUpload({ progress: 0, status: 'error' });
+      toast({
+        title: 'Could not send image',
+        description: err instanceof Error ? err.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      imageAbortRef.current = null;
+    }
+  };
+
+  // Revoke the preview object URL if the component unmounts mid-compose.
+  useEffect(() => {
+    return () => {
+      imageAbortRef.current?.abort();
+      setPendingImage((prev) => {
+        if (prev) URL.revokeObjectURL(prev.previewUrl);
+        return null;
+      });
+    };
+  }, []);
+
+  // Switching conversations drops any half-composed image with it.
+  useEffect(() => {
+    clearPendingImage();
+  }, [selectedConversation, clearPendingImage]);
+
   const handleOpenAttachment = async (message: Message) => {
     setOpeningAttachmentId(message.id);
     try {
@@ -591,13 +704,8 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   // ---- WhatsApp-style message action handlers --------------------------------
 
   /** Resolve a fresh signed URL for a message's attachment. */
-  const getAttachmentUrl = async (message: Message): Promise<string | null> => {
-    const { data, error } = await supabase.functions.invoke('get-message-attachment-url', {
-      body: { message_id: message.id },
-    });
-    if (error || !data?.ok || !data?.url) return null;
-    return data.url as string;
-  };
+  const getAttachmentUrl = (message: Message): Promise<string | null> =>
+    getMessageAttachmentUrl(message.id);
 
   const handleCopyMessage = async (message: Message) => {
     try {
@@ -765,7 +873,8 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
 
   const messagePreview = (m: Message): string => {
     if (m.message_type === 'sticker') return 'Sticker';
-    if (m.message_type === 'file' || m.message_type === 'image') return m.file_name || 'Attachment';
+    if (m.message_type === 'image') return 'Photo';
+    if (m.message_type === 'file') return m.file_name || 'Attachment';
     return m.content;
   };
 
@@ -773,7 +882,9 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     const isOwn = message.sender_id === user.id;
     const isDeleted = !!message.deleted_for_everyone;
     const isSticker = message.message_type === 'sticker';
-    const isFile = message.message_type === 'file' || message.message_type === 'image';
+    const isImage = message.message_type === 'image';
+    const isDocument = message.message_type === 'file';
+    const isAttachment = isImage || isDocument || isSticker;
     const reactionRows = reactionsByMessage.get(message.id) ?? [];
     const myReaction = reactionRows.find((r) => r.user_id === user.id)?.emoji;
     const grouped = Object.values(
@@ -901,7 +1012,34 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     </div>
                   );
                 })()
-              ) : isFile ? (
+              ) : isImage ? (
+                <div className={cn('overflow-hidden rounded-2xl p-1', isOwn ? 'bg-primary' : 'bg-muted')}>
+                  <MessageImage
+                    messageId={message.id}
+                    alt={message.file_name || 'Photo'}
+                    isOwn={isOwn}
+                    onZoom={(url) => setLightbox({ url, alt: message.file_name || 'Photo' })}
+                  />
+                  {message.content && message.content !== message.file_name && (
+                    <div
+                      className={cn(
+                        'whitespace-pre-wrap break-words px-2 pt-1.5 text-sm',
+                        isOwn ? 'text-primary-foreground' : 'text-foreground',
+                      )}
+                    >
+                      {message.content}
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      'px-2 pb-0.5 pt-1 text-xs',
+                      isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground',
+                    )}
+                  >
+                    {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                  </div>
+                </div>
+              ) : isDocument ? (
                 <div className={cn('rounded-2xl p-3 max-w-full', isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
                   <div className="flex items-center gap-2.5 rounded-lg bg-background/90 text-foreground px-3 py-2.5">
                     <FileText className="h-8 w-8 shrink-0 text-muted-foreground" />
@@ -983,13 +1121,13 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                 myReaction={myReaction}
                 onReact={(e) => toggleReaction(message.id, e)}
                 onReply={() => setReplyingTo(message)}
-                onCopy={isDeleted || isFile || isSticker ? undefined : () => handleCopyMessage(message)}
+                onCopy={isDeleted || isAttachment ? undefined : () => handleCopyMessage(message)}
                 onForward={isDeleted ? undefined : () => setForwardTargets([message])}
                 onPin={() => togglePin(message.id)}
                 onStar={() => toggleStar(message.id)}
                 onSelect={() => enterSelection(message.id)}
                 onInfo={() => setInfoMessage(message)}
-                onSaveAs={!isDeleted && (isFile || isSticker) ? () => handleSaveAttachment(message) : undefined}
+                onSaveAs={!isDeleted && isAttachment ? () => handleSaveAttachment(message) : undefined}
                 onShare={isDeleted ? undefined : () => handleShareMessage(message)}
                 onOpenWith={
                   !isDeleted && message.message_type === 'file'
@@ -1526,6 +1664,76 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     Uploading document…
                   </div>
                 )}
+                {pendingImage && (
+                  <div className="mb-2 rounded-lg border bg-muted/50 p-2">
+                    <div className="flex items-start gap-2.5">
+                      <img
+                        src={pendingImage.previewUrl}
+                        alt="Selected"
+                        className="h-16 w-16 shrink-0 rounded-md object-cover"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium">{pendingImage.file.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {formatFileSize(pendingImage.file.size)}
+                        </p>
+                        <Input
+                          value={imageCaption}
+                          onChange={(e) => setImageCaption(e.target.value)}
+                          placeholder="Add a caption…"
+                          aria-label="Image caption"
+                          disabled={imageUpload.status === 'uploading'}
+                          className="mt-1.5 h-8 text-sm"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              void sendImage();
+                            }
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Discard image"
+                        onClick={clearPendingImage}
+                        className="rounded-full p-1 text-muted-foreground hover:bg-accent"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {imageUpload.status === 'uploading' && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
+                          <div
+                            className="h-full rounded-full bg-primary transition-[width] duration-150"
+                            style={{ width: `${Math.round(imageUpload.progress * 100)}%` }}
+                          />
+                        </div>
+                        <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                          {Math.round(imageUpload.progress * 100)}%
+                        </span>
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={clearPendingImage}>
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+
+                    {imageUpload.status !== 'uploading' && (
+                      <div className="mt-2 flex items-center justify-end gap-2">
+                        {imageUpload.status === 'error' && (
+                          <span className="mr-auto text-[11px] text-destructive">Upload failed.</span>
+                        )}
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={clearPendingImage}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" className="h-7 px-3 text-xs" onClick={() => void sendImage()}>
+                          {imageUpload.status === 'error' ? 'Retry' : 'Send'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <input
                     ref={documentInputRef}
@@ -1535,6 +1743,29 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) void handleDocumentFileSelected(file);
+                      e.target.value = '';
+                    }}
+                  />
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageFileSelected(file);
+                      e.target.value = '';
+                    }}
+                  />
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImageFileSelected(file);
                       e.target.value = '';
                     }}
                   />
@@ -1562,13 +1793,17 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                           <FileText className="h-4 w-4 mr-2" />
                           Document
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleNotImplemented('Photos & videos')}>
+                        <DropdownMenuItem onSelect={() => imageInputRef.current?.click()}>
                           <Image className="h-4 w-4 mr-2" />
-                          Photos &amp; videos
+                          Photo
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleNotImplemented('Camera')}>
+                        <DropdownMenuItem onSelect={() => cameraInputRef.current?.click()}>
                           <Camera className="h-4 w-4 mr-2" />
                           Camera
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleNotImplemented('Video')}>
+                          <Image className="h-4 w-4 mr-2" />
+                          Video
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => handleNotImplemented('Audio')}>
                           <Mic className="h-4 w-4 mr-2" />
@@ -1768,6 +2003,14 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
           fetchConversations();
         }}
       />
+
+      {lightbox && (
+        <PhotoLightbox
+          photos={[{ url: lightbox.url, alt: lightbox.alt }]}
+          index={0}
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 };
