@@ -3592,11 +3592,44 @@ export type Database = {
           },
         ]
       }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
           conversation_id: string | null
           created_at: string | null
+          deleted_for_everyone: boolean
           file_name: string | null
           file_size: number | null
           file_url: string | null
@@ -3605,6 +3638,7 @@ export type Database = {
           message_type: string | null
           metadata: Json | null
           mime_type: string | null
+          reply_to_id: string | null
           sender_id: string | null
           story_id: string | null
         }
@@ -3627,6 +3661,7 @@ export type Database = {
           content?: string
           conversation_id?: string | null
           created_at?: string | null
+          deleted_for_everyone?: boolean
           file_name?: string | null
           file_size?: number | null
           file_url?: string | null
@@ -3635,6 +3670,7 @@ export type Database = {
           message_type?: string | null
           metadata?: Json | null
           mime_type?: string | null
+          reply_to_id?: string | null
           sender_id?: string | null
           story_id?: string | null
         }
@@ -3757,6 +3793,45 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pinned_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          message_id: string
+          pinned_by: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          message_id: string
+          pinned_by: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          message_id?: string
+          pinned_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pinned_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pinned_messages_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
@@ -4856,6 +4931,35 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      starred_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "starred_messages_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
