@@ -922,9 +922,21 @@ export const PostOptionsMenu = ({
   if (!isMobile) {
     return (
       <>
-        <DropdownMenu open={open} onOpenChange={(next) => { setOpen(next); if (next) loadMenuState(); }}>
+        {/* modal={false}: a modal DropdownMenu wraps its content in
+            react-remove-scroll, which sets `body { overflow:hidden;
+            position:relative }` + a `data-scroll-locked` attribute the instant
+            the menu opens. On this layout (html is the scroll container, body
+            carries the fixed-navbar padding-top) that lock shifts the page
+            content up by ~50px in the same pointer gesture that opened the
+            menu -- so the click/pointer-up lands on the first item ("Why am I
+            seeing this?") instead of just opening the menu. A dropdown is not a
+            Dialog and must not scroll-lock the page. Non-modal keeps
+            outside-click / Esc dismissal, Popper anchoring and full keyboard
+            nav; it just doesn't freeze the page. */}
+        <DropdownMenu modal={false} open={open} onOpenChange={(next) => { setOpen(next); if (next) loadMenuState(); }}>
           <DropdownMenuTrigger asChild>
             <button
+              type="button"
               className="menu-button hover:bg-secondary transition-colors rounded-full p-2"
               aria-label="Post options"
             >
@@ -1095,6 +1107,7 @@ export const PostOptionsMenu = ({
   return (
     <>
       <button
+        type="button"
         className="menu-button hover:bg-secondary transition-colors rounded-full p-2"
         onClick={(e) => {
           e.stopPropagation();
