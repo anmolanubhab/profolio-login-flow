@@ -43,7 +43,16 @@ interface MessageActionsMenuProps {
   onShare?: () => void;
   onOpenWith?: () => void;
   onInfo: () => void;
-  onDelete?: () => void;
+  /** Per-user "delete for me" -- always allowed for a readable message. */
+  onDeleteForMe?: () => void;
+  /** "Delete for everyone" -- only wired for the sender's own, non-deleted messages. */
+  onDeleteForEveryone?: () => void;
+  /**
+   * The message is already deleted-for-everyone: show only Info / Select /
+   * Delete for me, and hide the reaction bar. Copy / Forward / Save / Open /
+   * Share have nothing to act on.
+   */
+  isDeleted?: boolean;
 }
 
 interface Action {
@@ -60,6 +69,16 @@ function buildActions(p: MessageActionsMenuProps): Action[] {
   const isAttachment = t === 'file' || t === 'image' || t === 'sticker';
   const isDocument = t === 'file';
   const canCopy = !isAttachment && !!p.onCopy;
+
+  // A deleted-for-everyone tombstone: nothing to copy / forward / open / share.
+  if (p.isDeleted) {
+    const list: Action[] = [{ key: 'info', label: 'Message info', icon: Info, run: p.onInfo, group: 1 }];
+    if (p.onSelect) list.push({ key: 'select', label: 'Select', icon: CheckSquare, run: p.onSelect, group: 2 });
+    if (p.onDeleteForMe) {
+      list.push({ key: 'delete-me', label: 'Delete for me', icon: Trash2, run: p.onDeleteForMe, group: 3, destructive: true });
+    }
+    return list;
+  }
 
   const list: Action[] = [
     { key: 'info', label: 'Message info', icon: Info, run: p.onInfo, group: 1 },
@@ -79,7 +98,14 @@ function buildActions(p: MessageActionsMenuProps): Action[] {
   if (p.onShare) list.push({ key: 'share', label: 'Share', icon: Share2, run: p.onShare, group: 2 });
   if (isDocument && p.onOpenWith) list.push({ key: 'open', label: 'Open with…', icon: ExternalLink, run: p.onOpenWith, group: 2 });
 
-  if (p.onDelete) list.push({ key: 'delete', label: 'Delete', icon: Trash2, run: p.onDelete, group: 3, destructive: true });
+  if (p.onDeleteForMe) {
+    list.push({ key: 'delete-me', label: 'Delete for me', icon: Trash2, run: p.onDeleteForMe, group: 3, destructive: true });
+  }
+  if (p.onDeleteForEveryone) {
+    list.push({
+      key: 'delete-all', label: 'Delete for everyone', icon: Trash2, run: p.onDeleteForEveryone, group: 3, destructive: true,
+    });
+  }
 
   return list;
 }
@@ -185,9 +211,11 @@ export function MessageActionsMenu(props: MessageActionsMenuProps) {
             <SheetHeader className="border-b px-4 py-3">
               <SheetTitle className="text-sm">Message actions</SheetTitle>
             </SheetHeader>
-            <div className="border-b">
-              <ReactionRow myReaction={props.myReaction} onReact={props.onReact} close={close} />
-            </div>
+            {!props.isDeleted && (
+              <div className="border-b">
+                <ReactionRow myReaction={props.myReaction} onReact={props.onReact} close={close} />
+              </div>
+            )}
             <div className="p-1">
               {actions.map((a, i) => {
                 const prev = actions[i - 1];
@@ -243,8 +271,12 @@ export function MessageActionsMenu(props: MessageActionsMenuProps) {
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="w-56 data-[state=closed]:!animate-none"
       >
-        <ReactionRow myReaction={props.myReaction} onReact={props.onReact} close={close} />
-        <DropdownMenuSeparator />
+        {!props.isDeleted && (
+          <>
+            <ReactionRow myReaction={props.myReaction} onReact={props.onReact} close={close} />
+            <DropdownMenuSeparator />
+          </>
+        )}
         {renderItems((run) => {
           setOpen(false);
           run();

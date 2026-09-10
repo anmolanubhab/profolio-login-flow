@@ -11,7 +11,8 @@ import { Separator } from '@/components/ui/separator';
 import {
   Send, Plus, MessageCircle, Search, Loader2, X, Paperclip, FileText, Download,
   Image, Camera, Mic, User as UserIcon, BarChart3, Calendar, Sticker as StickerIcon,
-  ChevronLeft, MoreVertical, Pin, Star, Reply as ReplyIcon,
+  ChevronLeft, MoreVertical, Pin, PinOff, Star, StarOff, Reply as ReplyIcon,
+  CornerUpRight, Trash2, Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -48,6 +49,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { MessageActionsMenu } from './MessageActionsMenu';
 import { MessageInfoDialog } from './MessageInfoDialog';
+import { ForwardMessageDialog, type ForwardableMessage } from './ForwardMessageDialog';
 import { useMessageActions } from '@/hooks/useMessageActions';
 
 const ALLOWED_DOCUMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'];
@@ -146,6 +148,7 @@ interface Message {
   created_at: string;
   reply_to_id?: string | null;
   deleted_for_everyone?: boolean;
+  is_forwarded?: boolean;
   senderProfile?: Profile;
 }
 
@@ -180,14 +183,48 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
 
   // WhatsApp-style message actions -----------------------------------------
   const {
-    reactionsByMessage, starredIds, pinnedIds, pins,
-    toggleReaction, toggleStar, togglePin, reload: reloadActions,
+    reactionsByMessage, starredIds, pinnedIds, pins, deletedForMeIds,
+    toggleReaction, toggleStar, bulkStar, togglePin, bulkPin, deleteForMe,
+    reload: reloadActions,
   } = useMessageActions(selectedConversation, user.id);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [infoMessage, setInfoMessage] = useState<Message | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [savingAttachmentId, setSavingAttachmentId] = useState<string | null>(null);
+
+  // Multi-message selection mode -----------------------------------------
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [forwardTargets, setForwardTargets] = useState<Message[] | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  // Messages the current user has hidden with "delete for me" never render.
+  const visibleMessages = messages.filter((m) => !deletedForMeIds.has(m.id));
+
+  const exitSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const enterSelection = useCallback((id: string) => {
+    setSelectionMode(true);
+    setSelectedIds(new Set([id]));
+  }, []);
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Leaving a conversation drops selection mode with it.
+  useEffect(() => {
+    exitSelection();
+  }, [selectedConversation, exitSelection]);
 
   /** Drop the shared unread badge to its true value right after a read. */
   const refreshUnreadBadge = useCallback(() => {
@@ -615,16 +652,97 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     }
   };
 
-  const handleDeleteMessage = async () => {
-    if (!deleteTarget) return;
-    const id = deleteTarget.id;
-    setDeleteTarget(null);
-    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, deleted_for_everyone: true } : m)));
-    const { error } = await supabase.from('messages').update({ deleted_for_everyone: true }).eq('id', id);
+  /** "Delete for everyone" for the sender's own messages -- soft delete, keeps the row. */
+  const deleteForEveryone = async (ids: string[]) => {
+    const own = ids.filter((id) => {
+      const m = messages.find((x) => x.id === id);
+      return m && m.sender_id === user.id && !m.deleted_for_everyone;
+    });
+    if (own.length === 0) return;
+    setMessages((prev) => prev.map((m) => (own.includes(m.id) ? { ...m, deleted_for_everyone: true } : m)));
+    const { error } = await supabase
+      .from('messages')
+      .update({ deleted_for_everyone: true })
+      .in('id', own)
+      .eq('sender_id', user.id);
     if (error) {
       toast({ title: 'Could not delete message', variant: 'destructive' });
       fetchMessages(selectedConversation!);
     }
+  };
+
+  /** Single-message delete dialog confirm -> "Delete for everyone". */
+  const handleDeleteForEveryone = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
+    await deleteForEveryone([id]);
+  };
+
+  /** Single-message delete dialog confirm -> "Delete for me". */
+  const handleDeleteForMe = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
+    await deleteForMe([id]);
+  };
+
+  // ---- bulk selection actions ----------------------------------------------
+  const selectedMessages = visibleMessages.filter((m) => selectedIds.has(m.id));
+  const allSelectedOwnedAndLive =
+    selectedMessages.length > 0 &&
+    selectedMessages.every((m) => m.sender_id === user.id && !m.deleted_for_everyone);
+  const anySelectedForwardable = selectedMessages.some((m) => !m.deleted_for_everyone);
+
+  const handleBulkForward = () => {
+    const forwardable = selectedMessages.filter((m) => !m.deleted_for_everyone);
+    if (forwardable.length === 0) {
+      toast({ title: 'Nothing to forward', description: 'Deleted messages can’t be forwarded.' });
+      return;
+    }
+    setForwardTargets(forwardable);
+  };
+
+  const handleBulkStar = async () => {
+    const ids = selectedMessages.filter((m) => !m.deleted_for_everyone).map((m) => m.id);
+    if (ids.length === 0) return;
+    await bulkStar(ids);
+    toast({ title: `${ids.length} ${ids.length === 1 ? 'message' : 'messages'} starred` });
+    exitSelection();
+  };
+
+  const handleBulkPin = async (pin: boolean) => {
+    const ids = selectedMessages.filter((m) => !m.deleted_for_everyone).map((m) => m.id);
+    if (ids.length === 0) return;
+    await bulkPin(ids, pin);
+    exitSelection();
+  };
+
+  const handleBulkUnstar = async () => {
+    const ids = selectedMessages.filter((m) => starredIds.has(m.id)).map((m) => m.id);
+    if (ids.length === 0) {
+      exitSelection();
+      return;
+    }
+    for (const id of ids) await toggleStar(id);
+    toast({ title: `${ids.length} ${ids.length === 1 ? 'message' : 'messages'} unstarred` });
+    exitSelection();
+  };
+
+  const handleBulkDeleteForMe = async () => {
+    const ids = selectedMessages.map((m) => m.id);
+    setBulkDeleteOpen(false);
+    await deleteForMe(ids);
+    toast({ title: `${ids.length} ${ids.length === 1 ? 'message' : 'messages'} deleted for you` });
+    exitSelection();
+  };
+
+  const handleBulkDeleteForEveryone = async () => {
+    const ids = selectedMessages.map((m) => m.id);
+    setBulkDeleteOpen(false);
+    await deleteForEveryone(ids);
+    toast({ title: `${ids.length} ${ids.length === 1 ? 'message' : 'messages'} deleted` });
+    exitSelection();
   };
 
   const scrollToMessage = (id: string) => {
@@ -660,13 +778,44 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     const isPinned = pinnedIds.has(message.id);
     const repliedTo = message.reply_to_id ? messages.find((m) => m.id === message.reply_to_id) : null;
     const highlighted = highlightId === message.id;
+    const isSelected = selectedIds.has(message.id);
 
     return (
       <div
         key={message.id}
         ref={(el) => { messageRefs.current[message.id] = el; }}
-        className={cn('flex scroll-mt-6', isOwn ? 'justify-end' : 'justify-start')}
+        // In selection mode a click anywhere on the row toggles selection.
+        // onClickCapture intercepts before inner controls (attachment open,
+        // reply-quote jump) so nothing navigates or opens by accident.
+        onClickCapture={
+          selectionMode
+            ? (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                toggleSelected(message.id);
+              }
+            : undefined
+        }
+        className={cn(
+          'flex scroll-mt-6 rounded-lg transition-colors',
+          isOwn ? 'justify-end' : 'justify-start',
+          // pl-9 only shifts content horizontally -- no vertical reflow, so
+          // entering selection mode can't jump the scroll position.
+          selectionMode && 'relative cursor-pointer select-none pl-9',
+          selectionMode && isSelected && 'bg-primary/10 ring-1 ring-inset ring-primary/25',
+        )}
       >
+        {selectionMode && (
+          <span
+            aria-hidden
+            className={cn(
+              'absolute left-2 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full border transition-colors',
+              isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40 bg-background',
+            )}
+          >
+            {isSelected && <Check className="h-3.5 w-3.5" />}
+          </span>
+        )}
         <div className={cn('group relative flex max-w-[80%] items-end gap-1.5', isOwn && 'flex-row-reverse')}>
           {!isOwn && (
             <Avatar className="h-6 w-6 flex-shrink-0">
@@ -690,6 +839,12 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                 </span>
                 <span className="truncate text-muted-foreground">{messagePreview(repliedTo)}</span>
               </button>
+            )}
+
+            {message.is_forwarded && !isDeleted && (
+              <span className="mb-0.5 flex items-center gap-1 text-[11px] italic text-muted-foreground">
+                <CornerUpRight className="h-3 w-3" /> Forwarded
+              </span>
             )}
 
             <div
@@ -798,9 +953,12 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
             )}
           </div>
 
-          {!isDeleted && (
-            <div className="self-center">
-              <MessageActionsMenu
+          {/* Kept mounted in selection mode (just hidden) so the Radix menu
+              portal never unmounts mid-close -- that was the old ghost-menu
+              crash. Its own onSelect already closes it before selection mode
+              flips on. */}
+          <div className={cn('self-center', selectionMode && 'hidden')}>
+            <MessageActionsMenu
                 message={{
                   id: message.id,
                   message_type: message.message_type,
@@ -809,24 +967,34 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                   mime_type: message.mime_type ?? null,
                 }}
                 isOwn={isOwn}
+                isDeleted={isDeleted}
                 isStarred={isStarred}
                 isPinned={isPinned}
                 myReaction={myReaction}
                 onReact={(e) => toggleReaction(message.id, e)}
                 onReply={() => setReplyingTo(message)}
-                onCopy={isFile || isSticker ? undefined : () => handleCopyMessage(message)}
+                onCopy={isDeleted || isFile || isSticker ? undefined : () => handleCopyMessage(message)}
+                onForward={isDeleted ? undefined : () => setForwardTargets([message])}
                 onPin={() => togglePin(message.id)}
                 onStar={() => toggleStar(message.id)}
+                onSelect={() => enterSelection(message.id)}
                 onInfo={() => setInfoMessage(message)}
-                onSaveAs={isFile || isSticker ? () => handleSaveAttachment(message) : undefined}
-                onShare={() => handleShareMessage(message)}
-                onOpenWith={message.message_type === 'file' ? () => handleOpenAttachment(message) : undefined}
-                onDelete={isOwn ? () => setDeleteTarget(message) : undefined}
+                onSaveAs={!isDeleted && (isFile || isSticker) ? () => handleSaveAttachment(message) : undefined}
+                onShare={isDeleted ? undefined : () => handleShareMessage(message)}
+                onOpenWith={
+                  !isDeleted && message.message_type === 'file'
+                    ? () => handleOpenAttachment(message)
+                    : undefined
+                }
+                // Received / already-deleted: only "Delete for me". Own & live:
+                // one "Delete for everyone" entry -> a dialog that still offers
+                // "Delete for me" as the softer choice.
+                onDeleteForMe={!isOwn || isDeleted ? () => setDeleteTarget(message) : undefined}
+                onDeleteForEveryone={isOwn && !isDeleted ? () => setDeleteTarget(message) : undefined}
               >
                 <MoreVertical className="h-3.5 w-3.5" />
               </MessageActionsMenu>
             </div>
-          )}
         </div>
       </div>
     );
@@ -1184,40 +1352,110 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
         {selectedConversation ? (
           <>
             <CardHeader className="flex-shrink-0 border-b px-0 pb-3 lg:px-6">
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="-ml-2 h-8 w-8 shrink-0 lg:hidden"
-                  onClick={() => {
-                    setSelectedConversation(null);
-                    setSelectedConversationUser(null);
-                  }}
-                  aria-label="Back to conversations"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                <Avatar className="h-10 w-10 shrink-0">
-                  <AvatarImage src={selectedConversationUser?.avatar_url || undefined} />
-                  <AvatarFallback>
-                    {selectedConversationUser?.display_name?.[0]?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <CardTitle className="truncate text-base">
-                    {selectedConversationUser?.display_name || 'Chat'}
-                  </CardTitle>
-                  {selectedConversationUser?.profession && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {selectedConversationUser.profession}
-                    </p>
+              {selectionMode ? (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="-ml-2 h-9 w-9 shrink-0"
+                    onClick={exitSelection}
+                    aria-label="Cancel selection"
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                  <span className="min-w-0 flex-1 truncate text-base font-semibold">
+                    {selectedIds.size} selected
+                  </span>
+                  {selectedIds.size > 0 && anySelectedForwardable && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={handleBulkForward}
+                      aria-label="Forward selected"
+                    >
+                      <CornerUpRight className="h-5 w-5" />
+                    </Button>
+                  )}
+                  {selectedIds.size > 0 && anySelectedForwardable && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={handleBulkStar}
+                      aria-label="Star selected"
+                    >
+                      <Star className="h-5 w-5" />
+                    </Button>
+                  )}
+                  {selectedIds.size > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => setBulkDeleteOpen(true)}
+                      aria-label="Delete selected"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  )}
+                  {selectedIds.size > 0 && anySelectedForwardable && (
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="More actions">
+                          <MoreVertical className="h-5 w-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="data-[state=closed]:!animate-none">
+                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleBulkPin(true); }}>
+                          <Pin className="mr-2 h-4 w-4" /> Pin
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleBulkPin(false); }}>
+                          <PinOff className="mr-2 h-4 w-4" /> Unpin
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleBulkUnstar(); }}>
+                          <StarOff className="mr-2 h-4 w-4" /> Unstar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="-ml-2 h-8 w-8 shrink-0 lg:hidden"
+                    onClick={() => {
+                      setSelectedConversation(null);
+                      setSelectedConversationUser(null);
+                    }}
+                    aria-label="Back to conversations"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarImage src={selectedConversationUser?.avatar_url || undefined} />
+                    <AvatarFallback>
+                      {selectedConversationUser?.display_name?.[0]?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <CardTitle className="truncate text-base">
+                      {selectedConversationUser?.display_name || 'Chat'}
+                    </CardTitle>
+                    {selectedConversationUser?.profession && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {selectedConversationUser.profession}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
               {pins.length > 0 && (() => {
-                const latest = messages.find((m) => m.id === pins[0].message_id);
+                const latest = visibleMessages.find((m) => m.id === pins[0].message_id);
                 if (!latest) return null;
                 return (
                   <button
@@ -1239,13 +1477,13 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
               {/* Messages */}
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
-                  {messages.length === 0 ? (
+                  {visibleMessages.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
                       <p className="text-sm">No messages yet</p>
                       <p className="text-xs mt-1">Send a message to start the conversation</p>
                     </div>
                   ) : (
-                    messages.map(renderMessage)
+                    visibleMessages.map(renderMessage)
                   )}
                   <div ref={messagesEndRef} />
                 </div>
@@ -1447,22 +1685,79 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this message?</AlertDialogTitle>
+            <AlertDialogTitle>Delete message?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the message for everyone in the conversation. This can&apos;t be undone.
+              {deleteTarget && deleteTarget.sender_id === user.id && !deleteTarget.deleted_for_everyone
+                ? '“Delete for everyone” removes it from the conversation for both of you. “Delete for me” just hides it on this account.'
+                : 'This hides the message on your account only. Other people in the chat still see it.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteMessage}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete for everyone
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteForMe}>Delete for me</AlertDialogAction>
+            {deleteTarget && deleteTarget.sender_id === user.id && !deleteTarget.deleted_for_everyone && (
+              <AlertDialogAction
+                onClick={handleDeleteForEveryone}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete for everyone
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedIds.size} {selectedIds.size === 1 ? 'message' : 'messages'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {allSelectedOwnedAndLive
+                ? '“Delete for everyone” removes them from the conversation for both of you. “Delete for me” just hides them on this account.'
+                : 'Some of these were sent by the other person or are already deleted, so they can only be hidden on your account.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDeleteForMe}>Delete for me</AlertDialogAction>
+            {allSelectedOwnedAndLive && (
+              <AlertDialogAction
+                onClick={handleBulkDeleteForEveryone}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete for everyone
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ForwardMessageDialog
+        open={!!forwardTargets}
+        onOpenChange={(o) => !o && setForwardTargets(null)}
+        messages={(forwardTargets ?? []).map<ForwardableMessage>((m) => ({
+          id: m.id,
+          content: m.content,
+          message_type: m.message_type,
+          file_url: m.file_url ?? null,
+          file_name: m.file_name ?? null,
+          mime_type: m.mime_type ?? null,
+          file_size: m.file_size ?? null,
+        }))}
+        currentUserId={user.id}
+        conversations={conversations.map((c) => ({
+          id: c.id,
+          otherUser: c.otherUser,
+          lastMessage: c.lastMessage,
+        }))}
+        onForwarded={() => {
+          setForwardTargets(null);
+          exitSelection();
+          fetchConversations();
+        }}
+      />
     </div>
   );
 };
