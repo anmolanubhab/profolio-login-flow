@@ -12,6 +12,8 @@ import { MyApplications } from '@/components/jobs/MyApplications';
 import { MyDrafts } from '@/components/jobs/MyDrafts';
 import { ProfileSummaryCard } from '@/components/ProfileSummaryCard';
 import { FeedRightRail } from '@/components/FeedRightRail';
+import { ApplicationsRightRail } from '@/components/jobs/ApplicationsRightRail';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 // Which /dashboard "view" is active is carried in the URL (?tab=...) instead
 // of only in component state, so the left-sidebar navigation (a sibling
@@ -29,6 +31,10 @@ const Dashboard = () => {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  // Applications right-rail: docked beside the list on desktop, stacked below
+  // it on smaller screens. A JS breakpoint (not just a CSS `hidden`) so only
+  // one instance ever mounts.
+  const isDesktopRail = useMediaQuery('(min-width: 1024px)');
 
   const tabParam = searchParams.get('tab');
   const activeTab: DashboardTab = (VALID_TABS as readonly string[]).includes(tabParam || '')
@@ -191,11 +197,12 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="applications" className="mt-0">
-            <div className="mb-4">
-              <h2 className="text-2xl font-bold">My Applications</h2>
-              <p className="text-sm text-muted-foreground">Track your job applications</p>
-            </div>
             <MyApplications />
+            {!isDesktopRail && (
+              <div className="mt-5">
+                <ApplicationsRightRail />
+              </div>
+            )}
           </TabsContent>
 
           {companyId && (
@@ -209,9 +216,17 @@ const Dashboard = () => {
           )}
           </div>
 
-          <aside className="hidden xl:block xl:w-[300px] xl:shrink-0 sticky top-[calc(var(--nav-height)+1rem)]">
-            <FeedRightRail />
-          </aside>
+          {activeTab === 'applications' ? (
+            isDesktopRail && (
+              <aside className="sticky top-[calc(var(--nav-height)+1rem)] hidden w-[320px] shrink-0 lg:block">
+                <ApplicationsRightRail />
+              </aside>
+            )
+          ) : (
+            <aside className="sticky top-[calc(var(--nav-height)+1rem)] hidden w-[300px] shrink-0 xl:block">
+              <FeedRightRail />
+            </aside>
+          )}
         </div>
       </Tabs>
 
