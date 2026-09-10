@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Send, Plus, MessageCircle, Search, Loader2, X, Paperclip, FileText, Download,
   Image, Camera, Mic, User as UserIcon, BarChart3, Calendar, Sticker as StickerIcon,
-  ChevronLeft,
+  ChevronLeft, MoreVertical, Pin, Star, Reply as ReplyIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -42,6 +42,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { UNREAD_MESSAGES_QUERY_KEY } from '@/hooks/use-unread-message-count';
 import { EmptyState } from '@/components/ui/empty-state';
 import noMessageImage from '@/assets/empty-states/no-massage.png';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { MessageActionsMenu } from './MessageActionsMenu';
+import { MessageInfoDialog } from './MessageInfoDialog';
+import { useMessageActions } from '@/hooks/useMessageActions';
 
 const ALLOWED_DOCUMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'];
 const ALLOWED_DOCUMENT_MIME_TYPES = [
@@ -137,6 +144,8 @@ interface Message {
   file_size?: number | null;
   is_read: boolean;
   created_at: string;
+  reply_to_id?: string | null;
+  deleted_for_everyone?: boolean;
   senderProfile?: Profile;
 }
 
@@ -165,8 +174,20 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const attachAreaRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // WhatsApp-style message actions -----------------------------------------
+  const {
+    reactionsByMessage, starredIds, pinnedIds, pins,
+    toggleReaction, toggleStar, togglePin, reload: reloadActions,
+  } = useMessageActions(selectedConversation, user.id);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [infoMessage, setInfoMessage] = useState<Message | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [savingAttachmentId, setSavingAttachmentId] = useState<string | null>(null);
 
   /** Drop the shared unread badge to its true value right after a read. */
   const refreshUnreadBadge = useCallback(() => {
@@ -430,12 +451,14 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
           conversation_id: selectedConversation,
           sender_id: user.id,
           content: newMessage.trim(),
-          message_type: 'text'
+          message_type: 'text',
+          reply_to_id: replyingTo?.id ?? null,
         });
 
       if (error) throw error;
 
       setNewMessage('');
+      setReplyingTo(null);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -516,6 +539,297 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     } finally {
       setOpeningAttachmentId(null);
     }
+  };
+
+  // ---- WhatsApp-style message action handlers --------------------------------
+
+  /** Resolve a fresh signed URL for a message's attachment. */
+  const getAttachmentUrl = async (message: Message): Promise<string | null> => {
+    const { data, error } = await supabase.functions.invoke('get-message-attachment-url', {
+      body: { message_id: message.id },
+    });
+    if (error || !data?.ok || !data?.url) return null;
+    return data.url as string;
+  };
+
+  const handleCopyMessage = async (message: Message) => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      toast({ title: 'Message copied' });
+    } catch {
+      toast({ title: 'Could not copy', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveAttachment = async (message: Message) => {
+    setSavingAttachmentId(message.id);
+    try {
+      const url = await getAttachmentUrl(message);
+      if (!url) {
+        toast({ title: 'Error', description: "Couldn't fetch this file.", variant: 'destructive' });
+        return;
+      }
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = message.file_name || 'attachment';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
+      } catch {
+        // cross-origin / blocked fetch -> fall back to opening in a new tab
+        window.open(url, '_blank', 'noopener');
+      }
+    } finally {
+      setSavingAttachmentId(null);
+    }
+  };
+
+  const handleShareMessage = async (message: Message) => {
+    const isFile = message.message_type === 'file' || message.message_type === 'image';
+    let url: string | undefined;
+    if (isFile) url = (await getAttachmentUrl(message)) || undefined;
+    const shareData: ShareData = {
+      title: isFile ? (message.file_name || 'Shared file') : 'Message',
+      text: isFile ? undefined : message.content,
+      url,
+    };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        /* user cancelled -- not an error */
+      }
+      return;
+    }
+    // fallback: copy whatever is shareable
+    try {
+      await navigator.clipboard.writeText(url || message.content);
+      toast({ title: 'Copied to clipboard' });
+    } catch {
+      toast({ title: 'Sharing not supported here', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteMessage = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, deleted_for_everyone: true } : m)));
+    const { error } = await supabase.from('messages').update({ deleted_for_everyone: true }).eq('id', id);
+    if (error) {
+      toast({ title: 'Could not delete message', variant: 'destructive' });
+      fetchMessages(selectedConversation!);
+    }
+  };
+
+  const scrollToMessage = (id: string) => {
+    const el = messageRefs.current[id];
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightId(id);
+    setTimeout(() => setHighlightId((cur) => (cur === id ? null : cur)), 1800);
+  };
+
+  const messagePreview = (m: Message): string => {
+    if (m.message_type === 'sticker') return 'Sticker';
+    if (m.message_type === 'file' || m.message_type === 'image') return m.file_name || 'Attachment';
+    return m.content;
+  };
+
+  const renderMessage = (message: Message) => {
+    const isOwn = message.sender_id === user.id;
+    const isDeleted = !!message.deleted_for_everyone;
+    const isSticker = message.message_type === 'sticker';
+    const isFile = message.message_type === 'file' || message.message_type === 'image';
+    const reactionRows = reactionsByMessage.get(message.id) ?? [];
+    const myReaction = reactionRows.find((r) => r.user_id === user.id)?.emoji;
+    const grouped = Object.values(
+      reactionRows.reduce<Record<string, { emoji: string; count: number; mine: boolean }>>((acc, r) => {
+        acc[r.emoji] ??= { emoji: r.emoji, count: 0, mine: false };
+        acc[r.emoji].count += 1;
+        if (r.user_id === user.id) acc[r.emoji].mine = true;
+        return acc;
+      }, {}),
+    );
+    const isStarred = starredIds.has(message.id);
+    const isPinned = pinnedIds.has(message.id);
+    const repliedTo = message.reply_to_id ? messages.find((m) => m.id === message.reply_to_id) : null;
+    const highlighted = highlightId === message.id;
+
+    return (
+      <div
+        key={message.id}
+        ref={(el) => { messageRefs.current[message.id] = el; }}
+        className={cn('flex scroll-mt-6', isOwn ? 'justify-end' : 'justify-start')}
+      >
+        <div className={cn('group relative flex max-w-[80%] items-end gap-1.5', isOwn && 'flex-row-reverse')}>
+          {!isOwn && (
+            <Avatar className="h-6 w-6 flex-shrink-0">
+              <AvatarImage src={message.senderProfile?.avatar_url || undefined} />
+              <AvatarFallback className="text-xs">
+                {message.senderProfile?.display_name?.[0]?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+          )}
+
+          <div className={cn('flex min-w-0 flex-col', isOwn ? 'items-end' : 'items-start')}>
+            {repliedTo && !isDeleted && (
+              <button
+                type="button"
+                onClick={() => scrollToMessage(repliedTo.id)}
+                className="mb-1 flex max-w-full items-center gap-1 rounded-lg border-l-2 border-primary bg-muted/70 px-2 py-1 text-left text-[11px]"
+              >
+                <ReplyIcon className="h-3 w-3 shrink-0 text-primary" />
+                <span className="font-semibold text-primary">
+                  {repliedTo.sender_id === user.id ? 'You' : repliedTo.senderProfile?.display_name || 'Them'}
+                </span>
+                <span className="truncate text-muted-foreground">{messagePreview(repliedTo)}</span>
+              </button>
+            )}
+
+            <div
+              className={cn(
+                'relative rounded-2xl transition-shadow',
+                highlighted && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
+              )}
+            >
+              {(isPinned || isStarred) && !isDeleted && (
+                <span
+                  className={cn(
+                    'absolute -top-2 z-10 flex items-center gap-0.5 rounded-full bg-background px-1 py-0.5 shadow-sm',
+                    isOwn ? '-left-2' : '-right-2',
+                  )}
+                >
+                  {isPinned && <Pin className="h-3 w-3 text-primary" />}
+                  {isStarred && <Star className="h-3 w-3 fill-warning text-warning" />}
+                </span>
+              )}
+
+              {isDeleted ? (
+                <div className="flex items-center gap-1.5 rounded-2xl bg-muted px-4 py-2 text-sm italic text-muted-foreground">
+                  <X className="h-3.5 w-3.5" /> This message was deleted
+                </div>
+              ) : isSticker ? (
+                (() => {
+                  const sticker = getSticker(message.file_url || '');
+                  return (
+                    <div className="flex flex-col items-start">
+                      {sticker ? (
+                        <img
+                          src={sticker.src}
+                          alt={sticker.label}
+                          className="w-[160px] h-[160px] max-w-[45vw] max-h-[45vw] sm:max-w-[180px] sm:max-h-[180px] object-contain"
+                        />
+                      ) : (
+                        <div className="rounded-2xl px-4 py-2 bg-muted text-sm text-muted-foreground">
+                          Sticker unavailable
+                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : isFile ? (
+                <div className={cn('rounded-2xl p-3 max-w-full', isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+                  <div className="flex items-center gap-2.5 rounded-lg bg-background/90 text-foreground px-3 py-2.5">
+                    <FileText className="h-8 w-8 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate" title={message.file_name}>
+                        {message.file_name || 'Document'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {(fileExtension(message.file_name || '') || 'file').toUpperCase()}
+                        {message.file_size ? ` · ${formatFileSize(message.file_size)}` : ''}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0"
+                      aria-label={`Open ${message.file_name || 'document'}`}
+                      disabled={openingAttachmentId === message.id || savingAttachmentId === message.id}
+                      onClick={() => handleOpenAttachment(message)}
+                    >
+                      {openingAttachmentId === message.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <div className={cn('text-xs mt-1.5', isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                    {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                  </div>
+                </div>
+              ) : (
+                <div className={cn('rounded-2xl px-4 py-2', isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+                  <div className="text-sm break-words whitespace-pre-wrap">{message.content}</div>
+                  <div className={cn('text-xs mt-1', isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                    {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {grouped.length > 0 && !isDeleted && (
+              <div className={cn('mt-1 flex flex-wrap gap-1', isOwn && 'justify-end')}>
+                {grouped.map((g) => (
+                  <button
+                    key={g.emoji}
+                    type="button"
+                    onClick={() => toggleReaction(message.id, g.emoji)}
+                    className={cn(
+                      'flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs transition-colors',
+                      g.mine ? 'border-primary/50 bg-primary/10' : 'border-border bg-background hover:bg-accent',
+                    )}
+                  >
+                    <span>{g.emoji}</span>
+                    {g.count > 1 && <span className="tabular-nums text-[10px] text-muted-foreground">{g.count}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {!isDeleted && (
+            <div className="self-center">
+              <MessageActionsMenu
+                message={{
+                  id: message.id,
+                  message_type: message.message_type,
+                  content: message.content,
+                  file_name: message.file_name ?? null,
+                  mime_type: message.mime_type ?? null,
+                }}
+                isOwn={isOwn}
+                isStarred={isStarred}
+                isPinned={isPinned}
+                myReaction={myReaction}
+                onReact={(e) => toggleReaction(message.id, e)}
+                onReply={() => setReplyingTo(message)}
+                onCopy={isFile || isSticker ? undefined : () => handleCopyMessage(message)}
+                onPin={() => togglePin(message.id)}
+                onStar={() => toggleStar(message.id)}
+                onInfo={() => setInfoMessage(message)}
+                onSaveAs={isFile || isSticker ? () => handleSaveAttachment(message) : undefined}
+                onShare={() => handleShareMessage(message)}
+                onOpenWith={message.message_type === 'file' ? () => handleOpenAttachment(message) : undefined}
+                onDelete={isOwn ? () => setDeleteTarget(message) : undefined}
+              >
+                <MoreVertical className="h-3.5 w-3.5" />
+              </MessageActionsMenu>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -902,6 +1216,26 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
               </div>
             </CardHeader>
             <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
+              {pins.length > 0 && (() => {
+                const latest = messages.find((m) => m.id === pins[0].message_id);
+                if (!latest) return null;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => scrollToMessage(latest.id)}
+                    className="flex w-full items-center gap-2 border-b bg-muted/40 px-4 py-2 text-left text-xs"
+                  >
+                    <Pin className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span className="font-medium text-foreground">Pinned</span>
+                    <span className="truncate text-muted-foreground">{messagePreview(latest)}</span>
+                    {pins.length > 1 && (
+                      <span className="ml-auto shrink-0 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                        {pins.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })()}
               {/* Messages */}
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
@@ -911,118 +1245,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                       <p className="text-xs mt-1">Send a message to start the conversation</p>
                     </div>
                   ) : (
-                    messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${
-                          message.sender_id === user.id ? 'justify-end' : 'justify-start'
-                        }`}
-                      >
-                        <div className="flex items-end gap-2 max-w-[70%]">
-                          {message.sender_id !== user.id && (
-                            <Avatar className="h-6 w-6 flex-shrink-0">
-                              <AvatarImage src={message.senderProfile?.avatar_url || undefined} />
-                              <AvatarFallback className="text-xs">
-                                {message.senderProfile?.display_name?.[0]?.toUpperCase() || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                          )}
-                          {message.message_type === 'sticker' ? (
-                            (() => {
-                              const sticker = getSticker(message.file_url || '');
-                              return (
-                                <div className="flex flex-col items-start">
-                                  {sticker ? (
-                                    <img
-                                      src={sticker.src}
-                                      alt={sticker.label}
-                                      className="w-[160px] h-[160px] max-w-[45vw] max-h-[45vw] sm:max-w-[180px] sm:max-h-[180px] object-contain"
-                                    />
-                                  ) : (
-                                    <div className="rounded-2xl px-4 py-2 bg-muted text-sm text-muted-foreground">
-                                      Sticker unavailable
-                                    </div>
-                                  )}
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                                  </div>
-                                </div>
-                              );
-                            })()
-                          ) : message.message_type === 'file' ? (
-                            <div
-                              className={`rounded-2xl p-3 max-w-full ${
-                                message.sender_id === user.id
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-muted'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2.5 rounded-lg bg-background/90 text-foreground px-3 py-2.5">
-                                <FileText className="h-8 w-8 shrink-0 text-muted-foreground" />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium truncate" title={message.file_name}>
-                                    {message.file_name || 'Document'}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                                    {(fileExtension(message.file_name || '') || 'file').toUpperCase()}
-                                    {message.file_size ? ` · ${formatFileSize(message.file_size)}` : ''}
-                                  </p>
-                                </div>
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="shrink-0"
-                                        aria-label={`Open ${message.file_name || 'document'}`}
-                                        disabled={openingAttachmentId === message.id}
-                                        onClick={() => handleOpenAttachment(message)}
-                                      >
-                                        {openingAttachmentId === message.id ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                          <Download className="h-4 w-4" />
-                                        )}
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Open / Download</TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </div>
-                              <div
-                                className={`text-xs mt-1.5 ${
-                                  message.sender_id === user.id
-                                    ? 'text-primary-foreground/70'
-                                    : 'text-muted-foreground'
-                                }`}
-                              >
-                                {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                              </div>
-                            </div>
-                          ) : (
-                            <div
-                              className={`rounded-2xl px-4 py-2 ${
-                                message.sender_id === user.id
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-muted'
-                              }`}
-                            >
-                              <div className="text-sm break-words">{message.content}</div>
-                              <div
-                                className={`text-xs mt-1 ${
-                                  message.sender_id === user.id
-                                    ? 'text-primary-foreground/70'
-                                    : 'text-muted-foreground'
-                                }`}
-                              >
-                                {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))
+                    messages.map(renderMessage)
                   )}
                   <div ref={messagesEndRef} />
                 </div>
@@ -1030,6 +1253,25 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
 
               {/* Message Input */}
               <div className="p-4 border-t flex-shrink-0">
+                {replyingTo && (
+                  <div className="mb-2 flex items-start gap-2 rounded-lg border-l-2 border-primary bg-muted/60 px-3 py-2">
+                    <ReplyIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-primary">
+                        Replying to {replyingTo.sender_id === user.id ? 'yourself' : replyingTo.senderProfile?.display_name || 'them'}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{messagePreview(replyingTo)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Cancel reply"
+                      onClick={() => setReplyingTo(null)}
+                      className="rounded-full p-0.5 text-muted-foreground hover:bg-accent"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
                 {uploadingDocument && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -1194,6 +1436,33 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
           </CardContent>
         )}
       </Card>
+
+      <MessageInfoDialog
+        open={!!infoMessage}
+        onOpenChange={(o) => !o && setInfoMessage(null)}
+        message={infoMessage}
+        isOwn={infoMessage?.sender_id === user.id}
+      />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this message?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the message for everyone in the conversation. This can&apos;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteMessage}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete for everyone
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
