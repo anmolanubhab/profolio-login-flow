@@ -237,7 +237,11 @@ export function MessageActionsMenu(props: MessageActionsMenuProps) {
                 <ReactionRow myReaction={props.myReaction} onReact={props.onReact} close={close} />
               </div>
             )}
-            <div className="p-1">
+            {/* pb clears the Android gesture / 3-button nav bar so the last
+                action (Delete) is never stuck under it -- padding on this
+                in-flow block always counts toward the scroll height. Same
+                pattern as MobileCreateSheet's DrawerContent. */}
+            <div className="p-1 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               {actions.map((a, i) => {
                 const prev = actions[i - 1];
                 return (
