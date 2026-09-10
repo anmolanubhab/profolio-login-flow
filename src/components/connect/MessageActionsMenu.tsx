@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -163,6 +163,13 @@ export function MessageActionsMenu(props: MessageActionsMenuProps) {
   const isMobile = useIsMobile();
   const actions = buildActions(props);
   const close = () => setOpen(false);
+  // Mobile: an action is stashed here on tap and run only once the Sheet has
+  // actually closed (see the Sheet's onOpenChange). Opening a dialog in the
+  // same tick as the close used to orphan the Sheet's exit animationend under
+  // the new dialog's inert overlay -- the PR #66 "ghost sheet / frozen page"
+  // bug that `!animate-none` was papering over (and which then leaked
+  // react-remove-scroll's body scroll-lock).
+  const pendingActionRef = useRef<(() => void) | null>(null);
 
   const renderItems = (onRun: (run: () => void) => void) =>
     ([1, 2, 3] as const).map((g, gi) => {
@@ -203,10 +210,24 @@ export function MessageActionsMenu(props: MessageActionsMenuProps) {
         >
           {props.children}
         </button>
-        <Sheet open={open} onOpenChange={setOpen}>
+        <Sheet
+          open={open}
+          onOpenChange={(o) => {
+            setOpen(o);
+            if (!o && pendingActionRef.current) {
+              const run = pendingActionRef.current;
+              pendingActionRef.current = null;
+              // Defer to the next task (not rAF -- that's paused in a hidden
+              // tab). The Sheet is already closing on its own animation, so
+              // react-remove-scroll tears its body lock down cleanly; only
+              // then do we open whatever dialog the action wants.
+              setTimeout(run, 0);
+            }
+          }}
+        >
           <SheetContent
             side="bottom"
-            className="max-h-[80vh] overflow-y-auto rounded-t-2xl p-0 data-[state=closed]:!animate-none"
+            className="max-h-[80vh] overflow-y-auto rounded-t-2xl p-0"
           >
             <SheetHeader className="border-b px-4 py-3">
               <SheetTitle className="text-sm">Message actions</SheetTitle>
@@ -225,8 +246,8 @@ export function MessageActionsMenu(props: MessageActionsMenuProps) {
                     <button
                       type="button"
                       onClick={() => {
+                        pendingActionRef.current = a.run;
                         setOpen(false);
-                        a.run();
                       }}
                       className={cn(
                         'flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm transition-colors hover:bg-accent',
