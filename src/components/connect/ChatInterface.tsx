@@ -173,6 +173,39 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     queryClient.invalidateQueries({ queryKey: UNREAD_MESSAGES_QUERY_KEY });
   }, [queryClient]);
 
+  /**
+   * Mark every message the current user has received in this conversation as
+   * read. Goes through the `mark_conversation_read` RPC: a plain `messages`
+   * UPDATE from the client is blocked by RLS for the recipient (the only
+   * UPDATE policy is `sender_id = auth.uid()`), which is why the badge used to
+   * never clear. The RPC is participant-checked and idempotent, so calling it
+   * repeatedly (e.g. on every realtime message) is safe.
+   *
+   * Declared here -- above the effects that list it as a dependency -- so its
+   * `const` binding is initialised before those `useEffect(...)` dependency
+   * arrays are evaluated during render (a later declaration threw a TDZ
+   * ReferenceError, blanking the whole page).
+   */
+  const markMessagesAsRead = useCallback(
+    async (conversationId: string) => {
+      try {
+        const { error } = await supabase.rpc('mark_conversation_read', {
+          p_conversation_id: conversationId,
+        });
+        if (error) throw error;
+        // Optimistically clear this thread's unread pip and drop the global
+        // badge to its true value.
+        setConversations((prev) =>
+          prev.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c)),
+        );
+        refreshUnreadBadge();
+      } catch (error) {
+        console.error('Error marking messages as read:', error);
+      }
+    },
+    [refreshUnreadBadge],
+  );
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -385,34 +418,6 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
       });
     }
   };
-
-  /**
-   * Mark every message the current user has received in this conversation as
-   * read. Goes through the `mark_conversation_read` RPC: a plain
-   * `messages` UPDATE from the client is blocked by RLS for the recipient
-   * (the only UPDATE policy is `sender_id = auth.uid()`), which is why the
-   * badge used to never clear. The RPC is participant-checked and idempotent,
-   * so calling it repeatedly (e.g. on every realtime message) is safe.
-   */
-  const markMessagesAsRead = useCallback(
-    async (conversationId: string) => {
-      try {
-        const { error } = await supabase.rpc('mark_conversation_read', {
-          p_conversation_id: conversationId,
-        });
-        if (error) throw error;
-        // Optimistically clear this thread's unread pip and drop the global
-        // badge to its true value.
-        setConversations((prev) =>
-          prev.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c)),
-        );
-        refreshUnreadBadge();
-      } catch (error) {
-        console.error('Error marking messages as read:', error);
-      }
-    },
-    [refreshUnreadBadge],
-  );
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sendingMessage) return;
