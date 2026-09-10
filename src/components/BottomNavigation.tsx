@@ -34,6 +34,7 @@ const BottomNavigation = () => {
     const Icon = item.icon;
     const active = isActive(item.path);
     const badge = 'badge' in item ? item.badge : 0;
+    const badgeLabel = badge > 99 ? '99+' : String(badge);
 
     return (
       <Button
@@ -41,7 +42,7 @@ const BottomNavigation = () => {
         variant="ghost"
         size="icon"
         onClick={() => navigate(item.path)}
-        aria-label={item.label}
+        aria-label={badge > 0 ? `${item.label}, ${badge} unread` : item.label}
         aria-current={active ? 'page' : undefined}
         className={cn(
           'flex-1 flex flex-col items-center justify-center h-16 gap-1 min-w-[44px]',
@@ -61,7 +62,7 @@ const BottomNavigation = () => {
               className="absolute -right-2 -top-1.5 grid h-4 min-w-[16px] place-items-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground"
               aria-hidden="true"
             >
-              {badge > 9 ? '9+' : badge}
+              {badgeLabel}
             </span>
           )}
         </span>

@@ -6256,6 +6256,10 @@ export type Database = {
           they_follow_me: boolean
         }[]
       }
+      mark_conversation_read: {
+        Args: { p_conversation_id: string }
+        Returns: number
+      }
       mark_interview_outcome: {
         Args: { p_outcome: string; p_round_id: string }
         Returns: undefined
@@ -6557,6 +6561,7 @@ export type Database = {
         Returns: undefined
       }
       update_my_preferences_patch: { Args: { patch: Json }; Returns: Json }
+      unread_message_count: { Args: never; Returns: number }
       validate_campaign_budget: {
         Args: { _campaign_id: string }
         Returns: Json

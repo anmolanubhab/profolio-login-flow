@@ -16,6 +16,7 @@ import { MobileNavDrawer } from './MobileNavDrawer';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useMobileChromeHidden } from '@/hooks/use-mobile-scroll-direction';
+import { useUnreadMessageCount } from '@/hooks/use-unread-message-count';
 
 interface NavBarProps {
   user?: {
@@ -49,6 +50,9 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
   // Mobile only: slide the header up out of view while the user scrolls down.
   // Always false at >= lg, so the desktop bar never moves.
   const hideOnMobile = useMobileChromeHidden();
+  // Shared, DB-backed unread total -- the SAME number the mobile bottom nav
+  // shows, so the "Messaging" badge never disagrees between surfaces.
+  const { count: unreadMessages } = useUnreadMessageCount();
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -109,14 +113,29 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
       <div className="navbar-inner w-full max-w-full overflow-hidden !max-w-none xl:!max-w-[1280px] gap-1 sm:gap-3">
         {/* Left: brand + search */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <MobileNavDrawer />
+          {/* Mobile: the Profolio logo IS the navigation-drawer trigger --
+              there is no separate hamburger. Radix (via SheetTrigger asChild)
+              wires aria-expanded / aria-controls onto this button. The min
+              44x44 box keeps a comfortable touch target around the mark. */}
+          <MobileNavDrawer
+            trigger={
+              <button
+                type="button"
+                aria-label="Open navigation menu"
+                className="lg:hidden -ml-1.5 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border-0 bg-transparent p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ProfolioLogo className="h-6" alt="Profolio" />
+              </button>
+            }
+          />
+          {/* Desktop: the logo keeps its classic "go home" behaviour. */}
           <button
             type="button"
             aria-label="Profolio — go to home"
             onClick={() => navigate('/dashboard')}
-            className="shrink-0 rounded-md border-0 bg-transparent p-0"
+            className="hidden shrink-0 rounded-md border-0 bg-transparent p-0 lg:block"
           >
-            <ProfolioLogo className="h-6 sm:h-7" />
+            <ProfolioLogo className="h-7" />
           </button>
           <div className="nav-search hidden md:block w-64 lg:w-72">
             <SearchBar />
@@ -125,23 +144,37 @@ const NavBar = ({ user, onSignOut }: NavBarProps) => {
 
         {/* Center: primary icon tabs (desktop only) */}
         <div className="hidden lg:flex items-stretch h-full">
-          {primaryNav.map((item) => (
-            <NavLink
-              key={item.title}
-              to={item.url}
-              className={({ isActive }) =>
-                cn(
-                  'flex flex-col items-center justify-center gap-0.5 px-4 h-full min-w-[64px] text-[11px] font-medium border-b-2 transition-colors',
-                  isActive
-                    ? 'border-foreground text-foreground'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                )
-              }
-            >
-              <item.icon className="h-5 w-5" strokeWidth={2} />
-              <span className="whitespace-nowrap">{item.title}</span>
-            </NavLink>
-          ))}
+          {primaryNav.map((item) => {
+            const showUnread = item.url === '/connect' && unreadMessages > 0;
+            return (
+              <NavLink
+                key={item.title}
+                to={item.url}
+                aria-label={showUnread ? `${item.title}, ${unreadMessages} unread` : undefined}
+                className={({ isActive }) =>
+                  cn(
+                    'flex flex-col items-center justify-center gap-0.5 px-4 h-full min-w-[64px] text-[11px] font-medium border-b-2 transition-colors',
+                    isActive
+                      ? 'border-foreground text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  )
+                }
+              >
+                <span className="relative">
+                  <item.icon className="h-5 w-5" strokeWidth={2} />
+                  {showUnread && (
+                    <span
+                      className="absolute -right-2 -top-1.5 grid h-4 min-w-[16px] place-items-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground"
+                      aria-hidden="true"
+                    >
+                      {unreadMessages > 99 ? '99+' : unreadMessages}
+                    </span>
+                  )}
+                </span>
+                <span className="whitespace-nowrap">{item.title}</span>
+              </NavLink>
+            );
+          })}
         </div>
 
         {/* Right: business tools, notifications, profile */}

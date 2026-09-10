@@ -15,10 +15,9 @@ import {
   Newspaper,
   ClipboardList,
   Menu,
-  X
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -56,7 +55,17 @@ const settingsItems = [
   { title: "Settings", url: "/settings", icon: Settings },
 ]
 
-export function MobileNavDrawer() {
+interface MobileNavDrawerProps {
+  /**
+   * The element that opens the drawer. Rendered inside `<SheetTrigger asChild>`,
+   * so Radix wires `aria-expanded` / `aria-controls` / `data-state` onto it —
+   * it must be a single focusable element (a real `<button>`). Defaults to the
+   * hamburger icon button; the mobile header passes the Profolio logo instead.
+   */
+  trigger?: ReactNode
+}
+
+export function MobileNavDrawer({ trigger }: MobileNavDrawerProps = {}) {
   const [open, setOpen] = useState(false)
   const location = useLocation()
 
@@ -65,14 +74,16 @@ export function MobileNavDrawer() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="lg:hidden h-9 w-9"
-          aria-label="Open navigation menu"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
+        {trigger ?? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden h-9 w-9"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        )}
       </SheetTrigger>
       {/* Flex column so the header stays put and the nav list becomes the
           scroll area. h-full comes from the Sheet's `left` variant. The Sheet
