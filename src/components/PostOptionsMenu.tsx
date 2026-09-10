@@ -933,7 +933,16 @@ export const PostOptionsMenu = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="w-72 max-h-[70vh] overflow-y-auto z-50 bg-popover"
+            // data-[state=closed]:!animate-none — kill the close animation for
+            // THIS menu only. Several items ("Why am I seeing this?", "Report
+            // Post", …) close the menu and open a Dialog in the same click; the
+            // Dialog's modal layer marks the menu's portal aria-hidden/inert
+            // before its exit animation can finish, so `animationend` never
+            // fires and Radix (<Presence>) leaves the menu mounted forever as a
+            // dead, fully-opaque panel behind the dialog. With no close
+            // animation, <Presence> unmounts the menu synchronously and there
+            // is nothing to race.
+            className="w-72 max-h-[70vh] overflow-y-auto z-50 bg-popover data-[state=closed]:!animate-none"
             sideOffset={5}
           >
             <DropdownMenuItem onClick={handleWhySeeingThis}>
@@ -1100,7 +1109,15 @@ export const PostOptionsMenu = ({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="bottom"
-          className="max-h-[75vh] overflow-y-auto rounded-t-xl"
+          // data-[state=closed]:!animate-none — same reason as the desktop
+          // DropdownMenuContent: several items close this sheet and open a
+          // Dialog ("Why am I seeing this?", "Report Post", …) in the same tap.
+          // The sheet's 300ms slide-out overlaps the dialog mount; the dialog's
+          // modal layer marks the closing sheet inert before its animationend
+          // fires, so Radix never unmounts either overlay and the page is left
+          // frozen (body pointer-events:none). With no close animation the
+          // sheet unmounts synchronously and the overlays never overlap.
+          className="max-h-[75vh] overflow-y-auto rounded-t-xl data-[state=closed]:!animate-none"
         >
           <SheetHeader className="pb-2">
             <SheetTitle className="text-base">Post Options</SheetTitle>
@@ -1227,7 +1244,12 @@ const WhyDialog = ({
   reason: string;
 }) => (
   <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="sm:max-w-sm">
+    {/* data-[state=closed]:!animate-none — this dialog is opened in the same
+        click that closes the post menu / sheet; without a close animation
+        Radix (<Presence>) unmounts it synchronously, so a lifecycle that
+        briefly overlapped the menu's can't orphan its exit animationend and
+        leave the page frozen (body pointer-events:none). */}
+    <DialogContent className="sm:max-w-sm data-[state=closed]:!animate-none">
       <DialogHeader>
         <DialogTitle>Why am I seeing this post?</DialogTitle>
       </DialogHeader>
