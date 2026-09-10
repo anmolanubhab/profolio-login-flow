@@ -3592,6 +3592,35 @@ export type Database = {
           },
         ]
       }
+      message_deletions: {
+        Row: {
+          deleted_at: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          deleted_at?: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          deleted_at?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_deletions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reactions: {
         Row: {
           created_at: string
@@ -3634,6 +3663,7 @@ export type Database = {
           file_size: number | null
           file_url: string | null
           id: string
+          is_forwarded: boolean
           is_read: boolean | null
           message_type: string | null
           metadata: Json | null
@@ -3650,10 +3680,12 @@ export type Database = {
           file_size?: number | null
           file_url?: string | null
           id?: string
+          is_forwarded?: boolean
           is_read?: boolean | null
           message_type?: string | null
           metadata?: Json | null
           mime_type?: string | null
+          reply_to_id?: string | null
           sender_id?: string | null
           story_id?: string | null
         }
@@ -3666,6 +3698,7 @@ export type Database = {
           file_size?: number | null
           file_url?: string | null
           id?: string
+          is_forwarded?: boolean
           is_read?: boolean | null
           message_type?: string | null
           metadata?: Json | null
