@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useUnreadMessageCount } from '@/hooks/use-unread-message-count';
 
 interface NavBadges {
   /** Pending connection invitations received (Network tab). */
@@ -9,18 +10,19 @@ interface NavBadges {
   messages: number;
 }
 
-const EMPTY: NavBadges = { network: 0, messages: 0 };
-
 /**
- * Small, real unread counts for the mobile bottom nav. One fetch on mount +
- * on every route change (so a count clears right after you visit that section),
- * plus a lightweight realtime nudge on the two source tables. Never fabricates
- * a count -- returns 0 when there's nothing or the user isn't signed in.
+ * Small, real unread counts for the mobile bottom nav.
+ *
+ * `messages` comes from {@link useUnreadMessageCount} — the single app-wide
+ * source of truth shared with the desktop navbar, so every "Messages" badge
+ * agrees. `network` is fetched here (one call on mount + on route change, plus
+ * a debounced realtime nudge on `friend_requests`). Never fabricates a count.
  */
 export function useMobileNavBadges(): NavBadges {
-  const [badges, setBadges] = useState<NavBadges>(EMPTY);
+  const [network, setNetwork] = useState(0);
   const { pathname } = useLocation();
   const runningRef = useRef(false);
+  const { count: messages } = useUnreadMessageCount();
 
   const refresh = useCallback(async () => {
     if (runningRef.current) return;
@@ -30,47 +32,22 @@ export function useMobileNavBadges(): NavBadges {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        setBadges(EMPTY);
+        setNetwork(0);
         return;
       }
-
-      const [{ data: counts }, { data: convos }] = await Promise.all([
-        supabase.rpc('network_counts'),
-        supabase
-          .from('conversations')
-          .select('id')
-          .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`),
-      ]);
-
-      let messages = 0;
-      const convoIds = (convos ?? []).map((c) => c.id);
-      if (convoIds.length > 0) {
-        const { count } = await supabase
-          .from('messages')
-          .select('id', { count: 'exact', head: true })
-          .in('conversation_id', convoIds)
-          .eq('is_read', false)
-          .neq('sender_id', user.id);
-        messages = count ?? 0;
-      }
-
-      setBadges({
-        network: counts?.[0]?.pending_received ?? 0,
-        messages,
-      });
+      const { data: counts } = await supabase.rpc('network_counts');
+      setNetwork(counts?.[0]?.pending_received ?? 0);
     } catch {
-      // Non-critical: a failed badge fetch just leaves the last known counts.
+      // Non-critical: a failed badge fetch just leaves the last known count.
     } finally {
       runningRef.current = false;
     }
   }, []);
 
-  // Fetch on mount and whenever the route changes.
   useEffect(() => {
     refresh();
   }, [pathname, refresh]);
 
-  // Realtime nudge: re-fetch (debounced) when the source tables change.
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const nudge = () => {
@@ -80,7 +57,6 @@ export function useMobileNavBadges(): NavBadges {
 
     const channel = supabase
       .channel('mobile-nav-badges')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, nudge)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, nudge)
       .subscribe();
 
@@ -90,5 +66,5 @@ export function useMobileNavBadges(): NavBadges {
     };
   }, [refresh]);
 
-  return badges;
+  return { network, messages };
 }

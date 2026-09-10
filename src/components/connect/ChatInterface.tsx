@@ -38,6 +38,10 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { secureUpload } from '@/lib/secure-upload';
 import { STICKERS, getSticker, getRecentStickers, recordRecentSticker, DEFAULT_STICKER_PACK, Sticker } from '@/lib/stickers';
+import { useQueryClient } from '@tanstack/react-query';
+import { UNREAD_MESSAGES_QUERY_KEY } from '@/hooks/use-unread-message-count';
+import { EmptyState } from '@/components/ui/empty-state';
+import noMessageImage from '@/assets/empty-states/no-massage.png';
 
 const ALLOWED_DOCUMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'];
 const ALLOWED_DOCUMENT_MIME_TYPES = [
@@ -118,6 +122,7 @@ interface Conversation {
   updated_at: string;
   otherUser?: Profile;
   lastMessage?: string;
+  unreadCount: number;
 }
 
 interface Message {
@@ -142,6 +147,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -160,6 +166,12 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const documentInputRef = useRef<HTMLInputElement>(null);
   const attachAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  /** Drop the shared unread badge to its true value right after a read. */
+  const refreshUnreadBadge = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: UNREAD_MESSAGES_QUERY_KEY });
+  }, [queryClient]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -214,8 +226,17 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
         (payload) => {
           const newMsg = payload.new as Message;
           if (newMsg.conversation_id === selectedConversation) {
+            // The user is looking at this thread: pull the new message in and
+            // immediately mark it read, so a message received while the
+            // conversation is open never inflates the unread badge (Part 11).
             fetchMessages(selectedConversation);
+            if (newMsg.sender_id !== user.id) {
+              markMessagesAsRead(selectedConversation);
+            }
           }
+          // Always refresh the list -- updates the preview, ordering and the
+          // per-thread unread pip. A full re-query, so duplicate realtime
+          // events can't double-count.
           fetchConversations();
         }
       )
@@ -225,7 +246,8 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
       supabase.removeChannel(conversationChannel);
       supabase.removeChannel(messageChannel);
     };
-  }, [selectedConversation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedConversation, user.id, markMessagesAsRead]);
 
   // Search users with debounce
   useEffect(() => {
@@ -267,11 +289,31 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
 
       if (error) throw error;
 
+      const convos = data || [];
+      const convoIds = convos.map((c) => c.id);
+
+      // One batched query for every unread message the current user has
+      // received across all their conversations -- tallied per conversation
+      // so the list can show which threads are unread (and by how much).
+      const unreadByConversation: Record<string, number> = {};
+      if (convoIds.length > 0) {
+        const { data: unreadRows } = await supabase
+          .from('messages')
+          .select('conversation_id')
+          .in('conversation_id', convoIds)
+          .eq('is_read', false)
+          .neq('sender_id', user.id);
+        for (const row of unreadRows || []) {
+          if (!row.conversation_id) continue;
+          unreadByConversation[row.conversation_id] = (unreadByConversation[row.conversation_id] || 0) + 1;
+        }
+      }
+
       // Get profiles for other participants and last message
       const conversationsWithDetails = await Promise.all(
-        (data || []).map(async (conv) => {
+        convos.map(async (conv) => {
           const otherParticipantId = conv.participant_1 === user.id ? conv.participant_2 : conv.participant_1;
-          
+
           // Get profile
           const { data: profile } = await supabase
             .from('profiles')
@@ -291,19 +333,17 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
           return {
             ...conv,
             otherUser: profile || undefined,
-            lastMessage: lastMsg?.content
+            lastMessage: lastMsg?.content,
+            unreadCount: unreadByConversation[conv.id] || 0,
           };
         })
       );
 
       setConversations(conversationsWithDetails);
+      setLoadError(false);
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch conversations",
-        variant: "destructive",
-      });
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -346,17 +386,33 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     }
   };
 
-  const markMessagesAsRead = async (conversationId: string) => {
-    try {
-      await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('conversation_id', conversationId)
-        .neq('sender_id', user.id);
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
-  };
+  /**
+   * Mark every message the current user has received in this conversation as
+   * read. Goes through the `mark_conversation_read` RPC: a plain
+   * `messages` UPDATE from the client is blocked by RLS for the recipient
+   * (the only UPDATE policy is `sender_id = auth.uid()`), which is why the
+   * badge used to never clear. The RPC is participant-checked and idempotent,
+   * so calling it repeatedly (e.g. on every realtime message) is safe.
+   */
+  const markMessagesAsRead = useCallback(
+    async (conversationId: string) => {
+      try {
+        const { error } = await supabase.rpc('mark_conversation_read', {
+          p_conversation_id: conversationId,
+        });
+        if (error) throw error;
+        // Optimistically clear this thread's unread pip and drop the global
+        // badge to its true value.
+        setConversations((prev) =>
+          prev.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c)),
+        );
+        refreshUnreadBadge();
+      } catch (error) {
+        console.error('Error marking messages as read:', error);
+      }
+    },
+    [refreshUnreadBadge],
+  );
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || sendingMessage) return;
@@ -596,6 +652,9 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
           conversations.length > 0
             ? 'h-[calc(var(--app-vvh,100dvh)-17rem)] min-h-[16rem]'
             : 'h-auto lg:h-auto',
+          // No conversations -> this panel is the whole experience; let it
+          // fill the row so the empty state sits centred (not in a 1/3 rail).
+          conversations.length === 0 && 'lg:col-span-3 lg:border-0 lg:bg-transparent lg:shadow-none',
           selectedConversation && 'hidden lg:flex',
         )}
       >
@@ -684,45 +743,99 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden p-0">
           <ScrollArea className="h-full">
-            {conversations.length === 0 ? (
-              <div className="px-2 py-8 text-center text-muted-foreground">
-                <MessageCircle className="mx-auto mb-2 h-10 w-10 opacity-40" />
-                <p className="text-sm font-medium">No conversations yet</p>
-                <p className="mt-0.5 text-xs">Start a new chat to connect</p>
+            {loadError && conversations.length === 0 ? (
+              <div className="px-4 py-10 text-center">
+                <p className="text-sm font-medium text-foreground">Couldn&apos;t load your messages</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Check your connection and try again.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => {
+                    setLoading(true);
+                    fetchConversations();
+                  }}
+                >
+                  Retry
+                </Button>
               </div>
+            ) : conversations.length === 0 ? (
+              <EmptyState
+                size="compact"
+                illustration={noMessageImage}
+                illustrationAlt="No messages illustration"
+                title="No messages yet"
+                description="Reach out and start a conversation to advance your career"
+                action={
+                  <Button onClick={() => setShowNewChat(true)}>Send a message</Button>
+                }
+              />
             ) : (
               <div className="lg:px-2">
-                {conversations.map((conversation) => (
-                  <button
-                    key={conversation.id}
-                    type="button"
-                    className={cn(
-                      'flex w-full items-start gap-3 border-b border-border px-1 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/50 lg:rounded-lg lg:border-b-0 lg:px-3',
-                      selectedConversation === conversation.id && 'bg-muted',
-                    )}
-                    onClick={() => handleSelectConversation(conversation)}
-                  >
-                    <Avatar className="h-11 w-11 shrink-0">
-                      <AvatarImage src={conversation.otherUser?.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {conversation.otherUser?.display_name?.[0]?.toUpperCase() || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="min-w-0 truncate text-sm font-semibold">
-                          {conversation.otherUser?.display_name || 'Unknown User'}
-                        </span>
-                        <span className="shrink-0 text-[11px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
-                        </span>
+                {conversations.map((conversation) => {
+                  const isUnread = conversation.unreadCount > 0;
+                  return (
+                    <button
+                      key={conversation.id}
+                      type="button"
+                      aria-label={
+                        isUnread
+                          ? `${conversation.otherUser?.display_name || 'Conversation'}, ${conversation.unreadCount} unread`
+                          : undefined
+                      }
+                      className={cn(
+                        'flex w-full items-start gap-3 border-b border-border px-1 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/50 lg:rounded-lg lg:border-b-0 lg:px-3',
+                        selectedConversation === conversation.id && 'bg-muted',
+                      )}
+                      onClick={() => handleSelectConversation(conversation)}
+                    >
+                      <Avatar className="h-11 w-11 shrink-0">
+                        <AvatarImage src={conversation.otherUser?.avatar_url || undefined} />
+                        <AvatarFallback>
+                          {conversation.otherUser?.display_name?.[0]?.toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span
+                            className={cn(
+                              'min-w-0 truncate text-sm',
+                              isUnread ? 'font-bold text-foreground' : 'font-medium',
+                            )}
+                          >
+                            {conversation.otherUser?.display_name || 'Unknown User'}
+                          </span>
+                          <span
+                            className={cn(
+                              'shrink-0 text-[11px]',
+                              isUnread ? 'font-medium text-primary' : 'text-muted-foreground',
+                            )}
+                          >
+                            {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <p
+                            className={cn(
+                              'min-w-0 flex-1 truncate text-xs',
+                              isUnread ? 'font-medium text-foreground' : 'text-muted-foreground',
+                            )}
+                          >
+                            {conversation.lastMessage || 'No messages yet'}
+                          </p>
+                          {isUnread && (
+                            <span
+                              className="grid h-4 min-w-[16px] shrink-0 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground"
+                              aria-hidden="true"
+                            >
+                              {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {conversation.lastMessage || 'No messages yet'}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </ScrollArea>
@@ -744,6 +857,9 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
           'flex min-w-0 flex-col border-0 bg-transparent shadow-none lg:col-span-2 lg:h-auto lg:min-h-0 lg:border lg:bg-card lg:shadow-sm',
           'h-[calc(var(--app-vvh,100dvh)-14rem)] min-h-[24rem]',
           !selectedConversation && 'hidden lg:flex',
+          // Nothing to open yet -- let the "No messages yet" empty state be the
+          // whole focus (LinkedIn keeps the detail pane blank here).
+          conversations.length === 0 && 'hidden lg:hidden',
         )}
       >
         {selectedConversation ? (
