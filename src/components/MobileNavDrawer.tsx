@@ -14,6 +14,7 @@ import {
   CalendarDays,
   Newspaper,
   ClipboardList,
+  Video,
   Menu,
 } from "lucide-react"
 import { NavLink, useLocation } from "react-router-dom"
@@ -36,6 +37,7 @@ const mainItems = [
   { title: "Network", url: "/network", icon: Users },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Jobs", url: "/jobs", icon: Briefcase },
+  { title: "Interviews", url: "/interviews", icon: Video },
   { title: "Companies", url: "/companies", icon: Building2 },
   { title: "Groups", url: "/groups", icon: Users2 },
   { title: "Events", url: "/events", icon: CalendarDays },

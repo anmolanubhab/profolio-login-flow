@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Home, Users, Briefcase, MessageCircle, Bell, User as UserIcon, Building2, Users2, CalendarDays, ChevronDown, FilePlus2, Plus, Settings, LogOut } from 'lucide-react';
+import { Home, Users, Briefcase, MessageCircle, Bell, User as UserIcon, Building2, Users2, CalendarDays, Video, ChevronDown, FilePlus2, Plus, Settings, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -35,6 +35,7 @@ const primaryNav = [
   { title: 'Home', url: '/dashboard', icon: Home },
   { title: 'My Network', url: '/network', icon: Users },
   { title: 'Jobs', url: '/jobs', icon: Briefcase },
+  { title: 'Interviews', url: '/interviews', icon: Video },
   { title: 'Messaging', url: '/connect', icon: MessageCircle },
 ];
 
