@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { registerNativeOAuthCallbackListener } from "@/lib/native-google-oauth";
 import Index from "./pages/Index";
 import AuthCallback from "./pages/AuthCallback";
 import Register from "./pages/Register";
@@ -70,6 +72,24 @@ import { ViewportSizeVar } from "./hooks/use-viewport-size";
 
 const queryClient = new QueryClient();
 
+// Single, app-wide bridge for the native Android Google OAuth return (see
+// src/lib/native-google-oauth.ts). No-ops entirely outside the native
+// Android shell, so it never affects browser/PWA behavior. Mounted once at
+// the app root -- not per login button -- since App never remounts for the
+// life of the SPA.
+const NativeOAuthBridge = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const listenerPromise = registerNativeOAuthCallbackListener(navigate);
+    return () => {
+      listenerPromise.then((handle) => handle?.remove());
+    };
+  }, [navigate]);
+
+  return null;
+};
+
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
     <QueryClientProvider client={queryClient}>
@@ -79,6 +99,7 @@ const App = () => (
         <SWUpdatePrompt />
         <ViewportSizeVar />
         <BrowserRouter>
+          <NativeOAuthBridge />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth/callback" element={<AuthCallback />} />

@@ -11,6 +11,7 @@ import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 import { sanitizeInput } from '@/lib/input-sanitizer';
 import { ProfolioLogo } from '@/components/ProfolioLogo';
 import { MicrosoftIcon } from '@/components/icons/MicrosoftIcon';
+import { isNativeAndroidOAuth, startNativeGoogleOAuth } from '@/lib/native-google-oauth';
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -119,6 +120,30 @@ const Login = () => {
     if (oauthProvider) return; // prevent duplicate clicks while a redirect is in flight
 
     setOauthProvider(provider);
+
+    // Google blocks its own sign-in page inside an embedded WebView (which
+    // is what the native Android shell is), so on native Android, Google
+    // goes through the system browser/Custom Tab instead -- see
+    // src/lib/native-google-oauth.ts. Microsoft/Azure has no such
+    // restriction and keeps using the normal embedded-WebView redirect
+    // below, on native Android exactly as on web.
+    if (provider === 'google' && isNativeAndroidOAuth()) {
+      const { error } = await startNativeGoogleOAuth();
+      if (error) {
+        console.error('[OAuth] native Google sign-in failed to start:', error);
+        toast({
+          title: "Sign-in failed",
+          description: "We couldn't start sign-in with that provider. Please try again.",
+          variant: "destructive",
+        });
+        setOauthProvider(null);
+      }
+      // On success the system browser/Custom Tab is open; oauthProvider stays
+      // set (buttons disabled, spinner showing) until the native callback
+      // listener in App.tsx navigates away.
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
