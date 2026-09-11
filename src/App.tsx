@@ -16,6 +16,7 @@ import Dashboard from "./pages/Dashboard";
 import Certificates from "./pages/Certificates";
 import Resume from "./pages/Resume";
 import Connect from "./pages/Connect";
+import Interviews from "./pages/Interviews";
 import Profile from "./pages/Profile";
 import SettingsPage from "./pages/settings/SettingsPage";
 import ChangePasswordPage from "./pages/settings/ChangePasswordPage";
@@ -120,6 +121,8 @@ const App = () => (
               <Route path="/certificates" element={<Certificates />} />
               <Route path="/resume" element={<Resume />} />
               <Route path="/connect" element={<Connect />} />
+              <Route path="/connect/:conversationId" element={<Connect />} />
+              <Route path="/interviews" element={<Interviews />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/settings/:category" element={<SettingsPage />} />

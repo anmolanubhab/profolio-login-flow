@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useLockFullscreenOverlay } from '@/hooks/useFullscreenOverlay';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
-  Send, Plus, MessageCircle, Search, Loader2, X, Paperclip, FileText, Download,
+  Send, Plus, Search, Loader2, X, Paperclip, FileText, Download,
   Image, Camera, Mic, User as UserIcon, BarChart3, Calendar, Sticker as StickerIcon,
   ChevronLeft, MoreVertical, Pin, PinOff, Star, StarOff, Reply as ReplyIcon,
   CornerUpRight, Trash2, Check,
@@ -80,6 +82,46 @@ function formatFileSize(bytes?: number | null): string {
 
 function fileExtension(name: string): string {
   return name.split('.').pop()?.toLowerCase() || '';
+}
+
+function startOfDay(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function formatDateSeparator(dateStr: string): string {
+  const date = new Date(dateStr);
+  const diffDays = Math.round(
+    (startOfDay(new Date()).getTime() - startOfDay(date).getTime()) / (24 * 60 * 60 * 1000),
+  );
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays > 1 && diffDays < 7) return date.toLocaleDateString(undefined, { weekday: 'long' });
+  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/**
+ * The single-panel (list-only or chat-only) vs. two-column layout in this
+ * component is entirely driven by Tailwind's `lg:` breakpoint (1024px) --
+ * see the `hidden lg:flex` classes below. The mobile full-screen chat page
+ * must switch at that same width, not the app-wide `useIsMobile()` 768px
+ * breakpoint -- otherwise a phone in landscape (typically 700-900px wide)
+ * falls in the gap between the two, where the CSS still hides the list but
+ * the full-screen takeover has already turned itself off.
+ */
+function useIsBelowLg(): boolean {
+  const [isBelowLg, setIsBelowLg] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 1024,
+  );
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 1023px)');
+    const onChange = () => setIsBelowLg(mql.matches);
+    mql.addEventListener('change', onChange);
+    onChange();
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+  return isBelowLg;
 }
 
 function StickerGrid({
@@ -165,6 +207,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [showNewChat, setShowNewChat] = useState(false);
@@ -187,8 +230,20 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const attachAreaRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const imageAbortRef = useRef<AbortController | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const params = useParams<{ conversationId?: string }>();
+  const isMobile = useIsBelowLg();
+
+  // On mobile, an open conversation takes over the whole viewport as a
+  // dedicated page (route-driven via /connect/:conversationId) rather than
+  // sitting in the two-column desktop layout -- see the WhatsApp-style chat
+  // page requirements. Locking the fullscreen overlay hides BottomNavigation
+  // while it's open (same mechanism the Story page uses).
+  const mobileFullScreen = isMobile && !!selectedConversation;
+  useLockFullscreenOverlay(mobileFullScreen);
 
   // WhatsApp-style message actions -----------------------------------------
   const {
@@ -290,6 +345,35 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Auto-grow the composer textarea up to a max height instead of scrolling
+  // inside a fixed-size box.
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [newMessage]);
+
+  // Keep the open conversation in sync with the /connect/:conversationId
+  // route -- covers deep links, a page refresh on that route, and the
+  // browser/Android back button popping back to /connect.
+  useEffect(() => {
+    const id = params.conversationId;
+    if (id) {
+      if (id !== selectedConversation) {
+        const match = conversations.find((c) => c.id === id);
+        if (match) {
+          setSelectedConversation(match.id);
+          setSelectedConversationUser(match.otherUser || null);
+        }
+      }
+    } else if (selectedConversation) {
+      setSelectedConversation(null);
+      setSelectedConversationUser(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.conversationId, conversations]);
+
   useEffect(() => {
     fetchConversations();
     const recents = getRecentStickers(user.id);
@@ -299,7 +383,8 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
 
   useEffect(() => {
     if (selectedConversation) {
-      fetchMessages(selectedConversation);
+      setMessagesLoading(true);
+      fetchMessages(selectedConversation).finally(() => setMessagesLoading(false));
       markMessagesAsRead(selectedConversation);
     }
     setStickerPickerOpen(false);
@@ -1148,6 +1233,26 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     );
   };
 
+  const renderMessagesWithSeparators = () => {
+    const nodes: JSX.Element[] = [];
+    let lastDateKey: string | null = null;
+    for (const message of visibleMessages) {
+      const dateKey = new Date(message.created_at).toDateString();
+      if (dateKey !== lastDateKey) {
+        lastDateKey = dateKey;
+        nodes.push(
+          <div key={`sep-${dateKey}`} className="flex items-center justify-center py-1">
+            <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-medium text-muted-foreground">
+              {formatDateSeparator(message.created_at)}
+            </span>
+          </div>,
+        );
+      }
+      nodes.push(renderMessage(message));
+    }
+    return nodes;
+  };
+
   useEffect(() => {
     if (!stickerPickerOpen) return;
 
@@ -1217,6 +1322,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
         setShowNewChat(false);
         setSearchQuery('');
         setUserSearchOpen(false);
+        navigate(`/connect/${existingConv.id}`);
         return;
       }
 
@@ -1238,6 +1344,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
       setSearchQuery('');
       setUserSearchOpen(false);
       fetchConversations();
+      navigate(`/connect/${newConv.id}`);
 
       toast({
         title: "Success",
@@ -1256,7 +1363,18 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const handleSelectConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation.id);
     setSelectedConversationUser(conversation.otherUser || null);
+    // Always route-driven (not just on mobile) -- Connect.tsx decides whether
+    // to render its own hero/tabs/list chrome purely from the
+    // :conversationId route param, so the URL must change on every viewport
+    // size or that chrome and this chat workspace would render at once.
+    navigate(`/connect/${conversation.id}`);
   };
+
+  const handleBack = useCallback(() => {
+    navigate('/connect');
+    setSelectedConversation(null);
+    setSelectedConversationUser(null);
+  }, [navigate]);
 
   if (loading) {
     return (
@@ -1266,36 +1384,119 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     );
   }
 
-  return (
-    // Mobile: a single-panel view -- the conversation list OR the open chat,
-    // never both stacked (that was the source of the huge empty "select a
-    // conversation" box). Heights use var(--app-vvh,100dvh) so the panel
-    // tracks the visible viewport incl. the on-screen keyboard, and the
-    // Layout already reserves the bottom-nav + safe-area padding.
-    // Desktop (lg): the classic 1/3 + 2/3 split pane.
-    <div className="grid min-w-0 grid-cols-1 gap-4 lg:h-[calc(100dvh-16rem)] lg:min-h-[32rem] lg:grid-cols-3">
-      {/* Conversations List. On mobile it only claims a tall viewport-based
-          height when it actually has conversations to scroll -- an empty list
-          shrinks to its "no conversations yet" hint instead of a big blank
-          box. On desktop it always fills the split-pane row. */}
-      <Card
-        className={cn(
-          // Mobile: LinkedIn-style bare list -- no card border/shadow, rows
-          // run full-bleed on the page background. Desktop: a bordered
-          // split-pane panel.
-          'flex min-w-0 flex-col border-0 bg-transparent shadow-none lg:col-span-1 lg:h-auto lg:min-h-0 lg:border lg:bg-card lg:shadow-sm',
-          conversations.length > 0
-            ? 'h-[calc(var(--app-vvh,100dvh)-17rem)] min-h-[16rem]'
-            : 'h-auto lg:h-auto',
-          // No conversations -> this panel is the whole experience; let it
-          // fill the row so the empty state sits centred (not in a 1/3 rail).
-          conversations.length === 0 && 'lg:col-span-3 lg:border-0 lg:bg-transparent lg:shadow-none',
-          selectedConversation && 'hidden lg:flex',
-        )}
-      >
-        <CardHeader className="flex-shrink-0 px-0 pb-3 lg:px-6">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Messages</CardTitle>
+  // Mounted regardless of which panel below is showing.
+  const dialogs = (
+    <>
+      <MessageInfoDialog
+        open={!!infoMessage}
+        onOpenChange={(o) => !o && setInfoMessage(null)}
+        message={infoMessage}
+        isOwn={infoMessage?.sender_id === user.id}
+      />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete message?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && deleteTarget.sender_id === user.id && !deleteTarget.deleted_for_everyone
+                ? '“Delete for everyone” removes it from the conversation for both of you. “Delete for me” just hides it on this account.'
+                : 'This hides the message on your account only. Other people in the chat still see it.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteForMe}>Delete for me</AlertDialogAction>
+            {deleteTarget && deleteTarget.sender_id === user.id && !deleteTarget.deleted_for_everyone && (
+              <AlertDialogAction
+                onClick={handleDeleteForEveryone}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete for everyone
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedIds.size} {selectedIds.size === 1 ? 'message' : 'messages'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {allSelectedOwnedAndLive
+                ? '“Delete for everyone” removes them from the conversation for both of you. “Delete for me” just hides them on this account.'
+                : 'Some of these were sent by the other person or are already deleted, so they can only be hidden on your account.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDeleteForMe}>Delete for me</AlertDialogAction>
+            {allSelectedOwnedAndLive && (
+              <AlertDialogAction
+                onClick={handleBulkDeleteForEveryone}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete for everyone
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ForwardMessageDialog
+        open={!!forwardTargets}
+        onOpenChange={(o) => !o && setForwardTargets(null)}
+        messages={(forwardTargets ?? []).map<ForwardableMessage>((m) => ({
+          id: m.id,
+          content: m.content,
+          message_type: m.message_type,
+          file_url: m.file_url ?? null,
+          file_name: m.file_name ?? null,
+          mime_type: m.mime_type ?? null,
+          file_size: m.file_size ?? null,
+        }))}
+        currentUserId={user.id}
+        conversations={conversations.map((c) => ({
+          id: c.id,
+          otherUser: c.otherUser,
+          lastMessage: c.lastMessage,
+        }))}
+        onForwarded={() => {
+          setForwardTargets(null);
+          exitSelection();
+          fetchConversations();
+        }}
+      />
+
+      {lightbox && (
+        <PhotoLightbox
+          photos={[{ url: lightbox.url, alt: lightbox.alt }]}
+          index={0}
+          onClose={() => setLightbox(null)}
+        />
+      )}
+    </>
+  );
+
+  // No active conversation -- just the list. Connect.tsx keeps its own
+  // hero/tabs chrome visible above this in this state.
+  if (!selectedConversation) {
+    return (
+      <>
+        <div
+          className={cn(
+            'flex min-w-0 flex-col border-0 bg-transparent shadow-none lg:rounded-lg lg:border lg:bg-card lg:shadow-sm',
+            conversations.length > 0
+              ? 'h-[calc(var(--app-vvh,100dvh)-17rem)] lg:h-[calc(100dvh-16rem)] min-h-[16rem]'
+              : 'h-auto',
+          )}
+        >
+          <div className="flex-shrink-0 px-0 pb-3 lg:px-6 lg:pt-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Messages</h2>
             <Button
               variant="outline"
               size="icon"
@@ -1375,8 +1576,8 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
               </Popover>
             </div>
           )}
-        </CardHeader>
-        <CardContent className="flex-1 overflow-hidden p-0">
+          </div>
+          <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full">
             {loadError && conversations.length === 0 ? (
               <div className="px-4 py-10 text-center">
@@ -1474,32 +1675,31 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
               </div>
             )}
           </ScrollArea>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+        {dialogs}
+      </>
+    );
+  }
 
-      {/* Compact mobile hint when conversations exist but none is open --
-          replaces the full-height empty panel below. */}
-      {!selectedConversation && conversations.length > 0 && (
-        <p className="px-1 text-center text-xs text-muted-foreground lg:hidden">
-          Tap a conversation to open it
-        </p>
-      )}
-
-      {/* Chat Window. Bare (full-bleed) on mobile, bordered panel on desktop
-          -- matches the conversation list above. */}
-      <Card
+  // Active conversation -- completely replaces the Connect workspace (see
+  // Connect.tsx, which stops rendering its hero/tabs/list chrome while a
+  // conversationId is present in the route). Mobile: a true full-screen page
+  // (fixed inset-0, bypassing the global nav + bottom nav). Desktop: fills
+  // everything below the fixed top navbar -- the navbar itself stays put.
+  return (
+    <>
+      <div
         className={cn(
-          'flex min-w-0 flex-col border-0 bg-transparent shadow-none lg:col-span-2 lg:h-auto lg:min-h-0 lg:border lg:bg-card lg:shadow-sm',
-          'h-[calc(var(--app-vvh,100dvh)-14rem)] min-h-[24rem]',
-          !selectedConversation && 'hidden lg:flex',
-          // Nothing to open yet -- let the "No messages yet" empty state be the
-          // whole focus (LinkedIn keeps the detail pane blank here).
-          conversations.length === 0 && 'hidden lg:hidden',
+          'flex min-w-0 flex-col bg-background',
+          mobileFullScreen ? 'fixed inset-0 z-[60]' : 'fixed inset-x-0 bottom-0 z-40',
         )}
+        style={!mobileFullScreen ? { top: 'var(--nav-height)' } : undefined}
       >
-        {selectedConversation ? (
-          <>
-            <CardHeader className="flex-shrink-0 border-b px-0 pb-3 lg:px-6">
+        <div
+          className={cn('flex-shrink-0 border-b px-3 pb-3', !mobileFullScreen && 'lg:px-6')}
+          style={{ paddingTop: mobileFullScreen ? 'max(0.75rem, env(safe-area-inset-top))' : '0.75rem' }}
+        >
               {selectionMode ? (
                 <div className="flex items-center gap-1">
                   <Button
@@ -1573,14 +1773,11 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="-ml-2 h-8 w-8 shrink-0 lg:hidden"
-                    onClick={() => {
-                      setSelectedConversation(null);
-                      setSelectedConversationUser(null);
-                    }}
+                    className="-ml-2 h-11 w-11 shrink-0"
+                    onClick={handleBack}
                     aria-label="Back to conversations"
                   >
-                    <ChevronLeft className="h-5 w-5" />
+                    <ChevronLeft className="h-6 w-6" />
                   </Button>
                   <Avatar className="h-10 w-10 shrink-0">
                     <AvatarImage src={selectedConversationUser?.avatar_url || undefined} />
@@ -1589,9 +1786,9 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <CardTitle className="truncate text-base">
+                    <h2 className="truncate text-base font-semibold">
                       {selectedConversationUser?.display_name || 'Chat'}
-                    </CardTitle>
+                    </h2>
                     {selectedConversationUser?.profession && (
                       <p className="truncate text-xs text-muted-foreground">
                         {selectedConversationUser.profession}
@@ -1600,8 +1797,8 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                   </div>
                 </div>
               )}
-            </CardHeader>
-            <CardContent className="p-0 flex flex-col flex-1 overflow-hidden">
+        </div>
+        <div className="flex flex-1 flex-col overflow-hidden">
               {pins.length > 0 && (() => {
                 const latest = visibleMessages.find((m) => m.id === pins[0].message_id);
                 if (!latest) return null;
@@ -1625,20 +1822,31 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
               {/* Messages */}
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
-                  {visibleMessages.length === 0 ? (
+                  {messagesLoading ? (
+                    <div className="flex items-center justify-center py-10">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : visibleMessages.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
-                      <p className="text-sm">No messages yet</p>
-                      <p className="text-xs mt-1">Send a message to start the conversation</p>
+                      <p className="text-sm font-medium">
+                        Start a conversation with {selectedConversationUser?.display_name || 'them'}
+                      </p>
+                      <p className="text-xs mt-1">Send a message to start chatting.</p>
                     </div>
                   ) : (
-                    visibleMessages.map(renderMessage)
+                    renderMessagesWithSeparators()
                   )}
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
 
               {/* Message Input */}
-              <div className="p-4 border-t flex-shrink-0">
+              <div
+                className={cn(
+                  'p-4 border-t flex-shrink-0',
+                  mobileFullScreen && 'pb-[max(1rem,env(safe-area-inset-bottom))]',
+                )}
+              >
                 {replyingTo && (
                   <div className="mb-2 flex items-start gap-2 rounded-lg border-l-2 border-primary bg-muted/60 px-3 py-2">
                     <ReplyIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
@@ -1884,19 +2092,27 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                       </div>
                     )}
                   </div>
-                  <Input
+                  <Textarea
+                    ref={composerRef}
                     placeholder="Type a message..."
                     aria-label="Message"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
                     disabled={sendingMessage}
-                    className="flex-1"
+                    rows={1}
+                    className="flex-1 min-h-[40px] max-h-[120px] resize-none py-2.5 leading-5"
                   />
                   <Button
                     onClick={sendMessage}
                     disabled={sendingMessage || !newMessage.trim()}
                     size="icon"
+                    className="shrink-0"
                     aria-label="Send message"
                   >
                     {sendingMessage ? (
@@ -1907,111 +2123,10 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </>
-        ) : (
-          <CardContent className="flex items-center justify-center h-full">
-            <div className="text-center text-muted-foreground">
-              <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <h3 className="font-medium mb-1">Select a conversation</h3>
-              <p className="text-sm">Choose from your existing conversations or start a new chat</p>
             </div>
-          </CardContent>
-        )}
-      </Card>
-
-      <MessageInfoDialog
-        open={!!infoMessage}
-        onOpenChange={(o) => !o && setInfoMessage(null)}
-        message={infoMessage}
-        isOwn={infoMessage?.sender_id === user.id}
-      />
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete message?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteTarget && deleteTarget.sender_id === user.id && !deleteTarget.deleted_for_everyone
-                ? '“Delete for everyone” removes it from the conversation for both of you. “Delete for me” just hides it on this account.'
-                : 'This hides the message on your account only. Other people in the chat still see it.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteForMe}>Delete for me</AlertDialogAction>
-            {deleteTarget && deleteTarget.sender_id === user.id && !deleteTarget.deleted_for_everyone && (
-              <AlertDialogAction
-                onClick={handleDeleteForEveryone}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete for everyone
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete {selectedIds.size} {selectedIds.size === 1 ? 'message' : 'messages'}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {allSelectedOwnedAndLive
-                ? '“Delete for everyone” removes them from the conversation for both of you. “Delete for me” just hides them on this account.'
-                : 'Some of these were sent by the other person or are already deleted, so they can only be hidden on your account.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBulkDeleteForMe}>Delete for me</AlertDialogAction>
-            {allSelectedOwnedAndLive && (
-              <AlertDialogAction
-                onClick={handleBulkDeleteForEveryone}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Delete for everyone
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <ForwardMessageDialog
-        open={!!forwardTargets}
-        onOpenChange={(o) => !o && setForwardTargets(null)}
-        messages={(forwardTargets ?? []).map<ForwardableMessage>((m) => ({
-          id: m.id,
-          content: m.content,
-          message_type: m.message_type,
-          file_url: m.file_url ?? null,
-          file_name: m.file_name ?? null,
-          mime_type: m.mime_type ?? null,
-          file_size: m.file_size ?? null,
-        }))}
-        currentUserId={user.id}
-        conversations={conversations.map((c) => ({
-          id: c.id,
-          otherUser: c.otherUser,
-          lastMessage: c.lastMessage,
-        }))}
-        onForwarded={() => {
-          setForwardTargets(null);
-          exitSelection();
-          fetchConversations();
-        }}
-      />
-
-      {lightbox && (
-        <PhotoLightbox
-          photos={[{ url: lightbox.url, alt: lightbox.alt }]}
-          index={0}
-          onClose={() => setLightbox(null)}
-        />
-      )}
-    </div>
+          </div>
+      {dialogs}
+    </>
   );
 };
 

@@ -28,7 +28,10 @@ const BottomNavigation = () => {
     { id: 'jobs', icon: Briefcase, label: 'Jobs', path: '/jobs' },
   ] as const;
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) =>
+    path === '/connect'
+      ? location.pathname === path || location.pathname.startsWith('/connect/')
+      : location.pathname === path;
 
   const renderItem = (item: (typeof navItems)[number]) => {
     const Icon = item.icon;
