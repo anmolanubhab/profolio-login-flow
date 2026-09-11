@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { MessageCircle, Share, User, Facebook, Twitter, Copy, FileText, ExternalLink, X, Repeat2 } from 'lucide-react';
+import { MessageCircle, Share, User as UserIcon, Facebook, Twitter, Copy, FileText, ExternalLink, X, Repeat2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -515,7 +515,7 @@ const PostCard = ({
           <Avatar className="h-12 w-12 ring-1 ring-border group-hover:ring-primary/40 transition-all">
             <AvatarImage src={user.avatar} className="object-cover" />
             <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-              {user.name.charAt(0).toUpperCase() || <User className="h-5 w-5" />}
+              {user.name.charAt(0).toUpperCase() || <UserIcon className="h-5 w-5" />}
             </AvatarFallback>
           </Avatar>
 
