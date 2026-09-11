@@ -10,11 +10,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   Send, Plus, Search, Loader2, X, Paperclip, FileText, Download,
   Image, Camera, Mic, User as UserIcon, BarChart3, Calendar, Sticker as StickerIcon,
   ChevronLeft, MoreVertical, Pin, PinOff, Star, StarOff, Reply as ReplyIcon,
-  CornerUpRight, Trash2, Check,
+  CornerUpRight, Trash2, Check, Users2, Building2, MessageSquareText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -200,6 +201,16 @@ interface Message {
   senderProfile?: Profile;
 }
 
+interface StarredMessageRow {
+  id: string;
+  conversation_id: string;
+  content: string;
+  message_type: string;
+  file_name?: string | null;
+  created_at: string;
+  otherUser?: Profile;
+}
+
 const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
@@ -223,6 +234,15 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const [stickerTab, setStickerTab] = useState<'recent' | 'default'>('default');
   const [sendingSticker, setSendingSticker] = useState(false);
   const [recentStickers, setRecentStickers] = useState<Sticker[]>([]);
+
+  // List panel redesign: inline search-to-filter, All/Unread/Favourites/Groups
+  // pills, and the 3-dot menu (New group / New community / Starred).
+  const [listFilter, setListFilter] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'favourites' | 'groups'>('all');
+  const [favouriteIds, setFavouriteIds] = useState<Set<string>>(new Set());
+  const [starredSheetOpen, setStarredSheetOpen] = useState(false);
+  const [starredMessages, setStarredMessages] = useState<StarredMessageRow[]>([]);
+  const [starredLoading, setStarredLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -482,6 +502,112 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     const debounce = setTimeout(searchUsers, 300);
     return () => clearTimeout(debounce);
   }, [searchQuery, user.id]);
+
+  const fetchFavourites = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('conversation_favourites')
+      .select('conversation_id')
+      .eq('user_id', user.id);
+    if (error) {
+      console.error('Error fetching favourites:', error);
+      return;
+    }
+    setFavouriteIds(new Set((data || []).map((r) => r.conversation_id)));
+  }, [user.id]);
+
+  useEffect(() => {
+    fetchFavourites();
+  }, [fetchFavourites]);
+
+  const toggleFavourite = async (conversationId: string) => {
+    const isFav = favouriteIds.has(conversationId);
+    // Optimistic -- this is a lightweight per-user preference, not worth a
+    // round trip before the UI reacts.
+    setFavouriteIds((prev) => {
+      const next = new Set(prev);
+      if (isFav) next.delete(conversationId);
+      else next.add(conversationId);
+      return next;
+    });
+    if (isFav) {
+      const { error } = await supabase
+        .from('conversation_favourites')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('conversation_id', conversationId);
+      if (error) {
+        console.error('Error unfavouriting conversation:', error);
+        fetchFavourites();
+      }
+    } else {
+      const { error } = await supabase
+        .from('conversation_favourites')
+        .insert({ user_id: user.id, conversation_id: conversationId });
+      if (error) {
+        console.error('Error favouriting conversation:', error);
+        fetchFavourites();
+      }
+    }
+  };
+
+  /** Aggregates the current user's starred messages (existing per-message ⭐
+   *  feature) across every conversation into one list for the 3-dot menu's
+   *  "Starred" entry. */
+  const fetchStarredMessages = async () => {
+    setStarredLoading(true);
+    try {
+      const { data: starRows, error: starError } = await supabase
+        .from('starred_messages')
+        .select('message_id')
+        .eq('user_id', user.id);
+      if (starError) throw starError;
+
+      const messageIds = (starRows || []).map((r) => r.message_id);
+      if (messageIds.length === 0) {
+        setStarredMessages([]);
+        return;
+      }
+
+      const { data: msgRows, error: msgError } = await supabase
+        .from('messages')
+        .select('id, conversation_id, content, message_type, file_name, created_at, sender_id')
+        .in('id', messageIds)
+        .order('created_at', { ascending: false });
+      if (msgError) throw msgError;
+
+      const withProfiles = await Promise.all(
+        (msgRows || []).map(async (m) => {
+          const conv = conversations.find((c) => c.id === m.conversation_id);
+          let otherUser = conv?.otherUser;
+          if (!otherUser) {
+            const otherId =
+              conv && (conv.participant_1 === user.id ? conv.participant_2 : conv.participant_1);
+            if (otherId) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('id, user_id, display_name, avatar_url, profession')
+                .eq('user_id', otherId)
+                .maybeSingle();
+              otherUser = profile || undefined;
+            }
+          }
+          return { ...m, otherUser };
+        }),
+      );
+
+      setStarredMessages(withProfiles);
+    } catch (error) {
+      console.error('Error fetching starred messages:', error);
+      toast({ title: 'Error', description: 'Could not load starred messages.', variant: 'destructive' });
+    } finally {
+      setStarredLoading(false);
+    }
+  };
+
+  const openStarredMessages = () => {
+    setStarredSheetOpen(true);
+    fetchStarredMessages();
+  };
 
   const fetchConversations = async () => {
     try {
@@ -1376,6 +1502,23 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     setSelectedConversationUser(null);
   }, [navigate]);
 
+  // "Groups" has no backing data yet (messaging is strictly 1-to-1 today) --
+  // the tab exists so the filter row matches the design, but it always shows
+  // the empty state below.
+  const filteredConversations = conversations.filter((c) => {
+    if (activeTab === 'unread' && c.unreadCount === 0) return false;
+    if (activeTab === 'favourites' && !favouriteIds.has(c.id)) return false;
+    if (activeTab === 'groups') return false;
+    if (listFilter.trim()) {
+      const q = listFilter.trim().toLowerCase();
+      const name = c.otherUser?.display_name?.toLowerCase() || '';
+      const last = c.lastMessage?.toLowerCase() || '';
+      if (!name.includes(q) && !last.includes(q)) return false;
+    }
+    return true;
+  });
+  const favouritesCount = conversations.filter((c) => favouriteIds.has(c.id)).length;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -1483,219 +1626,413 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
 
   // No active conversation -- just the list. Connect.tsx keeps its own
   // hero/tabs chrome visible above this in this state.
-  if (!selectedConversation) {
-    return (
-      <>
-        <div
-          className={cn(
-            'flex min-w-0 flex-col border-0 bg-transparent shadow-none lg:rounded-lg lg:border lg:bg-card lg:shadow-sm',
-            conversations.length > 0
-              ? 'h-[calc(var(--app-vvh,100dvh)-17rem)] lg:h-[calc(100dvh-16rem)] min-h-[16rem]'
-              : 'h-auto',
-          )}
-        >
-          <div className="flex-shrink-0 px-0 pb-3 lg:px-6 lg:pt-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Messages</h2>
+  const filterPills: { key: typeof activeTab; label: string; count?: number }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'unread', label: 'Unread', count: conversations.filter((c) => c.unreadCount > 0).length },
+    { key: 'favourites', label: 'Favourites', count: favouritesCount },
+    { key: 'groups', label: 'Groups' },
+  ];
+
+  const renderListPanel = () => (
+    <div className="flex h-full min-w-0 flex-col">
+      <div className="flex-shrink-0 border-b px-3 py-3 lg:px-4">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Messages</h2>
+          <div className="flex items-center gap-1">
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
               className="h-8 w-8"
+              aria-label="Search"
+              onClick={() => document.getElementById('conversation-list-search')?.focus()}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More options">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => handleNotImplemented('New group')}>
+                  <Users2 className="mr-2 h-4 w-4" /> New group
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleNotImplemented('New community')}>
+                  <Building2 className="mr-2 h-4 w-4" /> New community
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={openStarredMessages}>
+                  <Star className="mr-2 h-4 w-4" /> Starred
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              variant="default"
+              size="icon"
+              className="h-8 w-8 rounded-full"
               aria-label={showNewChat ? 'Close new message' : 'New message'}
               onClick={() => setShowNewChat(!showNewChat)}
             >
               {showNewChat ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </Button>
           </div>
+        </div>
 
-          {showNewChat && (
-            <div className="space-y-2 pt-2">
-              <Popover open={userSearchOpen} onOpenChange={setUserSearchOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={userSearchOpen}
-                    className="w-full justify-start text-muted-foreground"
-                  >
-                    <Search className="h-4 w-4 mr-2" />
-                    Search users...
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[min(300px,calc(100vw-2rem))] p-0" align="start">
-                  <Command shouldFilter={false}>
-                    <CommandInput 
-                      placeholder="Search by name..." 
-                      value={searchQuery}
-                      onValueChange={setSearchQuery}
-                    />
-                    <CommandList>
-                      {searchLoading && (
-                        <div className="flex items-center justify-center p-4">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      )}
-                      {!searchLoading && searchQuery.length >= 2 && searchResults.length === 0 && (
-                        <CommandEmpty>No users found.</CommandEmpty>
-                      )}
-                      {!searchLoading && searchQuery.length < 2 && (
-                        <div className="p-4 text-sm text-muted-foreground text-center">
-                          Type at least 2 characters to search
-                        </div>
-                      )}
-                      {searchResults.length > 0 && (
-                        <CommandGroup heading="Users">
-                          {searchResults.map((profile) => (
-                            <CommandItem
-                              key={profile.id}
-                              value={profile.id}
-                              onSelect={() => startNewConversation(profile)}
-                              className="cursor-pointer"
-                            >
-                              <Avatar className="h-8 w-8 mr-2">
-                                <AvatarImage src={profile.avatar_url || undefined} />
-                                <AvatarFallback>
-                                  {profile.display_name?.[0]?.toUpperCase() || 'U'}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">
-                                  {profile.display_name || profile.full_name || 'Unknown User'}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {profile.email || profile.profession || ''}
-                                </p>
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      )}
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
-          </div>
-          <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
-            {loadError && conversations.length === 0 ? (
-              <div className="px-4 py-10 text-center">
-                <p className="text-sm font-medium text-foreground">Couldn&apos;t load your messages</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">Check your connection and try again.</p>
+        {showNewChat && (
+          <div className="space-y-2 pt-2">
+            <Popover open={userSearchOpen} onOpenChange={setUserSearchOpen}>
+              <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="mt-3"
+                  role="combobox"
+                  aria-expanded={userSearchOpen}
+                  className="w-full justify-start text-muted-foreground"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Search users...
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[min(300px,calc(100vw-2rem))] p-0" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Search by name..."
+                    value={searchQuery}
+                    onValueChange={setSearchQuery}
+                  />
+                  <CommandList>
+                    {searchLoading && (
+                      <div className="flex items-center justify-center p-4">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    )}
+                    {!searchLoading && searchQuery.length >= 2 && searchResults.length === 0 && (
+                      <CommandEmpty>No users found.</CommandEmpty>
+                    )}
+                    {!searchLoading && searchQuery.length < 2 && (
+                      <div className="p-4 text-sm text-muted-foreground text-center">
+                        Type at least 2 characters to search
+                      </div>
+                    )}
+                    {searchResults.length > 0 && (
+                      <CommandGroup heading="Users">
+                        {searchResults.map((profile) => (
+                          <CommandItem
+                            key={profile.id}
+                            value={profile.id}
+                            onSelect={() => startNewConversation(profile)}
+                            className="cursor-pointer"
+                          >
+                            <Avatar className="h-8 w-8 mr-2">
+                              <AvatarImage src={profile.avatar_url || undefined} />
+                              <AvatarFallback>
+                                {profile.display_name?.[0]?.toUpperCase() || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {profile.display_name || profile.full_name || 'Unknown User'}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {profile.email || profile.profession || ''}
+                              </p>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+
+        {conversations.length > 0 && (
+          <>
+            <div className="relative mt-2">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="conversation-list-search"
+                value={listFilter}
+                onChange={(e) => setListFilter(e.target.value)}
+                placeholder="Search or start a new chat"
+                aria-label="Search conversations"
+                className="h-9 pl-8"
+              />
+            </div>
+            <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5">
+              {filterPills.map((pill) => (
+                <button
+                  key={pill.key}
+                  type="button"
+                  onClick={() => setActiveTab(pill.key)}
+                  className={cn(
+                    'shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                    activeTab === pill.key
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground hover:bg-muted/50',
+                  )}
+                >
+                  {pill.label}
+                  {!!pill.count && <span className="ml-1 tabular-nums">{pill.count}</span>}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          {loadError && conversations.length === 0 ? (
+            <div className="px-4 py-10 text-center">
+              <p className="text-sm font-medium text-foreground">Couldn&apos;t load your messages</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Check your connection and try again.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => {
+                  setLoading(true);
+                  fetchConversations();
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : conversations.length === 0 ? (
+            <EmptyState
+              size="compact"
+              illustration={noMessageImage}
+              illustrationAlt="No messages illustration"
+              title="No messages yet"
+              description="Reach out and start a conversation to advance your career"
+              action={
+                <Button onClick={() => setShowNewChat(true)}>Send a message</Button>
+              }
+            />
+          ) : activeTab === 'groups' ? (
+            <div className="px-4 py-10 text-center">
+              <p className="text-sm font-medium text-foreground">No group conversations yet</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Group messaging is coming soon.</p>
+            </div>
+          ) : filteredConversations.length === 0 ? (
+            <div className="px-4 py-10 text-center">
+              <p className="text-sm font-medium text-foreground">No conversations match</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">Try a different search or filter.</p>
+            </div>
+          ) : (
+            <div className="lg:px-2">
+              {filteredConversations.map((conversation) => {
+                const isUnread = conversation.unreadCount > 0;
+                const isFav = favouriteIds.has(conversation.id);
+                return (
+                  <div
+                    key={conversation.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={
+                      isUnread
+                        ? `${conversation.otherUser?.display_name || 'Conversation'}, ${conversation.unreadCount} unread`
+                        : undefined
+                    }
+                    className={cn(
+                      'group flex w-full cursor-pointer items-start gap-3 border-b border-border px-1 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/50 lg:rounded-lg lg:border-b-0 lg:px-3',
+                      selectedConversation === conversation.id && 'bg-muted',
+                    )}
+                    onClick={() => handleSelectConversation(conversation)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleSelectConversation(conversation);
+                      }
+                    }}
+                  >
+                    <Avatar className="h-11 w-11 shrink-0">
+                      <AvatarImage src={conversation.otherUser?.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {conversation.otherUser?.display_name?.[0]?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span
+                          className={cn(
+                            'min-w-0 truncate text-sm',
+                            isUnread ? 'font-bold text-foreground' : 'font-medium',
+                          )}
+                        >
+                          {conversation.otherUser?.display_name || 'Unknown User'}
+                        </span>
+                        <span
+                          className={cn(
+                            'shrink-0 text-[11px]',
+                            isUnread ? 'font-medium text-primary' : 'text-muted-foreground',
+                          )}
+                        >
+                          {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p
+                          className={cn(
+                            'min-w-0 flex-1 truncate text-xs',
+                            isUnread ? 'font-medium text-foreground' : 'text-muted-foreground',
+                          )}
+                        >
+                          {conversation.lastMessage || 'No messages yet'}
+                        </p>
+                        {isUnread && (
+                          <span
+                            className="grid h-4 min-w-[16px] shrink-0 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground"
+                            aria-hidden="true"
+                          >
+                            {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavourite(conversation.id);
+                      }}
+                      className={cn(
+                        'shrink-0 self-center rounded-full p-1.5 transition-colors',
+                        isFav ? 'opacity-100' : 'opacity-60 hover:opacity-100 focus-visible:opacity-100',
+                      )}
+                    >
+                      <Star className={cn('h-4 w-4', isFav ? 'fill-warning text-warning' : 'text-muted-foreground')} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+    </div>
+  );
+
+  const starredMessagesSheet = (
+    <Sheet open={starredSheetOpen} onOpenChange={setStarredSheetOpen}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Starred messages</SheetTitle>
+        </SheetHeader>
+        <ScrollArea className="mt-4 h-[calc(100vh-6rem)]">
+          {starredLoading ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : starredMessages.length === 0 ? (
+            <div className="px-2 py-10 text-center">
+              <Star className="mx-auto mb-2 h-8 w-8 text-muted-foreground opacity-40" />
+              <p className="text-sm font-medium text-foreground">No starred messages</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Star a message from its menu to find it here later.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1 pr-2">
+              {starredMessages.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className="flex w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left hover:bg-muted/50"
                   onClick={() => {
-                    setLoading(true);
-                    fetchConversations();
+                    setStarredSheetOpen(false);
+                    handleSelectConversation({
+                      id: m.conversation_id,
+                      participant_1: '',
+                      participant_2: '',
+                      last_message_at: '',
+                      updated_at: '',
+                      otherUser: m.otherUser,
+                      unreadCount: 0,
+                    });
+                    setTimeout(() => scrollToMessage(m.id), 400);
                   }}
                 >
-                  Retry
-                </Button>
-              </div>
-            ) : conversations.length === 0 ? (
-              <EmptyState
-                size="compact"
-                illustration={noMessageImage}
-                illustrationAlt="No messages illustration"
-                title="No messages yet"
-                description="Reach out and start a conversation to advance your career"
-                action={
-                  <Button onClick={() => setShowNewChat(true)}>Send a message</Button>
-                }
-              />
-            ) : (
-              <div className="lg:px-2">
-                {conversations.map((conversation) => {
-                  const isUnread = conversation.unreadCount > 0;
-                  return (
-                    <button
-                      key={conversation.id}
-                      type="button"
-                      aria-label={
-                        isUnread
-                          ? `${conversation.otherUser?.display_name || 'Conversation'}, ${conversation.unreadCount} unread`
-                          : undefined
-                      }
-                      className={cn(
-                        'flex w-full items-start gap-3 border-b border-border px-1 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/50 lg:rounded-lg lg:border-b-0 lg:px-3',
-                        selectedConversation === conversation.id && 'bg-muted',
-                      )}
-                      onClick={() => handleSelectConversation(conversation)}
-                    >
-                      <Avatar className="h-11 w-11 shrink-0">
-                        <AvatarImage src={conversation.otherUser?.avatar_url || undefined} />
-                        <AvatarFallback>
-                          {conversation.otherUser?.display_name?.[0]?.toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span
-                            className={cn(
-                              'min-w-0 truncate text-sm',
-                              isUnread ? 'font-bold text-foreground' : 'font-medium',
-                            )}
-                          >
-                            {conversation.otherUser?.display_name || 'Unknown User'}
-                          </span>
-                          <span
-                            className={cn(
-                              'shrink-0 text-[11px]',
-                              isUnread ? 'font-medium text-primary' : 'text-muted-foreground',
-                            )}
-                          >
-                            {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <p
-                            className={cn(
-                              'min-w-0 flex-1 truncate text-xs',
-                              isUnread ? 'font-medium text-foreground' : 'text-muted-foreground',
-                            )}
-                          >
-                            {conversation.lastMessage || 'No messages yet'}
-                          </p>
-                          {isUnread && (
-                            <span
-                              className="grid h-4 min-w-[16px] shrink-0 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground"
-                              aria-hidden="true"
-                            >
-                              {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </ScrollArea>
-          </div>
+                  <Avatar className="h-9 w-9 shrink-0">
+                    <AvatarImage src={m.otherUser?.avatar_url || undefined} />
+                    <AvatarFallback>{m.otherUser?.display_name?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{m.otherUser?.display_name || 'Unknown'}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {m.message_type === 'image' ? 'Photo' : m.message_type === 'file' ? m.file_name || 'Attachment' : m.content}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    {formatDistanceToNow(new Date(m.created_at), { addSuffix: true })}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  );
+
+  if (!selectedConversation && isMobile) {
+    return (
+      <>
+        <div
+          className={cn(
+            'flex min-w-0 flex-col border-0 bg-transparent shadow-none',
+            conversations.length > 0
+              ? 'h-[calc(var(--app-vvh,100dvh)-3.5rem-4.5rem)] min-h-[16rem]'
+              : 'h-auto',
+          )}
+        >
+          {renderListPanel()}
         </div>
         {dialogs}
+        {starredMessagesSheet}
       </>
     );
   }
 
-  // Active conversation -- completely replaces the Connect workspace (see
-  // Connect.tsx, which stops rendering its hero/tabs/list chrome while a
-  // conversationId is present in the route). Mobile: a true full-screen page
-  // (fixed inset-0, bypassing the global nav + bottom nav). Desktop: fills
-  // everything below the fixed top navbar -- the navbar itself stays put.
-  return (
-    <>
-      <div
-        className={cn(
-          'flex min-w-0 flex-col bg-background',
-          mobileFullScreen ? 'fixed inset-0 z-[60]' : 'fixed inset-x-0 bottom-0 z-40',
-        )}
-        style={!mobileFullScreen ? { top: 'var(--nav-height)' } : undefined}
-      >
+  if (!isMobile) {
+    // Desktop: always the two-column workspace -- chat on the left, the
+    // conversation list on the right (deliberately mirrored from the
+    // typical list-left layout) -- filling everything below the fixed top
+    // navbar. No separate "select a conversation" full-page state.
+    return (
+      <>
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 flex min-w-0 bg-background"
+          style={{ top: 'var(--nav-height)' }}
+        >
+          <div className="flex min-w-0 flex-1 flex-col border-r">
+            {selectedConversation ? (
+              renderChatPanel()
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
+                <MessageSquareText className="mb-3 h-12 w-12 opacity-40" />
+                <p className="text-sm font-medium text-foreground">Select a conversation</p>
+                <p className="mt-1 text-xs">Choose from your conversations on the right, or start a new chat</p>
+              </div>
+            )}
+          </div>
+          <div className="w-[360px] shrink-0">{renderListPanel()}</div>
+        </div>
+        {dialogs}
+        {starredMessagesSheet}
+      </>
+    );
+  }
+
+  // The open conversation's header + messages + composer. Used both as the
+  // mobile full-screen page's content and as the desktop two-column
+  // layout's left panel -- see the two early `return`s above for how each
+  // context wraps/positions it.
+  function renderChatPanel() {
+    return (
+      <div className="flex h-full min-w-0 flex-col bg-background">
         <div
           className={cn('flex-shrink-0 border-b px-3 pb-3', !mobileFullScreen && 'lg:px-6')}
           style={{ paddingTop: mobileFullScreen ? 'max(0.75rem, env(safe-area-inset-top))' : '0.75rem' }}
@@ -1773,7 +2110,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="-ml-2 h-11 w-11 shrink-0"
+                    className="-ml-2 h-11 w-11 shrink-0 lg:hidden"
                     onClick={handleBack}
                     aria-label="Back to conversations"
                   >
@@ -2125,7 +2462,20 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
               </div>
             </div>
           </div>
+    );
+  }
+
+  // Reached only when isMobile && selectedConversation (both earlier
+  // branches -- desktop, and mobile-with-no-selection -- already returned).
+  // A true full-screen page: fixed inset-0 bypasses the global nav entirely
+  // and hides BottomNavigation (see useLockFullscreenOverlay above).
+  return (
+    <>
+      <div className="fixed inset-0 z-[60] flex min-w-0 flex-col bg-background">
+        {renderChatPanel()}
+      </div>
       {dialogs}
+      {starredMessagesSheet}
     </>
   );
 };

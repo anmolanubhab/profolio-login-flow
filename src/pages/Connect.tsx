@@ -4,21 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Layout } from '@/components/Layout';
 import ChatInterface from '@/components/connect/ChatInterface';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useNavigate, useParams } from 'react-router-dom';
 
 const Connect = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const navigate = useNavigate();
-  // An open conversation (/connect/:conversationId) completely replaces this
-  // page's own hero/tabs/list chrome with the chat workspace -- see the
-  // "Active conversation" branch below. It stays derived from the route so
-  // the URL and the rendered UI can never disagree.
-  const { conversationId } = useParams<{ conversationId?: string }>();
 
   useEffect(() => {
     // Set up auth state listener
@@ -72,50 +63,14 @@ const Connect = () => {
     );
   }
 
-  if (conversationId) {
-    // Active conversation: the entire Connect workspace becomes the chat --
-    // no hero, no tabs, no conversation list. ChatInterface reads the same
-    // :conversationId param and renders only its full-workspace chat branch.
-    // fullWidth drops Layout's centred max-width/padding; ChatInterface
-    // positions itself with `fixed` regardless, so this only matters for
-    // avoiding a flash of the constrained width before that mounts.
-    return (
-      <Layout user={user} onSignOut={handleSignOut} fullWidth>
-        <ChatInterface user={user} />
-      </Layout>
-    );
-  }
-
+  // ChatInterface owns its own layout entirely -- both the mobile
+  // list/full-screen-chat states and the desktop two-column workspace --
+  // there's no separate Connect hero above it any more (fullWidth drops
+  // Layout's centred max-width/padding so ChatInterface's `fixed`
+  // positioning lines up flush with the viewport).
   return (
-    <Layout user={user} onSignOut={handleSignOut}>
-      {/* min-w-0 + w-full: every level can shrink, so nothing forces the page
-          wider than the viewport. The .layout wrapper (Layout) already gives
-          the horizontal page padding + centred max-width; no extra container
-          here (the old `container mx-auto max-w-6xl` double-wrapper is what
-          pushed content past the screen edge on mobile). */}
-      <div className="mx-auto w-full min-w-0 max-w-5xl space-y-4 sm:space-y-6">
-        {/* Back + hero. Back to Dashboard gets its own row; the title sits
-            below it and can never be clipped by a sibling on a narrow row. */}
-        <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-accent/50 via-background to-background p-4 sm:p-6">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/dashboard')}
-            className="rounded-full"
-          >
-            <ArrowLeft className="mr-1.5 h-4 w-4" />
-            Back to Dashboard
-          </Button>
-          <h1 className="mt-3 text-[22px] font-semibold leading-tight tracking-tight sm:text-[26px]">
-            Stay Connected
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Messages with your network
-          </p>
-        </div>
-
-        <ChatInterface user={user} />
-      </div>
+    <Layout user={user} onSignOut={handleSignOut} fullWidth>
+      <ChatInterface user={user} />
     </Layout>
   );
 };
