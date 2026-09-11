@@ -1,24 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '@supabase/supabase-js';
-import { ChevronLeft, Mail, Chrome, Linkedin, KeyRound } from 'lucide-react';
+import { ChevronLeft, Mail, Chrome, KeyRound } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { MicrosoftIcon } from '@/components/icons/MicrosoftIcon';
 
-const PROVIDER_META: Record<string, { label: string; icon: typeof Mail }> = {
+const PROVIDER_META: Record<string, { label: string; icon: ComponentType<{ className?: string }> }> = {
   email: { label: 'Email & password', icon: Mail },
   google: { label: 'Google', icon: Chrome },
-  linkedin: { label: 'LinkedIn', icon: Linkedin },
-  linkedin_oidc: { label: 'LinkedIn', icon: Linkedin },
+  azure: { label: 'Microsoft', icon: MicrosoftIcon },
 };
 
 /**
  * Read-only view of the sign-in methods linked to this Supabase auth user.
- * Nothing to change here — adding/removing a provider is done at sign-in —
- * so this mirrors LinkedIn's "Connected services" as an informational page.
+ * Nothing to change here — adding/removing a provider is done at sign-in.
  */
 export default function ConnectedServicesPage() {
   const navigate = useNavigate();

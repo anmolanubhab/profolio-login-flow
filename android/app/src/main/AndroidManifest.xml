@@ -24,6 +24,25 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Native Google OAuth return: Google blocks its sign-in page
+                 inside an embedded WebView, so native Google sign-in opens
+                 in the system browser/Custom Tab and returns here via this
+                 explicit custom-scheme URL (com.profolio.app://auth/callback)
+                 instead of the production HTTPS origin the WebView itself
+                 loads. Handled by the app-wide appUrlOpen listener in
+                 src/lib/native-google-oauth.ts. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="com.profolio.app"
+                    android:host="auth"
+                    android:path="/callback" />
+            </intent-filter>
+
         </activity>
 
         <provider
