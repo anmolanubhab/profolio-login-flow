@@ -2353,15 +2353,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     }}
                   />
                   <div className="relative" ref={attachAreaRef}>
-                    <DropdownMenu
-                      modal={false}
-                      open={attachMenuOpen}
-                      onOpenChange={(open) => {
-                        // TEMP DEBUG -- remove once confirmed fixed on a real phone.
-                        console.log('[ATTACH MENU] open:', open);
-                        setAttachMenuOpen(open);
-                      }}
-                    >
+                    <DropdownMenu modal={false} open={attachMenuOpen} onOpenChange={setAttachMenuOpen}>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
@@ -2369,11 +2361,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                           disabled={sendingMessage || uploadingDocument}
                           aria-label="Attach file"
                           title="Attach"
-                          className="touch-manipulation"
-                          // TEMP DEBUG -- remove once confirmed fixed on a real phone.
-                          onPointerDown={(e) => console.log('[ATTACH] pointerdown', e.pointerType)}
-                          onPointerUp={(e) => console.log('[ATTACH] pointerup', e.pointerType)}
-                          onClick={() => console.log('[ATTACH] click')}
+                          className="h-11 w-11 touch-manipulation"
                         >
                           <Paperclip className="h-4 w-4" />
                         </Button>
@@ -2391,8 +2379,6 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                       <DropdownMenuContent align="start" className="data-[state=closed]:!animate-none">
                         <DropdownMenuItem
                           onSelect={(event) => {
-                            // TEMP DEBUG -- remove once confirmed fixed on a real phone.
-                            console.log('[ATTACH] onSelect Document, input:', documentInputRef.current);
                             event.preventDefault();
                             documentInputRef.current?.click();
                             setAttachMenuOpen(false);
@@ -2403,8 +2389,6 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onSelect={(event) => {
-                            // TEMP DEBUG -- remove once confirmed fixed on a real phone.
-                            console.log('[ATTACH] onSelect Photo, input:', imageInputRef.current);
                             event.preventDefault();
                             imageInputRef.current?.click();
                             setAttachMenuOpen(false);
@@ -2415,8 +2399,6 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onSelect={(event) => {
-                            // TEMP DEBUG -- remove once confirmed fixed on a real phone.
-                            console.log('[ATTACH] onSelect Camera, input:', cameraInputRef.current);
                             event.preventDefault();
                             cameraInputRef.current?.click();
                             setAttachMenuOpen(false);
