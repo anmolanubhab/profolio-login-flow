@@ -2550,7 +2550,17 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   // and hides BottomNavigation (see useLockFullscreenOverlay above).
   return (
     <>
-      <div className="fixed inset-0 z-[60] flex min-w-0 flex-col bg-background">
+      <div
+        className="fixed inset-x-0 top-0 z-[60] flex min-w-0 flex-col bg-background"
+        // `dvh`/native fixed-viewport sizing tracks retractable browser chrome
+        // but not the on-screen keyboard on Android (see useViewportSizeVar) --
+        // without this, `inset-0` can stay taller than what's actually visible
+        // while the keyboard is open, sinking the composer (and its Attach
+        // button) partly behind the keyboard/gesture-nav area until a later
+        // reflow catches up. Pinning height to the live visual viewport keeps
+        // the composer flush with the real visible bottom edge at all times.
+        style={{ height: 'var(--app-vvh, 100dvh)' }}
+      >
         {renderChatPanel()}
       </div>
       {dialogs}
