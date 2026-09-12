@@ -39,7 +39,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { secureUpload } from '@/lib/secure-upload';
 import { STICKERS, getSticker, getRecentStickers, recordRecentSticker, DEFAULT_STICKER_PACK, Sticker } from '@/lib/stickers';
 import { useQueryClient } from '@tanstack/react-query';
@@ -1148,7 +1147,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
             {isSelected && <Check className="h-3.5 w-3.5" />}
           </span>
         )}
-        <div className={cn('group relative flex max-w-[80%] items-end gap-1.5', isOwn && 'flex-row-reverse')}>
+        <div className={cn('group relative flex min-w-0 max-w-[80%] items-end gap-1.5', isOwn && 'flex-row-reverse')}>
           {!isOwn && (
             <Avatar className="h-6 w-6 flex-shrink-0">
               <AvatarImage src={message.senderProfile?.avatar_url || undefined} />
@@ -1251,7 +1250,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                   </div>
                 </div>
               ) : isDocument ? (
-                <div className={cn('rounded-2xl p-3 max-w-full', isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+                <div className={cn('w-[min(75vw,320px)] rounded-2xl p-3', isOwn ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
                   <div className="flex items-center gap-2.5 rounded-lg bg-background/90 text-foreground px-3 py-2.5">
                     <FileText className="h-8 w-8 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
@@ -2316,33 +2315,45 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                   />
                   <div className="relative" ref={attachAreaRef}>
                     <DropdownMenu open={attachMenuOpen} onOpenChange={setAttachMenuOpen}>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                disabled={sendingMessage || uploadingDocument}
-                                aria-label="Attach file"
-                              >
-                                <Paperclip className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent>Attach</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          disabled={sendingMessage || uploadingDocument}
+                          aria-label="Attach file"
+                          title="Attach"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
-                        <DropdownMenuItem onSelect={() => documentInputRef.current?.click()}>
+                        <DropdownMenuItem
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            documentInputRef.current?.click();
+                            setAttachMenuOpen(false);
+                          }}
+                        >
                           <FileText className="h-4 w-4 mr-2" />
                           Document
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => imageInputRef.current?.click()}>
+                        <DropdownMenuItem
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            imageInputRef.current?.click();
+                            setAttachMenuOpen(false);
+                          }}
+                        >
                           <Image className="h-4 w-4 mr-2" />
                           Photo
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => cameraInputRef.current?.click()}>
+                        <DropdownMenuItem
+                          onSelect={(event) => {
+                            event.preventDefault();
+                            cameraInputRef.current?.click();
+                            setAttachMenuOpen(false);
+                          }}
+                        >
                           <Camera className="h-4 w-4 mr-2" />
                           Camera
                         </DropdownMenuItem>
