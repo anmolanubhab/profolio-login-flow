@@ -1490,7 +1490,15 @@ export type Database = {
           id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "certificate_activity_certificate_id_fkey"
+            columns: ["certificate_id"]
+            isOneToOne: false
+            referencedRelation: "certificates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       certificate_folders: {
         Row: {
@@ -1520,7 +1528,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "certificate_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "certificate_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       certificates: {
         Row: {
@@ -2031,10 +2047,76 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_favourites: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_favourites_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string | null
+          created_by: string | null
+          group_avatar_url: string | null
+          group_description: string | null
+          group_name: string | null
           id: string
+          is_group: boolean
           last_message_at: string | null
           participant_1: string | null
           participant_2: string | null
@@ -2042,7 +2124,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
+          group_avatar_url?: string | null
+          group_description?: string | null
+          group_name?: string | null
           id?: string
+          is_group?: boolean
           last_message_at?: string | null
           participant_1?: string | null
           participant_2?: string | null
@@ -2050,7 +2137,12 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
+          group_avatar_url?: string | null
+          group_description?: string | null
+          group_name?: string | null
           id?: string
+          is_group?: boolean
           last_message_at?: string | null
           participant_1?: string | null
           participant_2?: string | null
@@ -3676,6 +3768,7 @@ export type Database = {
           content: string
           conversation_id?: string | null
           created_at?: string | null
+          deleted_for_everyone?: boolean
           file_name?: string | null
           file_size?: number | null
           file_url?: string | null
@@ -3713,6 +3806,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {
@@ -5607,6 +5707,7 @@ export type Database = {
         Returns: undefined
       }
       _jsonb_deep_merge: { Args: { a: Json; b: Json }; Returns: Json }
+      _msg_is_participant: { Args: { p_message_id: string }; Returns: boolean }
       _notify_strong_matches_for_job: {
         Args: { p_job_id: string; p_limit?: number; p_offset?: number }
         Returns: number
@@ -5984,10 +6085,7 @@ export type Database = {
         Args: { _deleted: boolean; _folder: string }
         Returns: undefined
       }
-      cert_touch_opened: {
-        Args: { _id: string }
-        Returns: undefined
-      }
+      cert_touch_opened: { Args: { _id: string }; Returns: undefined }
       check_and_record_rate_limit: {
         Args: {
           p_action: string
@@ -6002,6 +6100,15 @@ export type Database = {
           company_id: string
           email: string
           role: Database["public"]["Enums"]["company_role"]
+        }
+        Returns: string
+      }
+      create_group_conversation: {
+        Args: {
+          p_avatar_url: string
+          p_description: string
+          p_member_ids: string[]
+          p_name: string
         }
         Returns: string
       }
@@ -6689,6 +6796,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      unread_message_count: { Args: never; Returns: number }
       update_application_stage: {
         Args: {
           p_application_id: string
@@ -6698,7 +6806,6 @@ export type Database = {
         Returns: undefined
       }
       update_my_preferences_patch: { Args: { patch: Json }; Returns: Json }
-      unread_message_count: { Args: never; Returns: number }
       validate_campaign_budget: {
         Args: { _campaign_id: string }
         Returns: Json
