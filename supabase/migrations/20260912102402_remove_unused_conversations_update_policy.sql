@@ -1,0 +1,15 @@
+-- "Members can update their conversations" had no role/column restriction:
+-- any participant (including a plain 'member', not just 'admin') could
+-- directly rewrite is_group, created_by, participant_1, participant_2, and
+-- all group metadata -- confirmed exploitable via live test (a non-admin
+-- member flipped is_group to false and hijacked participant_1/participant_2
+-- to their own id). A full search of the frontend and edge functions found
+-- zero legitimate `.from('conversations').update(...)` call sites -- nothing
+-- in this app ever needed to update a conversation row directly. Removing
+-- the policy entirely: with RLS enabled and no UPDATE policy, all direct
+-- client UPDATEs are denied by default (same pattern already used for
+-- conversation_participants). A future "edit group name/photo" feature
+-- should be a dedicated SECURITY DEFINER RPC that checks
+-- role = 'admin' (or created_by = auth.uid()) and only touches
+-- group_name/group_description/group_avatar_url -- never this broad policy.
+drop policy "Members can update their conversations" on public.conversations;

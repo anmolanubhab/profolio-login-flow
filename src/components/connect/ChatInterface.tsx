@@ -19,19 +19,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   DropdownMenu,
@@ -52,6 +39,7 @@ import {
 import { MessageActionsMenu } from './MessageActionsMenu';
 import { MessageInfoDialog } from './MessageInfoDialog';
 import { ForwardMessageDialog, type ForwardableMessage } from './ForwardMessageDialog';
+import { CreateGroupDialog } from './CreateGroupDialog';
 import { MessageImage } from './MessageImage';
 import { PhotoLightbox } from '@/components/post/PhotoLightbox';
 import { useMessageActions } from '@/hooks/useMessageActions';
@@ -180,6 +168,11 @@ interface Conversation {
   otherUser?: Profile;
   lastMessage?: string;
   unreadCount: number;
+  is_group?: boolean;
+  group_name?: string | null;
+  group_description?: string | null;
+  group_avatar_url?: string | null;
+  groupMemberCount?: number;
 }
 
 interface Message {
@@ -220,11 +213,9 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [showNewChat, setShowNewChat] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [userSearchOpen, setUserSearchOpen] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [uploadingDocument, setUploadingDocument] = useState(false);
   const [openingAttachmentId, setOpeningAttachmentId] = useState<string | null>(null);
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
@@ -472,10 +463,14 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedConversation, user.id, markMessagesAsRead]);
 
-  // Search users with debounce
+  // Search people with debounce -- the sidebar's "Search or start a new
+  // chat" field both filters existing conversations (see filteredConversations)
+  // and, once it finds no more than a couple of chars, looks up people to
+  // start a brand-new 1:1 chat with (see the "Start a new chat" section in
+  // renderListPanel). One search box, no separate "new message" entry point.
   useEffect(() => {
     const searchUsers = async () => {
-      if (searchQuery.trim().length < 2) {
+      if (listFilter.trim().length < 2) {
         setSearchResults([]);
         return;
       }
@@ -486,7 +481,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
           .from('profiles')
           .select('id, user_id, display_name, full_name, email, avatar_url, profession')
           .neq('user_id', user.id)
-          .or(`display_name.ilike.%${searchQuery}%,full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`)
+          .or(`display_name.ilike.%${listFilter}%,full_name.ilike.%${listFilter}%,email.ilike.%${listFilter}%`)
           .limit(10);
 
         if (error) throw error;
@@ -500,7 +495,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
 
     const debounce = setTimeout(searchUsers, 300);
     return () => clearTimeout(debounce);
-  }, [searchQuery, user.id]);
+  }, [listFilter, user.id]);
 
   const fetchFavourites = useCallback(async () => {
     const { data, error } = await supabase
@@ -610,16 +605,33 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
 
   const fetchConversations = async () => {
     try {
-      const { data, error } = await supabase
+      // 1:1 conversations -- unchanged query/shape.
+      const { data: oneToOneData, error: oneToOneError } = await supabase
         .from('conversations')
         .select('*')
+        .eq('is_group', false)
         .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
         .order('last_message_at', { ascending: false });
+      if (oneToOneError) throw oneToOneError;
 
-      if (error) throw error;
+      // Group conversations -- fetched separately via the membership table,
+      // since groups have no participant_1/participant_2 to filter by.
+      const { data: groupMemberRows, error: groupMemberError } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id, conversations!inner(*)')
+        .eq('user_id', user.id)
+        .eq('conversations.is_group', true);
+      if (groupMemberError) throw groupMemberError;
 
-      const convos = data || [];
+      const groupConvos = (groupMemberRows || [])
+        .map((row) => row.conversations)
+        .filter((c): c is NonNullable<typeof c> => !!c);
+
+      const convos = [...(oneToOneData || []), ...groupConvos].sort(
+        (a, b) => new Date(b.last_message_at ?? 0).getTime() - new Date(a.last_message_at ?? 0).getTime(),
+      );
       const convoIds = convos.map((c) => c.id);
+      const groupIds = groupConvos.map((c) => c.id);
 
       // One batched query for every unread message the current user has
       // received across all their conversations -- tallied per conversation
@@ -638,18 +650,21 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
         }
       }
 
-      // Get profiles for other participants and last message
+      // Member counts for the group rows' "N members" subtitle.
+      const memberCountByConversation: Record<string, number> = {};
+      if (groupIds.length > 0) {
+        const { data: memberRows } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .in('conversation_id', groupIds);
+        for (const row of memberRows || []) {
+          memberCountByConversation[row.conversation_id] = (memberCountByConversation[row.conversation_id] || 0) + 1;
+        }
+      }
+
+      // Get profiles for other participants (1:1 only) and last message
       const conversationsWithDetails = await Promise.all(
         convos.map(async (conv) => {
-          const otherParticipantId = conv.participant_1 === user.id ? conv.participant_2 : conv.participant_1;
-
-          // Get profile
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, user_id, display_name, avatar_url, profession')
-            .eq('user_id', otherParticipantId!)
-            .maybeSingle();
-
           // Get last message
           const { data: lastMsg } = await supabase
             .from('messages')
@@ -657,6 +672,25 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
             .eq('conversation_id', conv.id)
             .order('created_at', { ascending: false })
             .limit(1)
+            .maybeSingle();
+
+          if (conv.is_group) {
+            return {
+              ...conv,
+              otherUser: undefined,
+              lastMessage: lastMsg?.content,
+              unreadCount: unreadByConversation[conv.id] || 0,
+              groupMemberCount: memberCountByConversation[conv.id] || 0,
+            };
+          }
+
+          const otherParticipantId = conv.participant_1 === user.id ? conv.participant_2 : conv.participant_1;
+
+          // Get profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, user_id, display_name, avatar_url, profession')
+            .eq('user_id', otherParticipantId!)
             .maybeSingle();
 
           return {
@@ -1444,9 +1478,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
       if (existingConv) {
         setSelectedConversation(existingConv.id);
         setSelectedConversationUser(selectedUser);
-        setShowNewChat(false);
-        setSearchQuery('');
-        setUserSearchOpen(false);
+        setListFilter('');
         navigate(`/connect/${existingConv.id}`);
         return;
       }
@@ -1465,9 +1497,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
 
       setSelectedConversation(newConv.id);
       setSelectedConversationUser(selectedUser);
-      setShowNewChat(false);
-      setSearchQuery('');
-      setUserSearchOpen(false);
+      setListFilter('');
       fetchConversations();
       navigate(`/connect/${newConv.id}`);
 
@@ -1501,22 +1531,26 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     setSelectedConversationUser(null);
   }, [navigate]);
 
-  // "Groups" has no backing data yet (messaging is strictly 1-to-1 today) --
-  // the tab exists so the filter row matches the design, but it always shows
-  // the empty state below.
   const filteredConversations = conversations.filter((c) => {
     if (activeTab === 'unread' && c.unreadCount === 0) return false;
     if (activeTab === 'favourites' && !favouriteIds.has(c.id)) return false;
-    if (activeTab === 'groups') return false;
+    if (activeTab === 'groups' && !c.is_group) return false;
     if (listFilter.trim()) {
       const q = listFilter.trim().toLowerCase();
-      const name = c.otherUser?.display_name?.toLowerCase() || '';
+      const name = (c.is_group ? c.group_name : c.otherUser?.display_name)?.toLowerCase() || '';
       const last = c.lastMessage?.toLowerCase() || '';
       if (!name.includes(q) && !last.includes(q)) return false;
     }
     return true;
   });
   const favouritesCount = conversations.filter((c) => favouriteIds.has(c.id)).length;
+  // Below ~2 chars the search box just filters the list above; at 2+ chars it
+  // also offers to start a brand-new 1:1 chat with someone not in the list
+  // yet -- the one and only "start a new chat" entry point (see header).
+  const showPeopleSearch = listFilter.trim().length >= 2;
+  const peopleSearchResults = searchResults.filter(
+    (p) => !conversations.some((c) => !c.is_group && c.otherUser?.user_id === p.user_id),
+  );
 
   if (loading) {
     return (
@@ -1529,6 +1563,18 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   // Mounted regardless of which panel below is showing.
   const dialogs = (
     <>
+      <CreateGroupDialog
+        open={createGroupOpen}
+        onOpenChange={setCreateGroupOpen}
+        currentUserId={user.id}
+        onCreated={(conversationId) => {
+          setSelectedConversation(conversationId);
+          setSelectedConversationUser(null);
+          fetchConversations();
+          navigate(`/connect/${conversationId}`);
+        }}
+      />
+
       <MessageInfoDialog
         open={!!infoMessage}
         onOpenChange={(o) => !o && setInfoMessage(null)}
@@ -1636,27 +1682,15 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
     <div className="flex h-full min-w-0 flex-col">
       <div className="flex-shrink-0 border-b px-3 py-3 lg:px-4">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Messages</h2>
+          <h2 className="text-lg font-semibold">{isMobile ? 'Chats' : 'Messages'}</h2>
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              aria-label="Search"
-              onClick={() => document.getElementById('conversation-list-search')?.focus()}
-            >
-              <Search className="h-4 w-4" />
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More options">
+                <Button variant="ghost" size="icon" className="h-9 w-9 lg:h-8 lg:w-8" aria-label="More options">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => handleNotImplemented('New group')}>
-                  <Users2 className="mr-2 h-4 w-4" /> New group
-                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => handleNotImplemented('New community')}>
                   <Building2 className="mr-2 h-4 w-4" /> New community
                 </DropdownMenuItem>
@@ -1668,83 +1702,14 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
             <Button
               variant="default"
               size="icon"
-              className="h-8 w-8 rounded-full"
-              aria-label={showNewChat ? 'Close new message' : 'New message'}
-              onClick={() => setShowNewChat(!showNewChat)}
+              className="h-9 w-9 rounded-full lg:h-8 lg:w-8"
+              aria-label="Create new group"
+              onClick={() => setCreateGroupOpen(true)}
             >
-              {showNewChat ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              <Plus className="h-4 w-4" />
             </Button>
           </div>
         </div>
-
-        {showNewChat && (
-          <div className="space-y-2 pt-2">
-            <Popover open={userSearchOpen} onOpenChange={setUserSearchOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={userSearchOpen}
-                  className="w-full justify-start text-muted-foreground"
-                >
-                  <Search className="h-4 w-4 mr-2" />
-                  Search users...
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[min(300px,calc(100vw-2rem))] p-0" align="start">
-                <Command shouldFilter={false}>
-                  <CommandInput
-                    placeholder="Search by name..."
-                    value={searchQuery}
-                    onValueChange={setSearchQuery}
-                  />
-                  <CommandList>
-                    {searchLoading && (
-                      <div className="flex items-center justify-center p-4">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </div>
-                    )}
-                    {!searchLoading && searchQuery.length >= 2 && searchResults.length === 0 && (
-                      <CommandEmpty>No users found.</CommandEmpty>
-                    )}
-                    {!searchLoading && searchQuery.length < 2 && (
-                      <div className="p-4 text-sm text-muted-foreground text-center">
-                        Type at least 2 characters to search
-                      </div>
-                    )}
-                    {searchResults.length > 0 && (
-                      <CommandGroup heading="Users">
-                        {searchResults.map((profile) => (
-                          <CommandItem
-                            key={profile.id}
-                            value={profile.id}
-                            onSelect={() => startNewConversation(profile)}
-                            className="cursor-pointer"
-                          >
-                            <Avatar className="h-8 w-8 mr-2">
-                              <AvatarImage src={profile.avatar_url || undefined} />
-                              <AvatarFallback>
-                                {profile.display_name?.[0]?.toUpperCase() || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {profile.display_name || profile.full_name || 'Unknown User'}
-                              </p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {profile.email || profile.profession || ''}
-                              </p>
-                            </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    )}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-        )}
 
         {conversations.length > 0 && (
           <>
@@ -1798,7 +1763,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                 Retry
               </Button>
             </div>
-          ) : conversations.length === 0 ? (
+          ) : conversations.length === 0 && !showPeopleSearch ? (
             <EmptyState
               size="compact"
               illustration={noMessageImage}
@@ -1806,37 +1771,87 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
               title="No messages yet"
               description="Reach out and start a conversation to advance your career"
               action={
-                <Button onClick={() => setShowNewChat(true)}>Send a message</Button>
+                <Button onClick={() => document.getElementById('conversation-list-search')?.focus()}>
+                  Send a message
+                </Button>
               }
             />
-          ) : activeTab === 'groups' ? (
-            <div className="px-4 py-10 text-center">
-              <p className="text-sm font-medium text-foreground">No group conversations yet</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Group messaging is coming soon.</p>
-            </div>
-          ) : filteredConversations.length === 0 ? (
-            <div className="px-4 py-10 text-center">
-              <p className="text-sm font-medium text-foreground">No conversations match</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">Try a different search or filter.</p>
-            </div>
           ) : (
             <div className="lg:px-2">
-              {filteredConversations.map((conversation) => {
+              {showPeopleSearch && (
+                <div className="pb-2">
+                  <p className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:px-2">
+                    Start a new chat
+                  </p>
+                  {searchLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : peopleSearchResults.length === 0 ? (
+                    <p className="px-4 pb-2 text-xs text-muted-foreground">No people found.</p>
+                  ) : (
+                    peopleSearchResults.map((profile) => (
+                      <button
+                        key={profile.id}
+                        type="button"
+                        onClick={() => startNewConversation(profile)}
+                        className="flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition-colors hover:bg-muted/50 lg:px-3"
+                      >
+                        <Avatar className="h-9 w-9 shrink-0">
+                          <AvatarImage src={profile.avatar_url || undefined} />
+                          <AvatarFallback>{profile.display_name?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            {profile.display_name || profile.full_name || 'Unknown User'}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {profile.profession || profile.email || ''}
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                  {filteredConversations.length > 0 && (
+                    <p className="px-3 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:px-2">
+                      Conversations
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'groups' && filteredConversations.length === 0 ? (
+                <div className="px-4 py-10 text-center">
+                  <p className="text-sm font-medium text-foreground">No group conversations yet</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Tap + above to create one.</p>
+                </div>
+              ) : filteredConversations.length === 0 && !showPeopleSearch ? (
+                <div className="px-4 py-10 text-center">
+                  <p className="text-sm font-medium text-foreground">No conversations match</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Try a different search or filter.</p>
+                </div>
+              ) : (
+              filteredConversations.map((conversation) => {
                 const isUnread = conversation.unreadCount > 0;
                 const isFav = favouriteIds.has(conversation.id);
+                const isSelected = selectedConversation === conversation.id;
+                const displayName = conversation.is_group
+                  ? conversation.group_name || 'Group'
+                  : conversation.otherUser?.display_name || 'Unknown User';
                 return (
                   <div
                     key={conversation.id}
                     role="button"
                     tabIndex={0}
+                    aria-current={isSelected ? 'true' : undefined}
                     aria-label={
                       isUnread
-                        ? `${conversation.otherUser?.display_name || 'Conversation'}, ${conversation.unreadCount} unread`
-                        : undefined
+                        ? `${displayName}, ${conversation.unreadCount} unread`
+                        : displayName
                     }
                     className={cn(
                       'group flex w-full cursor-pointer items-start gap-3 border-b border-border px-1 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/50 lg:rounded-lg lg:border-b-0 lg:px-3',
-                      selectedConversation === conversation.id && 'bg-muted',
+                      isSelected && 'bg-primary/10 hover:bg-primary/10',
                     )}
                     onClick={() => handleSelectConversation(conversation)}
                     onKeyDown={(e) => {
@@ -1847,9 +1862,17 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     }}
                   >
                     <Avatar className="h-11 w-11 shrink-0">
-                      <AvatarImage src={conversation.otherUser?.avatar_url || undefined} />
+                      {conversation.is_group ? (
+                        <AvatarImage src={conversation.group_avatar_url || undefined} />
+                      ) : (
+                        <AvatarImage src={conversation.otherUser?.avatar_url || undefined} />
+                      )}
                       <AvatarFallback>
-                        {conversation.otherUser?.display_name?.[0]?.toUpperCase() || 'U'}
+                        {conversation.is_group ? (
+                          <Users2 className="h-5 w-5" />
+                        ) : (
+                          conversation.otherUser?.display_name?.[0]?.toUpperCase() || 'U'
+                        )}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
@@ -1860,7 +1883,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                             isUnread ? 'font-bold text-foreground' : 'font-medium',
                           )}
                         >
-                          {conversation.otherUser?.display_name || 'Unknown User'}
+                          {displayName}
                         </span>
                         <span
                           className={cn(
@@ -1878,7 +1901,9 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                             isUnread ? 'font-medium text-foreground' : 'text-muted-foreground',
                           )}
                         >
-                          {conversation.lastMessage || 'No messages yet'}
+                          {conversation.is_group && conversation.groupMemberCount
+                            ? `${conversation.groupMemberCount} members · ${conversation.lastMessage || 'No messages yet'}`
+                            : conversation.lastMessage || 'No messages yet'}
                         </p>
                         {isUnread && (
                           <span
@@ -1906,7 +1931,8 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     </button>
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           )}
         </ScrollArea>
@@ -2030,6 +2056,15 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
   // layout's left panel -- see the two early `return`s above for how each
   // context wraps/positions it.
   function renderChatPanel() {
+    const activeConversation = conversations.find((c) => c.id === selectedConversation);
+    const isGroupChat = !!activeConversation?.is_group;
+    const chatHeaderName = isGroupChat
+      ? activeConversation?.group_name || 'Group'
+      : selectedConversationUser?.display_name || 'Chat';
+    const chatHeaderSubtitle = isGroupChat
+      ? `${activeConversation?.groupMemberCount || 0} members`
+      : selectedConversationUser?.profession;
+
     return (
       <div className="flex h-full min-w-0 flex-col bg-background">
         <div
@@ -2116,19 +2151,23 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     <ChevronLeft className="h-6 w-6" />
                   </Button>
                   <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarImage src={selectedConversationUser?.avatar_url || undefined} />
+                    {isGroupChat ? (
+                      <AvatarImage src={activeConversation?.group_avatar_url || undefined} />
+                    ) : (
+                      <AvatarImage src={selectedConversationUser?.avatar_url || undefined} />
+                    )}
                     <AvatarFallback>
-                      {selectedConversationUser?.display_name?.[0]?.toUpperCase() || 'U'}
+                      {isGroupChat ? (
+                        <Users2 className="h-4 w-4" />
+                      ) : (
+                        selectedConversationUser?.display_name?.[0]?.toUpperCase() || 'U'
+                      )}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <h2 className="truncate text-base font-semibold">
-                      {selectedConversationUser?.display_name || 'Chat'}
-                    </h2>
-                    {selectedConversationUser?.profession && (
-                      <p className="truncate text-xs text-muted-foreground">
-                        {selectedConversationUser.profession}
-                      </p>
+                    <h2 className="truncate text-base font-semibold">{chatHeaderName}</h2>
+                    {chatHeaderSubtitle && (
+                      <p className="truncate text-xs text-muted-foreground">{chatHeaderSubtitle}</p>
                     )}
                   </div>
                 </div>
@@ -2165,7 +2204,7 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                   ) : visibleMessages.length === 0 ? (
                     <div className="text-center text-muted-foreground py-8">
                       <p className="text-sm font-medium">
-                        Start a conversation with {selectedConversationUser?.display_name || 'them'}
+                        {isGroupChat ? `Say hello to ${chatHeaderName}` : `Start a conversation with ${chatHeaderName}`}
                       </p>
                       <p className="text-xs mt-1">Send a message to start chatting.</p>
                     </div>
@@ -2314,7 +2353,15 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                     }}
                   />
                   <div className="relative" ref={attachAreaRef}>
-                    <DropdownMenu open={attachMenuOpen} onOpenChange={setAttachMenuOpen}>
+                    <DropdownMenu
+                      modal={false}
+                      open={attachMenuOpen}
+                      onOpenChange={(open) => {
+                        // TEMP DEBUG -- remove once confirmed fixed on a real phone.
+                        console.log('[ATTACH MENU] open:', open);
+                        setAttachMenuOpen(open);
+                      }}
+                    >
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
@@ -2322,13 +2369,30 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                           disabled={sendingMessage || uploadingDocument}
                           aria-label="Attach file"
                           title="Attach"
+                          className="touch-manipulation"
+                          // TEMP DEBUG -- remove once confirmed fixed on a real phone.
+                          onPointerDown={(e) => console.log('[ATTACH] pointerdown', e.pointerType)}
+                          onPointerUp={(e) => console.log('[ATTACH] pointerup', e.pointerType)}
+                          onClick={() => console.log('[ATTACH] click')}
                         >
                           <Paperclip className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
+                      {/* modal={false} + data-[state=closed]:!animate-none: a modal
+                          DropdownMenu traps focus and scroll-locks the body via
+                          react-remove-scroll. Document/Photo/Camera below open a
+                          native OS picker synchronously on select, which steals
+                          focus the same way a nested Dialog does -- that orphans
+                          the close animation's animationend under the modal's own
+                          teardown and leaves the body permanently scroll-locked
+                          (every later tap, including this same button, then does
+                          nothing). Same fix already applied to the per-message
+                          and bulk-actions dropdowns in this file. */}
+                      <DropdownMenuContent align="start" className="data-[state=closed]:!animate-none">
                         <DropdownMenuItem
                           onSelect={(event) => {
+                            // TEMP DEBUG -- remove once confirmed fixed on a real phone.
+                            console.log('[ATTACH] onSelect Document, input:', documentInputRef.current);
                             event.preventDefault();
                             documentInputRef.current?.click();
                             setAttachMenuOpen(false);
@@ -2339,6 +2403,8 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onSelect={(event) => {
+                            // TEMP DEBUG -- remove once confirmed fixed on a real phone.
+                            console.log('[ATTACH] onSelect Photo, input:', imageInputRef.current);
                             event.preventDefault();
                             imageInputRef.current?.click();
                             setAttachMenuOpen(false);
@@ -2349,6 +2415,8 @@ const ChatInterface = ({ user }: ChatInterfaceProps) => {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onSelect={(event) => {
+                            // TEMP DEBUG -- remove once confirmed fixed on a real phone.
+                            console.log('[ATTACH] onSelect Camera, input:', cameraInputRef.current);
                             event.preventDefault();
                             cameraInputRef.current?.click();
                             setAttachMenuOpen(false);
